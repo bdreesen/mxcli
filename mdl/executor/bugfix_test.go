@@ -169,6 +169,88 @@ func TestDescribeEnumerationInSubfolder(t *testing.T) {
 	}
 }
 
+// TestValidateEntityReservedAttributeName verifies that persistent entity attributes
+// using reserved system names (CreatedDate, ChangedDate, Owner, ChangedBy) are caught.
+func TestValidateEntityReservedAttributeName(t *testing.T) {
+	input := `CREATE PERSISTENT ENTITY Test.MyEntity (
+  Name : String(200),
+  CreatedDate : DateTime,
+  Status : String(50)
+);`
+
+	prog, errs := visitor.Build(input)
+	if len(errs) > 0 {
+		t.Fatalf("Parse error: %v", errs[0])
+	}
+
+	stmt, ok := prog.Statements[0].(*ast.CreateEntityStmt)
+	if !ok {
+		t.Fatalf("Expected CreateEntityStmt, got %T", prog.Statements[0])
+	}
+
+	errors := ValidateEntity(stmt)
+	found := false
+	for _, e := range errors {
+		if strings.Contains(e, "CreatedDate") && strings.Contains(e, "system attribute") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("Expected reserved attribute error for CreatedDate, got: %v", errors)
+	}
+}
+
+// TestValidateEntityNonPersistentAllowed verifies that non-persistent entities
+// can use system attribute names without error.
+func TestValidateEntityNonPersistentAllowed(t *testing.T) {
+	input := `CREATE NON-PERSISTENT ENTITY Test.MyNPE (
+  CreatedDate : DateTime,
+  Owner : String(200)
+);`
+
+	prog, errs := visitor.Build(input)
+	if len(errs) > 0 {
+		t.Fatalf("Parse error: %v", errs[0])
+	}
+
+	stmt, ok := prog.Statements[0].(*ast.CreateEntityStmt)
+	if !ok {
+		t.Fatalf("Expected CreateEntityStmt, got %T", prog.Statements[0])
+	}
+
+	errors := ValidateEntity(stmt)
+	if len(errors) > 0 {
+		t.Errorf("Non-persistent entity should allow system attribute names, got: %v", errors)
+	}
+}
+
+// TestValidateEntityNormalAttributesPass verifies that normal attribute names
+// don't trigger false positives.
+func TestValidateEntityNormalAttributesPass(t *testing.T) {
+	input := `CREATE PERSISTENT ENTITY Test.MyEntity (
+  Name : String(200),
+  Description : String(2000),
+  Amount : Decimal,
+  IsActive : Boolean
+);`
+
+	prog, errs := visitor.Build(input)
+	if len(errs) > 0 {
+		t.Fatalf("Parse error: %v", errs[0])
+	}
+
+	stmt, ok := prog.Statements[0].(*ast.CreateEntityStmt)
+	if !ok {
+		t.Fatalf("Expected CreateEntityStmt, got %T", prog.Statements[0])
+	}
+
+	errors := ValidateEntity(stmt)
+	if len(errors) > 0 {
+		t.Errorf("Normal attributes should not trigger errors, got: %v", errors)
+	}
+}
+
 // validateMicroflowFromMDL parses a CREATE MICROFLOW statement and runs
 // ValidateMicroflowBody, returning any validation errors.
 func validateMicroflowFromMDL(t *testing.T, input string) []string {

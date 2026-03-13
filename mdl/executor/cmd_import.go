@@ -249,6 +249,10 @@ func (e *Executor) resolveOneLink(
 		info.StorageFormat = sysInfo.StorageFormat
 		if info.StorageFormat == "Column" {
 			info.FKColumnName = sysInfo.ChildColumnName
+			// Fall back to naming convention if system table has NULL child_column_name
+			if info.FKColumnName == "" {
+				info.FKColumnName = sqllib.AssocColumnNameFromConvention(assocQualName)
+			}
 		} else {
 			info.JunctionTable = sysInfo.TableName
 			// Junction column names from conventions

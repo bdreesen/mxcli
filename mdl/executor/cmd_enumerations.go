@@ -287,3 +287,32 @@ func ValidateEnumeration(stmt *ast.CreateEnumerationStmt) []string {
 	}
 	return errors
 }
+
+// mendixSystemAttributeNames are attribute names reserved by the Mendix runtime.
+// These are auto-managed system attributes on persistent entities and cannot be
+// used as user-defined attribute names.
+var mendixSystemAttributeNames = map[string]bool{
+	"createddate": true,
+	"changeddate": true,
+	"owner":       true,
+	"changedby":   true,
+}
+
+// ValidateEntity checks entity attribute names for reserved system names.
+// Returns a list of error messages. This function does not require a project connection.
+func ValidateEntity(stmt *ast.CreateEntityStmt) []string {
+	var errors []string
+	// Only persistent entities have system attributes
+	if stmt.Kind != ast.EntityPersistent {
+		return errors
+	}
+	for _, attr := range stmt.Attributes {
+		if mendixSystemAttributeNames[strings.ToLower(attr.Name)] {
+			errors = append(errors, fmt.Sprintf(
+				"attribute '%s' conflicts with a Mendix system attribute name. "+
+					"Mendix automatically manages '%s' on persistent entities — rename to avoid conflicts (e.g., 'Custom%s')",
+				attr.Name, attr.Name, attr.Name))
+		}
+	}
+	return errors
+}

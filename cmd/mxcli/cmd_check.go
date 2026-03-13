@@ -77,6 +77,14 @@ Examples:
 					}
 				}
 			}
+			// Check entity attributes for reserved system names
+			if entityStmt, ok := stmt.(*ast.CreateEntityStmt); ok {
+				if errs := executor.ValidateEntity(entityStmt); len(errs) > 0 {
+					for _, e := range errs {
+						oqlErrors = append(oqlErrors, fmt.Sprintf("statement %d (%s): %s", i+1, entityStmt.Name.String(), e))
+					}
+				}
+			}
 			// Check microflow body for common issues
 			if mfStmt, ok := stmt.(*ast.CreateMicroflowStmt); ok {
 				if warns := executor.ValidateMicroflow(mfStmt); len(warns) > 0 {
