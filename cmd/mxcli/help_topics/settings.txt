@@ -1,0 +1,56 @@
+Project Settings
+================
+
+SHOW COMMANDS
+-------------
+
+  SHOW SETTINGS;                             -- Overview of all settings parts
+  DESCRIBE SETTINGS;                         -- Full MDL output (round-trippable)
+
+ALTER SETTINGS (Model)
+----------------------
+
+  ALTER SETTINGS MODEL AfterStartupMicroflow = 'Module.MF_Startup';
+  ALTER SETTINGS MODEL HashAlgorithm = 'BCrypt';
+  ALTER SETTINGS MODEL JavaVersion = 'Java21';
+  ALTER SETTINGS MODEL AllowUserMultipleSessions = true;
+  ALTER SETTINGS MODEL RoundingMode = 'HalfUp';
+  ALTER SETTINGS MODEL BcryptCost = 12;
+
+ALTER SETTINGS (Configuration)
+------------------------------
+
+  ALTER SETTINGS CONFIGURATION 'Default'
+    DatabaseType = 'PostgreSql',
+    DatabaseUrl = 'localhost:5432',
+    DatabaseName = 'mydb',
+    DatabaseUserName = 'mendix',
+    DatabasePassword = 'mendix',
+    HttpPortNumber = 8080;
+
+ALTER SETTINGS (Constant Overrides)
+-----------------------------------
+
+  ALTER SETTINGS CONSTANT 'BusinessEvents.ServerUrl' VALUE 'kafka:9092'
+    IN CONFIGURATION 'Default';
+
+ALTER SETTINGS (Language / Workflows)
+-------------------------------------
+
+  ALTER SETTINGS LANGUAGE DefaultLanguageCode = 'en_US';
+  ALTER SETTINGS WORKFLOWS UserEntity = 'System.User';
+  ALTER SETTINGS WORKFLOWS DefaultTaskParallelism = 3;
+
+NOTES
+-----
+
+  There is always exactly one ProjectSettings document per project.
+  It cannot be created or deleted, only modified via ALTER SETTINGS.
+
+  Model settings keys: AfterStartupMicroflow, BeforeShutdownMicroflow,
+    HealthCheckMicroflow, HashAlgorithm, BcryptCost, JavaVersion,
+    RoundingMode, AllowUserMultipleSessions, ScheduledEventTimeZoneCode.
+
+  Configuration settings keys: DatabaseType, DatabaseUrl, DatabaseName,
+    DatabaseUserName, DatabasePassword, HttpPortNumber, ServerPortNumber,
+    ApplicationRootUrl.

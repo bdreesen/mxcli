@@ -1,0 +1,121 @@
+-- ============================================================================
+-- Business Event Examples - Comprehensive Parser Feature Showcase
+-- ============================================================================
+--
+-- This file demonstrates all business event features supported by the
+-- Mendix REPL parser.
+--
+-- Usage:
+--   1. Connect to your project
+--   2. Execute: EXECUTE SCRIPT 'examples/13-business-events-examples.mdl';
+--   3. Verify with: DESCRIBE BUSINESS EVENT SERVICE BeTest.CustomerEventsApi;
+--
+-- ============================================================================
+
+CREATE MODULE BeTest;
+
+-- MARK: Supporting Entities
+
+@Position(100,100)
+CREATE PERSISTENT ENTITY BeTest.PBE_CustomerChangedEvent EXTENDS BusinessEvents.PublishedBusinessEvent (
+  CustomerId: Long
+);
+
+@Position(300,100)
+CREATE PERSISTENT ENTITY BeTest.PBE_AddressChangedEvent EXTENDS BusinessEvents.PublishedBusinessEvent (
+  AddressId: Long
+);
+
+-- MARK: Business Event Services
+
+-- ============================================================================
+-- PART 1: Basic Business Event Service
+-- ============================================================================
+
+/**
+ * Example 1.1: Simple service with single message
+ */
+CREATE BUSINESS EVENT SERVICE BeTest.SimpleEvents
+(
+  ServiceName: 'SimpleEvents',
+  EventNamePrefix: ''
+)
+{
+  MESSAGE CustomerChangedEvent (CustomerId: Long) PUBLISH
+    ENTITY BeTest.PBE_CustomerChangedEvent;
+};
+
+-- ============================================================================
+-- PART 2: Multi-Message Service
+-- ============================================================================
+
+/**
+ * Example 2.1: Service with multiple messages and various attribute types
+ */
+CREATE BUSINESS EVENT SERVICE BeTest.CustomerEventsApi
+(
+  ServiceName: 'CustomerEventsApi',
+  EventNamePrefix: 'com.example'
+)
+{
+  MESSAGE CustomerChangedEvent (CustomerId: Long) PUBLISH
+    ENTITY BeTest.PBE_CustomerChangedEvent;
+  MESSAGE AddressChangedEvent (AddressId: Long) PUBLISH
+    ENTITY BeTest.PBE_AddressChangedEvent;
+};
+
+-- Verify: entity attributes must match message attributes exactly.
+-- PBE_CustomerChangedEvent has CustomerId: Long → message defines (CustomerId: Long) ✓
+-- PBE_AddressChangedEvent has AddressId: Long → message defines (AddressId: Long) ✓
+
+-- ============================================================================
+-- PART 3: Create Or Replace
+-- ============================================================================
+
+/**
+ * Example 3.1: Overwrite existing service
+ */
+CREATE OR REPLACE BUSINESS EVENT SERVICE BeTest.SimpleEvents
+(
+  ServiceName: 'SimpleEventsUpdated',
+  EventNamePrefix: 'v2'
+)
+{
+  MESSAGE CustomerChangedEvent (CustomerId: Long) PUBLISH
+    ENTITY BeTest.PBE_CustomerChangedEvent;
+};
+
+-- ============================================================================
+-- PART 4: Show
+-- ============================================================================
+
+
+Show BUSINESS EVENT SERVICEs;
+Show BUSINESS EVENT SERVICEs in BeTest;
+describe business event service BeTest.SimpleEvents;
+show business events;
+
+-- ============================================================================
+-- PART 5: Drop Service
+-- ============================================================================
+
+/**
+ * Example 4.1: Delete a service
+ */
+DROP BUSINESS EVENT SERVICE BeTest.SimpleEvents;
+
+-- ============================================================================
+-- SUMMARY
+-- ============================================================================
+--
+-- Covered:
+-- CREATE BUSINESS EVENT SERVICE with properties
+-- MESSAGE with typed attributes (Long)
+-- PUBLISH operation with ENTITY binding
+-- Multiple messages per service
+-- EventNamePrefix property
+-- CREATE OR REPLACE
+-- DROP BUSINESS EVENT SERVICE
+-- Entity EXTENDS BusinessEvents.PublishedBusinessEvent (required for published events)
+--
+-- ============================================================================

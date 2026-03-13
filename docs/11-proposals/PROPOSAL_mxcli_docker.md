@@ -1,0 +1,1198 @@
+# mxcli Docker - Running Mendix Projects in Containers
+
+## Overview
+
+Add Docker integration to mxcli that enables running Mendix projects in containers for local development, testing, and CI/CD pipelines. This provides a consistent, reproducible environment without requiring a full Studio Pro installation.
+
+Starting with **Mendix 11.6.1+**, the runtime supports **Portable App Distribution (PAD)** — a self-contained deployment package that includes the Java runtime, all dependencies, startup scripts, a Dockerfile, and Docker Compose files. PAD is a **long-term supported feature** of the Mendix platform, confirmed present in the MxBuild 11.6.0 binary (`PortableAppPackageCreator` class). This dramatically simplifies the Docker workflow compared to the previous approach of using `mendix/buildpack` and `mendix/runtime` base images.
+
+> **Last reviewed:** February 2026. PAD confirmed as long-term supported. Updated Docker base images, Go/PostgreSQL versions, and resolved open questions based on current ecosystem state.
+
+## Motivation
+
+Currently, testing Mendix applications requires either:
+1. Running from Studio Pro (heavy, GUI-based)
+2. Deploying to Mendix Cloud (slow feedback loop)
+3. Manual local deployment setup (complex, error-prone)
+
+Docker-based execution enables:
+- **Automated testing** - Run integration tests in CI/CD pipelines
+- **Consistent environments** - Same runtime across dev/test/prod
+- **Rapid iteration** - Fast startup for local development
+- **Headless operation** - No GUI required
+- **Version control** - Pin exact runtime versions
+- **Parallel testing** - Run multiple app instances simultaneously
+
+## Portable App Distribution (PAD)
+
+PAD is the **recommended approach** for Mendix 11.6.1+ (and 11.8+ for best support). It is a long-term supported Mendix feature that generates a self-contained zip file deployable anywhere — Docker, bare metal, or cloud.
+
+### How PAD Works
+
+1. MxBuild generates a portable package using `--target=portable-app-package`
+2. The output is a zip containing everything needed to run the app
+3. No `mendix/runtime` base image required — uses a JDK 21 base image (see note on base image choice below)
+4. Dockerfile and Docker Compose files are generated automatically
+
+### Generating the PAD Package
+
+**Via MxBuild CLI:**
+```bash
+MxBuild \
+  --java-home="/path/to/jdk-21" \
+  --java-exe-path="/path/to/jdk-21/bin/java" \
+  --target=portable-app-package \
+  /path/to/MyApp.mpr \
+  --o="/output/folder"
+```
+
+**Via Studio Pro (11.6.1+):**
+1. Click App -> Create Deployment Package (or F7)
+2. Enable "Portable package"
+3. Click OK
+
+> **Note:** Earlier 11.6.x versions may require starting Studio Pro with `--enable-portable-app-deployment` flag. In later versions PAD is available by default.
+
+### PAD Folder Structure
+
+The generated zip contains:
+
+```
+MyApp-portable/
+├── app/                          # Application files (similar to .mda)
+│   ├── data/
+│   ├── model/
+│   ├── native/
+│   ├── sass/
+│   ├── tmp/
+│   └── web/
+├── bin/                          # Startup scripts
+│   ├── start                     # Linux/macOS shell script
+│   ├── start.bat                 # Windows CMD
+│   └── start.ps1                 # Windows PowerShell
+├── doc/                          # Documentation
+│   └── api/                      # Java API docs
+├── docker_compose/               # Docker Compose files (one per configuration)
+│   └── Default.yaml              # Compose file for "Default" configuration
+├── etc/                          # Runtime configuration
+│   ├── example.conf              # Example config with all parameters documented
+│   ├── StudioPro.Conf            # Settings from Studio Pro
+│   ├── variables.conf            # Environment variable overrides
+│   ├── configurations/           # Per-configuration settings
+│   │   └── Default.conf
+│   └── constants/                # Microflow constants
+│       ├── defaults.conf
+│       └── variables.conf
+├── lib/                          # Dependencies
+│   └── runtime/
+│       ├── bundles/              # Runtime JARs
+│       ├── launcher/             # Launcher JAR
+│       ├── lib/                  # Additional libraries
+│       └── mxclientsystem/       # Client-side files
+└── Dockerfile                    # Ready-to-use Dockerfile
+```
+
+### PAD Dockerfile (Generated)
+
+The PAD-generated Dockerfile is intentionally simple:
+
+> **Note:** The PAD-generated Dockerfile uses `FROM openjdk:21`, but the Docker Hub `openjdk` image has been **officially deprecated since 2022** and receives no security updates. The `mxcli docker init` patching step (see below) should replace this with `eclipse-temurin:21-jre` (Eclipse Adoptium), which is the recommended drop-in replacement.
+
+```dockerfile
+# Generated by Mendix Runtime - Portable App Distribution
+FROM openjdk:21
+
+WORKDIR /mendix
+
+# Copy Mendix app files into the image
+COPY ./app ./app
+COPY ./bin ./bin
+COPY ./etc ./etc
+COPY ./lib ./lib
+
+# Environment variables
+ENV MX_LOG_LEVEL=info
+ENV M2EE_ADMIN_PASS=${M2EE_ADMIN_PASS}
+
+# Expose ports
+EXPOSE 8090
+EXPOSE 8080
+
+# Start command
+CMD ["./bin/start", "etc/Default"]
+```
+
+### PAD Deployment Options
+
+| Method | Source | Command |
+|--------|--------|---------|
+| Docker Compose | `docker_compose/` | `docker compose -f docker_compose/Default.yaml up` |
+| Docker (build) | `Dockerfile` | `docker build -t mx/app:latest . && docker run --rm -it -p 8080:8080 -e M2EE_ADMIN_PASS=<pass> mx/app:latest` |
+| Linux | `bin/` | `sh bin/start` |
+| Windows CMD | `bin/` | `bin\start.bat` |
+| Windows PowerShell | `bin/` | `bin\start.ps1` |
+
+### Known PAD Issues (Mendix 11.6.x)
+
+These issues exist in the current 11.6.x release and `mxcli docker init` should apply workarounds automatically:
+
+1. **`./bin/start` missing execute permission** — The generated shell script lacks `chmod +x`. Workaround: add `RUN chmod +x ./bin/start` to Dockerfile.
+2. **Dockerfile references `start.sh` instead of `start`** — The generated Dockerfile has `CMD ["./bin/start.sh", "etc/Default"]` but the actual file is `./bin/start`. Workaround: fix the CMD line.
+3. **Deprecated `openjdk:21` base image** — The generated Dockerfile uses `FROM openjdk:21`, which is deprecated and no longer receives security updates. Workaround: replace with `FROM eclipse-temurin:21-jre`.
+
+Issues 1 and 2 are expected to be fixed in Mendix 11.8+. Issue 3 should be patched regardless of Mendix version until Mendix updates the PAD template. The `mxcli docker init` patching step should maintain a **version-aware patch list** so fixes can be skipped once Mendix resolves them upstream.
+
+---
+
+## Architecture
+
+### Container Topology
+
+This proposal involves two distinct container configurations that should not be confused:
+
+1. **Runtime Containers** - Run the Mendix application for testing
+2. **Dev Container** (optional) - Development environment with mxcli and tools
+
+These are **sibling containers** managed by the same Docker daemon, not nested (no Docker-in-Docker).
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                              Host Machine                                │
+│                                                                          │
+│  ┌────────────────────────────────────────────────────────────────────┐ │
+│  │                         Docker Engine                               │ │
+│  │                                                                     │ │
+│  │  ┌─────────────────────┐                                           │ │
+│  │  │   Dev Container     │  ◄── You work here (VS Code / Claude Code)│ │
+│  │  │   (optional)        │                                           │ │
+│  │  │                     │      - mxcli installed                    │ │
+│  │  │  /var/run/docker.sock ────┐ - Go, Node.js tools                 │ │
+│  │  │  (mounted from host) │    │ - Project files mounted             │ │
+│  │  └─────────────────────┘    │                                      │ │
+│  │                              │                                      │ │
+│  │                              ▼  (controls sibling containers)       │ │
+│  │  ┌─────────────────────┐   ┌─────────────────────┐                 │ │
+│  │  │   Mendix Runtime    │   │     PostgreSQL      │                 │ │
+│  │  │                     │──▶│      Database       │                 │ │
+│  │  │  - Java Runtime     │   │                     │                 │ │
+│  │  │  - Mendix Core      │   │  - App data         │                 │ │
+│  │  │  - Port 8080        │   │  - Port 5432        │                 │ │
+│  │  └─────────────────────┘   └─────────────────────┘                 │ │
+│  │           ▲                                                         │ │
+│  │           │                                                         │ │
+│  │  ┌────────┴────────┐                                               │ │
+│  │  │  Volume Mounts  │                                               │ │
+│  │  │  - app data     │                                               │ │
+│  │  │  - logs         │                                               │ │
+│  │  │  - db data      │                                               │ │
+│  │  └─────────────────┘                                               │ │
+│  └────────────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Use Case 1: Local Development (No Dev Container)
+
+Run `mxcli docker up` directly from your host machine:
+
+```
+Host Machine (you work here)
+├── mxcli, Studio Pro, VS Code
+└── Docker Engine
+    ├── mendix-runtime container  ←── sibling containers
+    └── postgres container
+```
+
+### Use Case 2: Dev Container Development
+
+Work inside a dev container that controls sibling runtime containers:
+
+```
+Host Machine
+└── Docker Engine
+    ├── dev-container (mxcli, Go, Claude Code)  ←── you work here
+    │   └── /var/run/docker.sock (mounted)       ←── controls siblings
+    ├── mendix-runtime container                 ←── sibling
+    └── postgres container                       ←── sibling
+```
+
+The dev container uses **Docker-outside-of-Docker** (DooD) by mounting the host's Docker socket. This means:
+- No Docker daemon running inside the dev container
+- Runtime containers are siblings, not children
+- All containers share the same Docker network
+- No performance overhead from nested virtualization
+
+### Runtime Stack (docker-compose.yml)
+
+### mxcli Integration
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                           mxcli                                  │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  mxcli docker init     - Generate Dockerfile & compose.yml      │
+│  mxcli docker build    - Build deployment package               │
+│  mxcli docker up       - Start containers                       │
+│  mxcli docker down     - Stop containers                        │
+│  mxcli docker logs     - View runtime logs                      │
+│  mxcli docker test     - Run API/integration tests              │
+│  mxcli docker shell    - Interactive shell into container       │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## User Experience
+
+### Quick Start
+
+```bash
+# Initialize Docker configuration for a Mendix project
+mxcli docker init -p MyApp.mpr
+
+# Build the portable app package (requires MxBuild + JDK 21)
+mxcli docker build -p MyApp.mpr
+
+# Start the application (builds Docker image + starts containers)
+mxcli docker up -p MyApp.mpr
+
+# Application now running at http://localhost:8080
+
+# View logs
+mxcli docker logs -p MyApp.mpr --follow
+
+# Stop when done
+mxcli docker down -p MyApp.mpr
+```
+
+### Dev Container for VS Code / Claude Code
+
+```bash
+# Generate devcontainer.json for the project
+mxcli docker init -p MyApp.mpr --devcontainer
+
+# Open in VS Code - this opens the dev container (development environment)
+code .
+
+# Inside the dev container, start the Mendix runtime as a sibling container
+mxcli docker up -p MyApp.mpr
+
+# The runtime is now accessible at http://localhost:8080
+```
+
+**Note:** The dev container and Mendix runtime are separate containers. The dev container provides your development tools (mxcli, Go, etc.), while the runtime container runs your Mendix app. They communicate as sibling containers via Docker-outside-of-Docker.
+
+### CI/CD Usage
+
+```bash
+# Build PAD package and Docker image, then test
+mxcli docker build -p MyApp.mpr --image myapp:ci
+mxcli docker up -p MyApp.mpr --detach --wait-healthy
+mxcli docker test -p MyApp.mpr --suite integration
+mxcli docker down -p MyApp.mpr
+```
+
+## File Structure
+
+### Generated Docker Files
+
+With PAD, `mxcli docker build` produces a self-contained output directory. `mxcli docker init` then adds mxcli-specific enhancements (health checks, dev overrides, PostgreSQL, `.env` files):
+
+```
+MyMendixApp/
+├── MyApp.mpr
+│
+├── .docker/                      # Runtime containers
+│   │                             # Generated by: mxcli docker build + mxcli docker init
+│   │
+│   │── build/                    # PAD output (from mxcli docker build)
+│   │   ├── app/                  # Application files
+│   │   ├── bin/                  # Startup scripts (start, start.bat, start.ps1)
+│   │   ├── etc/                  # Runtime configuration files
+│   │   ├── lib/                  # Runtime JARs and dependencies
+│   │   ├── docker_compose/       # PAD-generated compose files (per configuration)
+│   │   └── Dockerfile            # PAD-generated Dockerfile (patched by mxcli)
+│   │
+│   ├── docker-compose.yml       # mxcli compose file (app + postgres + healthcheck)
+│   ├── docker-compose.dev.yml   # Development overrides (debug, etc.)
+│   ├── docker-compose.test.yml  # Test overrides
+│   ├── .env                     # Environment variables (gitignored)
+│   └── .env.example             # Template for .env
+│
+├── .devcontainer/               # Dev container (development environment)
+│   │                            # Generated by: mxcli docker init --devcontainer
+│   │                            # SEPARATE from runtime containers!
+│   └── devcontainer.json        # VS Code / Claude Code dev container config
+│                                # Uses Docker-outside-of-Docker to control
+│                                # sibling runtime containers
+│
+└── tests/                       # Test files
+    └── integration/
+        └── api_test.go
+```
+
+**Key distinction:**
+- `.docker/build/` - PAD output (self-contained app package from MxBuild)
+- `.docker/` - mxcli enhancements (compose with PostgreSQL, health checks, dev overrides)
+- `.devcontainer/` - Configuration for the **development environment** container (mxcli, Go, tools)
+
+### Dockerfile (PAD-based)
+
+The PAD-generated Dockerfile is patched by `mxcli docker init` to fix known issues and add health checks:
+
+```dockerfile
+# .docker/build/Dockerfile
+# Based on PAD-generated Dockerfile, patched by mxcli
+FROM eclipse-temurin:21-jre
+
+WORKDIR /mendix
+
+# Copy Mendix app files into the image
+COPY ./app ./app
+COPY ./bin ./bin
+COPY ./etc ./etc
+COPY ./lib ./lib
+
+# Fix: ensure start script is executable (PAD bug in 11.6.x)
+RUN chmod +x ./bin/start
+
+# Environment variables
+ENV MX_LOG_LEVEL=info
+ENV M2EE_ADMIN_PASS=${M2EE_ADMIN_PASS}
+
+# Expose ports
+EXPOSE 8090
+EXPOSE 8080
+
+# Health check (added by mxcli)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8080/xas/ || exit 1
+
+# Fix: PAD 11.6.x generates "start.sh" but file is "start"
+CMD ["./bin/start", "etc/Default"]
+```
+
+### Docker Compose
+
+The mxcli compose file wraps the PAD build with PostgreSQL and proper networking:
+
+```yaml
+# .docker/docker-compose.yml
+services:
+  mendix:
+    build:
+      context: ./build
+      dockerfile: Dockerfile
+    ports:
+      - "${APP_PORT:-8080}:8080"
+      - "${ADMIN_PORT:-8090}:8090"
+    environment:
+      - M2EE_ADMIN_PASS=${M2EE_ADMIN_PASS:-AdminPassword1!}
+      - MX_LOG_LEVEL=${MX_LOG_LEVEL:-info}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - mendix-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/xas/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  db:
+    image: postgres:17-alpine
+    environment:
+      - POSTGRES_DB=${DB_NAME:-mendix}
+      - POSTGRES_USER=${DB_USER:-mendix}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-mendix}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - mendix-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-mendix}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres-data:
+
+networks:
+  mendix-network:
+```
+
+**Note:** The PAD package also generates its own `docker_compose/Default.yaml` inside the build output. The mxcli compose file is preferred because it adds PostgreSQL, health checks, and environment variable configuration. Users can alternatively use the PAD compose directly: `docker compose -f .docker/build/docker_compose/Default.yaml up`.
+
+### Development Overrides
+
+```yaml
+# .docker/docker-compose.dev.yml
+services:
+  mendix:
+    environment:
+      - MX_LOG_LEVEL=debug
+    ports:
+      - "8080:8080"
+      - "8090:8090"    # Admin port
+```
+
+### Environment Template
+
+```bash
+# .docker/.env.example
+# Copy to .env and customize
+
+# Application Settings
+APP_PORT=8080
+ADMIN_PORT=8090
+M2EE_ADMIN_PASS=AdminPassword1!
+MX_LOG_LEVEL=info
+
+# Database Settings (used by PostgreSQL container)
+DB_NAME=mendix
+DB_USER=mendix
+DB_PASSWORD=mendix
+```
+
+### Dev Container (Development Environment)
+
+The dev container is a **separate container** for development tools - it is NOT the Mendix runtime. It controls sibling runtime containers via Docker-outside-of-Docker.
+
+```json
+// .devcontainer/devcontainer.json
+{
+  "name": "Mendix Development Environment",
+  "image": "mcr.microsoft.com/devcontainers/go:1.23",
+  "workspaceFolder": "/workspace",
+
+  // Mount project files
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
+
+  // Docker-outside-of-Docker: mount host's Docker socket
+  // This allows mxcli to control sibling containers
+  "mounts": [
+    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+  ],
+
+  "features": {
+    // Provides docker CLI (not daemon) that uses mounted socket
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
+    "ghcr.io/devcontainers/features/go:1": {},
+    "ghcr.io/devcontainers/features/node:1": {}
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",
+        "ms-azuretools.vscode-docker"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  },
+
+  // Forward ports from sibling containers (runtime runs on host network)
+  "forwardPorts": [8080, 8000],
+
+  // Install mxcli after container creation
+  "postCreateCommand": "go install github.com/mendixlabs/mxcli/cmd/mxcli@latest && echo 'Dev container ready. Run: mxcli docker up -p YourApp.mpr'",
+
+  "remoteUser": "vscode"
+}
+```
+
+**How it works:**
+
+1. VS Code / Claude Code opens the project in the dev container
+2. The dev container has mxcli, Go, and Docker CLI installed
+3. Running `mxcli docker up` from inside the dev container:
+   - Uses the mounted Docker socket to communicate with host's Docker daemon
+   - Creates sibling containers (mendix-runtime, postgres) on the host
+   - These containers are accessible from both host and dev container
+4. You edit code in the dev container, test against sibling runtime containers
+
+```bash
+# Inside dev container:
+$ mxcli docker up -p MyApp.mpr    # Starts sibling containers
+$ curl http://localhost:8080       # Access the running app
+$ mxcli docker logs -p MyApp.mpr   # View runtime logs
+$ mxcli docker down -p MyApp.mpr   # Stop sibling containers
+```
+
+### Alternative: Separate Compose for Dev Container
+
+For more control, use a dedicated compose file for the dev container:
+
+```yaml
+# .devcontainer/docker-compose.yml
+services:
+  devcontainer:
+    image: mcr.microsoft.com/devcontainers/go:1.23
+    volumes:
+      - ..:/workspace:cached
+      - /var/run/docker.sock:/var/run/docker.sock  # DooD
+    command: sleep infinity
+    # Note: mendix and postgres containers are NOT defined here
+    # They are started separately via mxcli docker up
+```
+
+## CLI Commands
+
+### `mxcli docker init`
+
+Generate Docker configuration for a Mendix project.
+
+```bash
+# Basic initialization
+mxcli docker init -p MyApp.mpr
+
+# With specific Mendix version
+mxcli docker init -p MyApp.mpr --version 10.6.0
+
+# Include dev container support
+mxcli docker init -p MyApp.mpr --devcontainer
+
+# Include test configuration
+mxcli docker init -p MyApp.mpr --with-tests
+
+# Force overwrite existing files
+mxcli docker init -p MyApp.mpr --force
+```
+
+**Flags:**
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-p, --project` | required | Path to MPR file |
+| `--version` | auto-detect | Mendix version for runtime |
+| `--devcontainer` | false | Generate VS Code dev container config |
+| `--with-tests` | false | Include test compose file |
+| `--force` | false | Overwrite existing Docker files |
+| `--output` | `.docker/` | Output directory for generated files |
+
+### `mxcli docker build`
+
+Build the Mendix portable app package (PAD) using MxBuild. This generates a self-contained deployment package with runtime, dependencies, Dockerfile, and startup scripts.
+
+```bash
+# Build PAD package (output to .docker/build/)
+mxcli docker build -p MyApp.mpr
+
+# Build to custom output directory
+mxcli docker build -p MyApp.mpr --output ./my-build
+
+# Build Docker image directly (build PAD + docker build)
+mxcli docker build -p MyApp.mpr --image myapp:latest
+
+# Specify Java home (required if not auto-detected)
+mxcli docker build -p MyApp.mpr --java-home /path/to/jdk-21
+
+# Specify configuration name (default: "Default")
+mxcli docker build -p MyApp.mpr --config Production
+```
+
+Under the hood, this runs:
+```bash
+mxbuild --java-home="<java-home>" --java-exe-path="<java-home>/bin/java" \
+    --target=portable-app-package "<mpr-path>" --o="<output-dir>"
+```
+
+After building, mxcli patches the PAD output to fix known issues (execute permissions, Dockerfile CMD).
+
+**Flags:**
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-p, --project` | required | Path to MPR file |
+| `--output` | `.docker/build/` | Output directory for PAD package |
+| `--image` | none | Also build and tag Docker image |
+| `--java-home` | auto-detect | Path to JDK 21 installation |
+| `--config` | `Default` | Configuration name for startup |
+| `--no-cache` | false | Build Docker image without cache |
+
+### `mxcli docker up`
+
+Start the containerized Mendix application.
+
+```bash
+# Start in foreground
+mxcli docker up -p MyApp.mpr
+
+# Start in background
+mxcli docker up -p MyApp.mpr --detach
+
+# Wait for healthy status
+mxcli docker up -p MyApp.mpr --detach --wait-healthy
+
+# Use development configuration
+mxcli docker up -p MyApp.mpr --dev
+
+# Start with fresh database
+mxcli docker up -p MyApp.mpr --fresh
+```
+
+**Flags:**
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-p, --project` | required | Path to MPR file |
+| `-d, --detach` | false | Run in background |
+| `--wait-healthy` | false | Wait for health check to pass |
+| `--dev` | false | Use development compose file |
+| `--fresh` | false | Remove volumes before starting |
+| `--timeout` | 120s | Startup timeout |
+
+### `mxcli docker down`
+
+Stop the containerized application.
+
+```bash
+# Stop containers
+mxcli docker down -p MyApp.mpr
+
+# Stop and remove volumes
+mxcli docker down -p MyApp.mpr --volumes
+
+# Force stop
+mxcli docker down -p MyApp.mpr --force
+```
+
+### `mxcli docker logs`
+
+View application logs.
+
+```bash
+# View recent logs
+mxcli docker logs -p MyApp.mpr
+
+# Follow logs in real-time
+mxcli docker logs -p MyApp.mpr --follow
+
+# Show last N lines
+mxcli docker logs -p MyApp.mpr --tail 100
+
+# Filter by log level
+mxcli docker logs -p MyApp.mpr --level ERROR
+```
+
+### `mxcli docker test`
+
+Run tests against the containerized application.
+
+```bash
+# Run all tests
+mxcli docker test -p MyApp.mpr
+
+# Run specific test suite
+mxcli docker test -p MyApp.mpr --suite integration
+
+# Run with coverage
+mxcli docker test -p MyApp.mpr --coverage
+
+# Output results as JUnit XML
+mxcli docker test -p MyApp.mpr --output junit.xml
+```
+
+### `mxcli docker status`
+
+Show container status and health.
+
+```bash
+mxcli docker status -p MyApp.mpr
+
+# Output:
+# Container: myapp-mendix-1
+# Status: running (healthy)
+# Uptime: 5m 23s
+# URL: http://localhost:8080
+# Database: connected
+# Memory: 512MB / 2GB
+# CPU: 12%
+```
+
+### `mxcli docker shell`
+
+Open an interactive shell in the container.
+
+```bash
+# Default shell
+mxcli docker shell -p MyApp.mpr
+
+# Execute specific command
+mxcli docker shell -p MyApp.mpr --exec "ls -la /app"
+```
+
+## Implementation
+
+### New Package: `cmd/mxcli/docker/`
+
+```
+cmd/mxcli/docker/
+├── docker.go           # Main docker command group
+├── init.go             # docker init command
+├── build.go            # docker build command (MxBuild PAD)
+├── patch.go            # PAD output patching (known bug fixes)
+├── up.go               # docker up command
+├── down.go             # docker down command
+├── logs.go             # docker logs command
+├── test.go             # docker test command
+├── status.go           # docker status command
+├── shell.go            # docker shell command
+└── templates/          # Embedded templates
+    ├── docker-compose.yml.tmpl       # App + PostgreSQL compose
+    ├── docker-compose.dev.yml.tmpl   # Dev overrides
+    ├── docker-compose.test.yml.tmpl  # Test overrides
+    ├── devcontainer.json.tmpl        # VS Code dev container
+    └── env.example.tmpl              # .env template
+```
+
+### Core Types
+
+```go
+package docker
+
+import (
+    "embed"
+)
+
+//go:embed templates/*
+var templates embed.FS
+
+// Config holds Docker configuration for a Mendix project
+type Config struct {
+    ProjectPath     string
+    ProjectName     string
+    MendixVersion   string
+    OutputDir       string
+
+    // PAD build settings
+    JavaHome        string    // Path to JDK 21
+    ConfigName      string    // PAD configuration name (default: "Default")
+    BuildDir        string    // PAD output directory (default: ".docker/build/")
+
+    // Ports
+    AppPort         int
+    AdminPort       int
+
+    // Database (for PostgreSQL container)
+    DatabaseName    string
+    DatabaseUser    string
+    DatabasePassword string
+
+    // Features
+    DevContainer    bool
+    WithTests       bool
+}
+
+// Runtime represents a running Docker environment
+type Runtime struct {
+    Config          *Config
+    ComposeFile     string
+    ContainerID     string
+    Status          ContainerStatus
+}
+
+type ContainerStatus string
+
+const (
+    StatusStopped   ContainerStatus = "stopped"
+    StatusStarting  ContainerStatus = "starting"
+    StatusRunning   ContainerStatus = "running"
+    StatusHealthy   ContainerStatus = "healthy"
+    StatusUnhealthy ContainerStatus = "unhealthy"
+)
+
+// DetectMendixVersion reads the MPR to determine Mendix version
+func DetectMendixVersion(mprPath string) (string, error) {
+    // Read project metadata from MPR
+    // Return version string like "11.6.1"
+}
+
+// BuildPADPackage runs MxBuild with --target=portable-app-package
+func BuildPADPackage(cfg *Config) error {
+    // Run: mxbuild --java-home=... --target=portable-app-package mpr --o=buildDir
+    // Then patch known PAD issues (chmod +x, Dockerfile CMD fix)
+}
+
+// PatchPADOutput fixes known PAD issues in the generated output.
+// Patches are version-aware and skipped when Mendix fixes them upstream.
+func PatchPADOutput(buildDir string, mendixVersion string) error {
+    // 1. chmod +x bin/start (11.6.x only, fixed in 11.8+)
+    // 2. Fix Dockerfile CMD: start.sh -> start (11.6.x only, fixed in 11.8+)
+    // 3. Replace deprecated FROM openjdk:21 with FROM eclipse-temurin:21-jre
+    // 4. Add HEALTHCHECK to Dockerfile
+}
+
+// GenerateDockerFiles creates mxcli-specific Docker files (compose, .env, etc.)
+func GenerateDockerFiles(cfg *Config) error {
+    // Generate compose files wrapping PAD build with PostgreSQL
+}
+
+// StartContainers starts the Docker compose stack
+func StartContainers(cfg *Config, opts StartOptions) error {
+    // Execute docker compose up
+}
+
+// StopContainers stops the Docker compose stack
+func StopContainers(cfg *Config, opts StopOptions) error {
+    // Execute docker compose down
+}
+```
+
+### Template Example
+
+```go
+// templates/docker-compose.yml.tmpl
+const dockerComposeTemplate = `services:
+  mendix:
+    build:
+      context: ./build
+      dockerfile: Dockerfile
+    ports:
+      - "{{.AppPort}}:8080"
+      - "{{.AdminPort}}:8090"
+    environment:
+      - M2EE_ADMIN_PASS={{`{{`}}M2EE_ADMIN_PASS{{`}}`}}
+      - MX_LOG_LEVEL={{`{{`}}MX_LOG_LEVEL{{`}}`}}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - mendix-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/xas/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  db:
+    image: postgres:17-alpine
+    environment:
+      - POSTGRES_DB={{.DatabaseName}}
+      - POSTGRES_USER={{.DatabaseUser}}
+      - POSTGRES_PASSWORD={{.DatabasePassword}}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - mendix-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U {{.DatabaseUser}}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres-data:
+
+networks:
+  mendix-network:
+`
+```
+
+## Testing Integration
+
+### Test Types
+
+1. **API Tests** - HTTP requests against running app
+2. **Integration Tests** - Database, external services
+3. **E2E Tests** - Full workflow tests (with Selenium/Playwright)
+
+### Test Configuration
+
+```yaml
+# .docker/docker-compose.test.yml
+services:
+  mendix:
+    environment:
+      - SCHEDULED_EVENTS_ENABLED=false
+      - LOG_LEVEL=WARNING
+    healthcheck:
+      interval: 5s
+      start_period: 30s
+
+  test-runner:
+    image: golang:1.23-alpine
+    volumes:
+      - ../tests:/tests
+      - ./test-results:/results
+    environment:
+      - MENDIX_URL=http://mendix:8080
+      - ADMIN_USER=MxAdmin
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+    depends_on:
+      mendix:
+        condition: service_healthy
+    command: >
+      sh -c "cd /tests &&
+             go test -v ./... -json > /results/test-output.json &&
+             go-junit-report < /results/test-output.json > /results/junit.xml"
+```
+
+### Example Test File
+
+```go
+// tests/integration/api_test.go
+package integration
+
+import (
+    "net/http"
+    "testing"
+    "os"
+)
+
+func TestHealthEndpoint(t *testing.T) {
+    mendixURL := os.Getenv("MENDIX_URL")
+    if mendixURL == "" {
+        mendixURL = "http://localhost:8080"
+    }
+
+    resp, err := http.Get(mendixURL + "/xas/")
+    if err != nil {
+        t.Fatalf("Failed to reach Mendix: %v", err)
+    }
+    defer resp.Body.Close()
+
+    if resp.StatusCode != http.StatusOK {
+        t.Errorf("Expected 200, got %d", resp.StatusCode)
+    }
+}
+
+func TestLoginEndpoint(t *testing.T) {
+    // Test admin login
+    // ...
+}
+```
+
+## CI/CD Integration
+
+### GitHub Actions Example
+
+```yaml
+# .github/workflows/test.yml
+name: Mendix Integration Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Install mxcli
+        run: go install github.com/mendixlabs/mxcli/cmd/mxcli@latest
+
+      - name: Build PAD package
+        run: mxcli docker build -p MyApp.mpr --java-home $JAVA_HOME
+
+      - name: Start containers
+        run: mxcli docker up -p MyApp.mpr --detach --wait-healthy
+
+      - name: Run tests
+        run: mxcli docker test -p MyApp.mpr --output junit.xml
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: junit.xml
+
+      - name: Stop containers
+        if: always()
+        run: mxcli docker down -p MyApp.mpr
+```
+
+### GitLab CI Example
+
+```yaml
+# .gitlab-ci.yml
+stages:
+  - build
+  - test
+
+build:
+  stage: build
+  image: docker:27
+  services:
+    - docker:27-dind
+  script:
+    - mxcli docker build -p MyApp.mpr --image $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+
+test:
+  stage: test
+  image: docker:27
+  services:
+    - docker:27-dind
+  script:
+    - mxcli docker up -p MyApp.mpr --detach --wait-healthy
+    - mxcli docker test -p MyApp.mpr --output junit.xml
+    - mxcli docker down -p MyApp.mpr
+  artifacts:
+    reports:
+      junit: junit.xml
+```
+
+## Mendix Runtime Requirements
+
+### PAD Approach (Mendix 11.6.1+, Recommended)
+
+PAD packages are self-contained — no Mendix-specific base images needed:
+
+| Requirement | Details |
+|-------------|---------|
+| **Mendix version** | 11.6.1+ (recommended: 11.8+) |
+| **Base image** | `eclipse-temurin:21-jre` (recommended; PAD generates `openjdk:21` which is deprecated) |
+| **Build tool** | MxBuild (from Studio Pro installation) |
+| **JDK** | JDK 21 (Eclipse Adoptium recommended) |
+| **Database** | PostgreSQL 15+ (recommended), MySQL 8+, or SQL Server |
+| **RAM** | Minimum 512MB (2GB+ recommended) |
+
+### Legacy Approach (Mendix < 11.6.1)
+
+For older Mendix versions, the traditional buildpack/runtime images can be used:
+
+| Image | Description |
+|-------|-------------|
+| `mendix/runtime:<version>` | Production runtime |
+| `mendix/buildpack:<version>` | Build tools (mxbuild) |
+
+Requires Java 11 or 17 (bundled in official images).
+
+### Environment Variables
+
+**PAD environment variables:**
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `M2EE_ADMIN_PASS` | Yes | MxAdmin password |
+| `MX_LOG_LEVEL` | No | trace, debug, info, warning, error, critical |
+
+**Database configuration** is handled via the `etc/configurations/Default.conf` file generated by PAD, which reads from the runtime configuration. For Docker, the PostgreSQL connection is typically configured through the PAD config files rather than environment variables.
+
+**Note:** The PAD `etc/variables.conf` file provides environment variable overrides for all public settings, and `etc/constants/variables.conf` provides overrides for all microflow constants.
+
+## Implementation Plan
+
+### Phase 1: PAD Build Integration ✅ (Completed)
+1. Create `cmd/mxcli/docker/` package structure
+2. Implement `docker build` — run MxBuild with `--target=portable-app-package`
+3. Implement version-aware PAD output patching:
+   - chmod +x bin/start (11.6.x)
+   - Fix Dockerfile CMD start.sh -> start (11.6.x)
+   - Replace deprecated `openjdk:21` base image with `eclipse-temurin:21-jre` (all versions)
+   - Add HEALTHCHECK to Dockerfile (all versions)
+4. Add Mendix version detection from MPR (verify >= 11.6.1)
+5. Auto-detect JDK 21 location
+
+### Phase 2: Init & Compose
+6. Implement `docker init` — generate mxcli compose files wrapping PAD build
+7. Generate `.env` / `.env.example` templates
+8. Generate development overrides compose file
+
+### Phase 3: Runtime Commands
+9. Implement `docker up` / `docker down`
+10. Implement `docker logs` / `docker status`
+11. Add health check waiting
+12. Implement `docker shell`
+
+### Phase 4: Dev Container (Development Environment)
+13. Generate devcontainer.json with Docker-outside-of-Docker config
+14. Document sibling container architecture
+15. VS Code and Claude Code integration testing
+16. Ensure runtime containers are accessible from dev container
+
+### Phase 5: Testing Integration
+17. Implement `docker test` command
+18. Add test compose file generation
+19. JUnit/coverage output
+20. CI/CD documentation and examples
+
+## Files to Create/Modify
+
+| File | Action | Description |
+|------|--------|-------------|
+| `cmd/mxcli/docker/docker.go` | Create | Docker command group |
+| `cmd/mxcli/docker/init.go` | Create | docker init implementation |
+| `cmd/mxcli/docker/build.go` | Create | docker build (MxBuild PAD + patching) |
+| `cmd/mxcli/docker/patch.go` | Create | Version-aware PAD output patching (base image, chmod, Dockerfile fixes) |
+| `cmd/mxcli/docker/up.go` | Create | docker up implementation |
+| `cmd/mxcli/docker/down.go` | Create | docker down implementation |
+| `cmd/mxcli/docker/logs.go` | Create | docker logs implementation |
+| `cmd/mxcli/docker/status.go` | Create | docker status implementation |
+| `cmd/mxcli/docker/test.go` | Create | docker test implementation |
+| `cmd/mxcli/docker/shell.go` | Create | docker shell implementation |
+| `cmd/mxcli/docker/templates/*.tmpl` | Create | Embedded templates (compose, .env) |
+| `cmd/mxcli/main.go` | Modify | Register docker commands |
+
+## Dependencies
+
+- **No Go library dependency on Docker** — shells out to `docker` and `docker compose` CLI
+- MxBuild — from Mendix Studio Pro installation (not bundled)
+- JDK 21 — Eclipse Adoptium recommended
+- Docker Engine 24+ with Compose V2 (`docker compose` subcommand)
+
+## Open Questions
+
+### Resolved
+
+1. **Should we use Docker SDK or shell out to docker/docker-compose?**
+   - **Decision: Shell out.** PAD already generates the Dockerfile/compose, shell commands are simpler, match user expectations, and avoid a heavy dependency.
+
+2. **Minimum Mendix version: hard-require 11.6.1+ or support legacy?**
+   - **Decision: PAD-only (11.6.1+).** PAD is a long-term supported feature. Legacy `mendix/buildpack` + `mendix/runtime` approach documented separately for reference but not implemented in mxcli.
+
+3. **Docker-outside-of-Docker vs Docker-in-Docker for dev containers?**
+   - **Decision: DooD** (mounting `/var/run/docker.sock`). Better performance, no nested daemon, sibling containers share network.
+
+4. **PAD bug tracking**
+   - **Decision: Version-aware patch list.** `PatchPADOutput` takes the Mendix version and skips fixes for versions where bugs are resolved upstream. The deprecated `openjdk:21` base image is patched regardless of version.
+
+### Still Open
+
+5. **How to locate MxBuild?** ✅ **Resolved (Phase 1)**
+   - Priority: explicit `--mxbuild-path` flag > `PATH` lookup > OS-specific known locations
+   - Windows: `C:\Program Files\Mendix\*\modeler\mxbuild.exe`
+   - macOS: `/Applications/Mendix/*/modeler/mxbuild`
+   - Linux: `/opt/mendix/*/modeler/mxbuild`, `~/.mendix/*/modeler/mxbuild`
+
+6. **How to handle Mendix licenses for local development?**
+   - Free apps work without license
+   - Licensed apps need license file mounting
+
+7. **Should we support Podman as an alternative to Docker?**
+   - Podman is Docker-compatible
+   - May need minor adjustments for rootless execution
+   - Lower priority — implement Docker first, Podman as follow-up
+
+8. **Database configuration in PAD**
+   - PAD generates `etc/configurations/Default.conf` with database settings
+   - How should mxcli inject the PostgreSQL container's connection details?
+   - Options: patch config file at build time, use environment variable overrides via `etc/variables.conf`, or mount a custom config
+
+## Success Criteria
+
+1. `mxcli docker init` generates working Docker configuration
+2. `mxcli docker up` starts app within 2 minutes
+3. App accessible at localhost:8080 with working admin login
+4. `mxcli docker test` runs integration tests successfully
+5. Works in GitHub Actions / GitLab CI environments
+6. Documentation covers common use cases

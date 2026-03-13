@@ -1,0 +1,331 @@
+-- ============================================================================
+-- Sales Order Domain Model
+-- ============================================================================
+-- Order management for the furniture company. Handles quotations
+-- and customer orders with support for both standard catalog products
+-- and bespoke design items on the same order.
+-- ============================================================================
+
+-- MARK: MODULE
+
+/**
+ * Sales Order module
+ *
+ * Manages quotations and customer orders. Each order line can
+ * reference either a standard catalog product or a bespoke design,
+ * allowing mixed orders.
+ *
+ * @since 1.0.0
+ */
+CREATE MODULE SalesOrder;
+
+-- MARK: ENUMERATIONS
+
+/**
+ * Order lifecycle status
+ *
+ * Tracks the progress of a customer order from draft
+ * through production to delivery.
+ *
+ * @since 1.0.0
+ */
+CREATE ENUMERATION SalesOrder.OrderStatus (
+  Draft 'Draft',
+  Confirmed 'Confirmed',
+  InProduction 'In Production',
+  ReadyForDelivery 'Ready for Delivery',
+  Delivered 'Delivered',
+  Cancelled 'Cancelled'
+);
+
+/**
+ * Quotation lifecycle status
+ *
+ * Tracks the state of a price quotation.
+ *
+ * @since 1.0.0
+ */
+CREATE ENUMERATION SalesOrder.QuotationStatus (
+  Draft 'Draft',
+  Sent 'Sent',
+  Accepted 'Accepted',
+  Rejected 'Rejected',
+  Expired 'Expired'
+);
+
+/**
+ * Order line type classification
+ *
+ * Distinguishes between standard catalog items and bespoke designs
+ * on an order line.
+ *
+ * @since 1.0.0
+ */
+CREATE ENUMERATION SalesOrder.OrderLineType (
+  Standard 'Standard Product',
+  Bespoke 'Bespoke Design'
+);
+
+-- MARK: ENTITIES
+
+-- MARK: - Quotation Entities
+
+/**
+ * Quotation entity
+ *
+ * A price quote sent to a customer. Can be converted
+ * into a confirmed order when accepted.
+ *
+ * @since 1.0.0
+ * @see CRM.Customer
+ * @see SalesOrder.QuotationLine
+ */
+@Position(50, 50)
+CREATE PERSISTENT ENTITY SalesOrder.Quotation (
+  /** Auto-generated quotation number */
+  QuotationNumber: AutoNumber DEFAULT 1,
+  /** Quotation title or reference */
+  QuotationTitle: String(200),
+  /** Current status */
+  QuotationStatus: Enumeration(SalesOrder.QuotationStatus) NOT NULL ERROR 'Quotation status is required',
+  /** Date the quotation was created */
+  QuotationDate: DateTime,
+  /** Date when this quote expires */
+  ExpiryDate: DateTime,
+  /** Subtotal before tax */
+  Subtotal: Decimal DEFAULT 0,
+  /** Tax amount */
+  TaxAmount: Decimal DEFAULT 0,
+  /** Total including tax */
+  TotalAmount: Decimal DEFAULT 0,
+  /** Discount percentage */
+  DiscountPercent: Decimal DEFAULT 0,
+  /** Additional terms and conditions */
+  TermsAndConditions: String(4000),
+  /** Internal notes */
+  InternalNotes: String(2000)
+);
+
+/**
+ * Quotation line entity
+ *
+ * Individual line items on a quotation. Can reference
+ * a catalog product or describe a bespoke item.
+ *
+ * @since 1.0.0
+ * @see SalesOrder.Quotation
+ */
+@Position(350, 50)
+CREATE PERSISTENT ENTITY SalesOrder.QuotationLine (
+  /** Line number for display ordering */
+  LineNumber: Integer NOT NULL ERROR 'Line number is required',
+  /** Item description */
+  ItemDescription: String(500) NOT NULL ERROR 'Item description is required',
+  /** Quantity */
+  Quantity: Integer NOT NULL ERROR 'Quantity is required' DEFAULT 1,
+  /** Unit price */
+  UnitPrice: Decimal NOT NULL ERROR 'Unit price is required',
+  /** Line total (quantity x unit price) */
+  LineTotal: Decimal DEFAULT 0,
+  /** Whether this is a standard or bespoke item */
+  LineType: Enumeration(SalesOrder.OrderLineType) NOT NULL ERROR 'Line type is required'
+);
+
+-- MARK: - Order Entities
+
+/**
+ * Customer order entity
+ *
+ * A confirmed customer order. Can originate from an accepted quotation
+ * or be created directly. Drives the manufacturing process.
+ *
+ * @since 1.0.0
+ * @see CRM.Customer
+ * @see SalesOrder.OrderLine
+ */
+@Position(50, 250)
+CREATE PERSISTENT ENTITY SalesOrder.CustomerOrder (
+  /** Auto-generated order number */
+  OrderNumber: AutoNumber DEFAULT 1,
+  /** Order reference or PO number from customer */
+  CustomerReference: String(100),
+  /** Current order status */
+  OrderStatus: Enumeration(SalesOrder.OrderStatus) NOT NULL ERROR 'Order status is required',
+  /** Date the order was placed */
+  OrderDate: DateTime,
+  /** Requested delivery date */
+  RequestedDeliveryDate: DateTime,
+  /** Confirmed delivery date */
+  ConfirmedDeliveryDate: DateTime,
+  /** Subtotal before tax */
+  Subtotal: Decimal DEFAULT 0,
+  /** Tax amount */
+  TaxAmount: Decimal DEFAULT 0,
+  /** Total including tax */
+  TotalAmount: Decimal DEFAULT 0,
+  /** Discount percentage */
+  DiscountPercent: Decimal DEFAULT 0,
+  /** Special instructions from customer */
+  SpecialInstructions: String(2000),
+  /** Internal notes */
+  InternalNotes: String(2000)
+)
+INDEX (OrderStatus)
+INDEX (OrderDate DESC);
+
+/**
+ * Order line entity
+ *
+ * Individual items on a customer order. Each line references either
+ * a standard catalog product or a bespoke design request.
+ *
+ * @since 1.0.0
+ * @see SalesOrder.CustomerOrder
+ * @see ProductCatalog.CatalogProduct
+ * @see BespokeDesign.DesignRequest
+ */
+@Position(350, 250)
+CREATE PERSISTENT ENTITY SalesOrder.OrderLine (
+  /** Line number for display ordering */
+  LineNumber: Integer NOT NULL ERROR 'Line number is required',
+  /** Item description */
+  ItemDescription: String(500) NOT NULL ERROR 'Item description is required',
+  /** Quantity ordered */
+  Quantity: Integer NOT NULL ERROR 'Quantity is required' DEFAULT 1,
+  /** Unit price */
+  UnitPrice: Decimal NOT NULL ERROR 'Unit price is required',
+  /** Line total (quantity x unit price) */
+  LineTotal: Decimal DEFAULT 0,
+  /** Whether this is a standard or bespoke item */
+  LineType: Enumeration(SalesOrder.OrderLineType) NOT NULL ERROR 'Line type is required',
+  /** Quantity already produced */
+  QuantityProduced: Integer DEFAULT 0,
+  /** Quantity delivered */
+  QuantityDelivered: Integer DEFAULT 0
+);
+
+-- MARK: ASSOCIATIONS
+
+-- MARK: - Quotation Associations
+
+/**
+ * Links quotation to customer
+ *
+ * Each quotation is for one customer.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION SalesOrder.Quotation_Customer
+  FROM SalesOrder.Quotation TO CRM.Customer
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+
+/**
+ * Links quotation line to its quotation
+ *
+ * Each line belongs to one quotation.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION SalesOrder.QuotationLine_Quotation
+  FROM SalesOrder.QuotationLine TO SalesOrder.Quotation
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_AND_REFERENCES;
+
+/**
+ * Links quotation line to a catalog product (optional)
+ *
+ * For standard product lines, references the catalog product.
+ * Null for bespoke items.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION SalesOrder.QuotationLine_CatalogProduct
+  FROM SalesOrder.QuotationLine TO ProductCatalog.CatalogProduct
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+
+-- MARK: - Order Associations
+
+/**
+ * Links order to customer
+ *
+ * Each order belongs to one customer.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION SalesOrder.CustomerOrder_Customer
+  FROM SalesOrder.CustomerOrder TO CRM.Customer
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+
+/**
+ * Links order to its originating quotation (optional)
+ *
+ * If the order was created from a quotation, this tracks the link.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION SalesOrder.CustomerOrder_Quotation
+  FROM SalesOrder.CustomerOrder TO SalesOrder.Quotation
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+
+/**
+ * Links order line to its order
+ *
+ * Each line belongs to one order.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION SalesOrder.OrderLine_CustomerOrder
+  FROM SalesOrder.OrderLine TO SalesOrder.CustomerOrder
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_AND_REFERENCES;
+
+/**
+ * Links order line to a catalog product (optional)
+ *
+ * For standard product lines, references the catalog product.
+ * Null for bespoke items.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION SalesOrder.OrderLine_CatalogProduct
+  FROM SalesOrder.OrderLine TO ProductCatalog.CatalogProduct
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+
+/**
+ * Links order line to a bespoke design request (optional)
+ *
+ * For bespoke items, references the approved design request.
+ * Null for standard product lines.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION SalesOrder.OrderLine_DesignRequest
+  FROM SalesOrder.OrderLine TO BespokeDesign.DesignRequest
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+
+/**
+ * Links order to the delivery address
+ *
+ * Specifies which customer address to deliver to.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION SalesOrder.CustomerOrder_DeliveryAddress
+  FROM SalesOrder.CustomerOrder TO CRM.CustomerAddress
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;

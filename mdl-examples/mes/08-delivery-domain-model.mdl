@@ -1,0 +1,222 @@
+-- ============================================================================
+-- Delivery Domain Model
+-- ============================================================================
+-- Shipping and installation management for completed furniture.
+-- Handles delivery scheduling, line-item tracking, and on-site
+-- installation appointments.
+-- ============================================================================
+
+-- MARK: MODULE
+
+/**
+ * Delivery module
+ *
+ * Manages delivery scheduling for completed furniture orders
+ * and on-site installation appointments. Links deliveries to
+ * customer orders and specific order lines.
+ *
+ * @since 1.0.0
+ */
+CREATE MODULE Delivery;
+
+-- MARK: ENUMERATIONS
+
+/**
+ * Delivery lifecycle status
+ *
+ * Tracks the progress of a furniture delivery.
+ *
+ * @since 1.0.0
+ */
+CREATE ENUMERATION Delivery.DeliveryStatus (
+  Scheduled 'Scheduled',
+  InTransit 'In Transit',
+  Delivered 'Delivered',
+  Failed 'Failed',
+  Returned 'Returned'
+);
+
+/**
+ * Installation appointment status
+ *
+ * Tracks the status of on-site furniture installation.
+ *
+ * @since 1.0.0
+ */
+CREATE ENUMERATION Delivery.InstallationStatus (
+  Scheduled 'Scheduled',
+  InProgress 'In Progress',
+  Completed 'Completed',
+  Rescheduled 'Rescheduled',
+  Cancelled 'Cancelled'
+);
+
+-- MARK: ENTITIES
+
+/**
+ * Delivery order entity
+ *
+ * A delivery shipment to a customer. Groups one or more
+ * order lines that are shipped together. Links to the customer
+ * address for delivery.
+ *
+ * @since 1.0.0
+ * @see SalesOrder.CustomerOrder
+ * @see CRM.CustomerAddress
+ */
+@Position(50, 50)
+CREATE PERSISTENT ENTITY Delivery.DeliveryOrder (
+  /** Auto-generated delivery number */
+  DeliveryNumber: AutoNumber DEFAULT 1,
+  /** Current delivery status */
+  DeliveryStatus: Enumeration(Delivery.DeliveryStatus) NOT NULL ERROR 'Delivery status is required',
+  /** Scheduled delivery date */
+  ScheduledDate: DateTime,
+  /** Actual delivery date */
+  ActualDeliveryDate: DateTime,
+  /** Delivery time window start */
+  TimeWindowStart: DateTime,
+  /** Delivery time window end */
+  TimeWindowEnd: DateTime,
+  /** Delivery driver or carrier name */
+  CarrierName: String(200),
+  /** Tracking number (if applicable) */
+  TrackingNumber: String(100),
+  /** Delivery instructions */
+  DeliveryInstructions: String(2000),
+  /** Customer signature confirmation */
+  IsSignedOff: Boolean DEFAULT false,
+  /** Notes from the delivery */
+  DeliveryNotes: String(2000)
+)
+INDEX (DeliveryStatus)
+INDEX (ScheduledDate);
+
+/**
+ * Delivery line entity
+ *
+ * An individual item included in a delivery.
+ * Links to the order line for traceability.
+ *
+ * @since 1.0.0
+ * @see Delivery.DeliveryOrder
+ * @see SalesOrder.OrderLine
+ */
+@Position(350, 50)
+CREATE PERSISTENT ENTITY Delivery.DeliveryLine (
+  /** Line number */
+  LineNumber: Integer NOT NULL ERROR 'Line number is required',
+  /** Item description */
+  ItemDescription: String(500) NOT NULL ERROR 'Item description is required',
+  /** Quantity being delivered */
+  QuantityDelivered: Integer NOT NULL ERROR 'Quantity is required' DEFAULT 1,
+  /** Condition on delivery (for damage tracking) */
+  DeliveryCondition: String(500),
+  /** Whether the item was accepted by customer */
+  IsAccepted: Boolean DEFAULT true
+);
+
+/**
+ * Installation appointment entity
+ *
+ * On-site furniture installation scheduling.
+ * Some furniture requires professional assembly or placement.
+ * Links to the delivery order for coordination.
+ *
+ * @since 1.0.0
+ * @see Delivery.DeliveryOrder
+ */
+@Position(50, 250)
+CREATE PERSISTENT ENTITY Delivery.InstallationAppointment (
+  /** Auto-generated appointment number */
+  AppointmentNumber: AutoNumber DEFAULT 1,
+  /** Current appointment status */
+  AppointmentStatus: Enumeration(Delivery.InstallationStatus) NOT NULL ERROR 'Status is required',
+  /** Scheduled date and start time */
+  ScheduledDateTime: DateTime NOT NULL ERROR 'Scheduled date is required',
+  /** Estimated duration in hours */
+  EstimatedDurationHours: Decimal DEFAULT 2,
+  /** Actual duration in hours */
+  ActualDurationHours: Decimal,
+  /** Assigned installer name */
+  InstallerName: String(200),
+  /** Customer contact for appointment */
+  CustomerContactName: String(200),
+  /** Customer contact phone */
+  CustomerContactPhone: String(50),
+  /** Installation instructions */
+  InstallationInstructions: String(2000),
+  /** Notes from the installation */
+  InstallationNotes: String(2000),
+  /** Whether the customer signed off on installation */
+  IsSignedOff: Boolean DEFAULT false
+)
+INDEX (AppointmentStatus)
+INDEX (ScheduledDateTime);
+
+-- MARK: ASSOCIATIONS
+
+/**
+ * Links delivery order to the customer order
+ *
+ * Each delivery is for one customer order.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION Delivery.DeliveryOrder_CustomerOrder
+  FROM Delivery.DeliveryOrder TO SalesOrder.CustomerOrder
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+
+/**
+ * Links delivery order to the delivery address
+ *
+ * Specifies where to deliver.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION Delivery.DeliveryOrder_CustomerAddress
+  FROM Delivery.DeliveryOrder TO CRM.CustomerAddress
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+
+/**
+ * Links delivery line to its delivery order
+ *
+ * Each line belongs to one delivery.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION Delivery.DeliveryLine_DeliveryOrder
+  FROM Delivery.DeliveryLine TO Delivery.DeliveryOrder
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_AND_REFERENCES;
+
+/**
+ * Links delivery line to the order line
+ *
+ * Traces what order item this delivery line fulfills.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION Delivery.DeliveryLine_OrderLine
+  FROM Delivery.DeliveryLine TO SalesOrder.OrderLine
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+
+/**
+ * Links installation to its delivery order
+ *
+ * Each installation appointment is for one delivery.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION Delivery.InstallationAppointment_DeliveryOrder
+  FROM Delivery.InstallationAppointment TO Delivery.DeliveryOrder
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;

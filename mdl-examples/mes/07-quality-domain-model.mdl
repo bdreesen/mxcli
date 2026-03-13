@@ -1,0 +1,328 @@
+-- ============================================================================
+-- Quality Control Domain Model
+-- ============================================================================
+-- Quality management for furniture manufacturing. Provides reusable
+-- inspection templates, actual inspection tracking, and defect reporting.
+-- ============================================================================
+
+-- MARK: MODULE
+
+/**
+ * Quality Control module
+ *
+ * Manages quality inspections during production. Uses template-based
+ * checklists for consistent quality checks and tracks defect reports
+ * for continuous improvement.
+ *
+ * @since 1.0.0
+ */
+CREATE MODULE QualityControl;
+
+-- MARK: ENUMERATIONS
+
+/**
+ * Inspection outcome classification
+ *
+ * Overall result of a quality inspection.
+ *
+ * @since 1.0.0
+ */
+CREATE ENUMERATION QualityControl.InspectionOutcome (
+  Pass 'Pass',
+  Fail 'Fail',
+  ConditionalPass 'Conditional Pass'
+);
+
+/**
+ * Defect severity classification
+ *
+ * Categorizes the impact of a detected defect.
+ *
+ * @since 1.0.0
+ */
+CREATE ENUMERATION QualityControl.DefectSeverity (
+  Minor 'Minor',
+  Major 'Major',
+  Critical 'Critical'
+);
+
+/**
+ * Defect resolution status
+ *
+ * Tracks the lifecycle of a defect report.
+ *
+ * @since 1.0.0
+ */
+CREATE ENUMERATION QualityControl.DefectStatus (
+  Open 'Open',
+  InProgress 'In Progress',
+  Resolved 'Resolved',
+  Accepted 'Accepted as-is'
+);
+
+-- MARK: ENTITIES
+
+-- MARK: - Inspection Templates
+
+/**
+ * Inspection template entity
+ *
+ * A reusable quality inspection checklist.
+ * Different templates for different production stages
+ * (e.g. raw material inspection, assembly check, final inspection).
+ *
+ * @since 1.0.0
+ * @see QualityControl.TemplateCheckpoint
+ */
+@Position(50, 50)
+CREATE PERSISTENT ENTITY QualityControl.InspectionTemplate (
+  /** Template name */
+  TemplateName: String(200) NOT NULL ERROR 'Template name is required',
+  /** Template description */
+  TemplateDescription: String(2000),
+  /** Number of checkpoints in this template */
+  CheckpointCount: Integer DEFAULT 0,
+  /** Whether this template is active */
+  IsActive: Boolean DEFAULT true,
+  /** Template version */
+  TemplateVersion: Integer DEFAULT 1
+);
+
+/**
+ * Template checkpoint entity
+ *
+ * An individual check item within an inspection template.
+ * Defines what to inspect and the acceptance criteria.
+ *
+ * @since 1.0.0
+ * @see QualityControl.InspectionTemplate
+ */
+@Position(50, 250)
+CREATE PERSISTENT ENTITY QualityControl.TemplateCheckpoint (
+  /** Sequence number within the template */
+  CheckpointSequence: Integer NOT NULL ERROR 'Sequence is required',
+  /** Checkpoint description (what to check) */
+  CheckpointDescription: String(500) NOT NULL ERROR 'Description is required',
+  /** Acceptance criteria */
+  AcceptanceCriteria: String(1000),
+  /** Whether this checkpoint is mandatory */
+  IsMandatory: Boolean DEFAULT true,
+  /** Measurement unit (if measurable) */
+  MeasurementUnit: String(50),
+  /** Minimum acceptable value (if measurable) */
+  MinAcceptableValue: Decimal,
+  /** Maximum acceptable value (if measurable) */
+  MaxAcceptableValue: Decimal
+);
+
+-- MARK: - Inspection Execution
+
+/**
+ * Quality inspection entity
+ *
+ * An actual inspection performed on a work order line.
+ * Uses a template to define checkpoints and records the outcome.
+ *
+ * @since 1.0.0
+ * @see Manufacturing.WorkOrderLine
+ * @see QualityControl.InspectionTemplate
+ */
+@Position(350, 50)
+CREATE PERSISTENT ENTITY QualityControl.QualityInspection (
+  /** Auto-generated inspection number */
+  InspectionNumber: AutoNumber DEFAULT 1,
+  /** Date and time of the inspection */
+  InspectionDate: DateTime NOT NULL ERROR 'Inspection date is required',
+  /** Overall outcome */
+  InspectionOutcome: Enumeration(QualityControl.InspectionOutcome),
+  /** Inspector's overall comments */
+  InspectorComments: String(2000),
+  /** Whether this is a final inspection */
+  IsFinalInspection: Boolean DEFAULT false
+)
+INDEX (InspectionDate DESC);
+
+/**
+ * Inspection result entity
+ *
+ * The result for a single checkpoint in an inspection.
+ * Records pass/fail and any measurements taken.
+ *
+ * @since 1.0.0
+ * @see QualityControl.QualityInspection
+ * @see QualityControl.TemplateCheckpoint
+ */
+@Position(350, 250)
+CREATE PERSISTENT ENTITY QualityControl.InspectionResult (
+  /** Whether this checkpoint passed */
+  IsPassed: Boolean DEFAULT false,
+  /** Measured value (if applicable) */
+  MeasuredValue: Decimal,
+  /** Observations or comments */
+  ResultComments: String(1000),
+  /** Photo reference (description of attached evidence) */
+  EvidenceReference: String(200)
+);
+
+-- MARK: - Defect Reporting
+
+/**
+ * Defect report entity
+ *
+ * A reported quality defect found during inspection or production.
+ * Tracks the defect from discovery through resolution.
+ *
+ * @since 1.0.0
+ * @see QualityControl.QualityInspection
+ * @see Manufacturing.ProductionStep
+ */
+@Position(650, 50)
+CREATE PERSISTENT ENTITY QualityControl.DefectReport (
+  /** Auto-generated defect number */
+  DefectNumber: AutoNumber DEFAULT 1,
+  /** Brief defect title */
+  DefectTitle: String(200) NOT NULL ERROR 'Defect title is required',
+  /** Detailed defect description */
+  DefectDescription: String(4000) NOT NULL ERROR 'Defect description is required',
+  /** Severity classification */
+  Severity: Enumeration(QualityControl.DefectSeverity) NOT NULL ERROR 'Severity is required',
+  /** Current resolution status */
+  DefectStatus: Enumeration(QualityControl.DefectStatus) NOT NULL ERROR 'Defect status is required',
+  /** Date the defect was reported */
+  ReportedDate: DateTime,
+  /** Date the defect was resolved */
+  ResolvedDate: DateTime,
+  /** Root cause analysis */
+  RootCause: String(2000),
+  /** Corrective action taken */
+  CorrectiveAction: String(2000),
+  /** Cost impact of this defect */
+  CostImpact: Decimal DEFAULT 0
+)
+INDEX (DefectStatus)
+INDEX (Severity);
+
+-- MARK: ASSOCIATIONS
+
+-- MARK: - Template Associations
+
+/**
+ * Links checkpoint to its template
+ *
+ * Each checkpoint belongs to one inspection template.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION QualityControl.TemplateCheckpoint_InspectionTemplate
+  FROM QualityControl.TemplateCheckpoint TO QualityControl.InspectionTemplate
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_AND_REFERENCES;
+
+-- MARK: - Inspection Associations
+
+/**
+ * Links inspection to the work order line being inspected
+ *
+ * Each inspection targets a specific work order line.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION QualityControl.QualityInspection_WorkOrderLine
+  FROM QualityControl.QualityInspection TO Manufacturing.WorkOrderLine
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+
+/**
+ * Links inspection to the template used
+ *
+ * Each inspection uses one inspection template.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION QualityControl.QualityInspection_InspectionTemplate
+  FROM QualityControl.QualityInspection TO QualityControl.InspectionTemplate
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+
+/**
+ * Links inspection to the inspector
+ *
+ * Records who performed the inspection.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION QualityControl.QualityInspection_Account
+  FROM QualityControl.QualityInspection TO Administration.Account
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+
+/**
+ * Links inspection result to its inspection
+ *
+ * Each result belongs to one inspection.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION QualityControl.InspectionResult_QualityInspection
+  FROM QualityControl.InspectionResult TO QualityControl.QualityInspection
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_AND_REFERENCES;
+
+/**
+ * Links inspection result to the template checkpoint
+ *
+ * Each result corresponds to one checkpoint.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION QualityControl.InspectionResult_TemplateCheckpoint
+  FROM QualityControl.InspectionResult TO QualityControl.TemplateCheckpoint
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+
+-- MARK: - Defect Associations
+
+/**
+ * Links defect to the inspection where it was found
+ *
+ * Each defect is discovered during an inspection.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION QualityControl.DefectReport_QualityInspection
+  FROM QualityControl.DefectReport TO QualityControl.QualityInspection
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+
+/**
+ * Links defect to the production step where it occurred (optional)
+ *
+ * Traces the defect back to the specific production step.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION QualityControl.DefectReport_ProductionStep
+  FROM QualityControl.DefectReport TO Manufacturing.ProductionStep
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+
+/**
+ * Links defect to the person who reported it
+ *
+ * Records who filed the defect report.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION QualityControl.DefectReport_Account
+  FROM QualityControl.DefectReport TO Administration.Account
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;

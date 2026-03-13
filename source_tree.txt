@@ -1,0 +1,377 @@
+Source Code Tree (sorted by dependency depth — leaf packages first)
+  Lines:    ██ <500  ██ 500-999  ██ 1000-1499  ██ 1500+
+  Coverage: ██ 80%+  ██ 60-79%  ██ 30-59%  ██ <30%
+  Commits:  ██ <50   ██ 50-199  ██ 200-499  ██ 500+
+                                                                                                              a8ce  5e55  c52b  a56f  828e
+
+──── tier 0 ────────────────────────────────────────────────────────────
+cmd/check_bson/                                      92 lines  (1 files)
+  └── main.go                                92  ██                                          0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+cmd/compare_pages/                                  257 lines  (1 files)
+  └── main.go                               257  ██████▌                                     0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+cmd/debug/                                           54 lines  (1 files)
+  └── main.go                                54  █                                           0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+cmd/dump_page/                                       62 lines  (1 files)
+  └── main.go                                62  █▌                                          0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+cmd/extract_page/                                   132 lines  (1 files)
+  └── main.go                               132  ███▌                                        0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+cmd/gen-completions/                                366 lines  (1 files)
+  └── main.go                               366  █████████▌                                  0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+cmd/grammardoc/                                     562 lines  (1 files)
+  └── main.go                               562  ███████████████                             0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+cmd/source_tree/                                   1117 lines  (1 files)
+  └── main.go                              1117  █████████████████████████████▌                                 ·    98   181   148    ·
+examples/check_schema/                              114 lines  (1 files)
+  └── main.go                               114  ███                                         0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+examples/compare_bson/                               52 lines  (1 files)
+  └── main.go                                52  █                                           0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+examples/debug_bson/                                 83 lines  (1 files)
+  └── main.go                                83  ██                                          0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+examples/debug_enum/                                 91 lines  (1 files)
+  └── main.go                                91  ██                                          0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+examples/debug_modules/                              77 lines  (1 files)
+  └── main.go                                77  ██                                          0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+examples/debug_schema/                               98 lines  (1 files)
+  └── main.go                                98  ██▌                                         0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+examples/debug_types/                                89 lines  (1 files)
+  └── main.go                                89  ██                                          0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+examples/inspect_mpr/                               118 lines  (1 files)
+  └── main.go                               118  ███                                         0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+internal/codegen/schema/                            148 lines  (1 files)
+  └── types.go                              148  ███▌                                        0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+mdl/ast/                                           2228 lines  (20 files)
+  ├── ast_microflow.go                      530  ██████████████                              0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── ast_query.go                          296  ███████▌                                    0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── ast_page_v3.go                        268  ███████                                     0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── ast_security.go                       155  ████                                        0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── ast_odata.go                          136  ███▌                                        0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── ast_entity.go                         109  ██▌                                         0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── ast_expression.go                     107  ██▌                                         0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── ast_association.go                     97  ██▌                                         0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── ast_enumeration.go                     89  ██                                          0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── ast_datatype.go                        73  █▌                                          0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── ast.go                                 63  █▌                                          0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── ast_styling.go                         40  █                                           0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── ast_page.go                            38  █                                           0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── ast_javaaction.go                      37  ▌                                           0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── ast_attribute.go                       36  ▌                                                              ·    ·    ·    ·    ·
+  ├── ast_oql.go                             36  ▌                                                              ·    ·    ·    ·    ·
+  ├── ast_widgets_cmd.go                     36  ▌                                           0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── ast_lint.go                            30  ▌                                           0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── ast_navigation.go                      30  ▌                                           0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  └── ast_connection.go                      22  ▌                                           0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+mdl/diaglog/                                        353 lines  (2 files)
+  ├── diaglog.go                            211  █████▌                                     74% ███████░░░      ·    ·    ·    ·    ·
+  └── diaglog_test.go                       142  ███▌                                                           ·    ·    ·    ·    ·
+model/                                              421 lines  (1 files)
+  └── types.go                              421  ███████████                                 0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+sdk/mpr/version/                                    187 lines  (1 files)
+  └── version.go                            187  █████                                       0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+sdk/widgets/                                        725 lines  (1 files)
+  └── loader.go                             725  ███████████████████                         0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+
+──── tier 1 ────────────────────────────────────────────────────────────
+internal/codegen/transform/                         585 lines  (2 files)
+  ├── transformer.go                        397  ██████████▌                                 0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  └── naming.go                             188  █████                                       0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+mdl/visitor/                                       7828 lines  (22 files)
+  ├── visitor_microflow_actions.go          920  ████████████████████████▌                  20% ██░░░░░░░░      ·    ·    ·    ·    ·
+  ├── visitor_test.go                       906  ████████████████████████                                       ·    ·    ·    ·    ·
+  ├── visitor_page_v3.go                    844  ██████████████████████▌                     0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── visitor_microflow_expression.go       707  ██████████████████▌                        44% ████░░░░░░      ·    ·    ·    ·    ·
+  ├── visitor_microflow_statements.go       700  ██████████████████▌                        41% ████░░░░░░      ·    ·    ·    ·    ·
+  ├── visitor_query.go                      678  ██████████████████                          0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── visitor_entity.go                     676  ██████████████████                         23% ██░░░░░░░░      ·    ·    ·    ·    ·
+  ├── visitor_helpers.go                    478  ████████████▌                              51% █████░░░░░      ·    ·    ·    ·    ·
+  ├── visitor_odata.go                      420  ███████████                                 1% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── visitor_security.go                   344  █████████                                   0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── visitor_microflow.go                  242  ██████                                     47% ████░░░░░░      ·    ·    ·    ·    ·
+  ├── visitor.go                            159  ████                                       43% ████░░░░░░      ·    ·    ·    ·    ·
+  ├── visitor_enumeration.go                129  ███                                         0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── visitor_navigation.go                 114  ███                                         0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── visitor_widgets.go                    108  ██▌                                         0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── visitor_page.go                        88  ██                                          0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── visitor_styling.go                     84  ██                                          0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── visitor_association.go                 64  █▌                                          0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── visitor_javaaction.go                  63  █▌                                          0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── visitor_lint.go                        49  █                                           0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── visitor_connection.go                  33  ▌                                           0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  └── visitor_module.go                      22  ▌                                           0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+sdk/domainmodel/                                    519 lines  (1 files)
+  └── domainmodel.go                        519  █████████████▌                              0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+sdk/javaactions/                                    205 lines  (1 files)
+  └── javaactions.go                        205  █████                                       0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+sdk/microflows/                                    1222 lines  (3 files)
+  ├── microflows_actions.go                 758  ████████████████████                        0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── microflows.go                         356  █████████▌                                  0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  └── microflows_datatypes.go               108  ██▌                                         0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+sdk/pages/                                         1393 lines  (10 files)
+  ├── pages_widgets_advanced.go             336  ████████▌                                   0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── pages_widgets_action.go               257  ██████▌                                     0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── pages_widgets_input.go                160  ████                                        0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── pages.go                              140  ███▌                                        0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── pages_widgets_data.go                 100  ██▌                                                            ·    ·    ·    ·    ·
+  ├── pages_datasources.go                   93  ██                                          0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── pages_widgets_display.go               90  ██                                                             ·    ·    ·    ·    ·
+  ├── pages_widgets_container.go             87  ██                                          0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── pages_widgets.go                       69  █▌                                          0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  └── pages_parameters.go                    61  █▌                                          0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+sdk/security/                                        99 lines  (1 files)
+  └── security.go                            99  ██▌                                         0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+sdk/workflows/                                      298 lines  (1 files)
+  └── workflow.go                           298  ███████▌                                    0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+
+──── tier 2 ────────────────────────────────────────────────────────────
+internal/codegen/emit/                              289 lines  (2 files)
+  ├── emitter.go                            160  ████                                        0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  └── templates.go                          129  ███                                         0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+sdk/mpr/                                          15462 lines  (39 files)
+  ├── parser_microflow.go                  1190  ███████████████████████████████▌            0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── writer_microflow_actions.go           901  ████████████████████████                    0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── writer_domainmodel.go                 894  ███████████████████████▌                    0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── writer_widgets_display.go             841  ██████████████████████                     11% █░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── reader_widgets.go                     745  ███████████████████▌                        0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── writer_microflow.go                   620  ████████████████▌                           0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── reader_documents.go                   615  ████████████████                            0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── writer_security.go                    582  ███████████████▌                            0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── parser_workflow.go                    547  ██████████████▌                             0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── parser_domainmodel.go                 539  ██████████████                              0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── writer_widgets.go                     490  █████████████                               6% ░░░░░░░░░░     671    ·    ·    ·    ·
+  ├── parser_misc.go                        477  ████████████▌                               0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── parser_microflow_actions.go           473  ████████████▌                               0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── writer_widgets_custom.go              469  ████████████▌                                                 469    ·    ·    ·    ·
+  ├── writer_javaactions.go                 464  ████████████                                0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── parser_javaactions.go                 460  ████████████                                0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── reader_units.go                       442  ███████████▌                                0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── reader_types.go                       393  ██████████▌                                 0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── writer_odata.go                       388  ██████████                                 68% ██████░░░░      ·    ·    ·    ·    ·
+  ├── writer_odata_test.go                  361  █████████▌                                                     ·    ·    ·    ·    ·
+  ├── writer_navigation.go                  326  ████████▌                                   0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── writer_pages.go                       312  ████████                                    0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── writer_widgets_test.go                284  ███████▌                                                       ·    ·    ·    ·    ·
+  ├── parser_odata.go                       269  ███████                                     0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── writer_core.go                        250  ██████▌                                    35% ███░░░░░░░      ·    ·    ·    ·    ·
+  ├── parser_page.go                        232  ██████                                      0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── writer_enumeration.go                 215  █████▌                                      0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── parser_enumeration.go                 208  █████▌                                      0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── reader.go                             208  █████▌                                      0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── writer_widgets_action.go              206  █████▌                                                        206    ·    ·    ·    ·
+  ├── writer_units.go                       196  █████                                       0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── writer_widgets_input.go               181  ████▌                                      33% ███░░░░░░░      ·    ·    ·    ·    ·
+  ├── parser_security.go                    168  ████                                        0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── writer_modules.go                     137  ███▌                                        0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── parser.go                             116  ███                                        17% █░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── writer_widgets_layout.go               99  ██▌                                         0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── utils.go                               57  █▌                                          0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── parser_nanoflow.go                     54  █                                           0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  └── parser_module.go                       53  █                                           0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+
+──── tier 3 ────────────────────────────────────────────────────────────
+(root)                                              304 lines  (1 files)
+  └── modelsdk.go                           304  ████████                                    0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+api/                                               3262 lines  (9 files)
+  ├── domainmodels.go                       846  ██████████████████████▌                    18% █░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── pages.go                              819  █████████████████████▌                     23% ██░░░░░░░░      ·    ·    ·    ·    ·
+  ├── api_integration_test.go               592  ███████████████▌                                               ·    ·    ·    ·    ·
+  ├── microflows.go                         271  ███████                                    59% █████░░░░░      ·    ·    ·    ·    ·
+  ├── enumerations.go                       263  ███████                                    29% ██░░░░░░░░      ·    ·    ·    ·    ·
+  ├── api_test.go                           254  ██████▌                                                        ·    ·    ·    ·    ·
+  ├── api.go                                 97  ██▌                                        85% ████████░░      ·    ·    ·    ·    ·
+  ├── helpers.go                             95  ██▌                                        64% ██████░░░░      ·    ·    ·    ·    ·
+  └── modules.go                             25  ▌                                           0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+cmd/codegen/                                        185 lines  (1 files)
+  └── main.go                               185  ████▌                                       0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+cmd/mxcli/docker/                                  1744 lines  (11 files)
+  ├── build_test.go                         349  █████████                                                      ·    ·    ·    ·    ·
+  ├── detect.go                             209  █████▌                                     44% ████░░░░░░      ·    ·    ·    ·    ·
+  ├── runtime.go                            206  █████▌                                      7% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── patch.go                              201  █████                                      86% ████████░░      ·    ·    ·    ·    ·
+  ├── build.go                              193  █████                                      19% █░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── init_test.go                          192  █████                                                          ·    ·    ·    ·    ·
+  ├── init.go                               113  ███                                        82% ████████░░      ·    ·    ·    ·    ·
+  ├── check.go                              104  ██▌                                         0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── detect_test.go                         99  ██▌                                                            ·    ·    ·    ·    ·
+  ├── runtime_test.go                        72  █▌                                                             ·    ·    ·    ·    ·
+  └── templates.go                            6                                                                 ·    ·    ·    ·    ·
+examples/add_entities/                              225 lines  (1 files)
+  └── main.go                               225  ██████                                      0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+examples/clear_domain_model/                         81 lines  (1 files)
+  └── main.go                                81  ██                                          0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+examples/compare_datagrid2/                         671 lines  (1 files)
+  └── main.go                               671  █████████████████▌                          0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+examples/test_write/                                163 lines  (1 files)
+  └── main.go                               163  ████                                        0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+mdl/catalog/                                       3855 lines  (10 files)
+  ├── builder_references.go                 673  █████████████████▌                          0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── builder_pages.go                      541  ██████████████                              0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── tables.go                             494  █████████████                               0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── catalog.go                            466  ████████████                                0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── builder_microflows.go                 434  ███████████▌                                0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── builder_modules.go                    428  ███████████                                 0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── builder.go                            400  ██████████▌                                 0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── builder_source.go                     165  ████                                        0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── builder_strings.go                    130  ███                                         0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  └── builder_workflows.go                  124  ███                                         0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+
+──── tier 4 ────────────────────────────────────────────────────────────
+examples/modify_project/                            291 lines  (1 files)
+  └── main.go                               291  ███████▌                                    0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+examples/read_project/                              244 lines  (1 files)
+  └── main.go                               244  ██████▌                                     0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+mdl/linter/                                        1725 lines  (5 files)
+  ├── starlark.go                           610  ████████████████                            0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── context.go                            519  █████████████▌                              0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── output.go                             282  ███████▌                                    0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── linter.go                             193  █████                                       0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  └── config.go                             121  ███                                         0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+
+──── tier 5 ────────────────────────────────────────────────────────────
+mdl/linter/rules/                                   451 lines  (4 files)
+  ├── naming.go                             239  ██████                                      0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── validation_feedback.go                102  ██▌                                         0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── domain_size.go                         62  █▌                                          0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  └── empty.go                               48  █                                           0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+
+──── tier 6 ────────────────────────────────────────────────────────────
+mdl/executor/                                     37577 lines  (73 files)
+  ├── cmd_microflows_show_helpers_test.go  1496  ████████████████████████████████████████                       ·    ·    ·    ·    ·
+  ├── cmd_pages_builder_input.go           1496  ████████████████████████████████████████   51% █████░░░░░      ·    ·    ·    ·    ·
+  ├── cmd_odata.go                         1320  ███████████████████████████████████         0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── cmd_entities.go                      1104  █████████████████████████████▌             29% ██░░░░░░░░      ·    ·    ·    ·    ·
+  ├── cmd_structure.go                     1063  ████████████████████████████                0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── cmd_pages_describe_output.go         1026  ███████████████████████████                29% ██░░░░░░░░      ·    ·    ·    ·    ·
+  ├── cmd_pages_builder_v3.go               977  ██████████████████████████                 22% ██░░░░░░░░      ·    ·    ·    ·    ·
+  ├── cmd_pages_builder_v3_pluggable.go     949  █████████████████████████                   1% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── cmd_mermaid.go                        945  █████████████████████████                   0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── cmd_microflows_builder.go             881  ███████████████████████▌                   12% █░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── cmd_pages_builder_v3_widgets.go       858  ██████████████████████▌                    27% ██░░░░░░░░      ·    ·    ·    ·    ·
+  ├── oql_type_inference.go                 829  ██████████████████████                      0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── cmd_diff_local.go                     800  █████████████████████                       0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── cmd_catalog.go                        791  █████████████████████                       0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── cmd_microflows_format_action.go       766  ████████████████████                                           ·    ·    ·    ·    ·
+  ├── cmd_security_write.go                 763  ████████████████████                       23% ██░░░░░░░░      ·    ·    ·    ·    ·
+  ├── cmd_pages_describe_pluggable.go       761  ████████████████████                       32% ███░░░░░░░      ·    ·    ·    ·    ·
+  ├── cmd_microflows_show.go                733  ███████████████████▌                       25% ██░░░░░░░░      ·    ·    ·    ·    ·
+  ├── cmd_modules.go                        711  ███████████████████                         3% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── cmd_diff_mdl.go                       697  ██████████████████▌                         0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── cmd_microflows_builder_actions.go     668  █████████████████▌                          0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── cmd_security.go                       662  █████████████████▌                          0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── roundtrip_page_test.go                635  ████████████████▌                                              ·    ·    ·    ·    ·
+  ├── cmd_microflows_builder_calls.go       631  ████████████████▌                          18% █░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── cmd_pages_describe_parse.go           630  ████████████████▌                          31% ███░░░░░░░      ·    ·    ·    ·    ·
+  ├── cmd_context.go                        605  ████████████████                            0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── executor.go                           603  ████████████████                           12% █░░░░░░░░░      ·    ·    ·    ·  1025
+  ├── cmd_pages_describe.go                 600  ████████████████                           33% ███░░░░░░░      ·    ·    ·    ·    ·
+  ├── cmd_styling.go                        538  ██████████████                              0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── cmd_microflows_show_helpers.go        537  ██████████████                              9% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── cmd_diff.go                           534  ██████████████                              0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── cmd_page_wireframe.go                 533  ██████████████                              0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── cmd_javaactions.go                    518  █████████████▌                              0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── helpers.go                            512  █████████████▌                                                 ·    ·    ·    ·   512
+  ├── cmd_domainmodel_elk.go                504  █████████████                               0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── cmd_workflows.go                      493  █████████████                               0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── roundtrip_helpers_test.go             486  ████████████▌                                                  ·    ·    ·    ·    ·
+  ├── cmd_oql_plan.go                       473  ████████████▌                              73% ███████░░░      ·    ·    ·    ·    ·
+  ├── cmd_microflow_elk.go                  410  ██████████▌                                 0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── validate_microflow.go                 410  ██████████▌                                 0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── cmd_navigation.go                     398  ██████████▌                                 0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── cmd_constants.go                      392  ██████████                                  0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── cmd_pages_builder_v3_layout.go        380  ██████████                                 26% ██░░░░░░░░      ·    ·    ·    ·    ·
+  ├── widget_property.go                    374  ██████████                                  0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── roundtrip_security_test.go            373  █████████▌                                                     ·    ·    ·    ·    ·
+  ├── cmd_widgets.go                        370  █████████▌                                  0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── cmd_pages_builder.go                  355  █████████                                  32% ███░░░░░░░      ·    ·    ·    ·    ·
+  ├── cmd_misc.go                           343  █████████                                   0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── cmd_associations.go                   337  █████████                                   0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── cmd_move.go                           323  ████████▌                                   0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── oql_plan_test.go                      303  ████████                                                       ·    ·    ·    ·    ·
+  ├── cmd_enumerations.go                   285  ███████▌                                   40% ████░░░░░░      ·    ·    ·    ·    ·
+  ├── autocomplete.go                       263  ███████                                                        ·    ·    ·    ·   263
+  ├── validate.go                           252  ██████▌                                                        ·    ·    ·    ·   252
+  ├── theme_reader.go                       238  ██████                                      0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── cmd_search.go                         226  ██████                                      0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── cmd_module_overview.go                224  █████▌                                      0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── cmd_microflows_create.go              209  █████▌                                     64% ██████░░░░      ·    ·    ·    ·    ·
+  ├── cmd_diff_output.go                    196  █████                                       0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── cmd_microflows_helpers.go             196  █████                                      31% ███░░░░░░░      ·    ·    ·    ·    ·
+  ├── stmt_summary.go                       175  ████▌                                       0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── roundtrip_mxcheck_test.go             173  ████▌                                                          ·    ·    ·    ·    ·
+  ├── layout.go                             172  ████▌                                       0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── roundtrip_entity_test.go              153  ████                                                           ·    ·    ·    ·    ·
+  ├── cmd_lint.go                           147  ███▌                                        0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── cmd_pages_create_v3.go                142  ███▌                                       33% ███░░░░░░░      ·    ·    ·    ·    ·
+  ├── hierarchy.go                          141  ███▌                                       64% ██████░░░░      ·    ·    ·    ·    ·
+  ├── cmd_pages_show.go                     107  ██▌                                         0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── roundtrip_microflow_test.go           105  ██▌                                                            ·    ·    ·    ·    ·
+  ├── cmd_layouts.go                         85  ██                                          0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── cmd_snippets.go                        85  ██                                          0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── oql_parse.go                           66  █▌                                         83% ████████░░      ·    ·    ·    ·    ·
+  └── cmd_microflows_drop.go                 41  █                                           0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+
+──── tier 7 ────────────────────────────────────────────────────────────
+examples/create_datagrid2_page/                     143 lines  (1 files)
+  └── main.go                               143  ███▌                                        0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+examples/create_page/                               353 lines  (1 files)
+  └── main.go                               353  █████████                                   0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+mdl/repl/                                           736 lines  (1 files)
+  └── repl.go                               736  ███████████████████▌                        0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+
+──── tier 8 ────────────────────────────────────────────────────────────
+cmd/mxcli/                                         7750 lines  (28 files)
+  ├── project_tree.go                       650  █████████████████                           0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── init.go                               634  ████████████████▌                           0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── tool_templates.go                     522  █████████████▌                              0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── serve.go                              474  ████████████▌                               0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── lsp_completions_gen.go                457  ████████████                                                   ·    ·    ·    ·    ·
+  ├── lsp_symbols.go                        455  ████████████                                0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── docker.go                             376  ██████████                                  0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── help.go                               331  ████████▌                                   0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── lsp_completion.go                     331  ████████▌                                   0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── cmd_dump_bson.go                      319  ████████▌                                                      ·    ·    ·    ·    ·
+  ├── cmd_query.go                          258  ██████▌                                                        ·    ·    ·    ·    ·
+  ├── lsp_diagnostics.go                    258  ██████▌                                     0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── diag.go                               252  ██████▌                                     0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── main.go                               243  ██████                                      0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── lsp_folding.go                        231  ██████                                      0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── lsp_helpers.go                        227  ██████                                      0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── lsp.go                                222  █████▌                                      0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── lsp_hover.go                          206  █████▌                                      0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── cmd_describe.go                       190  █████                                                          ·    ·    ·    ·    ·
+  ├── cmd_extract_templates.go              186  ████▌                                       0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── cmd_diff.go                           158  ████                                                           ·    ·    ·    ·    ·
+  ├── cmd_add_tool.go                       143  ███▌                                        0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── lsp_stubs.go                          141  ███▌                                        0% ░░░░░░░░░░      ·    ·    ·    ·    ·
+  ├── cmd_check.go                          138  ███▌                                                           ·    ·    ·    ·    ·
+  ├── cmd_lint.go                           123  ███                                                            ·    ·    ·    ·    ·
+  ├── cmd_show.go                           107  ██▌                                                            ·    ·    ·    ·    ·
+  ├── cmd_exec.go                            69  █▌                                                             ·    ·    ·    ·    ·
+  └── skills_content.go                      49  █                                                              ·    ·    ·    ·    ·
+
+──── tier 9 ────────────────────────────────────────────────────────────
+vscode-mdl/src/                                    1027 lines  (5 files)
+  ├── extension.ts                          377  ██████████                                                     ·    ·    ·    ·    ·
+  ├── previewProvider.ts                    267  ███████                                                        ·    ·    ·    ·    ·
+  ├── projectTreeProvider.ts                219  █████▌                                                         ·    ·    ·    ·    ·
+  ├── terminalLinkProvider.ts                98  ██▌                                                            ·    ·    ·    ·    ·
+  └── mdlContentProvider.ts                  66  █▌                                                             ·    ·    ·    ·    ·
+vscode-mdl/src/preview/                            1312 lines  (4 files)
+  ├── elkTemplate.ts                        685  ██████████████████                                             ·    ·    ·    ·    ·
+  ├── mermaidTemplate.ts                    538  ██████████████                                                 ·    ·    ·    ·    ·
+  ├── mxcliRunner.ts                         86  ██                                                             ·    ·    ·    ·    ·
+  └── types.ts                                3                                                                 ·    ·    ·    ·    ·
+vscode-mdl/src/preview/renderers/                  1594 lines  (6 files)
+  ├── pageWireframeRenderer.ts              537  ██████████████                                                 ·    ·    ·    ·    ·
+  ├── microflowRenderer.ts                  285  ███████▌                                                       ·    ·    ·    ·    ·
+  ├── domainModelRenderer.ts                250  ██████▌                                                        ·    ·    ·    ·    ·
+  ├── queryPlanRenderer.ts                  229  ██████                                                         ·    ·    ·    ·    ·
+  ├── sketchHelpers.ts                      172  ████▌                                                          ·    ·    ·    ·    ·
+  └── moduleOverviewRenderer.ts             121  ███                                                            ·    ·    ·    ·    ·
+
+
+Summary
+  Go              95086 lines   275 files   53 packages
+  TypeScript       3933 lines    15 files
+  ──────────────────────────────────────────
+  Total           99019 lines   290 files
+
+  Coverage         3%          245 files with data

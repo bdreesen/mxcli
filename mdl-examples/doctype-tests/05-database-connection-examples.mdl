@@ -1,0 +1,526 @@
+-- ============================================================================
+-- Database Connection Examples - Formula 1 Database
+-- ============================================================================
+--
+-- This file demonstrates CREATE DATABASE CONNECTION features using
+-- a real Formula 1 database on SQL Server.
+--
+-- Prerequisites:
+--   - SQL Server with F1 database at host.docker.internal:1433
+--   - Credentials: sa / Secret1234
+--   - Tables: drivers, circuits, constructors, races, results, etc.
+--
+-- Usage:
+--   1. Connect to your project: CONNECT LOCAL 'path/to/app.mpr';
+--   2. Execute: EXECUTE SCRIPT 'mdl-examples/doctype-tests/05-database-connection-examples.mdl';
+--   3. Verify: DESCRIBE DATABASE CONNECTION DbTest.F1Database;
+--   4. View constants: SHOW CONSTANTS IN DbTest;
+--
+-- ============================================================================
+
+
+-- ############################################################################
+-- PART 0: PREREQUISITES - Module, Constants, and Entities
+-- ############################################################################
+
+-- Create module for our database examples
+CREATE MODULE DbTest;
+
+-- ============================================================================
+-- Constants for F1 SQL Server Connection
+-- ============================================================================
+
+/** JDBC connection string for F1 database */
+CREATE CONSTANT DbTest.F1Database_DBSource TYPE String
+  DEFAULT 'jdbc:sqlserver://host.docker.internal:1433;databaseName=F1;encrypt=false'
+  COMMENT 'JDBC connection string for F1 database';
+
+/** Database username */
+CREATE CONSTANT DbTest.F1Database_DBUsername TYPE String
+  DEFAULT 'sa'
+  COMMENT 'Database username for F1 database';
+
+/** Database password */
+CREATE CONSTANT DbTest.F1Database_DBPassword TYPE String
+  DEFAULT ''
+  COMMENT 'Database password for F1 database';
+
+-- ============================================================================
+-- Non-Persistent Entities for Query Results
+-- ============================================================================
+
+/**
+ * Entity to hold driver records from the F1 database.
+ * Maps to the drivers table.
+ */
+CREATE NON-PERSISTENT ENTITY DbTest.Driver (
+  DriverId: Integer,
+  DriverRef: String(200),
+  Forename: String(200),
+  Surname: String(200),
+  Nationality: String(200),
+  DateOfBirth: DateTime
+);
+
+/**
+ * Entity to hold circuit records from the F1 database.
+ * Maps to the circuits table.
+ */
+CREATE NON-PERSISTENT ENTITY DbTest.Circuit (
+  CircuitId: Integer,
+  CircuitRef: String(200),
+  CircuitName: String(200),
+  Location: String(200),
+  Country: String(200)
+);
+
+/**
+ * Entity to hold constructor (team) records.
+ */
+CREATE NON-PERSISTENT ENTITY DbTest.Constructor (
+  ConstructorId: Integer,
+  ConstructorRef: String(200),
+  ConstructorName: String(200),
+  Nationality: String(200)
+);
+
+/**
+ * Entity to hold race records.
+ */
+CREATE NON-PERSISTENT ENTITY DbTest.Race (
+  RaceId: Integer,
+  RaceYear: Integer,
+  Round: Integer,
+  RaceName: String(200),
+  RaceDate: DateTime
+);
+
+/**
+ * Entity for race result summary with custom attribute names.
+ * Used to demonstrate column mapping.
+ */
+CREATE NON-PERSISTENT ENTITY DbTest.RaceResult (
+  ResultId: Integer,
+  DriverName: String(200),
+  TeamName: String(200),
+  Position: Integer,
+  Points: Decimal DEFAULT 0
+);
+
+
+-- ############################################################################
+-- PART 1: BASIC DATABASE CONNECTIONS
+-- ############################################################################
+
+-- ============================================================================
+-- Level 1.1: Minimal Database Connection (No Queries)
+-- ============================================================================
+
+/**
+ * Minimal database connection - type, connection string, and credentials.
+ * This is the simplest possible connection definition.
+ */
+CREATE DATABASE CONNECTION DbTest.MinimalDB
+TYPE 'MSSQL'
+CONNECTION STRING @DbTest.F1Database_DBSource
+USERNAME @DbTest.F1Database_DBUsername
+PASSWORD @DbTest.F1Database_DBPassword
+BEGIN
+END;
+
+-- ============================================================================
+-- Level 1.2: Connection with Single Simple Query
+-- ============================================================================
+
+/**
+ * Basic connection with one simple SELECT query.
+ * Returns all drivers mapped to the Driver entity.
+ */
+CREATE DATABASE CONNECTION DbTest.SimpleQueryDB
+TYPE 'MSSQL'
+CONNECTION STRING @DbTest.F1Database_DBSource
+USERNAME @DbTest.F1Database_DBUsername
+PASSWORD @DbTest.F1Database_DBPassword
+BEGIN
+  QUERY GetAllDrivers
+    SQL 'SELECT driverId, driverRef, forename, surname, nationality, dob FROM drivers ORDER BY surname'
+    RETURNS DbTest.Driver
+    MAP (
+      driverId AS DriverId,
+      driverRef AS DriverRef,
+      forename AS Forename,
+      surname AS Surname,
+      nationality AS Nationality,
+      dob AS DateOfBirth
+    );
+END;
+
+
+-- ############################################################################
+-- PART 2: QUERIES WITH RETURN MAPPING
+-- ############################################################################
+
+-- ============================================================================
+-- Level 2.1: Query with Return Entity (columns match attributes)
+-- ============================================================================
+
+/**
+ * Connection with query that returns circuits.
+ * Demonstrates explicit column-to-attribute mapping.
+ */
+CREATE DATABASE CONNECTION DbTest.CircuitQueryDB
+TYPE 'MSSQL'
+CONNECTION STRING @DbTest.F1Database_DBSource
+USERNAME @DbTest.F1Database_DBUsername
+PASSWORD @DbTest.F1Database_DBPassword
+BEGIN
+  QUERY GetAllCircuits
+    SQL 'SELECT circuitId, circuitRef, name, location, country FROM circuits ORDER BY name'
+    RETURNS DbTest.Circuit
+    MAP (
+      circuitId AS CircuitId,
+      circuitRef AS CircuitRef,
+      name AS CircuitName,
+      location AS Location,
+      country AS Country
+    );
+END;
+
+-- ============================================================================
+-- Level 2.2: Multiple Queries in One Connection
+-- ============================================================================
+
+/**
+ * Connection with multiple queries returning different entity types.
+ */
+CREATE DATABASE CONNECTION DbTest.MultiQueryDB
+TYPE 'MSSQL'
+CONNECTION STRING @DbTest.F1Database_DBSource
+USERNAME @DbTest.F1Database_DBUsername
+PASSWORD @DbTest.F1Database_DBPassword
+BEGIN
+  QUERY GetDrivers
+    SQL 'SELECT driverId, driverRef, forename, surname, nationality, dob FROM drivers ORDER BY surname'
+    RETURNS DbTest.Driver
+    MAP (
+      driverId AS DriverId,
+      driverRef AS DriverRef,
+      forename AS Forename,
+      surname AS Surname,
+      nationality AS Nationality,
+      dob AS DateOfBirth
+    );
+
+  QUERY GetConstructors
+    SQL 'SELECT constructorId, constructorRef, name, nationality FROM constructors ORDER BY name'
+    RETURNS DbTest.Constructor
+    MAP (
+      constructorId AS ConstructorId,
+      constructorRef AS ConstructorRef,
+      name AS ConstructorName,
+      nationality AS Nationality
+    );
+END;
+
+
+-- ############################################################################
+-- PART 3: PARAMETERIZED QUERIES
+-- ############################################################################
+
+-- ============================================================================
+-- Level 3.1: Single Parameter Query
+-- ============================================================================
+
+/**
+ * Connection with parameterized query.
+ * Demonstrates safe parameter binding for filtering.
+ */
+CREATE DATABASE CONNECTION DbTest.ParamQueryDB
+TYPE 'MSSQL'
+CONNECTION STRING @DbTest.F1Database_DBSource
+USERNAME @DbTest.F1Database_DBUsername
+PASSWORD @DbTest.F1Database_DBPassword
+BEGIN
+  QUERY GetDriversByNationality
+    SQL 'SELECT driverId, driverRef, forename, surname, nationality, dob FROM drivers WHERE nationality = {nation} ORDER BY surname'
+    PARAMETER nation: String DEFAULT 'British'
+    RETURNS DbTest.Driver
+    MAP (
+      driverId AS DriverId,
+      driverRef AS DriverRef,
+      forename AS Forename,
+      surname AS Surname,
+      nationality AS Nationality,
+      dob AS DateOfBirth
+    );
+END;
+
+-- ============================================================================
+-- Level 3.2: Multiple Parameters and Multiple Queries
+-- ============================================================================
+
+/**
+ * Connection with multiple parameterized queries.
+ * Demonstrates filtering by different criteria.
+ */
+CREATE DATABASE CONNECTION DbTest.MultiParamDB
+TYPE 'MSSQL'
+CONNECTION STRING @DbTest.F1Database_DBSource
+USERNAME @DbTest.F1Database_DBUsername
+PASSWORD @DbTest.F1Database_DBPassword
+BEGIN
+  QUERY GetRacesByYear
+    SQL 'SELECT raceId, year, round, name, date FROM races WHERE year = {raceYear} ORDER BY round'
+    PARAMETER raceYear: Integer DEFAULT '2023'
+    RETURNS DbTest.Race
+    MAP (
+      raceId AS RaceId,
+      year AS RaceYear,
+      round AS Round,
+      name AS RaceName,
+      date AS RaceDate
+    );
+
+  QUERY GetCircuitsByCountry
+    SQL 'SELECT circuitId, circuitRef, name, location, country FROM circuits WHERE country = {searchCountry} ORDER BY name'
+    PARAMETER searchCountry: String NULL
+    RETURNS DbTest.Circuit
+    MAP (
+      circuitId AS CircuitId,
+      circuitRef AS CircuitRef,
+      name AS CircuitName,
+      location AS Location,
+      country AS Country
+    );
+END;
+
+
+-- ############################################################################
+-- PART 4: COMPREHENSIVE DATABASE CONNECTION
+-- ############################################################################
+
+/**
+ * Comprehensive database connection for Formula 1 data.
+ *
+ * This connection provides read access to the F1 database,
+ * demonstrating all database connector query features:
+ * - Simple queries
+ * - Parameterized queries (single and multiple parameters)
+ * - Column-to-attribute mapping
+ * - Multiple entity return types
+ *
+ * Connection: jdbc:sqlserver://host.docker.internal:1433;databaseName=F1
+ * Tables: drivers, circuits, constructors, races, results
+ */
+CREATE DATABASE CONNECTION DbTest.F1Database
+TYPE 'MSSQL'
+CONNECTION STRING @DbTest.F1Database_DBSource
+USERNAME @DbTest.F1Database_DBUsername
+PASSWORD @DbTest.F1Database_DBPassword
+BEGIN
+  QUERY GetAllDrivers
+    SQL 'SELECT driverId, driverRef, forename, surname, nationality, dob FROM drivers ORDER BY surname'
+    RETURNS DbTest.Driver
+    MAP (
+      driverId AS DriverId,
+      driverRef AS DriverRef,
+      forename AS Forename,
+      surname AS Surname,
+      nationality AS Nationality,
+      dob AS DateOfBirth
+    );
+
+  QUERY GetDriverById
+    SQL 'SELECT driverId, driverRef, forename, surname, nationality, dob FROM drivers WHERE driverId = {id}'
+    PARAMETER id: Integer DEFAULT '1'
+    RETURNS DbTest.Driver
+    MAP (
+      driverId AS DriverId,
+      driverRef AS DriverRef,
+      forename AS Forename,
+      surname AS Surname,
+      nationality AS Nationality,
+      dob AS DateOfBirth
+    );
+
+  QUERY GetDriversByNationality
+    SQL 'SELECT driverId, driverRef, forename, surname, nationality, dob FROM drivers WHERE nationality = {nation} ORDER BY surname'
+    PARAMETER nation: String DEFAULT 'British'
+    RETURNS DbTest.Driver
+    MAP (
+      driverId AS DriverId,
+      driverRef AS DriverRef,
+      forename AS Forename,
+      surname AS Surname,
+      nationality AS Nationality,
+      dob AS DateOfBirth
+    );
+
+  QUERY GetAllCircuits
+    SQL 'SELECT circuitId, circuitRef, name, location, country FROM circuits ORDER BY name'
+    RETURNS DbTest.Circuit
+    MAP (
+      circuitId AS CircuitId,
+      circuitRef AS CircuitRef,
+      name AS CircuitName,
+      location AS Location,
+      country AS Country
+    );
+
+  QUERY GetCircuitsByCountry
+    SQL 'SELECT circuitId, circuitRef, name, location, country FROM circuits WHERE country = {searchCountry} ORDER BY name'
+    PARAMETER searchCountry: String DEFAULT 'United Kingdom'
+    RETURNS DbTest.Circuit
+    MAP (
+      circuitId AS CircuitId,
+      circuitRef AS CircuitRef,
+      name AS CircuitName,
+      location AS Location,
+      country AS Country
+    );
+
+  QUERY GetAllConstructors
+    SQL 'SELECT constructorId, constructorRef, name, nationality FROM constructors ORDER BY name'
+    RETURNS DbTest.Constructor
+    MAP (
+      constructorId AS ConstructorId,
+      constructorRef AS ConstructorRef,
+      name AS ConstructorName,
+      nationality AS Nationality
+    );
+
+  QUERY GetRacesByYear
+    SQL 'SELECT raceId, year, round, name, date FROM races WHERE year = {raceYear} ORDER BY round'
+    PARAMETER raceYear: Integer DEFAULT '2023'
+    RETURNS DbTest.Race
+    MAP (
+      raceId AS RaceId,
+      year AS RaceYear,
+      round AS Round,
+      name AS RaceName,
+      date AS RaceDate
+    );
+
+  QUERY GetRacesBySeason
+    SQL 'SELECT raceId, year, round, name, date FROM races WHERE year BETWEEN {startYear} AND {endYear} ORDER BY year, round'
+    PARAMETER startYear: Integer DEFAULT '1900'
+    PARAMETER endYear: Integer NULL
+    RETURNS DbTest.Race
+    MAP (
+      raceId AS RaceId,
+      year AS RaceYear,
+      round AS Round,
+      name AS RaceName,
+      date AS RaceDate
+    );
+END;
+
+
+-- ############################################################################
+-- MICROFLOW EXAMPLES: EXECUTE DATABASE QUERY
+-- ############################################################################
+
+-- Microflows can execute database connector queries using the EXECUTE DATABASE QUERY
+-- statement. The query is referenced by its 3-part qualified name: Module.Connection.Query.
+-- Three patterns are supported:
+--   1. Static query (just the query reference)
+--   2. Dynamic SQL override (DYNAMIC 'SELECT ...')
+--   3. Parameterized query (with argument mappings)
+
+-- ----------------------------------------------------------------------------
+-- Example 1: Static query — executes the SQL defined in the query object
+-- ----------------------------------------------------------------------------
+
+CREATE MICROFLOW DbTest.GetAllDrivers()
+BEGIN
+  $DriverList = EXECUTE DATABASE QUERY DbTest.F1Database.GetAllDrivers;
+END;
+
+-- ----------------------------------------------------------------------------
+-- Example 2: Dynamic SQL — overrides the query's SQL at runtime
+-- ----------------------------------------------------------------------------
+
+CREATE MICROFLOW DbTest.GetDriversDynamic()
+BEGIN
+  $DriverList = EXECUTE DATABASE QUERY DbTest.F1Database.GetAllDrivers
+    DYNAMIC 'SELECT driverId, driverRef, forename, surname, nationality FROM drivers ORDER BY surname LIMIT 10';
+END;
+
+-- ----------------------------------------------------------------------------
+-- Example 3: Parameterized query — passes values for query parameters
+-- ----------------------------------------------------------------------------
+
+CREATE MICROFLOW DbTest.GetDriversByNationality(Nationality: String)
+BEGIN
+  $DriverList = EXECUTE DATABASE QUERY DbTest.F1Database.GetDriversByNationality
+    (nation = $Nationality);
+END;
+
+-- ----------------------------------------------------------------------------
+-- Example 4: Fire-and-forget (no output variable)
+-- ----------------------------------------------------------------------------
+
+CREATE MICROFLOW DbTest.RefreshDriverCache()
+BEGIN
+  EXECUTE DATABASE QUERY DbTest.F1Database.GetAllDrivers;
+END;
+
+-- Note: EXECUTE DATABASE QUERY only supports ON ERROR ROLLBACK (default).
+-- ON ERROR CONTINUE is not supported for this action type.
+
+-- ----------------------------------------------------------------------------
+-- Example 5: Runtime connection override
+-- Use case: multiple databases with same schema but different data
+-- (e.g., region-specific databases)
+-- Note: ConnectionParameterMappings require the connection to have been
+-- tested/validated in Studio Pro first. Creating them programmatically
+-- may trigger "parameters have been updated" on first open.
+-- ----------------------------------------------------------------------------
+
+-- CREATE MICROFLOW DbTest.GetAllDrivers_runtime_connection()
+-- BEGIN
+--   $DriverList = EXECUTE DATABASE QUERY DbTest.F1Database.GetAllDrivers
+--     CONNECTION (DBSource = 'jdbc:sqlserver://host.docker.internal:1433;databaseName=F1;encrypt=false',
+--                 DBUsername = 'sa',
+--                 DBPassword = 'Secret1234');
+-- END;
+
+
+-- ############################################################################
+-- MOVE EXAMPLES: CONSTANTS AND DATABASE CONNECTIONS
+-- ############################################################################
+
+-- Move a constant to a folder within the same module
+MOVE CONSTANT DbTest.F1Database_DBSource TO FOLDER 'Resources/Database';
+
+-- Move another constant to the same folder
+MOVE CONSTANT DbTest.F1Database_DBUsername TO FOLDER 'Resources/Database';
+
+-- Move a database connection to a folder
+MOVE DATABASE CONNECTION DbTest.MinimalDB TO FOLDER 'Resources';
+
+-- Move another database connection to a folder
+MOVE DATABASE CONNECTION DbTest.SimpleQueryDB TO FOLDER 'Resources';
+
+
+-- ############################################################################
+-- VERIFICATION QUERIES
+-- ############################################################################
+
+-- After executing this script, verify with:
+--
+SHOW CONSTANTS IN DbTest;
+show database connections;
+--
+DESCRIBE DATABASE CONNECTION DbTest.MinimalDB;
+DESCRIBE DATABASE CONNECTION DbTest.F1Database;
+--
+DESCRIBE MICROFLOW DbTest.GetAllDrivers;
+DESCRIBE MICROFLOW DbTest.GetDriversDynamic;
+DESCRIBE MICROFLOW DbTest.GetDriversByNationality;
+--
+-- The DESCRIBE output should match the CREATE statements above.
+
+-- ============================================================================
+-- END OF DATABASE CONNECTION EXAMPLES
+-- ============================================================================

@@ -1,0 +1,356 @@
+# Data Processing Patterns
+
+Patterns for loops, aggregates, batch processing, and data transformation.
+
+## Loop Patterns
+
+### Basic Loop
+
+```mdl
+/**
+ * Process all items in a list
+ */
+CREATE MICROFLOW Module.ProcessItems (
+  $Items: List of Module.Item
+)
+RETURNS Boolean
+BEGIN
+  DECLARE $ProcessedCount Integer = 0;
+
+  LOOP $Item IN $Items
+  BEGIN
+    -- Process each item
+    CHANGE $Item (ProcessedDate = [%CurrentDateTime%]);
+    COMMIT $Item;
+    SET $ProcessedCount = $ProcessedCount + 1;
+  END LOOP;
+
+  LOG INFO NODE 'Processing' 'Processed ' + $ProcessedCount + ' items';
+  RETURN true;
+END;
+/
+```
+
+### Loop with Filtering
+
+```mdl
+/**
+ * Process only active items
+ */
+CREATE MICROFLOW Module.ProcessActiveItems (
+  $Items: List of Module.Item
+)
+RETURNS Integer
+BEGIN
+  DECLARE $Count Integer = 0;
+
+  LOOP $Item IN $Items
+  BEGIN
+    IF $Item/IsActive THEN
+      -- Process active item
+      CHANGE $Item (LastProcessed = [%CurrentDateTime%]);
+      COMMIT $Item;
+      SET $Count = $Count + 1;
+    END IF;
+  END LOOP;
+
+  RETURN $Count;
+END;
+/
+```
+
+### Loop with Accumulator
+
+```mdl
+/**
+ * Calculate total value of all orders
+ */
+CREATE MICROFLOW Module.CalculateOrderTotal (
+  $Orders: List of Module.Order
+)
+RETURNS Decimal
+BEGIN
+  DECLARE $Total Decimal = 0;
+
+  LOOP $Order IN $Orders
+  BEGIN
+    SET $Total = $Total + $Order/Amount;
+  END LOOP;
+
+  RETURN $Total;
+END;
+/
+```
+
+## Aggregate Patterns
+
+### Count Items
+
+```mdl
+/**
+ * Count active customers
+ */
+CREATE MICROFLOW Module.CountActiveCustomers ()
+RETURNS Integer
+BEGIN
+  DECLARE $Customers List of Module.Customer = empty;
+  DECLARE $Count Integer = 0;
+
+  RETRIEVE $Customers FROM Module.Customer
+    WHERE IsActive = true;
+
+  $Count = AGGREGATE $Customers COUNT;
+  RETURN $Count;
+END;
+/
+```
+
+### Sum Values
+
+```mdl
+/**
+ * Sum order amounts for a customer
+ */
+CREATE MICROFLOW Module.GetCustomerTotalOrders (
+  $Customer: Module.Customer
+)
+RETURNS Decimal
+BEGIN
+  DECLARE $Orders List of Module.Order = empty;
+  DECLARE $Total Decimal = 0;
+
+  RETRIEVE $Orders FROM Module.Order
+    WHERE Module.Order_Customer = $Customer;
+
+  $Total = AGGREGATE $Orders SUM OF Amount;
+  RETURN $Total;
+END;
+/
+```
+
+### Average Calculation
+
+```mdl
+/**
+ * Calculate average order value
+ */
+CREATE MICROFLOW Module.GetAverageOrderValue ()
+RETURNS Decimal
+BEGIN
+  DECLARE $Orders List of Module.Order = empty;
+  DECLARE $Average Decimal = 0;
+
+  RETRIEVE $Orders FROM Module.Order;
+
+  $Average = AGGREGATE $Orders AVERAGE OF Amount;
+  RETURN $Average;
+END;
+/
+```
+
+## List Operations
+
+### Add to List
+
+```mdl
+/**
+ * Collect matching items into a list
+ */
+CREATE MICROFLOW Module.CollectHighValueOrders (
+  $Orders: List of Module.Order,
+  $Threshold: Decimal
+)
+RETURNS List of Module.Order
+BEGIN
+  DECLARE $HighValue List of Module.Order = empty;
+
+  LOOP $Order IN $Orders
+  BEGIN
+    IF $Order/Amount > $Threshold THEN
+      ADD $Order TO $HighValue;
+    END IF;
+  END LOOP;
+
+  RETURN $HighValue;
+END;
+/
+```
+
+### Remove from List
+
+```mdl
+/**
+ * Remove inactive items from list
+ */
+CREATE MICROFLOW Module.FilterActiveItems (
+  $Items: List of Module.Item
+)
+RETURNS List of Module.Item
+BEGIN
+  DECLARE $ToRemove List of Module.Item = empty;
+
+  -- Collect items to remove
+  LOOP $Item IN $Items
+  BEGIN
+    IF NOT $Item/IsActive THEN
+      ADD $Item TO $ToRemove;
+    END IF;
+  END LOOP;
+
+  -- Remove collected items
+  LOOP $Item IN $ToRemove
+  BEGIN
+    REMOVE $Item FROM $Items;
+  END LOOP;
+
+  RETURN $Items;
+END;
+/
+```
+
+## Batch Processing
+
+### Process in Batches
+
+```mdl
+/**
+ * Process large dataset in batches
+ * Commits after each batch to avoid memory issues
+ */
+CREATE MICROFLOW Module.BatchProcess (
+  $Items: List of Module.Item,
+  $BatchSize: Integer
+)
+RETURNS Integer
+BEGIN
+  DECLARE $Processed Integer = 0;
+  DECLARE $BatchCount Integer = 0;
+
+  LOOP $Item IN $Items
+  BEGIN
+    -- Process item
+    CHANGE $Item (Status = 'Processed');
+
+    SET $BatchCount = $BatchCount + 1;
+    SET $Processed = $Processed + 1;
+
+    -- Commit batch
+    IF $BatchCount >= $BatchSize THEN
+      COMMIT $Item;
+      SET $BatchCount = 0;
+      LOG INFO NODE 'Batch' 'Processed ' + $Processed + ' items';
+    END IF;
+  END LOOP;
+
+  -- Final commit for remaining items
+  IF $BatchCount > 0 THEN
+    LOG INFO NODE 'Batch' 'Final batch: ' + $Processed + ' total';
+  END IF;
+
+  RETURN $Processed;
+END;
+/
+```
+
+## Data Transformation
+
+### Copy Entity
+
+```mdl
+/**
+ * Create a copy of an order
+ */
+CREATE MICROFLOW Module.CopyOrder (
+  $Source: Module.Order
+)
+RETURNS Module.Order
+BEGIN
+  DECLARE $Copy AS Module.Order;
+
+  $Copy = CREATE Module.Order (
+    OrderNumber = 'COPY-' + $Source/OrderNumber,
+    Amount = $Source/Amount,
+    Status = 'Draft',
+    CreatedDate = [%CurrentDateTime%]
+  );
+
+  -- Copy association
+  SET $Copy/Module.Order_Customer = $Source/Module.Order_Customer;
+
+  COMMIT $Copy;
+  RETURN $Copy;
+END;
+/
+```
+
+### Transform List
+
+```mdl
+/**
+ * Create summary records from detail records
+ */
+CREATE MICROFLOW Module.CreateOrderSummaries (
+  $Orders: List of Module.Order
+)
+RETURNS List of Module.OrderSummary
+BEGIN
+  DECLARE $Summaries List of Module.OrderSummary = empty;
+  DECLARE $Summary AS Module.OrderSummary;
+
+  LOOP $Order IN $Orders
+  BEGIN
+    $Summary = CREATE Module.OrderSummary (
+      OrderNumber = $Order/OrderNumber,
+      TotalAmount = $Order/Amount,
+      CustomerName = $Order/Module.Order_Customer/Name
+    );
+    ADD $Summary TO $Summaries;
+  END LOOP;
+
+  RETURN $Summaries;
+END;
+/
+```
+
+## Error Handling in Loops
+
+### Continue on Error
+
+```mdl
+/**
+ * Process items, log errors but continue
+ */
+CREATE MICROFLOW Module.ProcessWithErrorHandling (
+  $Items: List of Module.Item
+)
+RETURNS Integer
+BEGIN
+  DECLARE $Processed Integer = 0;
+  DECLARE $Errors Integer = 0;
+
+  LOOP $Item IN $Items
+  BEGIN
+    IF $Item/Data = empty THEN
+      LOG WARNING NODE 'Process' 'Skipping item with empty data: ' + $Item/Code;
+      SET $Errors = $Errors + 1;
+    ELSE
+      CHANGE $Item (Status = 'Processed');
+      COMMIT $Item;
+      SET $Processed = $Processed + 1;
+    END IF;
+  END LOOP;
+
+  LOG INFO NODE 'Process' 'Completed: ' + $Processed + ' processed, ' + $Errors + ' errors';
+  RETURN $Processed;
+END;
+/
+```
+
+## Best Practices
+
+1. **Commit inside loops carefully**: Can cause performance issues on large sets
+2. **Use batch commits**: Commit every N records for large datasets
+3. **Log progress**: Add logging for long-running operations
+4. **Handle errors gracefully**: Don't let one bad record stop the whole process
+5. **Return counts**: Help callers know what was processed
+6. **Use meaningful variable names**: `$ProcessedCount` not `$c`

@@ -1,0 +1,56 @@
+# Reference libraries (too large for git, obtain from npm)
+libs/
+
+# Go build artifacts
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Go workspace
+go.work
+go.work.sum
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test artifacts
+coverage.out
+coverage.html
+reference/mendix-repl/
+reference/mxbuild/
+reference/mendixmodellib/
+reference/mdl-grammar/
+reference/mxbuild-11.6.0/
+reference/
+mx-test-projects/*/
+tmp/
+
+# Generated files
+*.pdf
+*.tar
+*.tgz
+cmd/mxcli/skills/
+cmd/mxcli/commands/
+cmd/mxcli/lint-rules/
+cmd/mxcli/changelog.md
+cmd/mxcli/vscode-mdl.vsix
+vscode-mdl/*.vsix
+# Build artifacts
+/mxcli
+grammardoc
+*.cast
+*.pptx
+# Excluded skills
+.claude/skills/mendix/migrate-outsystems.md

@@ -1,0 +1,54 @@
+Entity Creation Syntax
+======================
+
+Persistent Entity (stored in database):
+  CREATE PERSISTENT ENTITY Module.EntityName (
+    AttributeName: DataType [constraints],
+    ...
+  )
+  [INDEX (attr1, attr2)]
+  [COMMENT 'description'];
+
+Entity with Generalization (Inheritance):
+  IMPORTANT: EXTENDS goes BEFORE the opening parenthesis, not after!
+
+  CREATE PERSISTENT ENTITY Module.EntityName EXTENDS Module.ParentEntity (
+    AttributeName: DataType [constraints],
+    ...
+  );
+
+  Common parent entities:
+    System.Image         - For image uploads (adds thumbnail, caching)
+    System.FileDocument  - For file uploads (adds Name, Size, Contents)
+    System.User          - For custom user types
+
+Non-Persistent Entity (transient/memory only):
+  CREATE NON-PERSISTENT ENTITY Module.EntityName (
+    AttributeName: DataType,
+    ...
+  );
+
+Attribute Constraints:
+  NOT NULL              - Attribute is required
+  NOT NULL ERROR 'msg'  - Required with custom error message
+  UNIQUE                - Value must be unique
+  UNIQUE ERROR 'msg'    - Unique with custom error message
+  DEFAULT value         - Default value (true, false, 0, 'text')
+
+Complete Example:
+  CREATE PERSISTENT ENTITY MyModule.Customer (
+    -- Customer identification
+    Name: String(100) NOT NULL ERROR 'Name is required',
+    Email: String(200) UNIQUE,
+
+    -- Customer details
+    Age: Integer,
+    Balance: Decimal DEFAULT 0,
+    IsActive: Boolean DEFAULT true,
+    CreatedAt: DateTime,
+
+    -- Enumeration reference
+    CustomerType: Enumeration(MyModule.CustomerType)
+  )
+  INDEX (Email)
+  COMMENT 'Stores customer information';

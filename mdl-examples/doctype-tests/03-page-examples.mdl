@@ -1,0 +1,2266 @@
+-- ============================================================================
+-- Page Examples - MDL Syntax
+-- ============================================================================
+--
+-- This file demonstrates the MDL page syntax:
+-- - Unified widget pattern: WIDGET name (Prop: Value) { children }
+-- - Explicit DataSource:, Attribute:, Action: properties
+-- - Page metadata in single () block with Params:, Title:, Layout:, Url:
+-- - All properties in (Key: Value) format
+-- - Widget names always required
+--
+-- Core principle: Everything follows WIDGETTYPE name (Prop: Value) { children }
+--
+-- ============================================================================
+
+-- MARK: Entities
+
+-- ============================================================================
+-- Setup: Ensure PgTest Entities Exist
+-- ============================================================================
+
+CREATE MODULE PgTest;
+
+/**
+ * Country codes with full names as captions.
+ */
+CREATE ENUMERATION PgTest.Country (
+  /** United States */
+  US 'United States',
+  /** United Kingdom */
+  UK 'United Kingdom',
+  /** Germany */
+  DE 'Germany',
+  /** France */
+  FR 'France',
+  /** Netherlands */
+  NL 'Netherlands',
+  /** Japan */
+  JP 'Japan',
+  /** Australia */
+  AU 'Australia'
+);
+/
+
+/**
+ * Simple status enumeration for order tracking.
+ * Basic enumeration with identifier and caption.
+ */
+CREATE ENUMERATION PgTest.OrderStatus (
+  /** Order received, awaiting processing */
+  PENDING 'Pending',
+  /** Order is being processed */
+  PROCESSING 'Processing',
+  /** Order has been shipped */
+  SHIPPED 'Shipped',
+  /** Order delivered to customer */
+  DELIVERED 'Delivered',
+  /** Order was cancelled */
+  CANCELLED 'Cancelled'
+);
+/
+
+@Position(100,100)
+CREATE PERSISTENT ENTITY PgTest.Product (
+  Name: String(200) NOT NULL,
+  Code: String(50),
+  Description: String(500),
+  Price: Decimal,
+  IsActive: Boolean DEFAULT true,
+  Stock: Integer,
+  Category: String(100),
+  ImageUrl: String(500),
+  CreateDate: DateTime,
+  ModifiedDate: DateTime
+);
+
+@Position(300,100)
+CREATE PERSISTENT ENTITY PgTest.Customer (
+  Name: String(200) NOT NULL,
+  Email: String(200),
+  Phone: String(50),
+  Address: String(500),
+  City: String(100),
+  Country: Enumeration(PgTest.Country),
+  IsActive: Boolean DEFAULT true,
+  CreateDate: DateTime
+);
+
+@Position(500,100)
+CREATE PERSISTENT ENTITY PgTest.Order (
+  OrderNumber: String(50) NOT NULL,
+  OrderDate: DateTime,
+  TotalAmount: Decimal,
+  Status: Enumeration(PgTest.OrderStatus),
+  Notes: String(1000),
+  ProcessedDate: DateTime
+);
+
+CREATE ASSOCIATION PgTest.Order_Customer
+FROM PgTest.Order TO PgTest.Customer
+TYPE Reference
+OWNER Both;
+
+CREATE ASSOCIATION PgTest.Order_Product
+FROM PgTest.Order TO PgTest.Product
+TYPE Reference
+OWNER Both;
+
+-- MARK: Basic Pages
+
+-- ============================================================================
+-- LEVEL 1: Basic Overview Pages
+-- ============================================================================
+
+/**
+ * Empty page
+ */
+CREATE PAGE PgTest.P001_Empty_Page
+(
+  Title: 'Empty Page',
+  Layout: Atlas_Core.Atlas_Default,
+  Url: 'p001_empty_page',
+Folder: 'Basic'
+)
+{
+  -- Nothing yet
+}
+
+/**
+ * Dynamic text example
+ */
+CREATE PAGE PgTest.P002_Dynamic_Text_Page
+(
+  Title: 'Empty Page',
+  Layout: Atlas_Core.Atlas_Default,
+  Url: 'p002_dynamic_text_page',
+  Folder: 'Basic'
+)
+{
+  DYNAMICTEXT text1 (Content: 'Domain model', RenderMode: H4)
+}
+
+/**
+ * Create a new object for the PgTest.P006_DataForm page
+ */
+CREATE MICROFLOW PgTest.Open_P002_Dynamic_Text_Page ()
+FOLDER 'Basic'
+BEGIN
+    SHOW PAGE PgTest.P002_Dynamic_Text_Page();
+END;
+/
+
+/**
+ * Layout grid with dynamic text
+ */
+CREATE PAGE PgTest.P003_1_Nested_LayoutGrid_Dynamic_Text_Page
+(
+  Title: 'Layoutgrid dynamic text page',
+  Layout: Atlas_Core.Atlas_Default,
+  Url: 'p003_1_nested_layoutgrid_dynamic_text_page',
+  Folder: 'Basic'
+)
+{
+  LAYOUTGRID LayoutGrid1 {
+    ROW row1 {
+      COLUMN col1 (DesktopWidth: AutoFill) {
+        LAYOUTGRID LayoutGrid2 {
+          ROW row2a {
+            COLUMN col2a (DesktopWidth: AutoFill) {
+              DYNAMICTEXT text1 (Content: 'Just some H4 header', RenderMode: H4)
+            }
+          }
+          ROW row2b {
+            COLUMN col2b (DesktopWidth: AutoFill) {
+              DYNAMICTEXT text2 (Content: 'Just some H4 header', RenderMode: H4)
+            }
+          }
+          ROW row2c {
+            COLUMN col2c (DesktopWidth: AutoFill) {
+              DYNAMICTEXT text3 (Content: 'Just some H4 header', RenderMode: H4)
+            }
+            COLUMN col2d (DesktopWidth: AutoFill) {
+              DYNAMICTEXT text4 (Content: 'Just some H4 header', RenderMode: H4)
+            }
+          }
+        }
+      }
+    }
+    ROW row3 {
+      COLUMN col3a (DesktopWidth: AutoFill) {
+        ACTIONBUTTON btnSave1 (Caption: 'Save {1}', CaptionParams: [{1} = 'Hello'], Action: SAVE_CHANGES, ButtonStyle: Primary)
+      }
+      COLUMN col3b (DesktopWidth: AutoFill) {
+        ACTIONBUTTON btnSave2 (Caption: 'Cancel {1}', CaptionParams: [{1} = 'Hello'], Action: CANCEL_CHANGES, ButtonStyle: Default)
+      }
+    }
+    ROW row4 {
+      COLUMN col4 (DesktopWidth: AutoFill) {
+        DYNAMICTEXT text5 (Content: 'Just some H4 header: {1}', ContentParams: [{1} = 'Hello'], RenderMode: H4)
+      }
+    }
+  }
+}
+
+/**
+ * PgTest widget page
+ */
+CREATE PAGE PgTest.P004_TestWidgetPage
+(
+  Title: 'Test Widget Page',
+  Layout: Atlas_Core.Atlas_Default,
+  Url: 'p004_testwidgetpage',
+  Folder: 'Basic'
+)
+{
+  LAYOUTGRID gridMain {
+    ROW row1 {
+      COLUMN col1 (DesktopWidth: 12) {
+        TITLE titleWelcome (Content: 'Welcome to PgTest Page')
+        DYNAMICTEXT textIntro (Content: 'This is a PgTest page created via MDL', RenderMode: Paragraph)
+      }
+    }
+  }
+}
+
+/**
+ * PgTest widget page with buttons
+ */
+CREATE PAGE PgTest.P005_OrderEdit
+(
+  Title: 'Edit Order',
+  Layout: Atlas_Core.Atlas_Default,
+  Url: 'p005_orderedit',
+  Folder: 'Basic'
+)
+{
+  LAYOUTGRID buttonRow {
+    ROW row1 {
+      COLUMN col1 (DesktopWidth: AutoFill) {
+        DYNAMICTEXT textIntro (Content: 'This is a PgTest page created via MDL', RenderMode: Paragraph)
+      }
+    }
+    ROW row2 {
+      COLUMN col2a (DesktopWidth: 6) {
+        ACTIONBUTTON btnSave (Caption: 'Save {1}', CaptionParams: [{1} = 'Hello'], Action: SAVE_CHANGES, ButtonStyle: Primary)
+      }
+      COLUMN col2b (DesktopWidth: 6) {
+        ACTIONBUTTON btnCancel (Caption: 'Cancel', Action: CANCEL_CHANGES)
+      }
+    }
+  }
+}
+
+-- MARK: DATA FORM
+
+/**
+ * Edit customer form
+ */
+CREATE PAGE PgTest.P006_DataForm
+(
+  Params: {
+    $Customer: PgTest.Customer
+  },
+  Title: 'Edit Customer',
+  Layout: Atlas_Core.Atlas_Default,
+  Url: 'p006_dataform/{Customer/Name}',
+  Folder: 'Forms'
+)
+{
+  LAYOUTGRID buttonRow {
+    ROW row1 {
+      COLUMN col1 (DesktopWidth: 12) {
+        DYNAMICTEXT textIntro (Content: 'This is a PgTest page created via MDL', RenderMode: Paragraph)
+      }
+    }
+    ROW row2 {
+      COLUMN col2 (DesktopWidth: 12) {
+        DATAVIEW dataView5 (DataSource: $Customer) {
+          TEXTBOX textBox1 (Label: 'Name', Attribute: Name)
+          TEXTBOX textBox2 (Label: 'Email', Attribute: Email)
+          TEXTBOX textBox3 (Label: 'Phone', Attribute: Phone)
+          TEXTBOX textBox4 (Label: 'Address', Attribute: Address)
+          TEXTBOX textBox5 (Label: 'City', Attribute: City)
+          COMBOBOX comboBox1 (Label: 'Country', Attribute: Country)
+          RADIOBUTTONS radioButtons1 (Label: 'Is active', Attribute: IsActive)
+          DATEPICKER datePicker1 (Label: 'Create date', Attribute: CreateDate)
+
+          FOOTER footer1 {
+            ACTIONBUTTON actionButton1 (Caption: 'Save', Action: SAVE_CHANGES, ButtonStyle: Primary)
+            ACTIONBUTTON actionButton2 (Caption: 'Cancel', Action: CANCEL_CHANGES, ButtonStyle: Default)
+          }
+        }
+      }
+    }
+    ROW row3 {
+      COLUMN col3a (DesktopWidth: 6) { }
+      COLUMN col3b (DesktopWidth: 6) {
+        ACTIONBUTTON btnSave (Caption: 'Save {1}', CaptionParams: [{1} = 'abc'], Action: SAVE_CHANGES, ButtonStyle: Primary)
+      }
+    }
+  }
+}
+
+/**
+ * Create a new object for the PgTest.P006_DataForm page
+ */
+CREATE MICROFLOW PgTest.P006_CreateObject ()
+FOLDER 'Forms'
+BEGIN
+    $NewCustomer = CREATE PgTest.Customer (Email = 'weqw@example.com', City = 'yourcity');
+    SHOW PAGE PgTest.P006_DataForm($Customer = $NewCustomer);
+END;
+/
+
+CREATE MICROFLOW PgTest.P007_DataForm_Getter ()
+RETURNS PgTest.Customer AS $Customer
+FOLDER 'Forms'
+BEGIN
+  RETRIEVE $Customer FROM PgTest.Customer LIMIT 1;
+  RETURN $Customer;
+END;
+/
+
+-- TODO: offset limit implementation
+CREATE MICROFLOW PgTest.P007_DataForm_Getter_2 ()
+RETURNS PgTest.Customer AS $FirstCustomer
+FOLDER 'Forms'
+BEGIN
+  RETRIEVE $CustomerList FROM PgTest.Customer
+    WHERE ( starts-with(Name, 'a') )
+    LIMIT 2 OFFSET 3;
+  SET $FirstCustomer = HEAD($CustomerList);
+  RETURN $FirstCustomer;
+END;
+/
+
+CREATE MICROFLOW PgTest.P007_DataForm_Getter_3 ()
+RETURNS PgTest.Customer AS $FirstCustomer
+FOLDER 'Forms'
+BEGIN
+  RETRIEVE $CustomerList FROM PgTest.Customer
+    WHERE (starts-with(Name, 'a'))
+    SORT BY PgTest.Customer.Name ASC, PgTest.Customer.Email DESC
+    LIMIT 2 +1
+    OFFSET 3 + 3;
+  $FirstCustomer = HEAD($CustomerList);
+  RETURN $FirstCustomer;
+END;
+/
+
+CREATE MICROFLOW PgTest.P007_DataForm_Getter_4 ()
+RETURNS PgTest.Customer AS $FirstCustomer
+FOLDER 'Forms'
+BEGIN
+  DECLARE $Lim Long = 3;
+  DECLARE $Off Long = 5;
+  RETRIEVE $CustomerList FROM PgTest.Customer
+    WHERE (starts-with(Name, 'a'))
+    SORT BY PgTest.Customer.Name ASC, PgTest.Customer.Email DESC
+    LIMIT $Lim
+    OFFSET $Off;
+  $FirstCustomer = HEAD($CustomerList);
+  RETURN $FirstCustomer;
+END;
+/
+
+/**
+ * Process selected products from Gallery multi-select.
+ */
+CREATE MICROFLOW PgTest.ProcessProducts ()
+RETURNS Boolean AS $Success
+FOLDER 'MasterDetail'
+BEGIN
+  DECLARE $Success Boolean = true;
+  RETURN $Success;
+END;
+/
+
+CREATE PAGE PgTest.P007_DataForm_2
+(
+  Title: 'Edit Customer',
+  Layout: Atlas_Core.Atlas_Default,
+  Url: 'p007_dataform',
+  Folder: 'Forms'
+)
+{
+  LAYOUTGRID buttonRow {
+    ROW row1 {
+      COLUMN col1 (DesktopWidth: 12) {
+        DYNAMICTEXT textIntro (Content: 'This is a PgTest page created via MDL', RenderMode: Paragraph)
+      }
+    }
+    ROW row2 {
+      COLUMN col2a (DesktopWidth: 6) {
+        ACTIONBUTTON btnSave (Caption: 'Save', Action: SAVE_CHANGES, ButtonStyle: Primary)
+      }
+      COLUMN col2b (DesktopWidth: 6) {
+        DATAVIEW dataView5 (DataSource: MICROFLOW PgTest.P007_DataForm_Getter) {
+          TEXTBOX txtName (Label: 'Name', Attribute: Name)
+          TEXTBOX txtEmail (Label: 'Email', Attribute: Email)
+
+          FOOTER footer1 {
+            ACTIONBUTTON actionButton1 (Caption: 'Save', Action: SAVE_CHANGES, ButtonStyle: Primary)
+            ACTIONBUTTON actionButton2 (Caption: 'Cancel', Action: CANCEL_CHANGES, ButtonStyle: Default)
+          }
+        }
+      }
+    }
+  }
+}
+
+-- MARK: Data Grid
+
+-- ============================================================================
+-- LEVEL 1: Basic Overview Pages (DataGrid)
+-- ============================================================================
+
+/**
+ * Basic product overview page with minimal configuration.
+ */
+CREATE PAGE PgTest.P008_Product_Overview
+(
+  Title: 'Products',
+  Layout: Atlas_Core.Atlas_Default,
+  Url: 'P008_Product_Overview',
+  Folder: 'DataGrid'
+)
+{
+  LAYOUTGRID buttonRow {
+    ROW row1 {
+      COLUMN col1 (DesktopWidth: 12) {
+        DYNAMICTEXT textIntro (Content: 'P008_Product_Overview', RenderMode: H3)
+        DYNAMICTEXT textIntro2 (Content: 'P008_Product_Overview: {1}', ContentParams: [{1}='abc'], RenderMode: H3)
+      }
+    }
+    ROW row2 {
+      COLUMN col2 (DesktopWidth: 12) {
+        DATAGRID ProductGrid (DataSource: DATABASE PgTest.Product) {
+          COLUMN colName (Attribute: Name, Caption: 'Product Name')
+          COLUMN colCode (Attribute: Code, Caption: 'SKU')
+          COLUMN colPrice (Attribute: Price, Caption: 'Unit Price')
+          COLUMN colStock (Attribute: Stock, Caption: 'Available')
+          COLUMN colActive (Attribute: IsActive, Caption: 'Active')
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Basic product overview page with DataGrid columns.
+ */
+CREATE PAGE PgTest.P008_Product_Overview_2 (Title: 'Products', Layout: Atlas_Core.Atlas_Default, Url: 'P008_Product_Overview_2', Folder: 'DataGrid') {
+  LAYOUTGRID buttonRow {
+    ROW row1 {
+      COLUMN col1 (DesktopWidth: AutoFill) {
+        DYNAMICTEXT textIntro (Content: 'P008_Product_Overview', RenderMode: H3)
+      }
+    }
+    ROW row2 {
+      COLUMN col1 (DesktopWidth: AutoFill) {
+        DATAGRID ProductGrid (DataSource: DATABASE PgTest.Product) {
+          COLUMN colName (Attribute: Name, Caption: 'Product Name')
+          COLUMN colCode (Attribute: Code, Caption: 'SKU')
+          COLUMN colPrice (Attribute: Price, Caption: 'Unit Price')
+          COLUMN colStock (Attribute: Stock, Caption: 'Available')
+          COLUMN colActive (Attribute: IsActive, Caption: 'Active')
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Product overview with default sorting by name.
+ */
+CREATE PAGE PgTest.P010_Product_Sorted
+(
+  Title: 'Products (A-Z)',
+  Layout: Atlas_Core.Atlas_Default,
+  Url: 'PgTest.P010_Product_Sorted',
+  Folder: 'DataGrid'
+)
+{
+  DATAGRID ProductGrid (DataSource: DATABASE FROM PgTest.Product SORT BY Name ASC) {
+    COLUMN colName (Attribute: Name, Caption: 'Product Name')
+    COLUMN colCode (Attribute: Code, Caption: 'SKU')
+    COLUMN colPrice (Attribute: Price, Caption: 'Unit Price')
+    COLUMN colStock (Attribute: Stock, Caption: 'Available')
+    COLUMN colActive (Attribute: IsActive, Caption: 'Active')
+  }
+}
+
+/**
+ * Show only active products.
+ */
+CREATE PAGE PgTest.P010_Product_Sorted_filtered
+(
+  Title: 'Active Products',
+  Layout: Atlas_Core.Atlas_Default,
+  Url: 'PgTest.P010_Product_Sorted_filtered',
+  Folder: 'DataGrid'
+)
+{
+  DATAGRID ProductGrid (
+    DataSource: DATABASE FROM PgTest.Product WHERE [IsActive = true] SORT BY Name ASC
+  ) {
+    COLUMN colName (Attribute: Name, Caption: 'Product Name')
+    COLUMN colCode (Attribute: Code, Caption: 'SKU')
+    COLUMN colPrice (Attribute: Price, Caption: 'Unit Price')
+    COLUMN colStock (Attribute: Stock, Caption: 'Available')
+    COLUMN colActive (Attribute: IsActive, Caption: 'Active')
+  }
+}
+
+/**
+ * Show only active products with complex filter.
+ */
+CREATE PAGE PgTest.P010_2_Product_Sorted_filtered
+(
+  Title: 'Active Products',
+  Layout: Atlas_Core.Atlas_Default,
+  Url: 'PgTest.P010_2_Product_Sorted_filtered',
+  Folder: 'DataGrid'
+)
+{
+  DATAGRID ProductGrid (
+    DataSource: DATABASE FROM PgTest.Product
+      WHERE [IsActive = true() AND contains(Code, 'a') AND Price > 10] OR [Stock < 2]
+      SORT BY Name ASC, Price DESC
+  ) {
+    COLUMN colName (Attribute: Name, Caption: 'Product Name')
+    COLUMN colCode (Attribute: Code, Caption: 'SKU')
+    COLUMN colPrice (Attribute: Price, Caption: 'Unit Price')
+    COLUMN colStock (Attribute: Stock, Caption: 'Available')
+    COLUMN colActive (Attribute: IsActive, Caption: 'Active')
+  }
+}
+
+/**
+ * Show only active products with complex filter.
+ */
+CREATE PAGE PgTest.P010_Product_Sorted_filtered_styled
+(
+  Title: 'Active Products',
+  Layout: Atlas_Core.Atlas_Default,
+  Url: 'PgTest.P010_Product_Sorted_styled',
+  Folder: 'DataGrid'
+)
+{
+  DATAGRID ProductGrid (
+    DataSource: DATABASE FROM PgTest.Product
+      WHERE [IsActive = true() AND contains(Code, 'a') AND Price > 10] OR [Stock < 2]
+      SORT BY Name ASC, Price DESC,
+    Class: 'datagrid-striped datagrid-hover datagrid-sm',
+    Selection: Multiple,
+    PageSize: 10,
+    Pagination: buttons,
+    PagingPosition: both
+  ) {
+    COLUMN colName (Attribute: Name, Caption: 'Product Name', Alignment: left, WrapText: false)
+    COLUMN colCode (Attribute: Code, Caption: 'SKU')
+    COLUMN colPrice (Attribute: Price, Caption: 'Unit Price', Alignment: right, WrapText: false)
+    COLUMN colStock (Attribute: Stock, Caption: 'Available', Alignment: right, WrapText: false)
+    COLUMN colActive (Attribute: IsActive, Caption: 'Active')
+  }
+};
+
+/**
+ * Show only active products with complex filter.
+ */
+CREATE PAGE PgTest.P010_Product_Sorted_filtered_styled_2 (
+  Title: 'Active Products',
+  Layout: Atlas_Core.Atlas_Default,
+  Url: 'PgTest.P010_Product_Sorted_styled_2',
+  Folder: 'DataGrid'
+) {
+  DATAGRID ProductGrid ( 
+    DataSource:  DATABASE FROM PgTest.Product WHERE (IsActive = true() and contains(Code, 'a') and Price > 10) or (Stock < 2) SORT BY PgTest.Product.Name ASC, PgTest.Product.Price DESC, 
+    PageSize: 10, 
+    PagingPosition: both, 
+    DesignProperties: ['Compact': ON, 'Striped': ON, 'Hover': ON, 'Borders': 'Horizontal']
+  ) {
+    COLUMN colName (Attribute: Name, Caption: 'Product Name', Alignment: left, WrapText: false, DesignProperties: ['Compact': ON, 'Striped': ON, 'Hover': ON, 'Borders': 'Horizontal'])
+    COLUMN colCode (Attribute: Code, Caption: 'SKU')
+    COLUMN colPrice (Attribute: Price, Caption: 'Unit Price', Alignment: right, WrapText: false)
+    COLUMN colStock (Attribute: Stock, Caption: 'Available', Alignment: right, WrapText: false)
+    COLUMN colActive (Attribute: IsActive, Caption: 'Active')
+  }
+};
+
+/**
+ * Helper microflow for DataSource: MICROFLOW reference validation.
+ */
+CREATE MICROFLOW PgTest.P010_DSO_GetProducts ()
+  RETURNS List of PgTest.Product
+FOLDER 'DataGrid'
+BEGIN
+  RETRIEVE $Products FROM PgTest.Product;
+  RETURN $Products;
+END;
+/
+
+/**
+ * Show only active products with complex filter.
+ */
+CREATE PAGE PgTest.P010_Product_Microflow_DataSource (
+  Title: 'Active Products',
+  Layout: Atlas_Core.Atlas_Default,
+  Url: 'PgTest.P010_Product_Microflow_DataSource',
+  Folder: 'DataGrid'
+) {
+  DATAGRID ProductGrid ( 
+    DataSource: MICROFLOW PgTest.P010_DSO_GetProducts ,
+    PageSize: 10, 
+    PagingPosition: both, 
+    DesignProperties: ['Compact': ON, 'Striped': ON, 'Hover': ON, 'Borders': 'Horizontal']
+  ) {
+    COLUMN colName (Attribute: Name, Caption: 'Product Name', Alignment: left, WrapText: false, DesignProperties: ['Compact': ON, 'Striped': ON, 'Hover': ON, 'Borders': 'Horizontal'])
+    COLUMN colCode (Attribute: Code, Caption: 'SKU')
+    COLUMN colPrice (Attribute: Price, Caption: 'Unit Price', Alignment: right, WrapText: false)
+    COLUMN colStock (Attribute: Stock, Caption: 'Available', Alignment: right, WrapText: false)
+    COLUMN colActive (Attribute: IsActive, Caption: 'Active')
+  }
+};
+/
+
+-- MARK: Control bar
+
+-- ============================================================================
+-- LEVEL 2: DataGrid with Control Bar (CRUD Operations)
+-- ============================================================================
+
+/**
+ * Dummy edit page for control bar example.
+ *
+ * @param $Product The product to edit
+ */
+CREATE PAGE PgTest.P011_DataGrid_ControlBar_Dummy
+(
+  Params: {
+    $Product: PgTest.Product
+  },
+  Title: 'Edit Product',
+  Layout: Atlas_Core.PopupLayout,
+  Folder: 'DataGrid'
+)
+{
+  LAYOUTGRID buttonRow {
+    ROW row1 {
+      COLUMN col1 (DesktopWidth: 12) {
+        DYNAMICTEXT textIntro (Content: 'Dummy', RenderMode: H3)
+        DYNAMICTEXT textIntro2 (Content: 'Dummy: {1}', ContentParams: [{1}=$Product.Name], RenderMode: H3)
+      }
+    }
+  }
+}
+
+/**
+ * Dummy edit page for control bar example.
+ *
+ * @param $Product The product to edit
+ */
+CREATE PAGE PgTest.P011_DataGrid_ControlBar_Dummy_2
+(
+  Params: {
+    $Product1: PgTest.Product,
+    $Product2: PgTest.Product
+  },
+  Title: 'Edit Product',
+  Layout: Atlas_Core.PopupLayout,
+  Folder: 'DataGrid'
+)
+{
+  LAYOUTGRID buttonRow {
+    ROW row1 {
+      COLUMN col1 (DesktopWidth: 12) {
+        DYNAMICTEXT textIntro1 (Content: 'Dummy', RenderMode: H3)
+        DYNAMICTEXT textIntro2 (Content: 'Dummy: {1}, {2}', ContentParams: [{1}=$Product1.Name, {2}=$Product1.Code], RenderMode: Paragraph)
+        DYNAMICTEXT textIntro3 (Content: 'Dummy: {1}, {2}', ContentParams: [{1}=$Product2.Name, {2}=$Product2.Code], RenderMode: Text)
+      }
+    }
+  }
+}
+
+/**
+ * Product overview with ability to create new products.
+ */
+CREATE PAGE PgTest.P011_DataGrid_ControlBar
+(
+  Title: 'Manage Products',
+  Layout: Atlas_Core.Atlas_Default,
+  Url: 'PgTest.P011_DataGrid_ControlBar',
+  Folder: 'DataGrid'
+)
+{
+  LAYOUTGRID buttonRow {
+    ROW row1 {
+      COLUMN col1 (DesktopWidth: 12) {
+        DATAGRID ProductGrid (
+          DataSource: DATABASE FROM PgTest.Product WHERE [IsActive = true] SORT BY Name ASC
+        ) {
+          CONTROLBAR controlBar1 {
+            ACTIONBUTTON btnNew (
+              Caption: 'New Product',
+              Action: CREATE_OBJECT PgTest.Product THEN SHOW_PAGE PgTest.P011_DataGrid_ControlBar_Dummy,
+              ButtonStyle: Primary
+            )
+          }
+          COLUMN colName (Attribute: Name, Caption: 'Product Name')
+          COLUMN colCode (Attribute: Code, Caption: 'SKU')
+          COLUMN colPrice (Attribute: Price, Caption: 'Unit Price')
+          COLUMN colStock (Attribute: Stock, Caption: 'Available')
+          COLUMN colActive (Attribute: IsActive, Caption: 'Active')
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Basic product edit form with text inputs.
+ *
+ * @param $Product The product to edit
+ */
+CREATE PAGE PgTest.P012_Product_Manage_Edit
+(
+  Params: {
+    $Product: PgTest.Product
+  },
+  Title: 'Edit Product',
+  Layout: Atlas_Core.PopupLayout,
+  Folder: 'DataGrid'
+)
+{
+  LAYOUTGRID buttonRow {
+    ROW row1 {
+      COLUMN col1 (DesktopWidth: 12) {
+        DATAVIEW ProductForm (DataSource: $Product) {
+          TEXTBOX txtName (Label: 'Product Name', Attribute: Name)
+          TEXTBOX txtCode (Label: 'Product Code', Attribute: Code)
+          TEXTAREA txtDescription (Label: 'Description', Attribute: Description)
+
+          FOOTER footer1 {
+            ACTIONBUTTON btnSave (Caption: 'Save', Action: SAVE_CHANGES CLOSE_PAGE, ButtonStyle: Success)
+            ACTIONBUTTON btnCancel (Caption: 'Cancel', Action: CANCEL_CHANGES CLOSE_PAGE, ButtonStyle: Default)
+          }
+        }
+      }
+    }
+  }
+}
+
+
+
+/**
+ * Full CRUD operations on products.
+ */
+CREATE PAGE PgTest.P012_Product_Manage
+(
+  Title: 'Product Management',
+  Layout: Atlas_Core.Atlas_Default,
+  Url: 'P012_Product_Manage',
+  Folder: 'DataGrid'
+)
+{
+  LAYOUTGRID buttonRow {
+    ROW row1 {
+      COLUMN col1 (DesktopWidth: 12) {
+        DYNAMICTEXT textIntro (Content: 'P008_Product_Overview', RenderMode: H3)
+        DYNAMICTEXT textIntro2 (Content: 'P008_Product_Overview: {1}', ContentParams: [{1}='abc'], RenderMode: H3)
+      }
+    }
+    ROW row2 {
+      COLUMN col2 (DesktopWidth: 12) {
+        DATAGRID ProductGrid (DataSource: DATABASE PgTest.Product) {
+          CONTROLBAR controlBar1 {
+            ACTIONBUTTON btnNew1 (
+              Caption: 'New',
+              Action: CREATE_OBJECT PgTest.Product THEN SHOW_PAGE PgTest.P012_Product_Manage_Edit,
+              ButtonStyle: Primary
+            )
+          }
+          COLUMN colName (Attribute: Name, Caption: 'Product Name')
+          COLUMN colCode (Attribute: Code, Caption: 'SKU')
+          COLUMN colPrice (Attribute: Price, Caption: 'Price')
+          COLUMN colStock (Attribute: Stock, Caption: 'In Stock')
+          COLUMN colActive (Attribute: IsActive, Caption: 'Active')
+          COLUMN colActions (Caption: 'Actions') {
+            ACTIONBUTTON btnEdit (
+              Caption: 'Edit',
+              Action: SHOW_PAGE PgTest.P012_Product_Manage_Edit (Product: $currentObject),
+              ButtonStyle: Default
+            )
+            ACTIONBUTTON btnDelete (Caption: 'Delete', Action: DELETE_OBJECT, ButtonStyle: Danger)
+          }
+        }
+      }
+    }
+  }
+}
+
+/**
+ * DataGrid with domain-specific filtering and sorting.
+ */
+CREATE PAGE PgTest.P013_Product_Inventory
+(
+  Title: 'Inventory Management',
+  Layout: Atlas_Core.Atlas_Default,
+  Folder: 'DataGrid'
+)
+{
+  DATAGRID ProductGrid (
+    DataSource: DATABASE FROM PgTest.Product WHERE [Stock < 10] SORT BY Stock ASC
+  ) {
+    COLUMN colName (Attribute: Name)
+    COLUMN colCode (Attribute: Code)
+    COLUMN colStock (Attribute: Stock)
+    COLUMN colPrice (Attribute: Price)
+  }
+}
+
+
+-- MARK: Container
+
+-- ============================================================================
+-- LEVEL 2b: Container Widget Examples
+-- ============================================================================
+--
+-- CONTAINER creates a Forms$DivContainer - a generic wrapper for grouping
+-- widgets. Supports Class: and Style: for CSS styling. Containers can be
+-- nested and are essential for card layouts, sections, and spacing.
+--
+
+/**
+ * Basic container usage for grouping content.
+ */
+CREATE PAGE PgTest.P013b_Container_Basic
+(
+  Title: 'Container Examples',
+  Layout: Atlas_Core.Atlas_Default,
+  Url: 'p013b_container_basic',
+  Folder: 'Container'
+)
+{
+  LAYOUTGRID mainGrid {
+    ROW row1 {
+      COLUMN col1 (DesktopWidth: 12) {
+        -- Simple container without styling
+        CONTAINER section1 {
+          DYNAMICTEXT heading1 (Content: 'Section One', RenderMode: H3)
+          DYNAMICTEXT body1 (Content: 'Content inside a basic container', RenderMode: Paragraph)
+        }
+      }
+    }
+    ROW row2 {
+      COLUMN col2a (DesktopWidth: 6) {
+        -- Container with CSS class
+        CONTAINER card1 (Class: 'card') {
+          DYNAMICTEXT cardTitle1 (Content: 'Card One', RenderMode: H4)
+          DYNAMICTEXT cardText1 (Content: 'Styled with card class')
+        }
+      }
+      COLUMN col2b (DesktopWidth: 6) {
+        -- Container with class and inline style
+        CONTAINER card2 (Class: 'card', Style: 'padding: 16px; background: #f5f5f5;') {
+          DYNAMICTEXT cardTitle2 (Content: 'Card Two', RenderMode: H4)
+          DYNAMICTEXT cardText2 (Content: 'With inline styling')
+        }
+      }
+    }
+    ROW row3 {
+      COLUMN col3 (DesktopWidth: 12) {
+        -- Nested containers
+        CONTAINER outer1 (Class: 'section') {
+          DYNAMICTEXT outerTitle (Content: 'Outer Container', RenderMode: H3)
+          CONTAINER nested1 (Class: 'card', Style: 'margin-top: 8px;') {
+            DYNAMICTEXT nestedTitle (Content: 'Nested Container', RenderMode: H4)
+            DYNAMICTEXT nestedBody (Content: 'Content inside a nested container')
+          }
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Empty container (no children).
+ */
+CREATE PAGE PgTest.P013c_Container_Empty
+(
+  Title: 'Empty Container',
+  Layout: Atlas_Core.Atlas_Default,
+  Url: 'p013c_container_empty',
+  Folder: 'Container'
+)
+{
+  CONTAINER spacer1 (Class: 'spacing-outer-bottom-large')
+}
+
+-- MARK: DataView
+
+-- ============================================================================
+-- LEVEL 3: Basic Detail/Edit Pages (DataView)
+-- ============================================================================
+
+/**
+ * Basic product edit form with text inputs.
+ * @param $Product The product to edit
+ */
+CREATE or replace PAGE PgTest.P014_Product_Edit (
+  Title: 'Edit Product',
+  Layout: Atlas_Core.PopupLayout,
+  Params: { $Product: PgTest.Product },
+  Folder: 'DataView'
+) {
+  DATAVIEW ProductForm (DataSource: $Product) {
+    LAYOUTGRID layoutGrid1 {
+      ROW row1 {
+        COLUMN col1 (DesktopWidth: AutoFill) {
+          TEXTBOX txtName (Label: 'Product Name', Attribute: Name)
+          TEXTBOX txtCode (Label: 'Product Code', Attribute: Code)
+          TEXTAREA txtDescription (Label: 'Description', Attribute: Description)
+        }
+      }
+    }
+    FOOTER footer1 {
+      ACTIONBUTTON btnSave (Caption: 'Save', Action: SAVE_CHANGES, ButtonStyle: Success)
+      ACTIONBUTTON btnCancel (Caption: 'Cancel', Action: CANCEL_CHANGES)
+    }
+  }
+}
+
+/**
+ * Product form with different input widget types.
+ *
+ * @param $Product The product to edit
+ */
+CREATE PAGE PgTest.P015_Product_EditFull
+(
+  Params: {
+    $Product: PgTest.Product
+  },
+  Title: 'Edit Product Details',
+  Layout: Atlas_Core.PopupLayout,
+  Folder: 'DataView'
+)
+{
+  DATAVIEW ProductForm (DataSource: $Product) {
+     LAYOUTGRID layoutGrid1 {
+      ROW row1 {
+        COLUMN col1 (DesktopWidth: AutoFill) {
+    TEXTBOX txtName (Label: 'Product Name', Attribute: Name)
+    TEXTBOX txtCode (Label: 'SKU', Attribute: Code)
+    TEXTBOX txtPrice (Label: 'Unit Price', Attribute: Price)
+    TEXTBOX txtStock (Label: 'Stock Quantity', Attribute: Stock)
+    CHECKBOX cbIsActive (Label: 'Product is Active', Attribute: IsActive)
+    TEXTBOX txtCategory (Label: 'Category', Attribute: Category)
+    DATEPICKER dpCreatedDate (Label: 'Created On', Attribute: CreateDate)
+        }
+      }
+    }
+    FOOTER footer1 {
+      ACTIONBUTTON btnSave (Caption: 'Save', Action: SAVE_CHANGES, ButtonStyle: Success)
+      ACTIONBUTTON btnCancel (Caption: 'Cancel', Action: CANCEL_CHANGES, ButtonStyle: Default)
+    }
+  }
+}
+
+-- MARK: Snippet
+
+
+-- ============================================================================
+-- LEVEL 10: Snippet Examples (Reusable UI Components)
+-- ============================================================================
+
+/**
+ * Navigation menu snippet for overview pages.
+ */
+CREATE SNIPPET PgTest.NavigationMenu(
+  Folder: 'Snippets'
+)
+{
+  LAYOUTGRID navGrid {
+    ROW row1 {
+      COLUMN col1 (DesktopWidth: 12) {
+        ACTIONBUTTON btnProducts (Caption: 'Products', Action: SHOW_PAGE PgTest.P008_Product_Overview, ButtonStyle: Default)
+        ACTIONBUTTON btnCustomers (Caption: 'Customers', Action: SHOW_PAGE PgTest.P007_DataForm_2, ButtonStyle: Default)
+        ACTIONBUTTON btnOrders (Caption: 'Orders', Action: SHOW_PAGE PgTest.P012_Product_Manage, ButtonStyle: Default)
+      }
+    }
+  }
+}
+
+/**
+ * Navigation menu using NavigationList widget.
+ */
+CREATE SNIPPET PgTest.NavigationMenuList(
+  Folder: 'Snippets'
+)
+
+{
+  NAVIGATIONLIST navMenu {
+    ITEM item1 (Action: SHOW_PAGE PgTest.P008_Product_Overview) {
+      DYNAMICTEXT text1 (Content: 'Products')
+    }
+    ITEM item2 (Action: SHOW_PAGE PgTest.P012_Product_Manage) {
+      DYNAMICTEXT text2 (Content: 'Orders')
+    }
+  }
+}
+
+/**
+ * Customer information snippet with parameter.
+ *
+ * @param $Customer The customer to display
+ */
+CREATE OR REPLACE SNIPPET PgTest.CustomerInfo
+(
+  Params: {
+    $Customer: PgTest.Customer
+  },
+  Folder: 'Snippets'
+)
+{
+  DATAVIEW customerView (DataSource: $Customer) {
+    LAYOUTGRID sidebarGrid {
+      ROW row1 {
+        COLUMN col1 (DesktopWidth: 12) {
+          TEXTBOX txtName (Label: 'Name', Attribute: Name)
+          TEXTBOX txtEmail (Label: 'Email', Attribute: Email)
+          TEXTBOX txtPhone (Label: 'Phone', Attribute: Phone)
+          TEXTBOX txtAddress (Label: 'Address', Attribute: Address)
+          TEXTBOX txtCity (Label: 'City', Attribute: City)
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Customer sidebar snippet showing quick actions.
+ *
+ * @param $Customer The customer context
+ */
+CREATE SNIPPET PgTest.CustomerSidebar
+(
+  Params: {
+    $Customer: PgTest.Customer
+  },
+  Folder: 'Snippets'
+)
+{
+  LAYOUTGRID sidebarGrid {
+    ROW row1 {
+      COLUMN col1 (DesktopWidth: 12) {
+        DYNAMICTEXT heading1 (Content: 'Quick Actions', RenderMode: H3)
+        DATAVIEW dvCustomer (DataSource: $Customer) {
+          ACTIONBUTTON btnEdit (
+            Caption: 'Edit Customer',
+            Action: SHOW_PAGE PgTest.P006_DataForm (Customer: $Customer),
+            ButtonStyle: Primary
+          )
+          ACTIONBUTTON btnDelete (Caption: 'Delete', Action: DELETE_OBJECT, ButtonStyle: Danger)
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Dashboard header snippet.
+ */
+CREATE SNIPPET PgTest.DashboardHeader(
+  Folder: 'Snippets'
+)
+{
+  LAYOUTGRID headerGrid {
+    ROW row1 {
+      COLUMN col1 (DesktopWidth: 12) {
+        DYNAMICTEXT heading1 (Content: 'Dashboard', RenderMode: H3)
+        DYNAMICTEXT dashSubtitle (Content: 'Welcome to your dashboard', RenderMode: Paragraph)
+      }
+    }
+  }
+}
+
+/**
+ * Statistics panel snippet for dashboard.
+ */
+CREATE SNIPPET PgTest.StatsPanel(
+  Folder: 'Snippets'
+)
+{
+  LAYOUTGRID statsGrid {
+    ROW row1 {
+      COLUMN col1 (DesktopWidth: 12) {
+        DYNAMICTEXT heading1 (Content: 'Statistics', RenderMode: H3)
+        DYNAMICTEXT statsContent (Content: 'Your key metrics at a glance', RenderMode: Paragraph)
+      }
+    }
+  }
+}
+
+/**
+ * Recent activity snippet for dashboard.
+ */
+CREATE SNIPPET PgTest.RecentActivity(
+  Folder: 'Snippets'
+)
+{
+  LAYOUTGRID activityGrid {
+    ROW row1 {
+      COLUMN col1 (DesktopWidth: 12) {
+        DYNAMICTEXT heading1 (Content: 'Recent Activity', RenderMode: H3)
+        DYNAMICTEXT activityContent (Content: 'Latest updates and changes', RenderMode: Paragraph)
+      }
+    }
+  }
+}
+
+/**
+ * Quick actions snippet for dashboard.
+ */
+CREATE SNIPPET PgTest.QuickActions(
+  Folder: 'Snippets'
+)
+{
+  LAYOUTGRID actionsGrid {
+    ROW row1 {
+      COLUMN col1 (DesktopWidth: 12) {
+        DYNAMICTEXT heading1 (Content: 'Quick Actions', RenderMode: H3)
+        ACTIONBUTTON btnNewProduct (
+          Caption: 'New Product',
+          Action: CREATE_OBJECT PgTest.Product THEN SHOW_PAGE PgTest.P012_Product_Manage_Edit,
+          ButtonStyle: Primary
+        )
+        ACTIONBUTTON btnNewCustomer (
+          Caption: 'New Customer',
+          Action: CREATE_OBJECT PgTest.Customer THEN SHOW_PAGE PgTest.P006_DataForm,
+          ButtonStyle: Success
+        )
+      }
+    }
+  }
+}
+
+/**
+ * Dashboard footer snippet.
+ */
+CREATE SNIPPET PgTest.DashboardFooter(
+  Folder: 'Snippets'
+)
+{
+  LAYOUTGRID footerGrid {
+    ROW row1 {
+      COLUMN col1 (DesktopWidth: 12) {
+        DYNAMICTEXT footerText (Content: 'Dashboard Footer - Version 1.0', RenderMode: Paragraph)
+      }
+    }
+  }
+}
+
+/**
+ * Overview page using a navigation menu snippet.
+ */
+CREATE PAGE PgTest.P016_Page_With_Snippet
+(
+  Title: 'Overview with Navigation',
+  Layout: Atlas_Core.Atlas_Default,
+  Url: 'p016_page_with_snippet',
+  Folder: 'Snippets'
+)
+{
+  LAYOUTGRID mainGrid {
+    ROW row1 {
+      COLUMN col1 (DesktopWidth: 12) {
+        SNIPPETCALL navMenu (Snippet: PgTest.NavigationMenu)
+      }
+    }
+    ROW row2 {
+      COLUMN col2 (DesktopWidth: 12) {
+        DYNAMICTEXT pageContent (Content: 'Main page content goes here', RenderMode: Paragraph)
+      }
+    }
+  }
+}
+
+
+
+-- MARK: Master-Detail
+
+-- ============================================================================
+-- LEVEL 11: Master-Detail Pages (Gallery, SELECTION DataView)
+-- ============================================================================
+
+/**
+ * Gallery showing customers with single selection.
+ */
+CREATE PAGE PgTest.P019_Gallery_Simple
+(
+  Title: 'Customer Gallery',
+  Layout: Atlas_Core.Atlas_Default,
+  Url: 'p019_gallery_simple',
+  Folder: 'MasterDetail'
+)
+{
+  LAYOUTGRID mainGrid {
+    ROW row1 {
+      COLUMN col1 (DesktopWidth: 12) {
+        DYNAMICTEXT pageTitle (Content: 'Customer Gallery', RenderMode: H3)
+      }
+    }
+    ROW row2 {
+      COLUMN col2 (DesktopWidth: 12) {
+        GALLERY customerGallery (
+          DataSource: DATABASE FROM PgTest.Customer SORT BY Name ASC,
+          Selection: Single
+        ) {
+          TEMPLATE template1 {
+            DYNAMICTEXT custName (Content: '{1}',ContentParams:[{1}=Name], RenderMode: H4)
+            DYNAMICTEXT custEmail (Content: '{1}',ContentParams:[{1}=Email], RenderMode: Text)
+            DYNAMICTEXT custCity (Content: '{1}',ContentParams:[{1}=City], RenderMode: Text)
+          }
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Classic master-detail layout.
+ */
+CREATE PAGE PgTest.P020_Master_Detail
+(
+  Title: 'Customer Master-Detail',
+  Layout: Atlas_Core.Atlas_Default,
+  Url: 'p020_master_detail',
+  Folder: 'MasterDetail'
+)
+{
+  LAYOUTGRID mainGrid {
+    ROW row1 {
+      -- Master list (4 columns)
+      COLUMN colMaster (DesktopWidth: 4) {
+        DYNAMICTEXT masterTitle (Content: 'Customers: {1}',ContentParams:[{1}='too many'], RenderMode: H3)
+        GALLERY customerList (
+          DataSource: DATABASE FROM PgTest.Customer SORT BY Name ASC,
+          Selection: Single
+        ) {
+          TEMPLATE template1 {
+            DYNAMICTEXT custName (Content: '{1}',ContentParams:[{1}=Name], RenderMode: H4)
+            DYNAMICTEXT custEmail (Content: 'Email: {1}',ContentParams:[{1}=Email], RenderMode: Text)
+          }
+        }
+      }
+
+      -- Detail form (8 columns)
+      COLUMN colDetail (DesktopWidth: 8) {
+        DYNAMICTEXT detailTitle (Content: 'Customer Details', RenderMode: H3)
+        DATAVIEW customerDetail (DataSource: SELECTION customerList) {
+          TEXTBOX txtName (Label: 'Name', Attribute: Name)
+          TEXTBOX txtEmail (Label: 'Email', Attribute: Email)
+          TEXTBOX txtPhone (Label: 'Phone', Attribute: Phone)
+          TEXTBOX txtAddress (Label: 'Address', Attribute: Address)
+          TEXTBOX txtCity (Label: 'City', Attribute: City)
+
+          FOOTER footer1 {
+            ACTIONBUTTON btnSave (Caption: 'Save', Action: SAVE_CHANGES, ButtonStyle: Success)
+            ACTIONBUTTON btnCancel (Caption: 'Cancel', Action: CANCEL_CHANGES, ButtonStyle: Default)
+          }
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Gallery with text filter for searching.
+ */
+CREATE PAGE PgTest.P022_Gallery_With_Filter
+(
+  Title: 'Searchable Products',
+  Layout: Atlas_Core.Atlas_Default,
+  Url: 'p022_gallery_with_filter',
+    Folder: 'MasterDetail'
+)
+{
+  LAYOUTGRID mainGrid {
+    ROW row1 {
+      COLUMN col1 (DesktopWidth: 12) {
+        DYNAMICTEXT pageTitle (Content: 'Product Gallery', RenderMode: H3)
+      }
+    }
+    ROW row2 {
+      COLUMN col2 (DesktopWidth: 12) {
+        GALLERY productGallery (DataSource: DATABASE PgTest.Product, Selection: Single) {
+          FILTER filter1 {
+            TEXTFILTER searchName (Attributes: [Name])
+          }
+          TEMPLATE template1 {
+            DYNAMICTEXT prodName (Content: '{1}',ContentParams:[{1}=Name], RenderMode: H4)
+            DYNAMICTEXT prodCode (Content: 'SKU: {1}',ContentParams:[{1}=Code], RenderMode: Text)
+            DYNAMICTEXT prodPrice (Content: 'Price: {1}',ContentParams:[{1}=Price], RenderMode: Text)
+          }
+        }
+      }
+    }
+  }
+}
+
+CREATE PAGE PgTest.P022_Gallery_With_Filter_2 (
+  Title: 'Searchable Products', 
+  Layout: Atlas_Core.Atlas_Default, 
+  Url: 'p022_gallery_with_filter_2',
+  Folder: 'MasterDetail'
+) {
+  LAYOUTGRID mainGrid {
+    ROW row1 {
+      COLUMN col1 (DesktopWidth: AutoFill) {
+        DYNAMICTEXT pageTitle (Content: 'Product Gallery', RenderMode: H3)
+      }
+    }
+    ROW row2 {
+      COLUMN col1 (DesktopWidth: AutoFill) {
+        GALLERY gallery1 (DataSource: DATABASE PgTest.Product, Selection: Single) {
+          FILTER filter1 {
+            TEXTFILTER textFilter1 (Attributes: [Name])
+          }
+          TEMPLATE template1 {
+            DYNAMICTEXT text1 (Content: '{1}', RenderMode: H4, ContentParams: [{1} = Name])
+            DYNAMICTEXT text2 (Content: 'SKU: {1}', ContentParams: [{1} = Code])
+            DYNAMICTEXT text3 (Content: 'Price: {1}', ContentParams: [{1} = Price])
+          }
+        }
+      }
+    }
+  }
+}
+
+CREATE PAGE PgTest.P022_Gallery_With_Filter_3 (
+  Title: 'Searchable Products', Layout: Atlas_Core.Atlas_Default, Url: 'p022_gallery_with_filter_3',
+    Folder: 'MasterDetail'
+) {
+  LAYOUTGRID mainGrid {
+    ROW row1 {
+      COLUMN col1 (DesktopWidth: AutoFill) {
+        DYNAMICTEXT pageTitle (Content: 'Product Gallery', RenderMode: H3)
+      }
+    }
+    ROW row2 {
+      COLUMN col1 (DesktopWidth: AutoFill) {
+        GALLERY gallery1 (DataSource: DATABASE PgTest.Product, Selection: Single) {
+          FILTER filter1 {
+            TEXTFILTER textFilter1 (Attributes: [Name, Code, Description])
+          }
+          TEMPLATE template1 {
+            LAYOUTGRID layoutGrid2 {
+              ROW row1 {
+                COLUMN col1 (DesktopWidth: AutoFill) {
+                  DYNAMICTEXT text1 (Content: '{1}', RenderMode: H4, ContentParams: [{1} = Name])
+                }
+              }
+              ROW row2 {
+                COLUMN col1 (DesktopWidth: AutoFill) {
+                  DYNAMICTEXT text2 (Content: 'SKU: {1}', ContentParams: [{1} = Code])
+                }
+                COLUMN col2 (DesktopWidth: AutoFill) {
+                  DYNAMICTEXT text3 (Content: 'Price: {1}', ContentParams: [{1} = Price])
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+CREATE PAGE PgTest.P022_Gallery_With_Filter_4 (
+  Title: 'Searchable Products', Layout: Atlas_Core.Atlas_Default, Url: 'p022_gallery_with_filter_4',
+    Folder: 'MasterDetail'
+) 
+{
+  LAYOUTGRID mainGrid {
+    ROW row1 {
+      COLUMN col1 (DesktopWidth: AutoFill) {
+        DYNAMICTEXT pageTitle (Content: 'Product Gallery', RenderMode: H3)
+      }
+    }
+    ROW row2 {
+      COLUMN col1 (DesktopWidth: AutoFill) {
+        GALLERY gallery1 (DataSource: DATABASE PgTest.Product, Selection: Single) {
+          FILTER filter1 {
+            TEXTFILTER textFilter1 (Attributes: [Description], FilterType: startsWith)
+          }
+          TEMPLATE template1 {
+            LAYOUTGRID layoutGrid2 {
+              ROW row1 {
+                COLUMN col1 (DesktopWidth: AutoFill) {
+                  DYNAMICTEXT text1 (Content: '{1}', RenderMode: H4, ContentParams: [{1} = Name])
+                }
+              }
+              ROW row2 {
+                COLUMN col1 (DesktopWidth: AutoFill) {
+                  DYNAMICTEXT text2 (Content: 'SKU: {1}', ContentParams: [{1} = Code])
+                }
+                COLUMN col2 (DesktopWidth: AutoFill) {
+                  DYNAMICTEXT text3 (Content: 'Price: {1}', ContentParams: [{1} = Price])
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Gallery with multiple selection mode.
+ */
+CREATE PAGE PgTest.P023_Gallery_MultiSelect
+(
+  Title: 'Select Products',
+  Layout: Atlas_Core.Atlas_Default,
+  Url: 'p023_gallery_multiselect',
+    Folder: 'MasterDetail'
+)
+{
+  LAYOUTGRID mainGrid {
+    ROW row1 {
+      COLUMN col1 (DesktopWidth: 12) {
+        DYNAMICTEXT pageTitle1 (Content: 'Select Products for Batch Action', RenderMode: H1)
+        DYNAMICTEXT pageTitle2 (Content: '{1}',ContentParams:[{1}='Select Products for Batch Action'], RenderMode: H2)
+        DYNAMICTEXT pageTitle3 (Content: 'Select {1}',ContentParams:[{1}='Products for Batch Action'], RenderMode: H3)
+        DYNAMICTEXT pageTitle4 (Content: '{1} - {2}',ContentParams:[{1}='Select ', {2}='Products for Batch Action'], RenderMode: H4)
+        DYNAMICTEXT pageTitle5 (Content: '{1} - {2} - {3}',ContentParams:[{1}='Select ', {2}='Products for Batch Action', {3}='Extra'], RenderMode: H5)
+        DYNAMICTEXT pageTitle6 (Content: '{1} - {2} - {3} - {4}',ContentParams:[{1}='Select ', {2}='Products for Batch Action', {3}='Extra', {4}='More'], RenderMode: H6)
+      }
+    }
+    ROW row2 {
+      COLUMN col2 (DesktopWidth: 12) {
+        GALLERY productGallery (DataSource: DATABASE PgTest.Product, Selection: Multiple) {
+          TEMPLATE template1 {
+            DYNAMICTEXT prodName (Content: '{1}',ContentParams:[{1}=Name], RenderMode: H4)
+            DYNAMICTEXT prodStock (Content: 'Stock: {1}',ContentParams:[{1}=Stock], RenderMode: Text)
+          }
+        }
+      }
+    }
+    ROW row3 {
+      COLUMN col3 (DesktopWidth: 12) {
+        ACTIONBUTTON btnProcess (Caption: 'Process Selected', Action: MICROFLOW PgTest.ProcessProducts, ButtonStyle: Primary)
+      }
+    }
+  }
+}
+
+
+-- MARK: Microflow Actions with Parameters
+
+-- ============================================================================
+-- LEVEL 11b: Microflow Actions with Parameters
+-- ============================================================================
+
+/**
+ * Process a single product - called from button actions.
+ *
+ * @param $Product The product to process
+ */
+CREATE MICROFLOW PgTest.ACT_ProcessProduct (
+  $Product: PgTest.Product
+)
+RETURNS Boolean AS $Success
+FOLDER 'MicroflowActions'
+BEGIN
+  DECLARE $Success Boolean = false;
+  LOG INFO NODE 'ProductService' 'Processing product: ' + $Product/Name;
+  CHANGE $Product (ModifiedDate = [%CurrentDateTime%]);
+  COMMIT $Product;
+  SET $Success = true;
+  RETURN $Success;
+END;
+/
+
+/**
+ * Delete a product with confirmation - called from button actions.
+ *
+ * @param $Product The product to delete
+ */
+CREATE MICROFLOW PgTest.ACT_DeleteProduct (
+  $Product: PgTest.Product
+)
+FOLDER 'MicroflowActions'
+BEGIN
+  LOG INFO NODE 'ProductService' 'Deleting product: ' + $Product/Name;
+  DELETE $Product;
+END;
+/
+
+/**
+ * DataGrid with microflow action buttons using $currentObject.
+ * Demonstrates calling microflows with parameters from list widget rows.
+ */
+CREATE PAGE PgTest.P023b_DataGrid_MicroflowActions
+(
+  Title: 'Products with Microflow Actions',
+  Layout: Atlas_Core.Atlas_Default,
+  Url: 'p023b_datagrid_microflow_actions',
+  Folder: 'MicroflowActions'
+)
+{
+  LAYOUTGRID mainGrid {
+    ROW row1 {
+      COLUMN col1 (DesktopWidth: 12) {
+        DYNAMICTEXT pageTitle (Content: 'Product Management with Microflow Actions', RenderMode: H3)
+        DYNAMICTEXT pageDesc (Content: 'Click Process to call microflow with $currentObject', RenderMode: Paragraph)
+      }
+    }
+    ROW row2 {
+      COLUMN col2 (DesktopWidth: 12) {
+        DATAGRID ProductGrid (DataSource: DATABASE PgTest.Product) {
+          CONTROLBAR controlBar1 {
+            ACTIONBUTTON btnNew (
+              Caption: 'New Product',
+              Action: CREATE_OBJECT PgTest.Product THEN SHOW_PAGE PgTest.P012_Product_Manage_Edit,
+              ButtonStyle: Primary
+            )
+          }
+          COLUMN colName (Attribute: Name, Caption: 'Product Name')
+          COLUMN colCode (Attribute: Code, Caption: 'SKU')
+          COLUMN colPrice (Attribute: Price, Caption: 'Price')
+          COLUMN colStock (Attribute: Stock, Caption: 'Stock')
+          COLUMN colActions (Attribute: Name, Caption: 'Actions', ShowContentAs: customContent) {
+            -- Microflow action with $currentObject passes the current row's product
+            ACTIONBUTTON btnProcess (
+              Caption: 'Process',
+              Action: MICROFLOW PgTest.ACT_ProcessProduct(Product: $currentObject),
+              ButtonStyle: Success
+            )
+            ACTIONBUTTON btnDelete (
+              Caption: 'Delete',
+              Action: MICROFLOW PgTest.ACT_DeleteProduct(Product: $currentObject),
+              ButtonStyle: Danger
+            )
+          }
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Detail page with microflow action using page parameter.
+ * Demonstrates calling microflows with parameters from DataView context.
+ *
+ * @param $Product The product to view/edit
+ */
+CREATE PAGE PgTest.P023c_Detail_MicroflowAction
+(
+  Params: {
+    $Product: PgTest.Product
+  },
+  Title: 'Product Details',
+  Layout: Atlas_Core.PopupLayout,
+  Url: 'p023c_detail_microflow/{Product/Code}',
+  Folder: 'MicroflowActions'
+)
+{
+  DATAVIEW dvProduct (DataSource: $Product) {
+    TEXTBOX txtName (Label: 'Product Name', Attribute: Name)
+    TEXTBOX txtCode (Label: 'SKU', Attribute: Code)
+    TEXTBOX txtPrice (Label: 'Price', Attribute: Price)
+    TEXTBOX txtStock (Label: 'Stock', Attribute: Stock)
+
+    FOOTER footer1 {
+      -- Microflow action with page parameter passes the DataView's object
+      ACTIONBUTTON btnProcess (
+        Caption: 'Process Product',
+        Action: MICROFLOW PgTest.ACT_ProcessProduct(Product: $Product),
+        ButtonStyle: Success
+      )
+      ACTIONBUTTON btnSave (Caption: 'Save', Action: SAVE_CHANGES CLOSE_PAGE, ButtonStyle: Primary)
+      ACTIONBUTTON btnCancel (Caption: 'Cancel', Action: CANCEL_CHANGES CLOSE_PAGE, ButtonStyle: Default)
+    }
+  }
+}
+
+-- MARK: String Templates
+
+-- ============================================================================
+-- LEVEL 12: String Templates with Data Source References
+-- ============================================================================
+
+@Position(400,100)
+CREATE PERSISTENT ENTITY PgTest.OrderItem (
+  Quantity: Integer,
+  UnitPrice: Decimal,
+  LineTotal: Decimal,
+  ProductName: String(200)
+);
+
+CREATE ASSOCIATION PgTest.Order_OrderItem
+FROM PgTest.Order TO PgTest.OrderItem
+TYPE ReferenceSet
+OWNER Both;
+
+CREATE ASSOCIATION PgTest.OrderItem_Product
+FROM PgTest.OrderItem TO PgTest.Product
+TYPE Reference
+OWNER Both;
+
+/**
+ * Demonstrates basic string template with ContentParams syntax.
+ *
+ * @param $Order The order to display
+ */
+CREATE PAGE PgTest.P024_Template_Basic
+(
+  Params: {
+    $Order: PgTest.Order
+  },
+  Title: 'Order Details',
+  Layout: Atlas_Core.Atlas_Default,
+  Url: 'p024_template_basic/{Order/OrderNumber}',
+  Folder: 'Templates'
+)
+{
+  LAYOUTGRID mainGrid {
+    ROW row1 {
+      COLUMN col1 (DesktopWidth: 12) {
+        DATAVIEW dvOrder (DataSource: $Order) {
+          DYNAMICTEXT txtOrderHeader (
+            Content: 'Order #{1} - Status: {2}',
+            ContentParams: [{1} = $order.OrderNumber, {2} = $order.Status],
+            RenderMode: H3
+          )
+
+          DYNAMICTEXT txtOrderDate (
+            Content: 'Placed on: {1}',
+            ContentParams: [{1} = $order.OrderDate],
+            RenderMode: Paragraph
+          )
+
+          DYNAMICTEXT txtTotal (
+            Content: 'Total Amount: ${1}',
+            ContentParams: [{1} = $order.TotalAmount],
+            RenderMode: H4
+          )
+
+          ACTIONBUTTON btnProcess (
+            Caption: 'Process Order #{1}',
+            CaptionParams: [{1} = $order.OrderNumber],
+            Action: MICROFLOW PgTest.ProcessProducts,
+            ButtonStyle: Primary
+          )
+        }
+      }
+    }
+  }
+}
+
+
+
+-- MARK: Styling
+
+-- ============================================================================
+-- Styling Examples - CSS Class and Inline Style
+-- ============================================================================
+--
+-- Any widget can have Class: and Style: properties for CSS styling.
+-- Class: adds CSS classes to the widget's Appearance.
+-- Style: adds inline CSS styles to the widget's Appearance.
+--
+
+CREATE PAGE PgTest.StyledPage
+(
+  Params: { $Customer: PgTest.Customer },
+  Title: 'Styled Customer',
+  Layout: Atlas_Core.Atlas_Default,
+  Folder: 'Styling'
+)
+{
+  CONTAINER ctnCard (Class: 'card', Style: 'padding: 16px; border-radius: 8px;') {
+    DATAVIEW dvCustomer (DataSource: $Customer) {
+      TEXTBOX txtName (Label: 'Name', Attribute: Name, Class: 'form-control-lg')
+      TEXTBOX txtEmail (Label: 'Email', Attribute: Email, Style: 'font-style: italic;')
+      DYNAMICTEXT dtCity (Content: 'City: {1}', ContentParams: [{1} = City], Class: 'text-muted', Style: 'font-size: 12px;')
+
+      FOOTER footer1 {
+        ACTIONBUTTON btnSave (Caption: 'Save', Action: SAVE_CHANGES, ButtonStyle: Primary, Class: 'btn-block')
+        ACTIONBUTTON btnCancel (Caption: 'Cancel', Action: CANCEL_CHANGES, Class: 'btn-outline')
+      }
+    }
+  }
+}
+
+-- MARK: Image Widgets
+-- ============================================================================
+-- Image widgets (Forms$StaticImageViewer, Forms$ImageViewer) are deprecated
+-- in Mendix 11.x React/optimized client (CE0582). No pluggable replacement
+-- exists. Image examples are therefore not included in this test file.
+--
+-- If Mendix adds a pluggable image widget in the future, examples can be
+-- re-added using the same pattern as DATAGRID (pluggable widget template).
+-- ============================================================================
+
+-- MARK: Custom Container
+
+-- ============================================================================
+-- Custom Container Examples
+-- ============================================================================
+--
+-- CUSTOMCONTAINER is an alias for CONTAINER (both map to Forms$DivContainer).
+-- Use it when you want a semantic distinction from layout containers.
+--
+
+-- ============================================================================
+-- P030: Widget Reference Validation
+-- ============================================================================
+-- Tests that `mxcli check --references` validates all widget references:
+-- - DataSource: MICROFLOW and DataSource: DATABASE
+-- - Action: MICROFLOW, Action: SHOW_PAGE
+-- - SNIPPETCALL Snippet: reference
+--
+-- All references point to elements created within this script (PgTest module),
+-- so this file should pass `mxcli check script.mdl -p app.mpr --references`.
+
+/**
+ * Helper microflow for DataSource: MICROFLOW reference validation.
+ */
+CREATE MICROFLOW PgTest.DSO_GetProducts ()
+  RETURNS List of PgTest.Product
+FOLDER 'WidgetReferences'
+BEGIN
+  RETRIEVE $Products FROM PgTest.Product;
+  RETURN $Products;
+END;
+
+/**
+ * Helper microflow for Action: MICROFLOW reference validation.
+ */
+CREATE MICROFLOW PgTest.ACT_RefreshProducts ()
+FOLDER 'WidgetReferences'
+BEGIN
+  RETURN;
+END;
+
+/**
+ * Target page for Action: SHOW_PAGE reference validation.
+ */
+CREATE PAGE PgTest.P030_ProductDetail
+(
+  Params: { $Product: PgTest.Product },
+  Title: 'Product Detail',
+  Layout: Atlas_Core.Atlas_Default,
+  Url: 'p030_detail/{Product}',
+  Folder: 'WidgetReferences'
+)
+{
+  DATAVIEW dvProduct (DataSource: $Product) {
+    TEXTBOX txtName (Label: 'Name', Attribute: Name)
+  }
+}
+
+/**
+ * Page exercising all widget reference types for --references validation.
+ * References: DataSource MICROFLOW, DataSource DATABASE, Action MICROFLOW,
+ * Action SHOW_PAGE, Action CREATE_OBJECT, and SNIPPETCALL.
+ */
+CREATE PAGE PgTest.P030_WidgetReferences
+(
+  Title: 'Widget Reference Validation',
+  Layout: Atlas_Core.Atlas_Default,
+  Url: 'p030_widgetrefs',
+  Folder: 'WidgetReferences'
+)
+{
+  LAYOUTGRID lg1 {
+    ROW row1 {
+      COLUMN col1 (DesktopWidth: 12) {
+        -- DataSource: MICROFLOW reference
+        LISTVIEW lvProducts (DataSource: MICROFLOW PgTest.DSO_GetProducts) {
+          DYNAMICTEXT txtProductName (Content: '{1}', ContentParams: [{1} = Name])
+        }
+      }
+    }
+    ROW row2 {
+      COLUMN col2 (DesktopWidth: 12) {
+        -- DataSource: DATABASE entity reference
+        DATAGRID dgProducts (DataSource: DATABASE PgTest.Product) {
+          COLUMN colName (Attribute: Name, Caption: 'Product Name')
+          COLUMN colPrice (Attribute: Price, Caption: 'Price')
+        }
+      }
+    }
+    ROW row3 {
+      COLUMN col3 (DesktopWidth: 6) {
+        -- Action: MICROFLOW reference
+        ACTIONBUTTON btnRefresh (Caption: 'Refresh', Action: MICROFLOW PgTest.ACT_RefreshProducts)
+        -- Action: CREATE_OBJECT entity reference (with target page)
+        ACTIONBUTTON btnNew (Caption: 'New Product', Action: CREATE_OBJECT PgTest.Product THEN SHOW_PAGE PgTest.P030_ProductDetail)
+      }
+      COLUMN col4 (DesktopWidth: 6) {
+        -- SNIPPETCALL reference
+        SNIPPETCALL scStats (Snippet: PgTest.StatsPanel)
+      }
+    }
+    ROW row4 {
+      COLUMN col5 (DesktopWidth: 12) {
+        -- Action: SHOW_PAGE reference (inside list context for parameter passing)
+        LISTVIEW lvForAction (DataSource: MICROFLOW PgTest.DSO_GetProducts) {
+          ACTIONBUTTON btnDetail (Caption: 'View Detail', Action: SHOW_PAGE PgTest.P030_ProductDetail (Product: $currentObject))
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Page using CUSTOMCONTAINER for card-style layout.
+ */
+CREATE PAGE PgTest.P029_CustomContainer
+(
+  Title: 'Custom Container',
+  Layout: Atlas_Core.Atlas_Default,
+  Url: 'p029_customcontainer',
+  Folder: 'Container'
+)
+{
+  LAYOUTGRID mainGrid {
+    ROW row1 {
+      COLUMN col1 (DesktopWidth: 6) {
+        CUSTOMCONTAINER card1 (Class: 'card', Style: 'padding: 16px;') {
+          DYNAMICTEXT cardTitle1 (Content: 'Card Title', RenderMode: H4)
+          DYNAMICTEXT cardBody1 (Content: 'Card body content', RenderMode: Paragraph)
+        }
+      }
+      COLUMN col2 (DesktopWidth: 6) {
+        CUSTOMCONTAINER card2 (Class: 'card') {
+          DYNAMICTEXT cardTitle2 (Content: 'Another Card', RenderMode: H4)
+          CONTAINER cardInner (Class: 'card-body') {
+            DYNAMICTEXT cardBody2 (Content: 'Nested container inside custom container')
+          }
+        }
+      }
+    }
+  }
+}
+
+-- MARK: DataGrid Paging
+
+/**
+ * DataGrid with paging buttons above and below (PagingPosition: both).
+ */
+CREATE PAGE PgTest.P031_DataGrid_PagingBoth
+(
+  Title: 'DataGrid Paging Both',
+  Layout: Atlas_Core.Atlas_Default,
+  Url: 'p031_datagrid_paging_both',
+  Folder: 'DataGrid'
+)
+{
+  DATAGRID dgProducts (DataSource: DATABASE PgTest.Product, PageSize: 25, PagingPosition: both) {
+    COLUMN col1 (Attribute: Name, Caption: 'Name')
+    COLUMN col2 (Attribute: Price, Caption: 'Price')
+  }
+}
+
+/**
+ * DataGrid with virtual scrolling instead of paging buttons.
+ */
+CREATE PAGE PgTest.P032_DataGrid_VirtualScroll
+(
+  Title: 'DataGrid Virtual Scroll',
+  Layout: Atlas_Core.Atlas_Default,
+  Url: 'p032_datagrid_virtualscroll',
+  Folder: 'DataGrid'
+)
+{
+  DATAGRID dgProducts (
+    DataSource: DATABASE PgTest.Product, 
+    PageSize: 50, 
+    Pagination: virtualScrolling
+  ) {
+    COLUMN col1 (Attribute: Name, Caption: 'Name')
+    COLUMN col2 (Attribute: Price, Caption: 'Price')
+  }
+}
+
+/**
+ * DataGrid with all paging properties customized.
+ */
+CREATE PAGE PgTest.P033_DataGrid_PagingFull
+(
+  Title: 'DataGrid Full Paging',
+  Layout: Atlas_Core.Atlas_Default,
+  Url: 'p033_datagrid_paging_full',
+  Folder: 'DataGrid'
+)
+{
+  DATAGRID dgProducts (
+    DataSource: DATABASE PgTest.Product, 
+    PageSize: 10, 
+    PagingPosition: top, 
+    ShowPagingButtons: auto
+  ) {
+    COLUMN col1 (Attribute: Name, Caption: 'Name')
+    COLUMN col2 (Attribute: Price, Caption: 'Price')
+  }
+}
+
+-- MARK: DataGrid Column Properties
+
+-- ============================================================================
+-- LEVEL 6b: DataGrid Column Properties
+-- ============================================================================
+
+/**
+ * DataGrid with fully configured column properties.
+ *
+ * Demonstrates all 13 column properties:
+ * - General: Attribute, Caption, ShowContentAs
+ * - Column capabilities: Sortable, Resizable, Draggable, Hidable
+ * - Appearance: Alignment, WrapText, ColumnWidth, Size, Visible, DynamicCellClass, Tooltip
+ */
+CREATE PAGE PgTest.P033b_DataGrid_ColumnProperties
+(
+  Title: 'DataGrid Column Properties',
+  Layout: Atlas_Core.Atlas_Default,
+  Url: 'p033b_datagrid_column_properties',
+  Folder: 'DataGrid',
+  Variables: { $showStockColumn: Boolean = 'if (3 < 4) then true else false' }
+)
+{
+  DATAGRID dgProducts (DataSource: DATABASE PgTest.Product) {
+    -- Default column: only Attribute and Caption, all other properties use defaults
+    COLUMN colName (Attribute: Name, Caption: 'Product Name')
+
+    -- Fixed-width price column, right-aligned, not sortable
+    COLUMN colPrice (
+      Attribute: Price, Caption: 'Unit Price',
+      Alignment: right, WrapText: true,
+      Sortable: false, Resizable: false, Draggable: false,
+      Hidable: hidden,
+      ColumnWidth: manual, Size: 150,
+      Tooltip: 'Price in USD'
+    )
+
+    -- Column with visibility controlled by page variable (not $currentObject!)
+    -- and dynamic cell class using Mendix if/then/else expression syntax
+    COLUMN colStock (
+      Attribute: Stock, Caption: 'In Stock',
+      Alignment: center,
+      Visible: '$showStockColumn',
+      DynamicCellClass: 'if($currentObject/Stock < 10) then ''text-danger'' else '''' '
+    )
+
+    -- Non-hidable column with auto-fit width
+    COLUMN colCode (
+      Attribute: Code, Caption: 'SKU',
+      Hidable: no,
+      ColumnWidth: autoFit
+    )
+  }
+}
+
+-- MARK: ComboBox Examples
+
+-- ============================================================================
+-- LEVEL 7: ComboBox / Dropdown Selection Examples
+-- ============================================================================
+
+/**
+ * Data form with ComboBox (pluggable widget) selecting from an enumeration,
+ * and a native DROPDOWN for comparison.
+ *
+ * - COMBOBOX uses the pluggable ComboBox widget (optionsSourceType=enumeration)
+ * - DROPDOWN uses the native Forms$DropDown widget
+ *
+ * Both bind to the Country attribute (Enumeration type) on the Customer entity.
+ *
+ * @param $Customer The customer to edit
+ */
+CREATE PAGE PgTest.P034_ComboBox_Enum
+(
+  Params: {
+    $Customer: PgTest.Customer
+  },
+  Title: 'ComboBox Enumeration Selection',
+  Layout: Atlas_Core.PopupLayout,
+  Folder: 'ComboBox'
+)
+{
+  DATAVIEW dvCustomer (DataSource: $Customer) {
+      LAYOUTGRID lg1 {
+    ROW row1 {
+      COLUMN col1 (DesktopWidth: 12) {
+    TEXTBOX txtName (Label: 'Customer Name', Attribute: Name)
+    TEXTBOX txtEmail (Label: 'Email', Attribute: Email)
+    TEXTBOX txtCity (Label: 'City', Attribute: City)
+
+    -- ComboBox (pluggable widget) selecting from the Country enumeration
+    COMBOBOX cmbCountry (Label: 'Country (ComboBox)', Attribute: Country)
+      }}}
+    FOOTER footer1 {
+      ACTIONBUTTON btnSave (Caption: 'Save', Action: SAVE_CHANGES CLOSE_PAGE, ButtonStyle: Success)
+      ACTIONBUTTON btnCancel (Caption: 'Cancel', Action: CANCEL_CHANGES CLOSE_PAGE, ButtonStyle: Default)
+    }
+  }
+}
+
+/**
+ * Order edit form with a ComboBox for Status enumeration-like field,
+ * and text fields for order details.
+ *
+ * @param $Order The order to edit
+ */
+CREATE PAGE PgTest.P035_Order_Edit
+(
+  Params: {
+    $Order: PgTest.Order
+  },
+  Title: 'Edit Order',
+  Layout: Atlas_Core.PopupLayout,
+  Folder: 'ComboBox'
+)
+{
+  DATAVIEW dvOrder (DataSource: $Order) {
+      LAYOUTGRID lg1 {
+    ROW row1 {
+      COLUMN col1 (DesktopWidth: 12) {
+    TEXTBOX txtOrderNumber (Label: 'Order Number', Attribute: OrderNumber)
+    DATEPICKER dpOrderDate (Label: 'Order Date', Attribute: OrderDate)
+    TEXTBOX txtTotal (Label: 'Total Amount', Attribute: TotalAmount)
+    COMBOBOX cmbStatus (Label: 'Status (ComboBox)', Attribute: Status)
+--    TEXTBOX txtStatus (Label: 'Status', Attribute: Status)
+    TEXTAREA txtNotes (Label: 'Notes', Attribute: Notes)
+      }}}
+    FOOTER footer1 {
+      ACTIONBUTTON btnSave (Caption: 'Save', Action: SAVE_CHANGES CLOSE_PAGE, ButtonStyle: Success)
+      ACTIONBUTTON btnCancel (Caption: 'Cancel', Action: CANCEL_CHANGES CLOSE_PAGE, ButtonStyle: Default)
+    }
+  }
+}
+
+/**
+ * Order form showing an overview page that creates orders
+ * and opens P035_Order_Edit to edit orders.
+ * Demonstrates ComboBox in context of a full CRUD flow.
+ */
+CREATE PAGE PgTest.P035_Order_With_ComboBox
+(
+  Title: 'Orders with ComboBox',
+  Layout: Atlas_Core.Atlas_Default,
+  Url: 'p035_order_combobox',
+  Folder: 'ComboBox'
+)
+{
+  LAYOUTGRID lgMain {
+    ROW row1 {
+      COLUMN col1 (DesktopWidth: 12) {
+        DATAGRID dgOrders (DataSource: DATABASE PgTest.Order) {
+          CONTROLBAR controlBar1 {
+            ACTIONBUTTON btnNew (
+              Caption: 'New Order',
+              Action: CREATE_OBJECT PgTest.Order THEN SHOW_PAGE PgTest.P035_Order_Edit,
+              ButtonStyle: Primary
+            )
+          }
+          COLUMN colNumber (Attribute: OrderNumber, Caption: 'Order #')
+          COLUMN colDate (Attribute: OrderDate, Caption: 'Date')
+          COLUMN colTotal (Attribute: TotalAmount, Caption: 'Total')
+          COLUMN colStatus (Attribute: Status, Caption: 'Status')
+          COLUMN colActions (Caption: 'Actions') {
+            ACTIONBUTTON btnEdit (
+              Caption: 'Edit',
+              Action: SHOW_PAGE PgTest.P035_Order_Edit (Order: $currentObject),
+              ButtonStyle: Default
+            )
+          }
+        }
+      }
+    }
+  }
+}
+
+
+-- MARK: GroupBox Examples
+
+-- ============================================================================
+-- LEVEL 8: GroupBox Container Examples
+-- ============================================================================
+
+/**
+ * Customer edit form with GroupBox containers for organizing fields.
+ * GroupBox creates a collapsible section with a header caption.
+ *
+ * @param $Customer The customer to edit
+ */
+CREATE PAGE PgTest.P037_GroupBox_Example
+(
+  Params: {
+    $Customer: PgTest.Customer
+  },
+  Title: 'GroupBox Example',
+  Layout: Atlas_Core.PopupLayout,
+  Folder: 'GroupBox'
+)
+{
+  DATAVIEW dvCustomer (DataSource: $Customer) {
+    -- GroupBox with caption and H3 header, collapsible (initially expanded)
+    GROUPBOX gbPersonal (Caption: 'Personal Information', HeaderMode: H3, Collapsible: YesExpanded) {
+      TEXTBOX txtName (Label: 'Name', Attribute: Name)
+      TEXTBOX txtEmail (Label: 'Email', Attribute: Email)
+      TEXTBOX txtPhone (Label: 'Phone', Attribute: Phone)
+    }
+
+    -- GroupBox with caption and H4 header, collapsible (initially collapsed)
+    GROUPBOX gbAddress (Caption: 'Address', HeaderMode: H4, Collapsible: YesCollapsed) {
+      TEXTBOX txtAddress (Label: 'Address', Attribute: Address)
+      TEXTBOX txtCity (Label: 'City', Attribute: City)
+      COMBOBOX cmbCountry (Label: 'Country', Attribute: Country)
+    }
+
+    -- GroupBox with default header (Div), not collapsible
+    GROUPBOX gbStatus (Caption: 'Status') {
+      RADIOBUTTONS rbIsActive (Label: 'Is Active', Attribute: IsActive)
+      DATEPICKER dpCreateDate (Label: 'Created On', Attribute: CreateDate)
+    }
+
+    FOOTER footer1 {
+      ACTIONBUTTON btnSave (Caption: 'Save', Action: SAVE_CHANGES CLOSE_PAGE, ButtonStyle: Success)
+      ACTIONBUTTON btnCancel (Caption: 'Cancel', Action: CANCEL_CHANGES CLOSE_PAGE, ButtonStyle: Default)
+    }
+  }
+}
+
+/**
+ * Order edit form with ComboBoxes in association mode.
+ * Attribute is the association name on the context entity (e.g., Order_Customer).
+ * DataSource specifies which entity to load selectable objects from.
+ * CaptionAttribute is the display attribute on the target entity (shown in dropdown).
+ *
+ * - Enum mode: COMBOBOX name (Attribute: EnumAttr)
+ * - Association mode: COMBOBOX name (Attribute: AssocName, DataSource: DATABASE TargetEntity, CaptionAttribute: DisplayAttr)
+ *
+ * @param $Order The order to edit
+ */
+CREATE PAGE PgTest.P036_ComboBox_Association
+(
+  Params: {
+    $Order: PgTest.Order
+  },
+  Title: 'ComboBox Association Selection',
+  Layout: Atlas_Core.PopupLayout,
+  Folder: 'ComboBox'
+)
+{
+  DATAVIEW dvOrder (DataSource: $Order) {
+    TEXTBOX txtOrderNumber (Label: 'Order Number', Attribute: OrderNumber)
+
+    -- ComboBox (association mode) selecting a Customer — shows Name in dropdown
+    COMBOBOX cmbCustomer (Label: 'Customer', Attribute: Order_Customer, DataSource: DATABASE PgTest.Customer, CaptionAttribute: Name)
+
+    -- ComboBox (association mode) selecting a Product — shows Name in dropdown
+    COMBOBOX cmbProduct (Label: 'Product', Attribute: Order_Product, DataSource: DATABASE PgTest.Product, CaptionAttribute: Name)
+
+    TEXTBOX txtTotal (Label: 'Total Amount', Attribute: TotalAmount)
+
+    FOOTER footer1 {
+      ACTIONBUTTON btnSave (Caption: 'Save', Action: SAVE_CHANGES CLOSE_PAGE, ButtonStyle: Success)
+      ACTIONBUTTON btnCancel (Caption: 'Cancel', Action: CANCEL_CHANGES CLOSE_PAGE, ButtonStyle: Default)
+    }
+  }
+}
+
+-- ============================================================================================ --
+exit;
+
+
+-- MARK: Move Examples
+
+-- =============================================================================
+-- MOVE Examples - Moving Documents Between Folders and Modules
+-- =============================================================================
+--
+-- MOVE changes the location of an existing document (page, snippet, microflow,
+-- entity) to a different folder or module. Folders are auto-created.
+--
+
+-- Create a second module for cross-module move examples
+CREATE MODULE PgTest2;
+
+-- Move a page to a different folder within the same module
+MOVE PAGE PgTest.P001_Empty_Page TO FOLDER 'Pages/Archive';
+
+-- Move a microflow to a subfolder
+MOVE MICROFLOW PgTest.ProcessProducts TO FOLDER 'MasterDetail/Actions';
+
+-- Move a snippet to a nested folder
+MOVE SNIPPET PgTest.DashboardHeader TO FOLDER 'Snippets/Dashboard';
+MOVE SNIPPET PgTest.DashboardFooter TO FOLDER 'Snippets/Dashboard';
+
+-- Move a page to another module (root of that module)
+MOVE PAGE PgTest.P034_ComboBox_Enum TO PgTest2;
+
+-- Move a page to a folder in another module
+MOVE PAGE PgTest2.P034_ComboBox_Enum TO FOLDER 'Imported' IN PgTest2;
+
+-- Move a snippet to another module
+MOVE SNIPPET PgTest.QuickActions TO PgTest2;
+
+-- Move a snippet to a folder in another module
+MOVE SNIPPET PgTest.CustomerSidebar TO FOLDER 'Shared' IN PgTest2;
+
+-- ============================================================================
+-- Summary - MDL Page Syntax Features
+-- ============================================================================
+--
+-- Key syntax elements:
+-- - Page header uses single () block with Params:, Title:, Layout:, Url:
+-- - DataSource: property replaces -> for containers (DATAVIEW, DATAGRID, GALLERY)
+-- - Attribute: property replaces -> for input widgets (TEXTBOX, CHECKBOX, etc.)
+-- - Action: property replaces -> for buttons and navigation items
+-- - Caption: property replaces bare string for button text
+-- - Label: property replaces bare string for input widget labels
+-- - All layout elements (ROW, COLUMN) require names
+-- - ContentParams: and CaptionParams: replace WITH syntax for string templates
+-- - Attribute: and Caption: for DATAGRID columns instead of 'caption' -> attr
+-- - CONTROLBAR and FILTER are explicit child containers with names
+-- - TEMPLATE requires a name
+--
+-- Core pattern: WIDGET name (Prop: Value, Prop: Value) { children }
+--
+-- DataSource types:
+-- - DataSource: $ParameterName (page parameter)
+-- - DataSource: DATABASE Entity (database query)
+-- - DataSource: MICROFLOW Module.Flow (microflow source)
+-- - DataSource: NANOFLOW Module.Flow (nanoflow source)
+-- - DataSource: ASSOCIATION Path (association source)
+-- - DataSource: SELECTION widgetName (selection binding)
+--
+-- Action types:
+-- - Action: SAVE_CHANGES
+-- - Action: SAVE_CHANGES CLOSE_PAGE
+-- - Action: CANCEL_CHANGES
+-- - Action: CANCEL_CHANGES CLOSE_PAGE
+-- - Action: CLOSE_PAGE
+-- - Action: DELETE_OBJECT
+-- - Action: CREATE_OBJECT Entity THEN SHOW_PAGE Page
+-- - Action: SHOW_PAGE Page
+-- - Action: SHOW_PAGE Page(Param: $value)
+-- - Action: MICROFLOW Module.Flow
+-- - Action: MICROFLOW Module.Flow(Param: $value)
+-- - Action: NANOFLOW Module.Flow
+-- - Action: NANOFLOW Module.Flow(Param: $value)
+--
+-- Parameter values in actions:
+-- - $ParameterName: Reference page/snippet parameter (e.g., $Product)
+-- - $currentObject: Reference current row in DATAGRID/GALLERY/LISTVIEW columns
+-- - 'literal': String literal values
+--
+-- ============================================================================
+

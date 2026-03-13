@@ -1,0 +1,600 @@
+-- ============================================================================
+-- Styling Examples - Classes, Inline Styles, and Design Properties
+-- ============================================================================
+--
+-- This file demonstrates the three styling mechanisms available in MDL V3:
+--
+-- 1. Class: 'css-class-names'     - CSS classes (Atlas UI or custom)
+-- 2. Style: 'inline-css'          - Inline CSS styles
+-- 3. DesignProperties: [...]      - Atlas UI design properties (structured)
+--
+-- Design Properties use key-value pairs:
+--   'Key': 'Value'   - Option (dropdown) properties
+--   'Key': ON        - Toggle properties (ON = enabled, OFF = disabled/omit)
+--
+-- These map to Mendix Appearance settings and Atlas UI's design system.
+--
+-- ============================================================================
+
+-- MARK: Setup
+
+-- ============================================================================
+-- Setup: Ensure StyleTest Entities Exist
+-- ============================================================================
+
+CREATE MODULE StyleTest;
+
+@Position(100,100)
+CREATE PERSISTENT ENTITY StyleTest.Employee (
+  Name: String(200) NOT NULL,
+  Email: String(200),
+  Department: String(100),
+  IsActive: Boolean DEFAULT true,
+  StartDate: DateTime,
+  Notes: String(1000),
+  Salary: Decimal
+);
+
+@Position(300,100)
+CREATE PERSISTENT ENTITY StyleTest.Task (
+  "Title": String(200) NOT NULL,
+  "Description": String(500),
+  DueDate: DateTime,
+  IsCompleted: Boolean DEFAULT false,
+  Priority: String(50)
+);
+
+CREATE ASSOCIATION StyleTest.Task_Employee
+FROM StyleTest.Task TO StyleTest.Employee
+TYPE Reference
+OWNER Both;
+
+-- MARK: Class
+
+-- ============================================================================
+-- LEVEL 1: CSS Classes (Class property)
+-- ============================================================================
+
+/**
+ * CSS classes applied to containers and widgets.
+ * Atlas UI provides utility classes for spacing, colors, borders, etc.
+ */
+CREATE PAGE StyleTest.P001_CSS_Classes
+(
+  Title: 'CSS Classes',
+  Layout: Atlas_Core.Atlas_Default,
+  Url: 'style_001_css_classes'
+)
+{
+  -- Single CSS class
+  CONTAINER ctnCard (Class: 'card') {
+    DYNAMICTEXT txtTitle (Content: 'Card Title', RenderMode: H3)
+    DYNAMICTEXT txtBody (Content: 'Card body content')
+  }
+
+  -- Multiple CSS classes (space-separated)
+  CONTAINER ctnSpaced (Class: 'card mx-spacing-top-lg mx-spacing-bottom-lg') {
+    DYNAMICTEXT txtSpaced (Content: 'Spaced card with margin')
+  }
+
+  -- Classes on input widgets
+  DATAVIEW dvEmployee (DataSource: DATABASE StyleTest.Employee) {
+    TEXTBOX txtName (Label: 'Name', Attribute: Name, Class: 'form-control-lg')
+    TEXTBOX txtEmail (Label: 'Email', Attribute: Email, Class: 'text-muted')
+
+    FOOTER footer1 {
+      ACTIONBUTTON btnSave (Caption: 'Save', Action: SAVE_CHANGES, ButtonStyle: Primary, Class: 'btn-lg')
+      ACTIONBUTTON btnCancel (Caption: 'Cancel', Action: CANCEL_CHANGES, Class: 'btn-sm')
+    }
+  }
+}
+
+-- MARK: Style
+
+-- ============================================================================
+-- LEVEL 2: Inline Styles (Style property)
+-- ============================================================================
+
+/**
+ * Inline CSS styles for quick one-off styling.
+ * Use sparingly - prefer classes for reusable styles.
+ */
+CREATE PAGE StyleTest.P002_Inline_Styles
+(
+  Title: 'Inline Styles',
+  Layout: Atlas_Core.Atlas_Default,
+  Url: 'style_002_inline_styles'
+)
+{
+  -- Inline style on a container
+  CONTAINER ctnCustom (Style: 'background-color: #f8f9fa; padding: 24px; border-radius: 8px;') {
+    DYNAMICTEXT txtStyled (Content: 'Custom styled container', RenderMode: H4)
+  }
+
+  -- Combining class and style
+  CONTAINER ctnMixed (Class: 'card', Style: 'border-left: 4px solid #264AE5;') {
+    DYNAMICTEXT txtMixed (Content: 'Card with accent border')
+  }
+
+  -- Layout grid with styled columns
+  LAYOUTGRID lgStyled {
+    ROW row1 {
+      COLUMN col1 (DesktopWidth: 6) {
+        CONTAINER ctnLeft (Style: 'min-height: 200px; background-color: #e3f2fd;') {
+          DYNAMICTEXT txtLeft (Content: 'Left panel')
+        }
+      }
+      COLUMN col2 (DesktopWidth: 6) {
+        CONTAINER ctnRight (Style: 'min-height: 200px; background-color: #fce4ec;') {
+          DYNAMICTEXT txtRight (Content: 'Right panel')
+        }
+      }
+    }
+  }
+}
+
+-- MARK: DesignProperties
+
+-- ============================================================================
+-- LEVEL 3: Design Properties (Atlas UI structured properties)
+-- ============================================================================
+
+/**
+ * Design Properties are Atlas UI's structured styling system.
+ * They map to predefined theme options (spacing, colors, toggles).
+ *
+ * Two types:
+ *   Option: 'Key': 'Value'   - Dropdown/enum selection
+ *   Toggle: 'Key': ON        - Boolean on/off (OFF omits the property)
+ */
+CREATE PAGE StyleTest.P003_Design_Properties
+(
+  Title: 'Design Properties',
+  Layout: Atlas_Core.Atlas_Default,
+  Url: 'style_003_design_properties'
+)
+{
+  -- Toggle property (ON)
+  CONTAINER ctnFullWidth (DesignProperties: ['Full width': ON]) {
+    DYNAMICTEXT txtFull (Content: 'Full width container', RenderMode: H3)
+  }
+
+  -- Option property (dropdown value)
+  CONTAINER ctnSpacingTop (DesignProperties: ['Spacing top': 'Large']) {
+    DYNAMICTEXT txtSpacing (Content: 'Container with large top spacing')
+  }
+
+  -- Multiple design properties
+  CONTAINER ctnMultiProps (DesignProperties: ['Spacing top': 'Large', 'Spacing bottom': 'Medium', 'Full width': ON]) {
+    DYNAMICTEXT txtMulti (Content: 'Multiple design properties applied')
+  }
+
+  -- Design properties on a layout grid
+  LAYOUTGRID lgDesign (DesignProperties: ['Remove padding': ON]) {
+    ROW row1 {
+      COLUMN col1 (DesktopWidth: 6) {
+        DYNAMICTEXT txtCol1 (Content: 'Column 1')
+      }
+      COLUMN col2 (DesktopWidth: 6) {
+        DYNAMICTEXT txtCol2 (Content: 'Column 2')
+      }
+    }
+  }
+
+  -- Design properties on input widgets
+  DATAVIEW dvTask (DataSource: DATABASE StyleTest.Task) {
+    TEXTBOX txtTitle (Label: 'Title', Attribute: Title, DesignProperties: ['Spacing top': 'Medium'])
+    TEXTAREA txtDesc (Label: 'Description', Attribute: Description, DesignProperties: ['Spacing top': 'Small'])
+    DATEPICKER dpDue (Label: 'Due Date', Attribute: DueDate, DesignProperties: ['Spacing top': 'Small'])
+    CHECKBOX chkDone (Label: 'Completed', Attribute: IsCompleted, DesignProperties: ['Spacing top': 'Small'])
+
+    FOOTER footer1 {
+      ACTIONBUTTON btnSave (Caption: 'Save', Action: SAVE_CHANGES, ButtonStyle: Primary, DesignProperties: ['Size': 'Large'])
+      ACTIONBUTTON btnCancel (Caption: 'Cancel', Action: CANCEL_CHANGES)
+    }
+  }
+}
+
+-- MARK: Combined
+
+-- ============================================================================
+-- LEVEL 4: Combining All Three Styling Mechanisms
+-- ============================================================================
+
+/**
+ * Real-world example combining Class, Style, and DesignProperties
+ * on the same widgets. All three can coexist on any widget.
+ */
+CREATE PAGE StyleTest.P004_Combined_Styling
+(
+  Title: 'Combined Styling',
+  Layout: Atlas_Core.Atlas_Default,
+  Url: 'style_004_combined_styling'
+)
+{
+  -- All three on a single container
+  CONTAINER ctnHero (
+    Class: 'card',
+    Style: 'background: linear-gradient(135deg, #264AE5 0%, #1a237e 100%); color: white;',
+    DesignProperties: ['Spacing top': 'Large', 'Spacing bottom': 'Large', 'Full width': ON]
+  ) {
+    DYNAMICTEXT txtHero (Content: 'Hero Section', RenderMode: H1)
+    DYNAMICTEXT txtSubtitle (Content: 'Combining Class, Style, and DesignProperties')
+  }
+
+  -- Dashboard-style card grid
+  LAYOUTGRID lgDashboard (Class: 'mx-spacing-top-lg', DesignProperties: ['Remove padding': ON]) {
+    ROW row1 {
+      COLUMN col1 (DesktopWidth: 4) {
+        CONTAINER ctnStat1 (
+          Class: 'card card-bordered',
+          Style: 'border-top: 3px solid #4caf50;',
+          DesignProperties: ['Spacing top': 'Medium']
+        ) {
+          DYNAMICTEXT txtStat1Title (Content: 'Active Employees', RenderMode: H5)
+          DYNAMICTEXT txtStat1Value (Content: '42', Class: 'text-primary')
+        }
+      }
+      COLUMN col2 (DesktopWidth: 4) {
+        CONTAINER ctnStat2 (
+          Class: 'card card-bordered',
+          Style: 'border-top: 3px solid #ff9800;',
+          DesignProperties: ['Spacing top': 'Medium']
+        ) {
+          DYNAMICTEXT txtStat2Title (Content: 'Open Tasks', RenderMode: H5)
+          DYNAMICTEXT txtStat2Value (Content: '17', Class: 'text-warning')
+        }
+      }
+      COLUMN col3 (DesktopWidth: 4) {
+        CONTAINER ctnStat3 (
+          Class: 'card card-bordered',
+          Style: 'border-top: 3px solid #f44336;',
+          DesignProperties: ['Spacing top': 'Medium']
+        ) {
+          DYNAMICTEXT txtStat3Title (Content: 'Overdue', RenderMode: H5)
+          DYNAMICTEXT txtStat3Value (Content: '3', Class: 'text-danger')
+        }
+      }
+    }
+  }
+
+  -- Form with mixed styling
+  DATAVIEW dvEmployee (DataSource: DATABASE StyleTest.Employee) {
+    CONTAINER ctnFormHeader (Class: 'card-header', DesignProperties: ['Spacing bottom': 'Medium']) {
+      DYNAMICTEXT txtFormTitle (Content: 'Employee Details', RenderMode: H4)
+    }
+
+    LAYOUTGRID lgForm {
+      ROW row1 {
+        COLUMN col1 (DesktopWidth: 6) {
+          TEXTBOX txtName (Label: 'Full Name', Attribute: Name, DesignProperties: ['Spacing top': 'Small'])
+        }
+        COLUMN col2 (DesktopWidth: 6) {
+          TEXTBOX txtEmail (Label: 'Email', Attribute: Email, DesignProperties: ['Spacing top': 'Small'])
+        }
+      }
+      ROW row2 {
+        COLUMN col3 (DesktopWidth: 6) {
+          TEXTBOX txtDept (Label: 'Department', Attribute: Department, DesignProperties: ['Spacing top': 'Small'])
+        }
+        COLUMN col4 (DesktopWidth: 6) {
+          DATEPICKER dpStart (Label: 'Start Date', Attribute: StartDate, DesignProperties: ['Spacing top': 'Small'])
+        }
+      }
+      ROW row3 {
+        COLUMN col5 (DesktopWidth: 12) {
+          TEXTAREA txtNotes (Label: 'Notes', Attribute: Notes, Class: 'form-control-lg', DesignProperties: ['Spacing top': 'Small'])
+        }
+      }
+    }
+
+    FOOTER footer1 {
+      ACTIONBUTTON btnSave (
+        Caption: 'Save Employee',
+        Action: SAVE_CHANGES,
+        ButtonStyle: Primary,
+        Class: 'btn-lg',
+        DesignProperties: ['Size': 'Large', 'Full width': ON]
+      )
+      ACTIONBUTTON btnCancel (Caption: 'Cancel', Action: CANCEL_CHANGES)
+    }
+  }
+}
+
+-- MARK: OFF toggle
+
+-- ============================================================================
+-- LEVEL 5: Toggle OFF (explicitly disabling a design property)
+-- ============================================================================
+
+/**
+ * OFF means the toggle property is disabled (omitted from serialization).
+ * This is useful for documentation or when overriding a default.
+ */
+CREATE PAGE StyleTest.P005_Toggle_OFF
+(
+  Title: 'Toggle OFF Example',
+  Layout: Atlas_Core.Atlas_Default,
+  Url: 'style_005_toggle_off'
+)
+{
+  -- ON enables the toggle
+  CONTAINER ctnOn (DesignProperties: ['Full width': ON]) {
+    DYNAMICTEXT txtOn (Content: 'Full width is ON')
+  }
+
+  -- OFF disables/omits the toggle (equivalent to not setting it)
+  CONTAINER ctnOff (DesignProperties: ['Full width': OFF]) {
+    DYNAMICTEXT txtOff (Content: 'Full width is OFF (omitted)')
+  }
+
+  -- Mix ON and OFF in the same list
+  CONTAINER ctnMixed (DesignProperties: ['Full width': ON, 'Show shadow': OFF, 'Spacing top': 'Large']) {
+    DYNAMICTEXT txtMixed (Content: 'Mixed ON/OFF with option value')
+  }
+}
+
+-- MARK: Describe
+
+-- ============================================================================
+-- LEVEL 6: Describing Pages with Styling (DESCRIBE PAGE)
+-- ============================================================================
+-- DESCRIBE PAGE outputs the full MDL V3 definition of an existing page,
+-- including all Class, Style, and DesignProperties on each widget.
+-- Output includes round-trippable CREATE PAGE syntax.
+-- DESCRIBE SNIPPET works the same way.
+
+-- Describe a page to see its styling (Class, Style, DesignProperties)
+DESCRIBE PAGE StyleTest.P004_Combined_Styling;
+
+-- Describe a simpler page
+DESCRIBE PAGE StyleTest.P001_CSS_Classes;
+
+-- Describe a snippet (creates it first so it exists)
+CREATE SNIPPET StyleTest.MySnippet
+(
+  Params: { $Employee: StyleTest.Employee }
+)
+{
+  CONTAINER ctnSnippet (Class: 'card', Style: 'padding: 12px;') {
+    DYNAMICTEXT txtSnippetTitle (Content: 'Employee Card', RenderMode: H4)
+  }
+  DATAVIEW dvSnippetEmployee (DataSource: $Employee) {
+    TEXTBOX txtSnippetName (Label: 'Name', Attribute: Name)
+  }
+}
+
+DESCRIBE SNIPPET StyleTest.MySnippet;
+
+-- MARK: Show Widgets
+
+-- ============================================================================
+-- LEVEL 7: Discovering Widgets (SHOW WIDGETS)
+-- ============================================================================
+-- SHOW WIDGETS lists widgets across all pages/snippets in tabular form.
+-- Use this to find widgets before applying bulk styling updates.
+-- Supported filter fields: WidgetType, Name, Container, Module
+-- Supported operators: = (exact), LIKE (pattern with % wildcards)
+
+-- Show all widgets in the project
+SHOW WIDGETS;
+
+-- Show widgets in a specific module
+SHOW WIDGETS IN StyleTest;
+
+-- Filter by widget type (LIKE supports % wildcards)
+SHOW WIDGETS WHERE WidgetType LIKE '%textbox%';
+SHOW WIDGETS WHERE WidgetType LIKE '%Container%';
+SHOW WIDGETS WHERE WidgetType LIKE '%ActionButton%';
+
+-- Filter by widget name
+SHOW WIDGETS WHERE Name = 'btnSave';
+SHOW WIDGETS WHERE Name LIKE 'ctn%';
+
+-- Combine filters with AND
+SHOW WIDGETS WHERE WidgetType LIKE '%textbox%' AND Name LIKE 'txt%' IN StyleTest;
+
+-- Filter by container (page or snippet)
+SHOW WIDGETS WHERE Name LIKE 'ctn%' IN StyleTest;
+
+-- MARK: Update Widgets
+
+-- ============================================================================
+-- LEVEL 8: Bulk Widget Updates (UPDATE WIDGETS)
+-- ============================================================================
+-- UPDATE WIDGETS applies property changes across matching widgets.
+-- This is the main command for bulk styling changes.
+-- IMPORTANT: Always use DRY RUN first to preview changes!
+-- Property values: strings ('text'), numbers (123), booleans (true/false), null
+
+-- Preview: Add CSS class to all containers in a module
+UPDATE WIDGETS
+  SET 'Class' = 'card'
+  WHERE WidgetType LIKE '%Container%'
+  IN StyleTest
+  DRY RUN;
+
+-- Apply: Set inline style on all action buttons
+UPDATE WIDGETS
+  SET 'Style' = 'margin-top: 8px;'
+  WHERE WidgetType LIKE '%ActionButton%'
+  IN StyleTest
+  DRY RUN;
+
+-- Set multiple properties at once
+UPDATE WIDGETS
+  SET 'showLabel' = false, 'labelWidth' = 4
+  WHERE WidgetType LIKE '%combobox%'
+  DRY RUN;
+
+-- Hide labels on all checkboxes in a module
+UPDATE WIDGETS
+  SET 'showLabel' = false
+  WHERE WidgetType LIKE '%CheckBox%'
+  IN StyleTest
+  DRY RUN;
+
+-- Reset styling by setting to empty string
+UPDATE WIDGETS
+  SET 'Class' = '', 'Style' = ''
+  WHERE WidgetType LIKE '%Container%'
+  IN StyleTest
+  DRY RUN;
+
+-- MARK: Roundtrip
+
+-- ============================================================================
+-- LEVEL 9: Roundtrip Workflow (Create, Describe, Update)
+-- ============================================================================
+-- Typical workflow: CREATE page, DESCRIBE to inspect, UPDATE to modify.
+
+-- Step 1: Create the page with initial styling
+/**
+ * Example page for roundtrip workflow.
+ * Create it, then DESCRIBE it to see the styling output.
+ */
+CREATE PAGE StyleTest.P006_Roundtrip
+(
+  Title: 'Roundtrip Example',
+  Layout: Atlas_Core.Atlas_Default,
+  Url: 'style_006_roundtrip'
+)
+{
+  CONTAINER ctnHeader (
+    Class: 'card',
+    Style: 'padding: 16px;',
+    DesignProperties: ['Spacing bottom': 'Medium']
+  ) {
+    DYNAMICTEXT txtHeader (Content: 'Employee Form', RenderMode: H3)
+  }
+
+  DATAVIEW dvEmployee (DataSource: DATABASE StyleTest.Employee) {
+    TEXTBOX txtName (Label: 'Name', Attribute: Name, DesignProperties: ['Spacing top': 'Small'])
+    TEXTBOX txtEmail (Label: 'Email', Attribute: Email, DesignProperties: ['Spacing top': 'Small'])
+    CHECKBOX chkActive (Label: 'Active', Attribute: IsActive, DesignProperties: ['Spacing top': 'Small'])
+
+    FOOTER footer1 {
+      ACTIONBUTTON btnSave (Caption: 'Save', Action: SAVE_CHANGES, ButtonStyle: Primary)
+      ACTIONBUTTON btnCancel (Caption: 'Cancel', Action: CANCEL_CHANGES)
+    }
+  }
+}
+
+-- Step 2: Describe to see current state (shows Class, Style, DesignProperties)
+DESCRIBE PAGE StyleTest.P006_Roundtrip;
+
+-- Step 3: Bulk update specific properties across widgets
+UPDATE WIDGETS
+  SET 'Class' = 'card card-bordered'
+  WHERE Name = 'ctnHeader' AND WidgetType LIKE '%Container%'
+  IN StyleTest
+  DRY RUN;
+
+-- Step 4: Or CREATE OR REPLACE to rewrite the entire page with new styling
+CREATE OR REPLACE PAGE StyleTest.P006_Roundtrip
+(
+  Title: 'Roundtrip Example',
+  Layout: Atlas_Core.Atlas_Default,
+  Url: 'style_006_roundtrip'
+)
+{
+  CONTAINER ctnHeader (
+    Class: 'card card-bordered',
+    Style: 'padding: 16px;',
+    DesignProperties: ['Spacing bottom': 'Medium', 'Full width': ON]
+  ) {
+    DYNAMICTEXT txtHeader (Content: 'Employee Form', RenderMode: H3)
+  }
+
+  DATAVIEW dvEmployee (DataSource: DATABASE StyleTest.Employee) {
+    TEXTBOX txtName (Label: 'Name', Attribute: Name, DesignProperties: ['Spacing top': 'Small'])
+    TEXTBOX txtEmail (Label: 'Email', Attribute: Email, DesignProperties: ['Spacing top': 'Small'])
+    CHECKBOX chkActive (Label: 'Active', Attribute: IsActive, DesignProperties: ['Spacing top': 'Small'])
+
+    FOOTER footer1 {
+      ACTIONBUTTON btnSave (Caption: 'Save', Action: SAVE_CHANGES, ButtonStyle: Primary)
+      ACTIONBUTTON btnCancel (Caption: 'Cancel', Action: CANCEL_CHANGES)
+    }
+  }
+}
+
+-- Step 5: Verify changes
+SHOW WIDGETS IN StyleTest;
+
+-- MARK: Show Design Properties
+
+-- ============================================================================
+-- LEVEL 10: Discover Available Design Properties (SHOW DESIGN PROPERTIES)
+-- ============================================================================
+-- Show what design properties are available from the project's theme.
+-- Reads themesource/*/web/design-properties.json files.
+
+-- Show all available design properties
+SHOW DESIGN PROPERTIES;
+
+-- Show properties for a specific widget type
+SHOW DESIGN PROPERTIES FOR CONTAINER;
+SHOW DESIGN PROPERTIES FOR ACTIONBUTTON;
+SHOW DESIGN PROPERTIES FOR DATAGRID;
+
+-- MARK: Describe Styling
+
+-- ============================================================================
+-- LEVEL 11: Describe Styling on Widgets (DESCRIBE STYLING)
+-- ============================================================================
+-- Show current Class, Style, and DesignProperties on widgets in a page/snippet.
+-- Without WIDGET filter, shows all widgets that have any styling.
+-- With WIDGET filter, shows styling for that specific widget.
+
+-- Show all styled widgets on a page
+DESCRIBE STYLING ON PAGE StyleTest.P004_Combined_Styling;
+
+-- Show styling for a specific widget
+DESCRIBE STYLING ON PAGE StyleTest.P004_Combined_Styling WIDGET ctnHero;
+DESCRIBE STYLING ON PAGE StyleTest.P006_Roundtrip WIDGET ctnHeader;
+
+-- Describe styling on a snippet
+DESCRIBE STYLING ON SNIPPET StyleTest.MySnippet;
+DESCRIBE STYLING ON SNIPPET StyleTest.MySnippet WIDGET ctnSnippet;
+
+-- MARK: Alter Styling
+
+-- ============================================================================
+-- LEVEL 12: Surgically Modify Styling (ALTER STYLING)
+-- ============================================================================
+-- Change Class, Style, or DesignProperties on a single widget without
+-- rewriting the entire page. This is a targeted, in-place update.
+
+-- Set CSS class on a widget
+ALTER STYLING ON PAGE StyleTest.P006_Roundtrip WIDGET ctnHeader
+  SET Class = 'card card-bordered';
+
+-- Set inline style
+ALTER STYLING ON PAGE StyleTest.P006_Roundtrip WIDGET ctnHeader
+  SET Style = 'padding: 24px; border-radius: 12px;';
+
+-- Set a design property (option/dropdown)
+ALTER STYLING ON PAGE StyleTest.P006_Roundtrip WIDGET ctnHeader
+  SET 'Spacing bottom' = 'Large';
+
+-- Toggle a design property ON
+ALTER STYLING ON PAGE StyleTest.P006_Roundtrip WIDGET ctnHeader
+  SET 'Full width' = ON;
+
+-- Toggle a design property OFF (removes it)
+ALTER STYLING ON PAGE StyleTest.P006_Roundtrip WIDGET ctnHeader
+  SET 'Full width' = OFF;
+
+-- Set multiple styling properties at once
+ALTER STYLING ON PAGE StyleTest.P006_Roundtrip WIDGET ctnHeader
+  SET Class = 'card card-bordered',
+      Style = 'padding: 24px;',
+      'Spacing bottom' = 'Large',
+      'Full width' = ON;
+
+-- Clear all design properties on a widget
+ALTER STYLING ON PAGE StyleTest.P006_Roundtrip WIDGET ctnHeader
+  CLEAR DESIGN PROPERTIES;
+
+-- Verify changes
+DESCRIBE STYLING ON PAGE StyleTest.P006_Roundtrip WIDGET ctnHeader;

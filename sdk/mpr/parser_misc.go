@@ -1,0 +1,479 @@
+// SPDX-License-Identifier: Apache-2.0
+
+package mpr
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/mendixlabs/mxcli/model"
+	"github.com/mendixlabs/mxcli/sdk/pages"
+
+	"go.mongodb.org/mongo-driver/bson"
+)
+
+func (r *Reader) resolveContents(unitID string, contents []byte) ([]byte, error) {
+	// For MPR v1, contents are stored directly in the database
+	if r.version == MPRVersionV1 {
+		return contents, nil
+	}
+
+	// For MPR v2, check if contents is a reference to an external file
+	// Contents might be empty or contain just a hash
+	if len(contents) > 0 {
+		// Check if it's actual BSON content (starts with length prefix)
+		if len(contents) >= 4 {
+			return contents, nil
+		}
+	}
+
+	// Look for the external file in mprcontents
+	externalPath := filepath.Join(r.contentsDir, unitID)
+	if _, err := os.Stat(externalPath); err == nil {
+		return os.ReadFile(externalPath)
+	}
+
+	// Try with common extensions
+	for _, ext := range []string{".mxunit", ".json", ""} {
+		path := filepath.Join(r.contentsDir, unitID+ext)
+		if data, err := os.ReadFile(path); err == nil {
+			return data, nil
+		}
+	}
+
+	return contents, nil
+}
+
+// parseSnippet parses snippet contents from BSON.
+func (r *Reader) parseSnippet(unitID, containerID string, contents []byte) (*pages.Snippet, error) {
+	contents, err := r.resolveContents(unitID, contents)
+	if err != nil {
+		return nil, err
+	}
+
+	var raw map[string]any
+	if err := bson.Unmarshal(contents, &raw); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal BSON: %w", err)
+	}
+
+	snippet := &pages.Snippet{}
+	snippet.ID = model.ID(unitID)
+	snippet.TypeName = "Pages$Snippet"
+	snippet.ContainerID = model.ID(containerID)
+
+	if name, ok := raw["Name"].(string); ok {
+		snippet.Name = name
+	}
+	if doc, ok := raw["Documentation"].(string); ok {
+		snippet.Documentation = doc
+	}
+	if entityID := extractID(raw["Entity"]); entityID != "" {
+		snippet.EntityID = model.ID(entityID)
+	}
+
+	return snippet, nil
+}
+
+// parseJavaAction parses Java action contents from BSON.
+func (r *Reader) parseJavaAction(unitID, containerID string, contents []byte) (*JavaAction, error) {
+	contents, err := r.resolveContents(unitID, contents)
+	if err != nil {
+		return nil, err
+	}
+
+	var raw map[string]any
+	if err := bson.Unmarshal(contents, &raw); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal BSON: %w", err)
+	}
+
+	ja := &JavaAction{}
+	ja.ID = model.ID(unitID)
+	ja.TypeName = "JavaActions$JavaAction"
+	ja.ContainerID = model.ID(containerID)
+
+	if name, ok := raw["Name"].(string); ok {
+		ja.Name = name
+	}
+	if doc, ok := raw["Documentation"].(string); ok {
+		ja.Documentation = doc
+	}
+
+	return ja, nil
+}
+
+// extractID extracts an ID from various BSON representations.
+// IDs in Mendix BSON can be strings, binary UUIDs, or nested structures.
+func extractID(v any) string {
+	if v == nil {
+		return ""
+	}
+
+	switch val := v.(type) {
+	case string:
+		return val
+	case []byte:
+		return blobToUUID(val)
+	case map[string]any:
+		// Could be a reference structure with $ID
+		if id, ok := val["$ID"].(string); ok {
+			return id
+		}
+		if id, ok := val["$ID"].([]byte); ok {
+			return blobToUUID(id)
+		}
+	}
+
+	return ""
+}
+
+// WriteJSON serializes the given element to JSON.
+func WriteJSON(element any) ([]byte, error) {
+	return json.MarshalIndent(element, "", "  ")
+}
+
+// parseJavaScriptAction parses JavaScript action contents from BSON.
+func (r *Reader) parseJavaScriptAction(unitID, containerID string, contents []byte) (*JavaScriptAction, error) {
+	contents, err := r.resolveContents(unitID, contents)
+	if err != nil {
+		return nil, err
+	}
+
+	var raw map[string]any
+	if err := bson.Unmarshal(contents, &raw); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal BSON: %w", err)
+	}
+
+	jsa := &JavaScriptAction{}
+	jsa.ID = model.ID(unitID)
+	jsa.TypeName = "JavaScriptActions$JavaScriptAction"
+	jsa.ContainerID = model.ID(containerID)
+
+	if name, ok := raw["Name"].(string); ok {
+		jsa.Name = name
+	}
+	if doc, ok := raw["Documentation"].(string); ok {
+		jsa.Documentation = doc
+	}
+
+	return jsa, nil
+}
+
+// parseBuildingBlock parses building block contents from BSON.
+func (r *Reader) parseBuildingBlock(unitID, containerID string, contents []byte) (*pages.BuildingBlock, error) {
+	contents, err := r.resolveContents(unitID, contents)
+	if err != nil {
+		return nil, err
+	}
+
+	var raw map[string]any
+	if err := bson.Unmarshal(contents, &raw); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal BSON: %w", err)
+	}
+
+	bb := &pages.BuildingBlock{}
+	bb.ID = model.ID(unitID)
+	bb.TypeName = "Forms$BuildingBlock"
+	bb.ContainerID = model.ID(containerID)
+
+	if name, ok := raw["Name"].(string); ok {
+		bb.Name = name
+	}
+	if doc, ok := raw["Documentation"].(string); ok {
+		bb.Documentation = doc
+	}
+
+	return bb, nil
+}
+
+// parsePageTemplate parses page template contents from BSON.
+func (r *Reader) parsePageTemplate(unitID, containerID string, contents []byte) (*pages.PageTemplate, error) {
+	contents, err := r.resolveContents(unitID, contents)
+	if err != nil {
+		return nil, err
+	}
+
+	var raw map[string]any
+	if err := bson.Unmarshal(contents, &raw); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal BSON: %w", err)
+	}
+
+	pt := &pages.PageTemplate{}
+	pt.ID = model.ID(unitID)
+	pt.TypeName = "Forms$PageTemplate"
+	pt.ContainerID = model.ID(containerID)
+
+	if name, ok := raw["Name"].(string); ok {
+		pt.Name = name
+	}
+	if doc, ok := raw["Documentation"].(string); ok {
+		pt.Documentation = doc
+	}
+
+	return pt, nil
+}
+
+// parseNavigationDocument parses navigation document contents from BSON.
+func (r *Reader) parseNavigationDocument(unitID, containerID string, contents []byte) (*NavigationDocument, error) {
+	contents, err := r.resolveContents(unitID, contents)
+	if err != nil {
+		return nil, err
+	}
+
+	var raw map[string]any
+	if err := bson.Unmarshal(contents, &raw); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal BSON: %w", err)
+	}
+
+	nav := &NavigationDocument{}
+	nav.ID = model.ID(unitID)
+	nav.TypeName = "Navigation$NavigationDocument"
+	nav.ContainerID = model.ID(containerID)
+
+	if name, ok := raw["Name"].(string); ok {
+		nav.Name = name
+	}
+
+	// Parse navigation profiles
+	for _, item := range extractBsonArray(raw["Profiles"]) {
+		profMap, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		profile := parseNavigationProfile(profMap)
+		if profile != nil {
+			nav.Profiles = append(nav.Profiles, profile)
+		}
+	}
+
+	return nav, nil
+}
+
+// parseNavigationProfile parses a single navigation profile from BSON.
+func parseNavigationProfile(raw map[string]any) *NavigationProfile {
+	typeName := extractString(raw["$Type"])
+	profile := &NavigationProfile{
+		Name: extractString(raw["Name"]),
+		Kind: extractString(raw["Kind"]),
+	}
+
+	if typeName == "Navigation$NativeNavigationProfile" {
+		profile.IsNative = true
+		// Native home page
+		if hp, ok := raw["NativeHomePage"].(map[string]any); ok {
+			page := extractString(hp["HomePagePage"])
+			nanoflow := extractString(hp["HomePageNanoflow"])
+			if page != "" || nanoflow != "" {
+				profile.HomePage = &NavHomePage{Page: page, Microflow: nanoflow}
+			}
+		}
+		// Native role-based home pages
+		for _, item := range extractBsonArray(raw["RoleBasedNativeHomePages"]) {
+			if rbMap, ok := item.(map[string]any); ok {
+				rbh := &NavRoleBasedHome{
+					UserRole:  extractString(rbMap["UserRole"]),
+					Page:      extractString(rbMap["HomePagePage"]),
+					Microflow: extractString(rbMap["HomePageNanoflow"]),
+				}
+				if rbh.UserRole != "" {
+					profile.RoleBasedHomePages = append(profile.RoleBasedHomePages, rbh)
+				}
+			}
+		}
+		// Native bottom bar items contribute to menu
+		for _, item := range extractBsonArray(raw["BottomBarItems"]) {
+			if barMap, ok := item.(map[string]any); ok {
+				mi := parseNavMenuItemFromBottomBar(barMap)
+				if mi != nil {
+					profile.MenuItems = append(profile.MenuItems, mi)
+				}
+			}
+		}
+	} else {
+		// Web profile (Navigation$NavigationProfile)
+		// Default home page
+		if hp, ok := raw["HomePage"].(map[string]any); ok {
+			page := extractString(hp["Page"])
+			mf := extractString(hp["Microflow"])
+			if page != "" || mf != "" {
+				profile.HomePage = &NavHomePage{Page: page, Microflow: mf}
+			}
+		}
+		// Role-based home pages (stored as "HomeItems")
+		for _, item := range extractBsonArray(raw["HomeItems"]) {
+			if rbMap, ok := item.(map[string]any); ok {
+				rbh := &NavRoleBasedHome{
+					UserRole:  extractString(rbMap["UserRole"]),
+					Page:      extractString(rbMap["Page"]),
+					Microflow: extractString(rbMap["Microflow"]),
+				}
+				if rbh.UserRole != "" {
+					profile.RoleBasedHomePages = append(profile.RoleBasedHomePages, rbh)
+				}
+			}
+		}
+		// Login page (stored as "LoginPageSettings" with type Forms$FormSettings)
+		if lps, ok := raw["LoginPageSettings"].(map[string]any); ok {
+			profile.LoginPage = extractString(lps["Form"])
+		}
+		// Not-found page
+		if nfp, ok := raw["NotFoundHomepage"].(map[string]any); ok {
+			profile.NotFoundPage = extractString(nfp["Page"])
+			if profile.NotFoundPage == "" {
+				profile.NotFoundPage = extractString(nfp["Microflow"])
+			}
+		}
+		// Menu items (stored as "Menu" → MenuItemCollection)
+		if menu, ok := raw["Menu"].(map[string]any); ok {
+			for _, item := range extractBsonArray(menu["Items"]) {
+				if miMap, ok := item.(map[string]any); ok {
+					mi := parseNavMenuItem(miMap)
+					if mi != nil {
+						profile.MenuItems = append(profile.MenuItems, mi)
+					}
+				}
+			}
+		}
+	}
+
+	// Offline entity configs (both web and native)
+	for _, item := range extractBsonArray(raw["OfflineEntityConfigs"]) {
+		if oeMap, ok := item.(map[string]any); ok {
+			oe := &NavOfflineEntity{
+				Entity:     extractString(oeMap["Entity"]),
+				SyncMode:   extractString(oeMap["SyncMode"]),
+				Constraint: extractString(oeMap["Constraint"]),
+			}
+			if oe.Entity != "" {
+				profile.OfflineEntities = append(profile.OfflineEntities, oe)
+			}
+		}
+	}
+
+	return profile
+}
+
+// parseNavMenuItem parses a Menus$MenuItem from BSON.
+func parseNavMenuItem(raw map[string]any) *NavMenuItem {
+	mi := &NavMenuItem{}
+
+	// Extract caption text (Caption → Items → first Translation → Text)
+	if caption, ok := raw["Caption"].(map[string]any); ok {
+		mi.Caption = extractTextFromBson(caption)
+	}
+
+	// Extract action type and target from Action
+	if action, ok := raw["Action"].(map[string]any); ok {
+		actionType := extractString(action["$Type"])
+		switch {
+		case strings.HasSuffix(actionType, "FormAction") || strings.HasSuffix(actionType, "PageClientAction"):
+			mi.ActionType = "PageAction"
+			if fs, ok := action["FormSettings"].(map[string]any); ok {
+				mi.Page = extractString(fs["Form"])
+			}
+		case strings.HasSuffix(actionType, "MicroflowAction") || strings.HasSuffix(actionType, "MicroflowClientAction"):
+			mi.ActionType = "MicroflowAction"
+			if ms, ok := action["MicroflowSettings"].(map[string]any); ok {
+				mi.Microflow = extractString(ms["Microflow"])
+			}
+		case strings.HasSuffix(actionType, "OpenLinkAction") || strings.HasSuffix(actionType, "OpenLinkClientAction"):
+			mi.ActionType = "OpenLinkAction"
+		case strings.HasSuffix(actionType, "NoAction") || strings.HasSuffix(actionType, "NoClientAction"):
+			mi.ActionType = "NoAction"
+		default:
+			mi.ActionType = actionType
+		}
+	}
+
+	// Recurse into sub-items
+	for _, item := range extractBsonArray(raw["Items"]) {
+		if subMap, ok := item.(map[string]any); ok {
+			sub := parseNavMenuItem(subMap)
+			if sub != nil {
+				mi.Items = append(mi.Items, sub)
+			}
+		}
+	}
+
+	// Only return if we have at least a caption or a page
+	if mi.Caption == "" && mi.Page == "" && len(mi.Items) == 0 {
+		return nil
+	}
+	return mi
+}
+
+// parseNavMenuItemFromBottomBar parses a NativePages$BottomBarItem as a NavMenuItem.
+func parseNavMenuItemFromBottomBar(raw map[string]any) *NavMenuItem {
+	mi := &NavMenuItem{}
+	if caption, ok := raw["Caption"].(map[string]any); ok {
+		mi.Caption = extractTextFromBson(caption)
+	}
+	mi.Page = extractString(raw["Page"])
+	if mi.Caption == "" && mi.Page == "" {
+		return nil
+	}
+	return mi
+}
+
+// extractTextFromBson extracts the first English text from a Texts$Text BSON object.
+// Tries Items array first (Items → Translation → Text), then Translations map.
+func extractTextFromBson(raw map[string]any) string {
+	// Try Items array: [{LanguageCode: "en_US", Text: "..."}]
+	for _, item := range extractBsonArray(raw["Items"]) {
+		if transMap, ok := item.(map[string]any); ok {
+			text := extractString(transMap["Text"])
+			if text != "" {
+				return text
+			}
+		}
+	}
+	// Try Translations array
+	for _, item := range extractBsonArray(raw["Translations"]) {
+		if transMap, ok := item.(map[string]any); ok {
+			text := extractString(transMap["Text"])
+			if text != "" {
+				return text
+			}
+		}
+	}
+	return ""
+}
+
+// parseImageCollection parses image collection contents from BSON.
+func (r *Reader) parseImageCollection(unitID, containerID string, contents []byte) (*ImageCollection, error) {
+	contents, err := r.resolveContents(unitID, contents)
+	if err != nil {
+		return nil, err
+	}
+
+	var raw map[string]any
+	if err := bson.Unmarshal(contents, &raw); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal BSON: %w", err)
+	}
+
+	ic := &ImageCollection{}
+	ic.ID = model.ID(unitID)
+	ic.TypeName = "Images$ImageCollection"
+	ic.ContainerID = model.ID(containerID)
+
+	if name, ok := raw["Name"].(string); ok {
+		ic.Name = name
+	}
+
+	// Parse images in the collection
+	if images, ok := raw["Images"].(bson.A); ok {
+		for _, img := range images {
+			if imgMap, ok := img.(map[string]any); ok {
+				image := Image{}
+				if name, ok := imgMap["Name"].(string); ok {
+					image.Name = name
+				}
+				ic.Images = append(ic.Images, image)
+			}
+		}
+	}
+
+	return ic, nil
+}

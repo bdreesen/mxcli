@@ -1,0 +1,48 @@
+// SPDX-License-Identifier: Apache-2.0
+
+package ast
+
+// ============================================================================
+// Page Statements
+// ============================================================================
+
+// PageParameter represents a page parameter: $Name: EntityType
+type PageParameter struct {
+	Name       string        // Parameter name (without $ prefix)
+	EntityType QualifiedName // Entity type
+}
+
+// PageVariable represents a page variable: $Name: DataType = 'defaultExpression'
+type PageVariable struct {
+	Name         string // Variable name (without $ prefix)
+	DataType     string // MDL type name: Boolean, String, Integer, Decimal, DateTime, or entity type
+	DefaultValue string // Mendix expression string
+}
+
+// SortColumnDef represents a sort column: attribute ASC/DESC
+type SortColumnDef struct {
+	Attribute string // Qualified name or simple identifier
+	Order     string // "ASC" or "DESC"
+}
+
+// DataGridColumnDef represents a DataGrid2 column definition.
+type DataGridColumnDef struct {
+	Attribute  string         // Attribute name (empty for action columns)
+	Caption    string         // Column header caption
+	ChildrenV3 []*WidgetV3    // Child widgets (V3 syntax)
+	Properties map[string]any // Column properties (Alignment, WrapText, etc.)
+}
+
+// DropPageStmt represents: DROP PAGE Module.Name
+type DropPageStmt struct {
+	Name QualifiedName
+}
+
+func (s *DropPageStmt) isStatement() {}
+
+// DropSnippetStmt represents: DROP SNIPPET Module.Name
+type DropSnippetStmt struct {
+	Name QualifiedName
+}
+
+func (s *DropSnippetStmt) isStatement() {}

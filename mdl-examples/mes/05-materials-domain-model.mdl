@@ -1,0 +1,326 @@
+-- ============================================================================
+-- Materials Domain Model
+-- ============================================================================
+-- Inventory and raw materials management. Tracks material categories,
+-- individual materials, suppliers, stock movements, and purchase orders.
+-- ============================================================================
+
+-- MARK: MODULE
+
+/**
+ * Materials module
+ *
+ * Manages raw materials inventory, suppliers, stock tracking,
+ * and purchase ordering for the furniture manufacturing process.
+ *
+ * @since 1.0.0
+ */
+CREATE MODULE Materials;
+
+-- MARK: ENUMERATIONS
+
+/**
+ * Material unit of measure
+ *
+ * Standard measurement units for raw materials
+ * used in furniture manufacturing.
+ *
+ * @since 1.0.0
+ */
+CREATE ENUMERATION Materials.MaterialUnit (
+  Piece 'Piece',
+  Meter 'Meter',
+  SquareMeter 'Square Meter',
+  CubicMeter 'Cubic Meter',
+  Kilogram 'Kilogram',
+  Liter 'Liter',
+  Sheet 'Sheet',
+  Roll 'Roll'
+);
+
+/**
+ * Stock movement type
+ *
+ * Classifies the reason for inventory changes.
+ *
+ * @since 1.0.0
+ */
+CREATE ENUMERATION Materials.MovementType (
+  Incoming 'Incoming',
+  Outgoing 'Outgoing',
+  Adjustment 'Adjustment',
+  ReturnToSupplier 'Return to Supplier',
+  ProductionConsumption 'Production Consumption'
+);
+
+/**
+ * Purchase order status
+ *
+ * Tracks the lifecycle of a material purchase order.
+ *
+ * @since 1.0.0
+ */
+CREATE ENUMERATION Materials.PurchaseOrderStatus (
+  Draft 'Draft',
+  Ordered 'Ordered',
+  PartiallyReceived 'Partially Received',
+  Received 'Received',
+  Cancelled 'Cancelled'
+);
+
+-- MARK: ENTITIES
+
+/**
+ * Material category entity
+ *
+ * Groups materials by type (e.g. Hardwood, Softwood, Hardware,
+ * Fabric, Adhesives, Finishing Products).
+ *
+ * @since 1.0.0
+ */
+@Position(50, 50)
+CREATE PERSISTENT ENTITY Materials.MaterialCategory (
+  /** Category name */
+  CategoryName: String(200) NOT NULL ERROR 'Category name is required',
+  /** Category description */
+  CategoryDescription: String(1000),
+  /** Whether this category is active */
+  IsActive: Boolean DEFAULT true
+);
+
+/**
+ * Material entity
+ *
+ * Individual raw material or component used in furniture production.
+ * Tracks specifications, pricing, and current stock levels.
+ *
+ * @since 1.0.0
+ * @see Materials.MaterialCategory
+ * @see Materials.Supplier
+ */
+@Position(350, 50)
+CREATE PERSISTENT ENTITY Materials.Material (
+  /** Unique material code */
+  MaterialCode: String(50) NOT NULL ERROR 'Material code is required' UNIQUE ERROR 'Material code must be unique',
+  /** Material display name */
+  MaterialName: String(200) NOT NULL ERROR 'Material name is required',
+  /** Detailed description */
+  MaterialDescription: String(2000),
+  /** Unit of measure */
+  UnitOfMeasure: Enumeration(Materials.MaterialUnit) NOT NULL ERROR 'Unit of measure is required',
+  /** Unit cost (last purchase price) */
+  UnitCost: Decimal DEFAULT 0,
+  /** Current quantity in stock */
+  QuantityInStock: Decimal DEFAULT 0,
+  /** Minimum stock level (triggers reorder alert) */
+  MinimumStockLevel: Decimal DEFAULT 0,
+  /** Standard reorder quantity */
+  ReorderQuantity: Decimal DEFAULT 0,
+  /** Whether this material is active */
+  IsActive: Boolean DEFAULT true,
+  /** Storage location code */
+  StorageLocation: String(50),
+  /** Additional specifications */
+  Specifications: String(2000)
+)
+INDEX (MaterialCode)
+INDEX (IsActive);
+
+/**
+ * Supplier entity
+ *
+ * Companies that supply raw materials and components.
+ *
+ * @since 1.0.0
+ * @see Materials.Material
+ */
+@Position(50, 250)
+CREATE PERSISTENT ENTITY Materials.Supplier (
+  /** Unique supplier code */
+  SupplierCode: String(50) NOT NULL ERROR 'Supplier code is required' UNIQUE ERROR 'Supplier code must be unique',
+  /** Company name */
+  SupplierName: String(200) NOT NULL ERROR 'Supplier name is required',
+  /** Primary contact person */
+  ContactPerson: String(200),
+  /** Email address */
+  Email: String(200),
+  /** Phone number */
+  Phone: String(50),
+  /** Street address */
+  Street: String(200),
+  /** City */
+  City: String(100),
+  /** Postal code */
+  PostalCode: String(20),
+  /** Country */
+  Country: String(100),
+  /** Website URL */
+  Website: String(500),
+  /** Payment terms (e.g. 'Net 30') */
+  PaymentTerms: String(100),
+  /** Whether this supplier is active */
+  IsActive: Boolean DEFAULT true,
+  /** General notes */
+  Notes: String(2000)
+)
+INDEX (SupplierCode);
+
+/**
+ * Stock movement entity
+ *
+ * Records every in/out movement of materials.
+ * Provides a full audit trail of inventory changes.
+ *
+ * @since 1.0.0
+ * @see Materials.Material
+ */
+@Position(650, 50)
+CREATE PERSISTENT ENTITY Materials.StockMovement (
+  /** Type of movement */
+  MovementType: Enumeration(Materials.MovementType) NOT NULL ERROR 'Movement type is required',
+  /** Quantity moved (positive for in, negative for out) */
+  Quantity: Decimal NOT NULL ERROR 'Quantity is required',
+  /** Date and time of the movement */
+  MovementDate: DateTime NOT NULL ERROR 'Movement date is required',
+  /** Reference number (PO number, work order number, etc.) */
+  ReferenceNumber: String(100),
+  /** Reason or notes for this movement */
+  MovementReason: String(500),
+  /** Stock level after this movement */
+  BalanceAfter: Decimal
+)
+INDEX (MovementDate DESC)
+INDEX (MovementType);
+
+/**
+ * Purchase order entity
+ *
+ * Orders placed with suppliers for raw materials.
+ *
+ * @since 1.0.0
+ * @see Materials.Supplier
+ * @see Materials.PurchaseOrderLine
+ */
+@Position(350, 250)
+CREATE PERSISTENT ENTITY Materials.PurchaseOrder (
+  /** Auto-generated PO number */
+  PONumber: AutoNumber DEFAULT 1,
+  /** Current order status */
+  POStatus: Enumeration(Materials.PurchaseOrderStatus) NOT NULL ERROR 'PO status is required',
+  /** Date the order was placed */
+  OrderDate: DateTime,
+  /** Expected delivery date */
+  ExpectedDeliveryDate: DateTime,
+  /** Actual delivery date */
+  ActualDeliveryDate: DateTime,
+  /** Total order amount */
+  TotalAmount: Decimal DEFAULT 0,
+  /** Supplier's reference or confirmation number */
+  SupplierReference: String(100),
+  /** Notes about this order */
+  Notes: String(2000)
+)
+INDEX (POStatus);
+
+/**
+ * Purchase order line entity
+ *
+ * Individual material items on a purchase order.
+ *
+ * @since 1.0.0
+ * @see Materials.PurchaseOrder
+ * @see Materials.Material
+ */
+@Position(650, 250)
+CREATE PERSISTENT ENTITY Materials.PurchaseOrderLine (
+  /** Line number */
+  LineNumber: Integer NOT NULL ERROR 'Line number is required',
+  /** Quantity ordered */
+  QuantityOrdered: Decimal NOT NULL ERROR 'Quantity ordered is required',
+  /** Quantity received so far */
+  QuantityReceived: Decimal DEFAULT 0,
+  /** Unit price */
+  UnitPrice: Decimal NOT NULL ERROR 'Unit price is required',
+  /** Line total */
+  LineTotal: Decimal DEFAULT 0
+);
+
+-- MARK: ASSOCIATIONS
+
+/**
+ * Links material to its category
+ *
+ * Each material belongs to one category.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION Materials.Material_MaterialCategory
+  FROM Materials.Material TO Materials.MaterialCategory
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+
+/**
+ * Links material to its preferred supplier
+ *
+ * Each material has one preferred supplier.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION Materials.Material_Supplier
+  FROM Materials.Material TO Materials.Supplier
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+
+/**
+ * Links stock movement to its material
+ *
+ * Each movement affects one material.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION Materials.StockMovement_Material
+  FROM Materials.StockMovement TO Materials.Material
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+
+/**
+ * Links purchase order to its supplier
+ *
+ * Each PO is placed with one supplier.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION Materials.PurchaseOrder_Supplier
+  FROM Materials.PurchaseOrder TO Materials.Supplier
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+
+/**
+ * Links PO line to its purchase order
+ *
+ * Each line belongs to one purchase order.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION Materials.PurchaseOrderLine_PurchaseOrder
+  FROM Materials.PurchaseOrderLine TO Materials.PurchaseOrder
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_AND_REFERENCES;
+
+/**
+ * Links PO line to the material being ordered
+ *
+ * Each line orders one material.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION Materials.PurchaseOrderLine_Material
+  FROM Materials.PurchaseOrderLine TO Materials.Material
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;

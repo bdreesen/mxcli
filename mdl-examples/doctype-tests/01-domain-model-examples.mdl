@@ -1,0 +1,1878 @@
+-- ============================================================================
+-- Domain Model Examples - Comprehensive Entity & Enumeration Showcase
+-- ============================================================================
+--
+-- This file demonstrates all domain model features supported by the
+-- Mendix REPL, organized by increasing complexity.
+--
+-- Usage:
+--   1. Connect to your project
+--   2. Execute: EXECUTE SCRIPT 'examples/domain-model-examples.mdl';
+--   3. DmTest roundtrip with: DESCRIBE ENTITY DmTest.EntityName;
+--
+-- Features demonstrated:
+--   - Enumerations (simple and with captions)
+--   - Persistent entities (basic to complex)
+--   - All attribute types (String, Integer, Decimal, Boolean, DateTime, etc.)
+--   - Constraints (NOT NULL, UNIQUE, DEFAULT)
+--   - Indexes
+--   - Position annotations
+--   - JavaDoc documentation
+--   - Associations (Reference, ReferenceSet)
+--   - View entities with OQL
+--   - CREATE OR MODIFY for idempotent updates
+--   - @RenamedFrom annotation for attribute renaming
+--   - Entity generalization/inheritance (EXTENDS)
+--
+-- ============================================================================
+
+-- ############################################################################
+-- PART 1: ENUMERATIONS
+-- ############################################################################
+
+-- MARK: Simple Enumerations
+
+-- ============================================================================
+-- Level 1.1: Basic Enumeration
+-- ============================================================================
+
+CREATE MODULE DmTest;
+
+/**
+ * Simple status enumeration for order tracking.
+ * Basic enumeration with identifier and caption.
+ */
+CREATE ENUMERATION DmTest.OrderStatus (
+  /** Order received, awaiting processing */
+  PENDING 'Pending',
+  /** Order is being processed */
+  PROCESSING 'Processing',
+  /** Order has been shipped */
+  SHIPPED 'Shipped',
+  /** Order delivered to customer */
+  DELIVERED 'Delivered',
+  /** Order was cancelled */
+  CANCELLED 'Cancelled'
+);
+/
+
+/**
+ * Priority levels for tasks.
+ */
+CREATE ENUMERATION DmTest.Priority (
+  /** Low priority task */
+  LOW 'Low',
+  /** Medium priority task */
+  MEDIUM 'Medium',
+  /** High priority task */
+  HIGH 'High',
+  /** Critical priority - immediate attention required */
+  CRITICAL 'Critical'
+);
+/
+
+-- ============================================================================
+-- Level 1.2: Enumeration with Captions
+-- ============================================================================
+
+/**
+ * Payment methods with user-friendly display names.
+ * Identifiers use internal codes, captions show user-friendly text.
+ */
+CREATE ENUMERATION DmTest.PaymentMethod (
+  /** Credit card payment */
+  CC 'Credit Card',
+  /** Debit card payment */
+  DC 'Debit Card',
+  /** PayPal payment */
+  PP 'PayPal',
+  /** Bank transfer payment */
+  BT 'Bank Transfer',
+  /** Cash on delivery */
+  COD 'Cash on Delivery'
+);
+/
+
+/**
+ * Country codes with full names as captions.
+ */
+CREATE ENUMERATION DmTest.Country (
+  /** United States */
+  US 'United States',
+  /** United Kingdom */
+  UK 'United Kingdom',
+  /** Germany */
+  DE 'Germany',
+  /** France */
+  FR 'France',
+  /** Netherlands */
+  NL 'Netherlands',
+  /** Japan */
+  JP 'Japan',
+  /** Australia */
+  AU 'Australia'
+);
+/
+
+/**
+ * User roles with descriptive captions.
+ */
+CREATE ENUMERATION DmTest.UserRole (
+  /** Full system administrator */
+  ADMIN 'Administrator',
+  /** Department manager */
+  MANAGER 'Manager'
+);
+
+/**
+ * User roles with descriptive captions.
+ */
+CREATE OR MODIFY ENUMERATION DmTest.UserRole (
+  /** Full system administrator */
+  ADMIN 'Administrator',
+  /** Department manager */
+  MANAGER 'Manager',
+  /** Regular user */
+  "USER" 'Standard User',
+  /** Guest with limited access */
+  GUEST 'Guest',
+  /** Service account for API access */
+  SERVICE 'API Service Account'
+);
+/
+
+-- ############################################################################
+-- PART 2: BASIC PERSISTENT ENTITIES
+-- ############################################################################
+
+-- MARK: Simple Entities
+
+-- ============================================================================
+-- Level 2.1: Minimal Entity
+-- ============================================================================
+
+/**
+ * Simplest possible entity with just an identifier attribute.
+ */
+@Position(100, 100)
+CREATE PERSISTENT ENTITY DmTest.SimpleTag (
+  Name: String(50)
+);
+/
+
+/**
+ * Simplest possible entity with just an identifier attribute.
+ */
+@Position(100, 200)
+CREATE or modify PERSISTENT ENTITY DmTest.SimpleTag (
+  Name: String(50) not null
+);
+/
+
+/**
+ * Entity with a few basic attributes.
+ */
+@Position(100, 200)
+CREATE PERSISTENT ENTITY DmTest.Category (
+  /** Category name */
+  Name: String(100) NOT NULL ERROR 'Category name is required',
+  /** Category description */
+  Description: String(500),
+  /** Display order */
+  SortOrder: Integer DEFAULT 0
+);
+/
+
+-- ============================================================================
+-- Level 2.2: Entity with All Basic Types
+-- ============================================================================
+
+/**
+ * Demonstrates all basic attribute types supported by Mendix.
+ */
+@Position(300, 100)
+CREATE PERSISTENT ENTITY DmTest.Product (
+  /** Auto-incrementing product ID */
+  -- TODO: AutoNumber DEFAULT value not being set in project (implementation bug)
+  ProductId: AutoNumber DEFAULT 1,
+  /** Product name (required) */
+  Name: String(200) NOT NULL ERROR 'Product name is required',
+  /** Unique product code */
+  Code: String(50) UNIQUE ERROR 'Product code must be unique',
+  /** Full product description */
+  Description: String(2000),
+  /** Unit price with decimal precision */
+  Price: Decimal NOT NULL ERROR 'Price is required' DEFAULT 0.00,
+  /** Current stock quantity (Integer - 32-bit) */
+  Stock: Integer DEFAULT 0,
+  /** Large quantity for warehouses (Long - 64-bit) */
+  TotalUnitsProduced: Long DEFAULT 0,
+  /** Whether product is available for sale */
+  IsActive: Boolean DEFAULT true,
+  /** Date product was released (Date only, no time) */
+  ReleaseDate: Date,
+  /** Timestamp of creation (DateTime with time) */
+  CreatedAt: DateTime,
+  /** Timestamp of last modification */
+  ModifiedAt: DateTime,
+  /** Product weight in kilograms */
+  Weight: Decimal,
+  /** Stock keeping unit identifier */
+  SKU: String(20) UNIQUE ERROR 'SKU must be unique',
+  /** Product image (Binary data) */
+  ProductImage: Binary
+);
+/
+
+-- ============================================================================
+-- Level 2.3: Entity with String Length Variations
+-- ============================================================================
+
+/**
+ * Shows different string length configurations.
+ */
+@Position(300, 200)
+CREATE PERSISTENT ENTITY DmTest.Document (
+  /** Document title */
+  Title1: String(100) NOT NULL ERROR 'Document title is required',
+  /** Document subtitle */
+  Subtitle: String(200),
+  /** Brief summary */
+  Summary: String(500),
+  /** Main content */
+  Content1: String(10000),
+  /** Document metadata */
+  Metadata: String(2000),
+  /** Short identifier code */
+  ShortCode: String(10) UNIQUE ERROR 'Short code must be unique'
+);
+/
+
+-- ############################################################################
+-- PART 3: ENTITIES WITH CONSTRAINTS
+-- ############################################################################
+
+-- MARK: Constrained Entities
+
+-- ============================================================================
+-- Level 3.1: NOT NULL Constraints
+-- ============================================================================
+
+/**
+ * Entity demonstrating required fields.
+ * All NOT NULL fields must be provided when creating objects.
+ */
+@Position(500, 100)
+CREATE PERSISTENT ENTITY DmTest.Customer (
+  /** Customer first name */
+  FirstName: String(100) NOT NULL ERROR 'First name is required',
+  /** Customer last name */
+  LastName: String(100) NOT NULL ERROR 'Last name is required',
+  /** Customer email address */
+  Email: String(200) NOT NULL ERROR 'Email is required',
+  /** Phone number */
+  Phone: String(50),
+  /** Street address */
+  Address: String(500),
+  /** City name */
+  City: String(100),
+  /** Postal/ZIP code */
+  PostalCode: String(20),
+  /** Country (enumeration) */
+  Country: Enumeration(DmTest.Country)
+);
+/
+
+-- ============================================================================
+-- Level 3.2: UNIQUE Constraints
+-- ============================================================================
+
+/**
+ * Entity with unique identifiers.
+ * Unique constraints ensure no duplicate values.
+ */
+@Position(500, 200)
+CREATE PERSISTENT ENTITY DmTest.Employee (
+  /** Unique employee number */
+  EmployeeNumber: String(20) NOT NULL ERROR 'Employee number is required' UNIQUE ERROR 'Employee number must be unique',
+  /** Employee email address */
+  Email: String(200) NOT NULL ERROR 'Email is required' UNIQUE ERROR 'Email must be unique',
+  /** Social security number */
+  SSN: String(20) UNIQUE ERROR 'SSN must be unique',
+  /** First name */
+  FirstName: String(100) NOT NULL ERROR 'First name is required',
+  /** Last name */
+  LastName: String(100) NOT NULL ERROR 'Last name is required',
+  /** Department name */
+  Department: String(100),
+  /** Hire date */
+  HireDate: DateTime,
+  /** Whether employee is a manager */
+  IsManager: Boolean DEFAULT false
+);
+/
+
+-- ============================================================================
+-- Level 3.3: DEFAULT Values
+-- ============================================================================
+
+/**
+ * Entity demonstrating default value configurations.
+ * Shows defaults for different data types.
+ */
+@Position(500, 300)
+CREATE PERSISTENT ENTITY DmTest.Settings (
+  /** Setting name */
+  Name: String(100) NOT NULL ERROR 'Setting name is required',
+  /** String value */
+  StringValue: String(500) DEFAULT '',
+  /** Integer value */
+  IntegerValue: Integer DEFAULT 0,
+  /** Decimal value */
+  DecimalValue: Decimal DEFAULT 0.00,
+  /** Boolean value */
+  BooleanValue: Boolean DEFAULT false,
+  /** Whether setting is enabled */
+  IsEnabled: Boolean DEFAULT true,
+  /** Priority order */
+  Priority: Integer DEFAULT 100,
+  /** Multiplier factor */
+  Multiplier: Decimal DEFAULT 1.0
+);
+/
+
+-- ============================================================================
+-- Level 3.4: Combined Constraints
+-- ============================================================================
+
+/**
+ * Entity with multiple constraint types combined.
+ * Demonstrates real-world entity configuration.
+ *
+ * Business rules:
+ * - Account number is required and unique
+ * - Balance cannot be null, defaults to 0
+ * - Account type is required
+ * - IsActive defaults to true for new accounts
+ */
+@Position(500, 400)
+CREATE PERSISTENT ENTITY DmTest.BankAccount (
+  /** Unique account number */
+  AccountNumber: String(20) NOT NULL ERROR 'Account number is required' UNIQUE ERROR 'Account number must be unique',
+  /** Account holder name */
+  AccountHolder: String(200) NOT NULL ERROR 'Account holder name is required',
+  /** Type of account */
+  AccountType: String(50) NOT NULL ERROR 'Account type is required',
+  /** Current balance */
+  Balance: Decimal NOT NULL ERROR 'Balance is required' DEFAULT 0.00,
+  /** Credit limit */
+  CreditLimit: Decimal DEFAULT 0.00,
+  /** Interest rate percentage */
+  InterestRate: Decimal DEFAULT 0.00,
+  /** Whether account is active */
+  IsActive: Boolean DEFAULT true,
+  /** Date account was opened */
+  OpenedDate: DateTime NOT NULL ERROR 'Opened date is required',
+  /** Date account was closed */
+  ClosedDate: DateTime,
+  /** Date of last transaction */
+  LastTransactionDate: DateTime
+);
+/
+
+-- ############################################################################
+-- PART 4: ENTITIES WITH INDEXES
+-- ############################################################################
+
+-- MARK: Indexed Entities
+
+-- ============================================================================
+-- Level 4.1: Single Column Index
+-- ============================================================================
+
+/**
+ * Entity with a single-column index for fast lookups.
+ * The index on Email improves query performance for email searches.
+ */
+@Position(700, 100)
+CREATE PERSISTENT ENTITY DmTest.Subscriber (
+  /** Subscriber email address */
+  Email: String(200) NOT NULL ERROR 'Email is required' UNIQUE ERROR 'Email must be unique',
+  /** Subscriber name */
+  Name: String(200),
+  /** Subscription date */
+  SubscribedAt: DateTime,
+  /** Whether email is verified */
+  IsVerified: Boolean DEFAULT false
+)
+INDEX (Email);
+/
+
+-- ============================================================================
+-- Level 4.2: Multiple Indexes
+-- ============================================================================
+
+/**
+ * Entity with multiple indexes for different query patterns.
+ *
+ * Indexes improve query performance for:
+ * - OrderNumber: Fast lookup by order number
+ * - CustomerId: Query orders by customer
+ * - OrderDate: Date range queries
+ * - Status: Filter by order status
+ */
+@Position(700, 200)
+CREATE PERSISTENT ENTITY DmTest.SalesOrder (
+  /** Unique order number */
+  OrderNumber: String(50) NOT NULL ERROR 'Order number is required' UNIQUE ERROR 'Order number must be unique',
+  /** Customer identifier */
+  CustomerId: String(50) NOT NULL ERROR 'Customer ID is required',
+  /** Order date */
+  OrderDate: DateTime NOT NULL ERROR 'Order date is required',
+  /** Ship date */
+  ShipDate: DateTime,
+  /** Order status (enumeration) */
+  OrderStatus: Enumeration(DmTest.OrderStatus) NOT NULL ERROR 'Order status is required',
+  /** Payment method (enumeration) */
+  PaymentMethod: Enumeration(DmTest.PaymentMethod),
+  /** Priority level (enumeration) */
+  Priority: Enumeration(DmTest.Priority) NOT NULL ERROR 'Priority is required',
+  /** Total amount */
+  TotalAmount: Decimal NOT NULL ERROR 'Total amount is required' DEFAULT 0.00,
+  /** Tax amount */
+  TaxAmount: Decimal DEFAULT 0.00,
+  /** Shipping cost */
+  ShippingCost: Decimal DEFAULT 0.00,
+  /** Additional notes */
+  Notes: String(1000)
+)
+INDEX (OrderNumber),
+INDEX (CustomerId asc),
+INDEX (OrderDate desc),
+INDEX (OrderStatus);
+/
+
+-- ============================================================================
+-- Level 4.3: Composite Index
+-- ============================================================================
+-- TODO: Action should not be a keyword
+
+/**
+ * Entity with composite (multi-column) index.
+ * Composite indexes optimize queries that filter on multiple columns.
+ */
+@Position(700, 300)
+CREATE PERSISTENT ENTITY DmTest.AuditLog (
+  /** Type of entity being audited */
+  EntityType: String(100) NOT NULL ERROR 'Entity type is required',
+  /** ID of entity being audited */
+  EntityId: String(50) NOT NULL ERROR 'Entity ID is required',
+  /** Action performed */
+  Action1: String(50) NOT NULL ERROR 'Action is required',
+  /** Timestamp of action */
+  Timestamp: DateTime NOT NULL ERROR 'Timestamp is required',
+  /** User who performed action */
+  UserId: String(50),
+  /** Previous value */
+  OldValue: String(5000),
+  /** New value */
+  NewValue: String(5000),
+  /** IP address of user */
+  IPAddress: String(50)
+)
+INDEX (EntityType, EntityId),
+INDEX (Timestamp),
+INDEX (UserId);
+/
+
+-- ############################################################################
+-- PART 5: JAVADOC DOCUMENTATION
+-- ############################################################################
+
+-- MARK: Documented Entities
+
+-- ============================================================================
+-- Level 5.1: Basic Documentation
+-- ============================================================================
+
+/**
+ * Represents a user in the system.
+ *
+ * Users can have different roles and permissions based on their
+ * assigned UserRole. Each user must have a unique username and email.
+ */
+@Position(900, 100)
+CREATE PERSISTENT ENTITY DmTest.User (
+  /** Unique username */
+  Username: String(50) NOT NULL ERROR 'Username is required' UNIQUE ERROR 'Username must be unique',
+  /** User email address */
+  Email: String(200) NOT NULL ERROR 'Email is required' UNIQUE ERROR 'Email must be unique',
+  /** Hashed password */
+  PasswordHash: String(500) NOT NULL ERROR 'Password hash is required',
+  /** User role (enumeration) */
+  Role: Enumeration(DmTest.UserRole) NOT NULL ERROR 'User role is required',
+  /** Whether user is active */
+  IsActive: Boolean DEFAULT true,
+  /** Account creation date */
+  CreatedAt: DateTime,
+  /** Last login timestamp */
+  LastLoginAt: DateTime
+);
+/
+
+-- ============================================================================
+-- Level 5.2: Detailed Documentation with Parameters
+-- ============================================================================
+
+/**
+ * Represents an invoice in the billing system.
+ *
+ * Invoices track billing information for customers including
+ * line items, taxes, and payment status.
+ *
+ * @see DmTest.InvoiceLine - Line items for this invoice
+ * @see DmTest.Customer - Customer being billed
+ */
+@Position(900, 200)
+CREATE PERSISTENT ENTITY DmTest.Invoice (
+  /** Unique identifier generated by the system */
+  InvoiceNumber: String(50) NOT NULL ERROR 'Invoice number is required' UNIQUE ERROR 'Invoice number must be unique',
+  /** Reference to the customer being billed */
+  CustomerId: String(50) NOT NULL ERROR 'Customer ID is required',
+  /** Date the invoice was generated */
+  IssueDate: DateTime NOT NULL ERROR 'Issue date is required',
+  /** Payment due date */
+  DueDate: DateTime NOT NULL ERROR 'Due date is required',
+  /** Sum of line items before tax */
+  Subtotal: Decimal NOT NULL ERROR 'Subtotal is required' DEFAULT 0.00,
+  /** Calculated tax amount */
+  TaxAmount: Decimal NOT NULL ERROR 'Tax amount is required' DEFAULT 0.00,
+  /** Final amount due (subtotal + tax) */
+  TotalAmount: Decimal NOT NULL ERROR 'Total amount is required' DEFAULT 0.00,
+  /** Current invoice status (Draft, Sent, Paid, Overdue, Cancelled) */
+  Status: String(50) NOT NULL ERROR 'Status is required' DEFAULT 'Draft',
+  /** Date payment was received (null if unpaid) */
+  PaidDate: DateTime,
+  /** Additional notes */
+  Notes: String(1000)
+)
+INDEX (InvoiceNumber),
+INDEX (CustomerId),
+INDEX (Status);
+/
+
+/**
+ * Line item for an invoice.
+ *
+ * Each line item represents a product or service being billed.
+ * The Amount is calculated as Quantity * UnitPrice.
+ */
+@Position(900, 300)
+CREATE PERSISTENT ENTITY DmTest.InvoiceLine (
+  /** Line number within the invoice */
+  LineNumber: Integer NOT NULL ERROR 'Line number is required',
+  /** Description of the item */
+  Description: String(500) NOT NULL ERROR 'Description is required',
+  /** Number of units */
+  Quantity: Decimal NOT NULL ERROR 'Quantity is required' DEFAULT 1,
+  /** Price per unit */
+  UnitPrice: Decimal NOT NULL ERROR 'Unit price is required',
+  /** Total amount (Quantity * UnitPrice) */
+  Amount: Decimal NOT NULL ERROR 'Amount is required',
+  /** Tax rate percentage */
+  TaxRate: Decimal DEFAULT 0.00
+);
+/
+
+-- ############################################################################
+-- PART 6: ASSOCIATIONS
+-- ############################################################################
+
+-- MARK: Associations
+
+-- ============================================================================
+-- Level 6.1: Reference Association (Many-to-One)
+-- ============================================================================
+
+/**
+ * Associates an order with a single customer.
+ * Many orders can belong to one customer.
+ * Uses DELETE_BUT_KEEP_REFERENCES to preserve order history if customer is deleted.
+ */
+CREATE ASSOCIATION DmTest.Order_Customer
+FROM DmTest.SalesOrder TO DmTest.Customer
+TYPE Reference
+OWNER Default
+DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+/
+
+/**
+ * Associates an invoice with a customer.
+ * Uses Default owner (FROM entity owns the reference).
+ */
+CREATE ASSOCIATION DmTest.Invoice_Customer
+FROM DmTest.Invoice TO DmTest.Customer
+TYPE Reference
+OWNER Default
+DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+/
+
+-- ============================================================================
+-- Level 6.2: Reference Association (One-to-Many via parent)
+-- ============================================================================
+
+/**
+ * Links invoice lines to their parent invoice.
+ * One invoice has many line items.
+ */
+CREATE ASSOCIATION DmTest.Invoice_Lines
+FROM DmTest.InvoiceLine TO DmTest.Invoice
+TYPE Reference
+OWNER Both;
+/
+
+/**
+ * Links employees to their department category.
+ */
+CREATE ASSOCIATION DmTest.Employee_Department
+FROM DmTest.Employee TO DmTest.Category
+TYPE Reference
+OWNER Both;
+/
+
+/**
+ * Self-referencing association for category hierarchy.
+ * Enables parent-child relationships within the same entity.
+ * Example: "Electronics" parent with "Phones", "Laptops" children.
+ *
+ * NOTE: Self-referencing associations must use OWNER Default (one-to-many).
+ */
+CREATE ASSOCIATION DmTest.Category_ParentCategory
+FROM DmTest.Category TO DmTest.Category
+TYPE Reference
+OWNER Default
+DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+/
+
+-- ============================================================================
+-- Level 6.3: ReferenceSet Association (Many-to-Many)
+-- ============================================================================
+
+/**
+ * Entity to demonstrate many-to-many relationship.
+ */
+-- TODO: Project should not be a keyword
+@Position(1100, 100)
+CREATE PERSISTENT ENTITY DmTest.Project1 (
+  /** Project name */
+  Name: String(200) NOT NULL ERROR 'Project name is required',
+  /** Unique project code */
+  Code: String(50) UNIQUE ERROR 'Project code must be unique',
+  /** Project start date */
+  StartDate: DateTime,
+  /** Project end date */
+  EndDate: DateTime,
+  /** Project budget */
+  Budget: Decimal DEFAULT 0.00,
+  /** Project status */
+  Status: String(50) DEFAULT 'Planning'
+);
+/
+
+/**
+ * Many-to-many: Projects can have many employees,
+ * and employees can work on many projects.
+ */
+CREATE ASSOCIATION DmTest.Project_Employees
+FROM DmTest.Project1 TO DmTest.Employee
+TYPE ReferenceSet
+OWNER Both;
+/
+
+/**
+ * Many-to-many: Products can have many tags,
+ * and tags can be applied to many products.
+ */
+CREATE ASSOCIATION DmTest.Product_Tags
+FROM DmTest.Product TO DmTest.SimpleTag
+TYPE ReferenceSet
+OWNER Both;
+/
+
+-- ############################################################################
+-- PART 7: VIEW ENTITIES (OQL)
+-- ############################################################################
+
+-- MARK: View Entities
+
+-- ============================================================================
+-- Level 7.1: Simple View Entity
+-- ============================================================================
+
+/**
+ * View showing active products only.
+ * Filters the Product entity to show only active items.
+ */
+@Position(1300, 100)
+CREATE VIEW ENTITY DmTest.ActiveProducts (
+  Name: String(200),
+  Code: String(50),
+  Price: Decimal,
+  Stock: Integer
+) AS
+  SELECT
+    p.Name AS Name,
+    p.Code AS Code,
+    p.Price AS Price,
+    p.Stock AS Stock
+  FROM DmTest.Product AS p
+  WHERE p.IsActive = true;
+/
+
+-- ============================================================================
+-- Level 7.2: View with Aggregation
+-- ============================================================================
+
+/**
+ * View showing order statistics per customer.
+ * Aggregates order data to show totals and counts.
+ */
+@Position(1300, 200)
+CREATE VIEW ENTITY DmTest.CustomerOrderStats (
+  CustomerId: String(50),
+  OrderCount: Integer,
+  TotalSpent: Decimal,
+  AvgOrderValue: Decimal
+) AS
+  SELECT
+    o.CustomerId AS CustomerId,
+    COUNT(o.OrderNumber) AS OrderCount,
+    SUM(o.TotalAmount) AS TotalSpent,
+    AVG(o.TotalAmount) AS AvgOrderValue
+  FROM DmTest.SalesOrder AS o
+  GROUP BY o.CustomerId;
+/
+
+-- ============================================================================
+-- Level 7.3: View with JOIN
+-- ============================================================================
+
+/**
+ * View showing invoice details with customer information.
+ * Joins Invoice with Customer to provide complete invoice view.
+ */
+@Position(1300, 300)
+CREATE VIEW ENTITY DmTest.InvoiceDetails (
+  InvoiceNumber: String(50),
+  CustomerName: String(200),
+  CustomerEmail: String(200),
+  IssueDate: DateTime,
+  DueDate: DateTime,
+  TotalAmount: Decimal,
+  Status: String(50)
+) AS
+  SELECT
+    i.InvoiceNumber AS InvoiceNumber,
+    c.FirstName + ' ' + c.LastName AS CustomerName,
+    c.Email AS CustomerEmail,
+    i.IssueDate AS IssueDate,
+    i.DueDate AS DueDate,
+    i.TotalAmount AS TotalAmount,
+    i.Status AS Status
+  FROM DmTest.Invoice AS i
+  INNER JOIN i/DmTest.Invoice_Customer/DmTest.Customer AS c;
+/
+
+-- ============================================================================
+-- Level 7.3b: JOIN with ON expression (no association) - NOT YET SUPPORTED
+-- ============================================================================
+--
+-- When joining entities without an association, use JOIN with ON expression:
+--
+-- CREATE VIEW ENTITY DmTest.OrderAuditHistory (...) AS
+--   SELECT ...
+--   FROM DmTest.SalesOrder AS o
+--   INNER JOIN DmTest.AuditLog AS a ON o.OrderNumber = a.EntityId
+--   WHERE a.EntityType = 'SalesOrder';
+--
+-- This pattern joins entities by business key when no association exists.
+-- TODO: Parser support for ON expressions in JOINs
+
+-- ============================================================================
+-- Level 7.4: View with Complex Filtering
+-- ============================================================================
+
+/**
+ * View showing overdue invoices.
+ * Filters invoices that are past due date and not yet paid.
+ */
+@Position(1300, 400)
+CREATE VIEW ENTITY DmTest.OverdueInvoices (
+  InvoiceNumber: String(50),
+  CustomerId: String(50),
+  DueDate: DateTime,
+  TotalAmount: Decimal,
+  DaysOverdue: Integer
+) AS
+  SELECT
+    i.InvoiceNumber AS InvoiceNumber,
+    i.CustomerId AS CustomerId,
+    i.DueDate AS DueDate,
+    i.TotalAmount AS TotalAmount,
+    DATEDIFF(DAY, i.DueDate, '[%CurrentDateTime%]'
+  ) AS DaysOverdue
+  FROM DmTest.Invoice AS i
+  WHERE i.Status != 'Paid'
+    AND i.Status != 'Cancelled'
+    AND i.DueDate < '[%CurrentDateTime%]';
+/
+
+-- ============================================================================
+-- Level 7.5: View with Multiple Aggregations
+-- ============================================================================
+
+/**
+ * Monthly sales summary view.
+ * Aggregates sales data by month for reporting.
+ */
+@Position(1300, 500)
+CREATE VIEW ENTITY DmTest.MonthlySalesSummary (
+  OrderYear: Integer,
+  OrderMonth: Integer,
+  OrderCount: Integer,
+  TotalRevenue: Decimal,
+  AvgOrderValue: Decimal,
+  MaxOrderValue: Decimal,
+  MinOrderValue: Decimal
+) AS
+  SELECT
+    DATEPART(YEAR, o.OrderDate) AS OrderYear,
+    DATEPART(MONTH, o.OrderDate) AS OrderMonth,
+    COUNT(o.OrderNumber) AS OrderCount,
+    SUM(o.TotalAmount) AS TotalRevenue,
+    AVG(o.TotalAmount) AS AvgOrderValue,
+    MAX(o.TotalAmount) AS MaxOrderValue,
+    MIN(o.TotalAmount) AS MinOrderValue
+  FROM DmTest.SalesOrder AS o
+  WHERE o.OrderStatus != 'CANCELLED'
+  GROUP BY DATEPART(YEAR, o.OrderDate), DATEPART(MONTH, o.OrderDate);
+/
+
+-- ============================================================================
+-- Level 7.6: Microflow Retrieving from View Entity
+-- ============================================================================
+--
+-- View entities are retrieved using RETRIEVE ... FROM with a WHERE clause.
+-- The view entity is treated as persistable (retrievable from database)
+-- because it has an OQL source.
+
+/**
+ * Get order statistics for a specific customer.
+ *
+ * Retrieves from the CustomerOrderStats view entity, filtered
+ * by customer ID. Demonstrates that view entities can be used
+ * in database retrieves just like persistent entities.
+ *
+ * @param $CustomerId The customer ID to look up
+ * @returns The total amount spent by the customer (0 if none)
+ */
+CREATE MICROFLOW DmTest.GetCustomerTotalSpent (
+  $CustomerId: String
+)
+RETURNS Decimal AS $TotalSpent
+BEGIN
+  DECLARE $TotalSpent Decimal = 0;
+
+  RETRIEVE $Stats FROM DmTest.CustomerOrderStats
+    WHERE CustomerId = $CustomerId
+    LIMIT 1;
+
+  IF $Stats != empty THEN
+    SET $TotalSpent = $Stats/TotalSpent;
+  END IF;
+
+  RETURN $TotalSpent;
+END;
+/
+
+-- ############################################################################
+-- PART 8: NON-PERSISTENT ENTITIES
+-- ############################################################################
+
+-- MARK: Non-Persistent Entities
+
+-- ============================================================================
+-- Level 8.1: Simple Non-Persistent Entity
+-- ============================================================================
+
+/**
+ * Non-persistent entity for search parameters.
+ * Used to pass search criteria to microflows.
+ */
+@Position(1500, 100)
+CREATE NON-PERSISTENT ENTITY DmTest.SearchParameters (
+  /** Search term to filter by */
+  SearchTerm: String(200),
+  /** Start date of date range */
+  StartDate: DateTime,
+  /** End date of date range */
+  EndDate: DateTime,
+  /** Status filter */
+  Status: String(50),
+  /** Minimum amount filter */
+  MinAmount: Decimal,
+  /** Maximum amount filter */
+  MaxAmount: Decimal,
+  /** Whether to include inactive records */
+  IncludeInactive: Boolean DEFAULT false
+);
+/
+
+-- ============================================================================
+-- Level 8.2: Non-Persistent for API Response
+-- ============================================================================
+
+/**
+ * Non-persistent entity for API response data.
+ * Used to shape data returned from external services.
+ */
+
+-- TODO: Message should not be a reserved keyword
+@Position(1500, 200)
+CREATE NON-PERSISTENT ENTITY DmTest.ApiResponse (
+  /** Whether the API call succeeded */
+  Success: Boolean default false,
+  /** HTTP status code */
+  StatusCode: Integer,
+  /** Response message */
+  Message1: String(500),
+  /** Error details if any */
+  ErrorDetails: String(2000),
+  /** Response timestamp */
+  Timestamp: DateTime,
+  /** Unique request identifier */
+  RequestId: String(50)
+);
+/
+
+-- ============================================================================
+-- Level 8.3: Non-Persistent for Reports
+-- ============================================================================
+
+/**
+ * Non-persistent entity for dashboard metrics.
+ * Calculated values for display, not stored in database.
+ */
+@Position(1500, 300)
+CREATE NON-PERSISTENT ENTITY DmTest.DashboardMetrics (
+  /** Total number of customers */
+  TotalCustomers: Integer,
+  /** Number of active customers */
+  ActiveCustomers: Integer,
+  /** Total number of orders */
+  TotalOrders: Integer,
+  /** Number of pending orders */
+  PendingOrders: Integer,
+  /** Total revenue */
+  TotalRevenue: Decimal,
+  /** Revenue this month */
+  RevenueThisMonth: Decimal,
+  /** Revenue last month */
+  RevenueLastMonth: Decimal,
+  /** Growth percentage */
+  GrowthPercentage: Decimal,
+  /** Name of top selling product */
+  TopProductName: String(200),
+  /** Revenue from top product */
+  TopProductRevenue: Decimal
+);
+/
+
+-- ############################################################################
+-- PART 9: CREATE OR MODIFY ENTITY (Idempotent Updates)
+-- ############################################################################
+
+-- MARK: CREATE OR MODIFY
+
+-- ============================================================================
+-- Level 9.1: Basic CREATE OR MODIFY
+-- ============================================================================
+--
+-- CREATE OR MODIFY provides idempotent entity creation and modification:
+-- - If entity doesn't exist: creates it
+-- - If entity exists: computes diff and applies incremental changes
+-- - Preserves entity UUIDs (no data loss)
+--
+-- Run this multiple times - it will only apply changes when needed.
+
+/**
+ * Configuration settings with CREATE OR MODIFY.
+ *
+ * This entity can be safely re-executed:
+ * - First run: creates the entity
+ * - Subsequent runs: updates only changed attributes
+ */
+@Position(1700, 100)
+CREATE OR MODIFY PERSISTENT ENTITY DmTest.AppConfig (
+  /** Configuration key */
+  ConfigKey: String(100) NOT NULL ERROR 'Config key is required' UNIQUE ERROR 'Config key must be unique',
+  /** Configuration value */
+  ConfigValue: String(2000),
+  /** Description of setting */
+  Description: String(500),
+  /** Whether setting is active */
+  IsActive: Boolean DEFAULT true,
+  /** Last modified timestamp */
+  ModifiedAt: DateTime
+)
+INDEX (ConfigKey);
+/
+
+/**
+ * Configuration settings with CREATE OR MODIFY.
+ *
+ * This entity can be safely re-executed:
+ * - First run: creates the entity
+ * - Subsequent runs: updates only changed attributes
+ * - This updated version has changes
+ */
+@Position(1900, 100)
+CREATE OR MODIFY PERSISTENT ENTITY DmTest.AppConfig (
+  /** Configuration key */
+  ConfigKey: String(100) NOT NULL ERROR 'Config key is required' UNIQUE ERROR 'Config key must be unique',
+  /** Configuration value */
+  ConfigValue: String(2500) NOT NULL ERROR 'Value cannot be null',
+  /** Description of setting */
+  Description: String(600),
+  /** Whether setting is active */
+  IsActive: Boolean DEFAULT true,
+  /** Last modified timestamp */
+  ModifiedAt: DateTime,
+  /** Add more notes */
+  AdditionalNotes: String(100)
+)
+INDEX (ConfigKey)
+, INDEX (ModifiedAt);
+/
+
+-- ============================================================================
+-- Level 9.2: CREATE OR MODIFY with @RenamedFrom (Attribute Renaming)
+-- ============================================================================
+--
+-- Use @RenamedFrom('oldName') to rename attributes without data loss.
+-- The annotation tells the REPL to rename instead of drop+add.
+--
+-- Compatible type changes are also applied:
+-- - String length increase (e.g., String(100) → String(200))
+-- - Integer to Long
+-- - Decimal precision increase
+
+/**
+ * Contact entity demonstrating attribute renaming.
+ *
+ * Migration scenario:
+ * - 'ContactName' renamed to 'FullName'
+ * - 'ContactEmail' renamed to 'PrimaryEmail'
+ * - String lengths increased for expanded storage
+ * - New 'Mobile' field added
+ *
+ * Run DESCRIBE ENTITY DmTest.Contact first to see current state,
+ * then run this CREATE OR MODIFY to apply changes.
+ */
+@Position(1700, 200)
+CREATE OR MODIFY PERSISTENT ENTITY DmTest.Contact (
+  /** Contact identifier */
+  ContactId: AutoNumber DEFAULT 1,
+
+  /** Full name - renamed from ContactName */
+  @RenamedFrom('ContactName')
+  FullName: String(250) NOT NULL ERROR 'Full name is required',
+
+  /** Primary email - renamed from ContactEmail */
+  @RenamedFrom('ContactEmail')
+  PrimaryEmail: String(300) UNIQUE ERROR 'Email must be unique',
+
+  /** Phone number */
+  Phone: String(50),
+
+  /** Mobile number - new field */
+  Mobile: String(50),
+
+  /** Company name */
+  Company: String(200),
+
+  /** Job title */
+  JobTitle: String(100),
+
+  /** Contact notes */
+  Notes: String(2000),
+
+  /** Whether contact is active */
+  IsActive: Boolean DEFAULT true,
+
+  /** Creation timestamp */
+  CreatedAt: DateTime
+)
+INDEX (FullName),
+INDEX (PrimaryEmail),
+INDEX (Company);
+/
+
+-- ============================================================================
+-- Level 9.3: CREATE OR MODIFY for Multiple Attribute Changes
+-- ============================================================================
+
+/**
+ * Task entity showing comprehensive modifications.
+ *
+ * Changes applied:
+ * - TaskName renamed to TaskTitle (via @RenamedFrom)
+ * - TaskDescription renamed to TaskSummary
+ * - AssignedTo field widened from String(50) to String(100)
+ * - New fields: EstimatedHours, ActualHours, Tags
+ * - Priority now uses enumeration type
+ *
+ * Note: 'Title' and 'Description' are reserved keywords - use prefixed names.
+ */
+@Position(1700, 300)
+CREATE OR MODIFY PERSISTENT ENTITY DmTest.Task (
+  /** Task identifier */
+  TaskId: AutoNumber DEFAULT 1,
+
+  /** Task title - renamed from TaskName */
+  @RenamedFrom('TaskName')
+  TaskTitle: String(200) NOT NULL ERROR 'Task title is required',
+
+  /** Task summary - renamed from TaskDescription */
+  @RenamedFrom('TaskDescription')
+  TaskSummary: String(5000),
+
+  /** Assigned user - widened from String(50) */
+  AssignedTo: String(100),
+
+  /** Task priority using enumeration */
+  TaskPriority: Enumeration(DmTest.Priority) NOT NULL ERROR 'Priority is required',
+
+  /** Task status */
+  TaskStatus: Enumeration(DmTest.OrderStatus) DEFAULT 'PENDING',
+
+  /** Due date */
+  DueDate: DateTime,
+
+  /** Estimated hours - new field */
+  EstimatedHours: Decimal DEFAULT 0,
+
+  /** Actual hours spent - new field */
+  ActualHours: Decimal DEFAULT 0,
+
+  /** Tags for categorization - new field */
+  Tags: String(500),
+
+  /** Whether task is completed */
+  IsCompleted: Boolean DEFAULT false,
+
+  /** Completion date */
+  CompletedAt: DateTime,
+
+  /** Creation timestamp */
+  CreatedAt: DateTime
+)
+INDEX (TaskTitle),
+INDEX (AssignedTo),
+INDEX (DueDate),
+INDEX (TaskStatus);
+/
+
+-- ============================================================================
+-- Level 9.4: CREATE OR MODIFY for Non-Persistent Entity
+-- ============================================================================
+
+/**
+ * Filter parameters with CREATE OR MODIFY.
+ *
+ * Non-persistent entities can also use CREATE OR MODIFY
+ * to update their structure over time.
+ */
+@Position(1700, 400)
+CREATE OR MODIFY NON-PERSISTENT ENTITY DmTest.FilterParameters (
+  /** Text search query */
+  SearchQuery: String(200),
+
+  /** Filter by status */
+  StatusFilter: Enumeration(DmTest.OrderStatus),
+
+  /** Filter by priority */
+  PriorityFilter: Enumeration(DmTest.Priority),
+
+  /** Start date for range filter */
+  DateFrom: DateTime,
+
+  /** End date for range filter */
+  DateTo: DateTime,
+
+  /** Minimum value filter */
+  MinValue: Decimal,
+
+  /** Maximum value filter */
+  MaxValue: Decimal,
+
+  /** Include archived records */
+  IncludeArchived: Boolean DEFAULT false,
+
+  /** Page number for pagination - new field */
+  PageNumber: Integer DEFAULT 1,
+
+  /** Page size for pagination - new field */
+  PageSize: Integer DEFAULT 25,
+
+  /** Sort field name - new field */
+  SortField: String(50) DEFAULT 'CreatedAt',
+
+  /** Sort ascending - new field */
+  SortAscending: Boolean DEFAULT false
+);
+/
+
+-- ============================================================================
+-- Level 9.5: CREATE OR MODIFY for View Entity
+-- ============================================================================
+--
+-- View entities can also use CREATE OR MODIFY to update their definition.
+-- Useful when OQL query needs to change while preserving entity metadata.
+
+/**
+ * Task summary view with CREATE OR MODIFY.
+ *
+ * This view shows task statistics per assignee.
+ * The OQL query can be updated without recreating the entity.
+ */
+@Position(1700, 500)
+CREATE OR MODIFY VIEW ENTITY DmTest.TaskSummaryByAssignee (
+  Assignee: String(100),
+  TotalTasks: Integer,
+  CompletedTasks: Integer,
+  PendingTasks: Integer,
+  TotalEstimatedHours: Decimal,
+  TotalActualHours: Decimal
+) AS
+  SELECT
+    t.AssignedTo AS Assignee,
+    COUNT(t.TaskId) AS TotalTasks,
+    SUM(CASE WHEN t.IsCompleted = true THEN 1 ELSE 0 END) AS CompletedTasks,
+    SUM(CASE WHEN t.IsCompleted = false THEN 1 ELSE 0 END) AS PendingTasks,
+    SUM(t.EstimatedHours) AS TotalEstimatedHours,
+    SUM(t.ActualHours) AS TotalActualHours
+  FROM DmTest.Task AS t
+  WHERE t.AssignedTo IS NOT NULL
+  GROUP BY t.AssignedTo;
+/
+
+/**
+ * Active configuration view with CREATE OR MODIFY.
+ *
+ * Simple filter view that can be updated as needed.
+ */
+@Position(1700, 600)
+CREATE OR MODIFY VIEW ENTITY DmTest.ActiveConfigs (
+  ConfigKey: String(100),
+  ConfigValue: String(2000),
+  Description: String(500)
+) AS
+  SELECT
+    c.ConfigKey AS ConfigKey,
+    c.ConfigValue AS ConfigValue,
+    c.Description AS Description
+  FROM DmTest.AppConfig AS c
+  WHERE c.IsActive = true
+    AND 1=1
+;
+/
+
+/**
+ * Active configuration view with CREATE OR MODIFY.
+ *
+ * Simple filter view that can be updated as needed.
+ */
+@Position(1900, 600)
+CREATE OR MODIFY VIEW ENTITY DmTest.ActiveConfigs (
+  ConfigKey: String(100),
+  ConfigValue: String(2500),
+  Description: String(600)
+) AS
+  SELECT
+    c.ConfigKey AS ConfigKey,
+    c.ConfigValue AS ConfigValue,
+    c.Description AS Description
+  FROM DmTest.AppConfig AS c
+  WHERE c.IsActive = true;
+/
+
+-- ############################################################################
+-- PART 10: ALTER ENTITY (Incremental Schema Changes)
+-- ############################################################################
+--
+-- ALTER ENTITY modifies an existing entity without recreating it.
+-- Unlike CREATE OR MODIFY (which replaces the whole entity definition),
+-- ALTER ENTITY applies targeted changes: add, rename, modify, or drop
+-- individual attributes, indexes, and metadata.
+--
+-- Syntax: ALTER ENTITY Module.Name <action1> <action2> ... ;
+-- Multiple actions can be chained in a single statement.
+--
+
+-- MARK: ALTER ENTITY
+
+-- ============================================================================
+-- Level 10.1: ADD ATTRIBUTE
+-- ============================================================================
+
+-- Add a single attribute to an existing entity.
+ALTER ENTITY DmTest.Customer
+  ADD ATTRIBUTE LoyaltyPoints: Integer DEFAULT 0;
+
+-- Add multiple attributes in one statement.
+ALTER ENTITY DmTest.Product
+  ADD ATTRIBUTE DiscountPercentage: Decimal DEFAULT 0.00
+  ADD ATTRIBUTE Discontinued: Boolean DEFAULT false
+  ADD ATTRIBUTE SupplierCode: String(50);
+
+-- Add attribute with constraints (NOT NULL, UNIQUE).
+ALTER ENTITY DmTest.Employee
+  ADD ATTRIBUTE BadgeNumber: String(20) UNIQUE ERROR 'Badge number must be unique';
+
+-- ============================================================================
+-- Level 10.2: RENAME ATTRIBUTE
+-- ============================================================================
+
+-- Rename a single attribute.
+ALTER ENTITY DmTest.Customer
+  RENAME ATTRIBUTE City TO CityName;
+
+-- Rename multiple attributes in one statement.
+ALTER ENTITY DmTest.Settings
+  RENAME ATTRIBUTE StringValue TO TextValue
+  RENAME ATTRIBUTE IntegerValue TO NumericValue;
+
+-- ============================================================================
+-- Level 10.3: MODIFY ATTRIBUTE (Change Type)
+-- ============================================================================
+
+-- Widen a string attribute.
+ALTER ENTITY DmTest.Document
+  MODIFY ATTRIBUTE Summary String(1000);
+
+-- Change multiple attribute types in one statement.
+ALTER ENTITY DmTest.SimpleTag
+  MODIFY ATTRIBUTE Name String(200);
+
+-- ============================================================================
+-- Level 10.4: DROP ATTRIBUTE
+-- ============================================================================
+
+-- Drop a single attribute.
+ALTER ENTITY DmTest.ApiResponse
+  DROP ATTRIBUTE ErrorDetails;
+
+-- Drop multiple attributes in one statement.
+ALTER ENTITY DmTest.DashboardMetrics
+  DROP ATTRIBUTE RevenueLastMonth
+  DROP ATTRIBUTE GrowthPercentage;
+
+-- ============================================================================
+-- Level 10.5: SET DOCUMENTATION / SET COMMENT
+-- ============================================================================
+
+-- Set entity documentation (JavaDoc).
+ALTER ENTITY DmTest.SimpleTag
+  SET DOCUMENTATION 'A lightweight tag for categorization. Tags can be applied to products via the Product_Tags association.';
+
+-- Set entity comment.
+ALTER ENTITY DmTest.Category
+  SET COMMENT 'Used for product and department categorization.';
+
+-- ============================================================================
+-- Level 10.6: ADD INDEX / DROP INDEX
+-- ============================================================================
+
+-- Add a single-column index.
+ALTER ENTITY DmTest.Customer
+  ADD INDEX (Email);
+
+-- Add a composite index.
+ALTER ENTITY DmTest.Employee
+  ADD INDEX (LastName, FirstName);
+
+-- ============================================================================
+-- Level 10.7: Combined Actions
+-- ============================================================================
+--
+-- Multiple action types can be mixed in a single ALTER ENTITY statement.
+-- This is useful for applying a batch of related schema changes atomically.
+
+ALTER ENTITY DmTest.BankAccount
+  ADD ATTRIBUTE CurrencyCode: String(3) DEFAULT 'EUR'
+  ADD ATTRIBUTE IBAN: String(34)
+  ADD INDEX (IBAN)
+  SET COMMENT 'Extended with multi-currency support.';
+
+-- ============================================================================
+-- Level 10.8: Quoted Identifiers for Reserved-Word Attribute Names
+-- ============================================================================
+--
+-- When an attribute name is a reserved MDL keyword (e.g., Range, Check, Order),
+-- use double-quotes or backticks to escape it. Both styles are supported.
+
+CREATE PERSISTENT ENTITY DmTest.VATRate (
+  "Range": Decimal,
+  `Check`: Boolean default True,
+  Rate: Decimal
+);
+
+-- Quoted identifiers also work in ALTER ENTITY actions
+ALTER ENTITY DmTest.VATRate
+  RENAME ATTRIBUTE "Range" TO TaxRange;
+
+ALTER ENTITY DmTest.VATRate
+  MODIFY ATTRIBUTE `Check` String(10);
+
+ALTER ENTITY DmTest.VATRate
+  ADD ATTRIBUTE "Order": Integer;
+
+ALTER ENTITY DmTest.VATRate
+  DROP ATTRIBUTE "Order";
+
+-- Quoted identifiers in index column names
+ALTER ENTITY DmTest.VATRate
+  ADD INDEX (TaxRange ASC);
+
+-- ============================================================================
+-- PART 11: COMPLEX VIEW ENTITIES WITH SUBQUERIES
+-- ============================================================================
+-- Demonstrates advanced OQL features including:
+--   - Inline subqueries (derived tables)
+--   - Scalar subqueries in SELECT
+--   - Subqueries in WHERE clause (IN, EXISTS patterns)
+--   - Multiple JOINs with complex conditions
+-- ============================================================================
+
+/**
+ * Task performance analysis with inline subqueries.
+ *
+ * This complex view demonstrates:
+ * - Scalar subquery in SELECT to get related counts
+ * - Subquery in WHERE to filter based on aggregated data
+ * - CASE expressions for conditional logic
+ *
+ * Use case: Dashboard showing high-priority tasks with completion metrics
+ */
+@Position(2100, 100)
+CREATE VIEW ENTITY DmTest.TaskPerformanceAnalysis (
+  TaskId: Long,
+  TaskTitle: String(200),
+  AssignedTo: String(100),
+  TaskPriority: Enumeration(DmTest.Priority),
+  IsCompleted: Boolean,
+  EstimatedHours: Decimal,
+  ActualHours: Decimal,
+  EfficiencyRatio: Decimal,
+  AssigneeTaskCount: Integer
+) AS
+  SELECT
+    t.TaskId AS TaskId,
+    t.TaskTitle AS TaskTitle,
+    t.AssignedTo AS AssignedTo,
+    t.TaskPriority AS TaskPriority,
+    t.IsCompleted AS IsCompleted,
+    t.EstimatedHours AS EstimatedHours,
+    t.ActualHours AS ActualHours,
+    CASE
+      WHEN t.ActualHours > 0 THEN t.EstimatedHours : t.ActualHours
+      ELSE 0
+    END AS EfficiencyRatio,
+    (SELECT COUNT(t2.TaskId)
+     FROM DmTest.Task AS t2
+     WHERE t2.AssignedTo = t.AssignedTo) AS AssigneeTaskCount
+  FROM DmTest.Task AS t
+  WHERE t.TaskPriority IN ('HIGH', 'CRITICAL')
+    AND t.AssignedTo IS NOT NULL;
+/
+
+/**
+ * Sales orders with customer statistics using correlated subquery.
+ *
+ * Demonstrates scalar subqueries that reference the outer query.
+ * Each order shows the customer's total order count and spend.
+ */
+@Position(2100, 300)
+CREATE VIEW ENTITY DmTest.SalesOrderStats (
+  OrderNumber: String(50),
+  CustomerId: String(50),
+  OrderDate: DateTime,
+  TotalAmount: Decimal,
+  CustomerOrderCount: Integer,
+  CustomerTotalSpend: Decimal
+) AS
+  SELECT
+    o.OrderNumber AS OrderNumber,
+    o.CustomerId AS CustomerId,
+    o.OrderDate AS OrderDate,
+    o.TotalAmount AS TotalAmount,
+    (SELECT COUNT(o2.OrderNumber)
+     FROM DmTest.SalesOrder AS o2
+     WHERE o2.CustomerId = o.CustomerId) AS CustomerOrderCount,
+    (SELECT SUM(o3.TotalAmount)
+     FROM DmTest.SalesOrder AS o3
+     WHERE o3.CustomerId = o.CustomerId) AS CustomerTotalSpend
+  FROM DmTest.SalesOrder AS o
+  WHERE o.OrderDate IS NOT NULL;
+/
+
+/**
+ * Products above average price using subquery comparison.
+ *
+ * Uses a scalar subquery to calculate average and filter products.
+ */
+@Position(2100, 500)
+CREATE VIEW ENTITY DmTest.AboveAverageProducts (
+  ProductId: Long,
+  ProductName: String(200),
+  ProductPrice: Decimal,
+  PriceDifferenceFromAvg: Decimal
+) AS
+  SELECT
+    p.ProductId AS ProductId,
+    p.Name AS ProductName,
+    p.Price AS ProductPrice,
+    p.Price - (SELECT AVG(p2.Price) FROM DmTest.Product AS p2) AS PriceDifferenceFromAvg
+  FROM DmTest.Product AS p
+  WHERE p.Price > (SELECT AVG(p3.Price) FROM DmTest.Product AS p3)
+    AND p.IsActive = true;
+/
+
+/**
+ * Comprehensive dashboard view with multiple subqueries.
+ *
+ * This is the most complex example showing multiple inline subqueries
+ * combined with JOINs, CASE expressions, and aggregations.
+ */
+@Position(2100, 700)
+CREATE VIEW ENTITY DmTest.ComprehensiveDashboard (
+  EntityType: String(200),
+  EntityName: String(100),
+  TotalCount: Integer,
+  ActiveCount: Integer,
+  CompletionRate: Integer,
+  AvgValue: Decimal
+) AS
+  SELECT
+    'Task' AS EntityType,
+    t.AssignedTo AS EntityName,
+    COUNT(t.TaskId) AS TotalCount,
+    SUM(CASE WHEN t.IsCompleted = true THEN 1 ELSE 0 END) AS ActiveCount,
+    CASE
+      WHEN COUNT(t.TaskId) > 0
+      THEN SUM(CASE WHEN t.IsCompleted = true THEN 1 ELSE 0 END) * 100 : COUNT(t.TaskId)
+      ELSE 0
+    END AS CompletionRate,
+    AVG(t.EstimatedHours) AS AvgValue
+  FROM DmTest.Task AS t
+  WHERE t.AssignedTo IN (
+    SELECT DISTINCT t2.AssignedTo
+    FROM DmTest.Task AS t2
+    WHERE t2.TaskPriority = 'HIGH'
+  )
+  GROUP BY t.AssignedTo;
+/
+
+show entities;
+show entities in DmTest;
+describe entity DmTest.ComprehensiveDashboard;
+show enumerations;
+show enumerations in DmTest;
+
+create module DmTest2;
+move entity DmTest.Customer to DmTest2;
+create module DmTest3;
+move enumeration DmTest.Country to DmTest3;
+move entity DmTest.ActiveConfigs to DmTest3;
+
+show entities in DmTest2;
+show enumerations in DmTest3;
+
+-- ############################################################################
+-- PART 12: ENTITY GENERALIZATION (INHERITANCE)
+-- ############################################################################
+--
+-- Entities can extend (specialize) other entities using the EXTENDS keyword.
+-- This is commonly used to:
+--   - Create file upload entities (EXTENDS System.FileDocument)
+--   - Create image entities (EXTENDS System.Image)
+--   - Create custom user types (EXTENDS System.User)
+--   - Create application-specific type hierarchies
+--
+-- The child entity inherits all attributes from the parent entity and adds
+-- its own. Generalization is stored as a BY_NAME reference to the parent.
+--
+-- Both EXTENDS (preferred) and GENERALIZATION (legacy) keywords are supported.
+
+-- MARK: Entity Generalization
+
+-- ============================================================================
+-- Level 12.1: EXTENDS System.FileDocument
+-- ============================================================================
+
+/**
+ * File attachment entity that extends System.FileDocument.
+ *
+ * Inherits all file storage attributes (Name, Size, Contents, etc.)
+ * and adds application-specific metadata.
+ */
+@Position(2300, 100)
+CREATE PERSISTENT ENTITY DmTest.Attachment EXTENDS System.FileDocument (
+  /** Description of the attachment */
+  FileDescription: String(500),
+  /** Category for organizing attachments */
+  FileCategory: String(100),
+  /** Whether this attachment is publicly accessible */
+  IsPublic: Boolean DEFAULT false
+);
+/
+
+-- ============================================================================
+-- Level 12.2: EXTENDS System.Image
+-- ============================================================================
+
+/**
+ * Product photo entity that extends System.Image.
+ *
+ * Inherits image storage and thumbnail generation from System.Image,
+ * plus adds metadata for product catalog display.
+ */
+@Position(2300, 200)
+CREATE PERSISTENT ENTITY DmTest.ProductPhoto EXTENDS System.Image (
+  /** Photo caption for display */
+  PhotoCaption: String(200),
+  /** Display sort order */
+  SortOrder: Integer DEFAULT 0,
+  /** Whether this is the primary product photo */
+  IsPrimary: Boolean DEFAULT false
+);
+/
+
+-- ============================================================================
+-- Level 12.3: EXTENDS Application Entity
+-- ============================================================================
+
+/**
+ * Base entity for all vehicles in a fleet management system.
+ */
+@Position(2300, 300)
+CREATE PERSISTENT ENTITY DmTest.Vehicle (
+  /** License plate number */
+  LicensePlate: String(20) NOT NULL ERROR 'License plate is required' UNIQUE ERROR 'License plate must be unique',
+  /** Vehicle make (manufacturer) */
+  Make: String(100),
+  /** Vehicle model name */
+  ModelName: String(100),
+  /** Year of manufacture */
+  ManufactureYear: Integer,
+  /** Current mileage */
+  Mileage: Long DEFAULT 0,
+  /** Whether vehicle is currently active in the fleet */
+  IsFleetActive: Boolean DEFAULT true
+);
+/
+
+/**
+ * Truck entity that extends Vehicle with cargo-specific attributes.
+ *
+ * Inherits all Vehicle attributes (LicensePlate, Make, Model, etc.)
+ * and adds truck-specific fields for cargo management.
+ */
+@Position(2500, 300)
+CREATE PERSISTENT ENTITY DmTest.Truck EXTENDS DmTest.Vehicle (
+  /** Maximum cargo weight in kilograms */
+  MaxPayload: Decimal,
+  /** Cargo volume in cubic meters */
+  CargoVolume: Decimal,
+  /** Number of axles */
+  AxleCount: Integer DEFAULT 2,
+  /** Whether truck has refrigeration unit */
+  HasRefrigeration: Boolean DEFAULT false
+);
+/
+
+/**
+ * Passenger car that extends Vehicle.
+ *
+ * Adds passenger-specific attributes like seat count and fuel type.
+ */
+@Position(2500, 400)
+CREATE PERSISTENT ENTITY DmTest.PassengerCar EXTENDS DmTest.Vehicle (
+  /** Number of passenger seats */
+  SeatCount: Integer DEFAULT 5,
+  /** Fuel type (Petrol, Diesel, Electric, Hybrid) */
+  FuelType: String(50) DEFAULT 'Petrol',
+  /** Trunk volume in liters */
+  TrunkVolume: Decimal
+);
+/
+
+-- ============================================================================
+-- Level 12.4: EXTENDS with No Additional Attributes
+-- ============================================================================
+
+/**
+ * Minimal specialization with no extra attributes.
+ *
+ * Sometimes you just need a distinct entity type for security rules
+ * or polymorphic retrieval, without adding new attributes.
+ */
+@Position(2300, 500)
+CREATE PERSISTENT ENTITY DmTest.InternalDocument EXTENDS System.FileDocument;
+/
+
+-- ============================================================================
+-- Level 12.5: GENERALIZATION Keyword (Legacy Syntax)
+-- ============================================================================
+
+/**
+ * Uses the legacy GENERALIZATION keyword (equivalent to EXTENDS).
+ * Both keywords are supported; EXTENDS is preferred for new code.
+ */
+@Position(2300, 600)
+CREATE PERSISTENT ENTITY DmTest.ProfilePhoto GENERALIZATION System.Image (
+  /** Whether this photo has been approved by admin */
+  IsApproved: Boolean DEFAULT false
+);
+/
+
+-- ============================================================================
+-- Level 12.6: CREATE OR MODIFY with EXTENDS
+-- ============================================================================
+
+/**
+ * CREATE OR MODIFY works with EXTENDS for idempotent updates.
+ *
+ * If the entity already exists, it will be updated.
+ * If not, it will be created with the generalization.
+ */
+@Position(2300, 700)
+CREATE OR MODIFY PERSISTENT ENTITY DmTest.Attachment EXTENDS System.FileDocument (
+  /** Description of the attachment */
+  FileDescription: String(500),
+  /** Category for organizing attachments */
+  FileCategory: String(100),
+  /** Whether this attachment is publicly accessible */
+  IsPublic: Boolean DEFAULT false,
+  /** Upload timestamp - new field added via CREATE OR MODIFY */
+  UploadedAt: DateTime
+);
+/
+
+-- ============================================================================
+-- Level 12.7: Association to Generalized Entity
+-- ============================================================================
+
+/**
+ * Link products to their photos.
+ * The target entity (ProductPhoto) extends System.Image.
+ */
+CREATE ASSOCIATION DmTest.Product_Photos
+FROM DmTest.Product TO DmTest.ProductPhoto
+TYPE ReferenceSet
+OWNER Both;
+/
+
+/**
+ * Link invoices to their attachments.
+ * The target entity (Attachment) extends System.FileDocument.
+ */
+CREATE ASSOCIATION DmTest.Invoice_Attachments
+FROM DmTest.Invoice TO DmTest.Attachment
+TYPE ReferenceSet
+OWNER Both;
+/
+
+-- Verify generalized entities appear in listings
+show entities in DmTest;
+describe entity DmTest.Attachment;
+describe entity DmTest.ProductPhoto;
+describe entity DmTest.Truck;
+describe entity DmTest.InternalDocument;
+
+-- ############################################################################
+-- SUMMARY
+-- ############################################################################
+--
+-- This file demonstrates:
+--
+-- ENUMERATIONS (Level 1)
+--   - Basic enumerations: IDENTIFIER 'Caption'
+--   - Inline documentation for enum values
+--
+-- DATA TYPES (Level 2)
+--   - String(length), Integer, Long, Decimal, Boolean
+--   - DateTime, Date, AutoNumber, Binary
+--   - Enumeration(Module.Enum)
+--
+-- CONSTRAINTS (Level 3)
+--   - NOT NULL ERROR 'message'
+--   - UNIQUE ERROR 'message'
+--   - DEFAULT value
+--
+-- INDEXES (Level 4)
+--   - Single column: INDEX (Column)
+--   - Composite: INDEX (Col1, Col2)
+--   - With direction: INDEX (Column ASC/DESC)
+--
+-- DOCUMENTATION (Level 5)
+--   - Entity JavaDoc: /** ... */
+--   - Inline attribute docs
+--   - @see references
+--
+-- ASSOCIATIONS (Level 6)
+--   - Reference (Many-to-One)
+--   - ReferenceSet (Many-to-Many)
+--   - Self-referencing (Hierarchical)
+--   - DELETE_BEHAVIOR options
+--
+-- VIEW ENTITIES (Level 7)
+--   - SELECT with aliases
+--   - Aggregations (COUNT, SUM, AVG)
+--   - JOINs via association path
+--   - WHERE and GROUP BY
+--
+-- NON-PERSISTENT ENTITIES (Level 8)
+--   - Search parameters
+--   - API responses
+--   - Dashboard metrics
+--
+-- CREATE OR MODIFY (Level 9)
+--   - Idempotent entity creation/modification
+--   - @RenamedFrom('oldName') for attribute renaming
+--   - Compatible type changes (widening)
+--   - Works with PERSISTENT, NON-PERSISTENT, and VIEW
+--
+-- ALTER ENTITY (Level 10)
+--   - ADD ATTRIBUTE with types and constraints
+--   - RENAME ATTRIBUTE for non-destructive renames
+--   - MODIFY ATTRIBUTE for type changes (e.g., widen string)
+--   - DROP ATTRIBUTE to remove fields
+--   - SET DOCUMENTATION / SET COMMENT for metadata
+--   - ADD INDEX / DROP INDEX for performance tuning
+--   - Combined multi-action statements
+--   - Quoted identifiers for reserved-word attribute names ("Range", `Order`)
+--
+-- ENTITY GENERALIZATION (Level 12)
+--   - EXTENDS System.FileDocument for file storage
+--   - EXTENDS System.Image for image entities
+--   - EXTENDS application entities (type hierarchies)
+--   - EXTENDS with no additional attributes
+--   - GENERALIZATION keyword (legacy syntax)
+--   - CREATE OR MODIFY with EXTENDS
+--   - Associations to generalized entities
+--
+-- Total: 45+ domain model elements
+--
+-- ############################################################################

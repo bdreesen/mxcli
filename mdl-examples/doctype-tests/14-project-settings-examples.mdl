@@ -1,0 +1,99 @@
+-- ============================================================================
+-- Project Settings Examples - Comprehensive Parser Feature Showcase
+-- ============================================================================
+--
+-- This file demonstrates all project settings features supported by the
+-- Mendix REPL parser.
+--
+-- Usage:
+--   1. Connect to your project
+--   2. Execute: EXECUTE SCRIPT 'examples/14-project-settings-examples.mdl';
+--   3. Verify with: SHOW SETTINGS;
+--
+-- NOTE: These ALTER SETTINGS commands modify the project's settings in place.
+-- Always use DESCRIBE SETTINGS first to capture current values before changes.
+--
+-- ============================================================================
+
+-- MARK: Model Settings
+
+-- ============================================================================
+-- PART 1: Model Settings
+-- ============================================================================
+
+/**
+ * Example 1.1: Set after-startup microflow
+ */
+ALTER SETTINGS MODEL AfterStartupMicroflow = 'MyModule.ASU_Startup';
+
+/**
+ * Example 1.2: Configure hash algorithm and Java version
+ */
+ALTER SETTINGS MODEL HashAlgorithm = 'BCrypt', JavaVersion = 'Java21';
+
+/**
+ * Example 1.3: Multiple model settings at once
+ */
+ALTER SETTINGS MODEL
+  RoundingMode = 'HalfUp',
+  BcryptCost = 12,
+  AllowUserMultipleSessions = true;
+
+-- MARK: Configuration Settings
+
+-- ============================================================================
+-- PART 2: Database Configuration
+-- ============================================================================
+
+/**
+ * Example 2.1: Configure PostgreSQL database connection
+ */
+ALTER SETTINGS CONFIGURATION 'Default'
+  DatabaseType = 'PostgreSql',
+  DatabaseUrl = 'localhost:5432',
+  DatabaseName = 'myapp',
+  DatabaseUserName = 'mendix',
+  DatabasePassword = 'mendix',
+  HttpPortNumber = 8080;
+
+-- MARK: Constant Overrides
+
+-- ============================================================================
+-- PART 3: Constant Value Overrides
+-- ============================================================================
+
+/**
+ * Example 3.1: Override a constant value in a specific configuration
+ */
+ALTER SETTINGS CONSTANT 'BusinessEvents.ServerUrl' VALUE 'kafka:9092'
+  IN CONFIGURATION 'Default';
+
+-- MARK: Language Settings
+
+-- ============================================================================
+-- PART 4: Language and Workflow Settings
+-- ============================================================================
+
+/**
+ * Example 4.1: Set default language
+ */
+ALTER SETTINGS LANGUAGE DefaultLanguageCode = 'en_US';
+
+/**
+ * Example 4.2: Configure workflow settings
+ */
+ALTER SETTINGS WORKFLOWS UserEntity = 'System.User';
+
+-- ============================================================================
+-- SUMMARY
+-- ============================================================================
+--
+-- Covered:
+-- ALTER SETTINGS MODEL (microflows, hash algorithm, Java version)
+-- ALTER SETTINGS CONFIGURATION (database connection, HTTP port)
+-- ALTER SETTINGS CONSTANT with IN CONFIGURATION
+-- ALTER SETTINGS LANGUAGE
+-- ALTER SETTINGS WORKFLOWS
+-- SHOW SETTINGS / DESCRIBE SETTINGS (read-only)
+--
+-- ============================================================================

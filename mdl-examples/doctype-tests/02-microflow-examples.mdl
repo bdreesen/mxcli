@@ -1,0 +1,2500 @@
+-- ============================================================================
+-- Microflow Examples - Comprehensive Parser Feature Showcase
+-- ============================================================================
+--
+-- This file demonstrates all microflow features currently supported by the
+-- Mendix REPL parser, organized by increasing complexity.
+--
+-- Usage:
+--   1. Connect to your project
+--   2. Execute: EXECUTE SCRIPT 'examples/microflow-examples.mdl';
+--   3. MfTest roundtrip with: DESCRIBE MICROFLOW MfTest.MicroflowName;
+--
+-- ============================================================================
+
+-- MARK: Entities
+
+CREATE MODULE MfTest;
+-- ============================================================================
+-- Setup: Create MfTest Entities
+-- ============================================================================
+
+/**
+ * Country codes with full names as captions.
+ */
+CREATE ENUMERATION MfTest.Country (
+  /** United States */
+  US 'United States',
+  /** United Kingdom */
+  UK 'United Kingdom',
+  /** Germany */
+  DE 'Germany',
+  /** France */
+  FR 'France',
+  /** Netherlands */
+  NL 'Netherlands',
+  /** Japan */
+  JP 'Japan',
+  /** Australia */
+  AU 'Australia'
+);
+/
+
+-- Create entities used by microflow examples
+@Position(100,100)
+CREATE PERSISTENT ENTITY MfTest.Product (
+  Name: String(200) NOT NULL,
+  Code: String(50),
+  IsActive: Boolean DEFAULT true,
+  CreateDate: DateTime,
+  Price: Decimal,
+  ModifiedDate: DateTime,
+  MonthlyTotal: Decimal,
+  DailyAverage: Decimal,
+  LastProcessedDate: DateTime,
+  LastCalculated: DateTime
+);
+
+@Position(300,100)
+CREATE PERSISTENT ENTITY MfTest.Customer (
+  Name: String(200) NOT NULL,
+  Email: String(200),
+  Code: String(50),
+  Phone: String(50),
+  Address: String(500),
+  City: String(100),
+  Country: Enumeration(MfTest.Country),
+  IsActive: Boolean DEFAULT true,
+  CreateDate: DateTime
+);
+
+@Position(500,100)
+CREATE PERSISTENT ENTITY MfTest.Order (
+  OrderNumber: String(50) NOT NULL,
+  OrderDate: DateTime,
+  TotalAmount: Decimal,
+  Status: String(50),
+  ProcessedDate: DateTime,
+  Quantity: Integer,
+  TotalPrice: Decimal,
+  CreateDate: DateTime
+);
+
+-- Create associations
+CREATE ASSOCIATION MfTest.Order_Customer
+FROM MfTest.Order TO MfTest.Customer
+TYPE Reference
+OWNER Both;
+
+CREATE ASSOCIATION MfTest.Order_Product
+FROM MfTest.Order TO MfTest.Product
+TYPE Reference
+OWNER Both;
+
+-- MARK: BASIC MF
+-- ============================================================================
+-- LEVEL 1: Basic Microflows
+-- ============================================================================
+
+/**
+ * Example 1.1: Simplest possible microflow
+ * Minimal microflow demonstrating basic structure
+ */
+CREATE MICROFLOW MfTest.M001_HelloWorld ()
+RETURNS Boolean AS $Success
+BEGIN
+  DECLARE $Success Boolean = true;
+  RETURN $Success;
+END;
+/
+
+/**
+ * Example 1.1: Simplest possible microflow
+ * Minimal microflow demonstrating basic structure
+ */
+CREATE or replace MICROFLOW MfTest.M001_HelloWorld ()
+RETURNS Boolean AS $Success
+BEGIN
+  DECLARE $Success Boolean = true;
+  LOG TRACE NODE 'TEST' 'List received '
+  RETURN $Success;
+END;
+/
+
+/**
+ * Example 1.1: Simplest possible microflow
+ * Minimal microflow demonstrating basic structure
+ */
+CREATE or replace MICROFLOW MfTest.M001_HelloWorld_1 ()
+RETURNS Boolean AS $Success
+BEGIN
+  CALL MICROFLOW MfTest.M001_HelloWorld();
+  Return true;
+END;
+/
+
+/**
+ * Example 1.1: Simplest possible microflow
+ * Minimal microflow demonstrating basic structure
+ */
+CREATE or replace MICROFLOW MfTest.M001_HelloWorld ()
+RETURNS Boolean AS $Success
+BEGIN
+  LOG TRACE NODE 'TEST' '> before'
+  DECLARE $Success Boolean = true;
+  LOG TRACE NODE 'TEST' '< After'
+  RETURN $Success;
+END;
+/
+
+/**
+ * Example 1.1.1: Simplest possible microflow
+ * Minimal microflow demonstrating basic structure with folder
+ */
+CREATE MICROFLOW MfTest.M001_HelloWorld_2 ()
+RETURNS Boolean AS $Success
+FOLDER 'microflows/basic'
+BEGIN
+  DECLARE $Success Boolean = true;
+  RETURN $Success;
+END;
+/
+
+/**
+ * Demonstrates variable declaration and arithmetic
+ */
+CREATE MICROFLOW MfTest.M002_BasicVariables ()
+RETURNS Integer AS $Result
+BEGIN
+  DECLARE $Result Integer = 0;
+  DECLARE $Counter Integer = 0;
+  DECLARE $Multiplier Integer = 5;
+
+  SET $Counter = $Counter + 10;
+  SET $Result = $Counter * $Multiplier;
+
+  RETURN $Result;
+END;
+/
+
+/**
+ * String concatenation and manipulation
+ */
+CREATE MICROFLOW MfTest.M003_StringOperations (
+  $FirstName: String,
+  $LastName: String
+)
+RETURNS String AS $FullName
+BEGIN
+  DECLARE $FullName String = $FirstName + ' ' + $LastName;
+  RETURN $FullName;
+END;
+/
+
+/**
+ * Example 1.4: Boolean logic
+ *
+ * Demonstrates boolean operations.
+ */
+CREATE MICROFLOW MfTest.M004_BooleanLogic (
+  $IsActive: Boolean,
+  $IsValid: Boolean
+)
+RETURNS Boolean AS $CanProceed
+BEGIN
+  DECLARE $CanProceed Boolean = $IsActive AND $IsValid;
+  RETURN $CanProceed;
+END;
+/
+
+/**
+ * Demonstrates list of entity parameter type
+ *
+ * @param ProductList a list of MfTest.Product
+ */
+CREATE MICROFLOW MfTest.M005_1_LogParameter (
+  $ProductList: List of MfTest.Product
+)
+BEGIN
+  LOG INFO NODE 'TEST' 'List received';
+END;
+/
+
+/**
+ * Demonstrates list of entity parameter type
+ *
+ * @param ProductList a list of MfTest.Product
+ */
+CREATE MICROFLOW MfTest.M005_2_LogParameter (
+  $ProductList: List of MfTest.Product  
+)
+BEGIN
+  LOG INFO NODE 'TEST' 'List received ' + 'abc';
+END;
+/
+
+/**
+ * Demonstrates list of entity parameter type
+ *
+ * @param ProductList a list of MfTest.Product
+ */
+CREATE MICROFLOW MfTest.M005_3_LogParameter (
+  $ProductList: List of MfTest.Product
+)
+BEGIN
+  LOG TRACE NODE 'TEST' 'List received ' + 'abc' + 'def';
+  LOG DEBUG NODE 'TEST' 'List received ' + 'abc' + 'def';
+  LOG INFO NODE 'TEST' 'List received ' + 'abc' + 'def';
+  LOG WARNING NODE 'TEST' 'List received ' + 'abc' + 'def';
+  LOG ERROR NODE 'TEST' 'List received ' + 'abc' + 'def';
+  LOG CRITICAL NODE 'TEST' 'List received ' + 'abc' + 'def';
+END;
+/
+
+-- ============================================================================
+-- LEVEL 2: Control Flow
+-- ============================================================================
+
+/**
+ * Basic conditional logic with IF/THEN/END IF
+ */
+CREATE MICROFLOW MfTest.M006_SimpleIf (
+  $Value: Integer
+)
+RETURNS String AS $Message
+BEGIN
+  DECLARE $Message String = 'Unknown';
+
+  IF $Value > 10 THEN
+    SET $Message = 'Value is greater than 10';
+  END IF;
+
+  RETURN $Message;
+END;
+/
+
+/**
+ * Example 2.2: IF/THEN/ELSE
+ *
+ * Conditional with ELSE clause.
+ */
+CREATE MICROFLOW MfTest.M007_IfElse (
+  $Value: Integer
+)
+RETURNS String AS $Category
+BEGIN
+  DECLARE $Category String = empty;
+
+  IF $Value > 100 THEN
+    SET $Category = 'High';
+  ELSE
+    SET $Category = 'Low';
+  END IF;
+
+  RETURN $Category;
+END;
+/
+
+/**
+ * Example 2.3: Nested IF statements
+ *
+ * Nested conditional logic.
+ *
+ * @param Score The input score value
+ * @returns Grade string (A, B, C, or F)
+ */
+CREATE MICROFLOW MfTest.M008_NestedIf (
+  $Score: Integer
+)
+RETURNS String AS $Grade
+BEGIN
+  DECLARE $Grade String = 'F';
+
+  IF $Score >= 90 THEN
+    SET $Grade = 'A';
+  ELSE
+    IF $Score >= 80 THEN
+      SET $Grade = 'B';
+    ELSE
+      IF $Score >= 70 THEN
+        SET $Grade = 'C';
+      ELSE
+        SET $Grade = 'F';
+      END IF;
+    END IF;
+  END IF;
+
+  RETURN $Grade;
+END;
+/
+
+-- ============================================================================
+-- LEVEL 3: Logging and Expressions
+-- ============================================================================
+
+/**
+ * Example 3.1: LOG statements
+ *
+ * Demonstrates logging at different levels.
+ */
+CREATE MICROFLOW MfTest.M009_Logging (
+  $OrderNumber: String
+)
+RETURNS Boolean AS $Success
+BEGIN
+  DECLARE $Success Boolean = true;
+  LOG INFO NODE 'TEST' 'Starting order processing';
+  LOG INFO NODE 'OrderService' 'Processing order: ' + $OrderNumber;
+  LOG WARNING NODE 'TEST' 'This is a warning message';
+  RETURN $Success;
+END;
+/
+
+/**
+ * Example 3.2: LOG with String template parameters
+ *
+ * Demonstrates LOG with template placeholders {1}, {2}, etc.
+ * The WITH clause maps placeholders to expressions using the unified template syntax.
+ * This is more efficient than string concatenation for logging.
+ *
+ * Note: Pages use the same WITH syntax for DynamicText and ActionButton captions.
+ * See docs/03-development/STRING_TEMPLATE_SYNTAX.md for full specification.
+ */
+CREATE MICROFLOW MfTest.M009_2_LogWithTemplate (
+  $OrderNumber: String,
+  $CustomerName: String,
+  $TotalAmount: Decimal
+)
+RETURNS Boolean AS $Success
+BEGIN
+  DECLARE $Success Boolean = true;
+  DECLARE $ItemCount Integer = 5;
+
+  -- Simple template with one parameter
+  LOG INFO NODE 'OrderService' 'Processing order: {1}' WITH ({1} = $OrderNumber);
+
+  -- Template with multiple parameters of different types
+  LOG INFO NODE 'OrderService' 'Order {1} for customer {2} with {3} items totaling {4}' WITH (
+    {1} = $OrderNumber,
+    {2} = $CustomerName,
+    {3} = toString($ItemCount) ,
+    {4} = toString($TotalAmount) 
+  );
+
+  -- Warning with template
+  LOG WARNING NODE 'OrderService' 'High value order detected: {1} = {2}' WITH (
+      {1} = toString($OrderNumber)
+    , {2} = toString($TotalAmount)
+  );
+
+  RETURN $Success;
+END;
+/
+
+/**
+ * Example 3.3: Arithmetic expressions with div
+ *
+ * Demonstrates div operator for division.
+ */
+CREATE MICROFLOW MfTest.M010_ArithmeticOperations (
+  $Total: Decimal,
+  $Count: Integer
+)
+RETURNS Decimal AS $Average
+BEGIN
+  DECLARE $Average Decimal = 0;
+  SET $Average = $Total div $Count;
+  RETURN $Average;
+END;
+/
+
+/**
+ * Example 3.4: Complex arithmetic
+ *
+ * Complex arithmetic with multiple operators.
+ */
+CREATE MICROFLOW MfTest.M011_ComplexMath (
+  $Principal: Decimal,
+  $Rate: Decimal,
+  $Time: Integer
+)
+RETURNS Decimal AS $Interest
+BEGIN
+  DECLARE $RateDecimal Decimal = $Rate div 100;
+  DECLARE $Interest Decimal = $Principal * $RateDecimal * $Time;
+  RETURN $Interest;
+END;
+/
+
+-- MARK: Object Ops
+
+-- ============================================================================
+-- LEVEL 4: Object Operations
+-- ============================================================================
+
+/**
+ * Example 4.1: CREATE object
+ *
+ * Creates a new entity object.
+ */
+CREATE MICROFLOW MfTest.M012_CreateEntity (
+  $Name: String,
+  $Code: String
+)
+RETURNS MfTest.Product AS $NewProduct
+BEGIN
+  $NewProduct = CREATE MfTest.Product (
+    Name = $Name,
+    Code = $Code,
+    IsActive = true,
+    CreateDate = [%CurrentDateTime%]);
+
+  RETURN $NewProduct;
+END;
+/
+
+/**
+ * Example 4.2: COMMIT operations
+ *
+ * Demonstrates COMMIT with and without events.
+ */
+CREATE MICROFLOW MfTest.M013_SaveEntity (
+  $Product: MfTest.Product
+)
+RETURNS Boolean AS $Success
+BEGIN
+  -- Commit without events
+  COMMIT $Product;
+
+  LOG INFO NODE 'TEST' 'Entity saved';
+  DECLARE $Success Boolean = true;
+  RETURN $Success;
+END;
+/
+
+/**
+ * Example 4.3: COMMIT WITH EVENTS
+ *
+ * Commit that triggers event handlers.
+ */
+CREATE MICROFLOW MfTest.M014_SaveEntityWithEvents (
+  $Product: MfTest.Product
+)
+RETURNS Boolean AS $Success
+BEGIN
+  COMMIT $Product WITH EVENTS;
+
+  LOG INFO NODE 'Test' 'Entity saved with events';
+  DECLARE $Success Boolean = true;
+  RETURN $Success;
+END;
+/
+
+/**
+ * Example 4.4: CHANGE object
+ *
+ * Updates entity attributes.
+ */
+CREATE MICROFLOW MfTest.M015_UpdateEntity (
+  $Product: MfTest.Product,
+  $NewName: String
+)
+RETURNS Boolean AS $Success
+BEGIN
+  CHANGE $Product (
+    Name = $NewName,
+    ModifiedDate = [%CurrentDateTime%]);
+
+  COMMIT $Product WITH EVENTS;
+
+  DECLARE $Success Boolean = true;
+  RETURN $Success;
+END;
+/
+
+/**
+ * Creates a new entity object
+ */
+CREATE MICROFLOW MfTest.M015_2_CreateUpdateEntity (
+  $Name: String,
+  $Code: String
+)
+RETURNS MfTest.Product AS $NewProduct
+BEGIN
+  $NewProduct = CREATE MfTest.Product (
+    Name = $Name,
+    Code = $Code,
+    IsActive = true,
+    CreateDate = [%CurrentDateTime%]);
+
+  CHANGE $NewProduct (
+    Name = $Name + 'Changed',
+    ModifiedDate = [%CurrentDateTime%]);
+
+  RETURN $NewProduct;
+END;
+/
+
+-- MARK: XPath
+
+-- ============================================================================
+-- LEVEL 5: XPath Navigation (NEW FEATURE!)
+-- ============================================================================
+
+/**
+ * Example 5.1: XPath attribute access
+ *
+ * Access attributes using XPath-style paths.
+ */
+CREATE MICROFLOW MfTest.M016_XPathAttributeAccess (
+  $Product: MfTest.Product
+)
+RETURNS String AS $ProductName
+BEGIN
+  DECLARE $ProductName String = $Product/Name;
+  RETURN $ProductName;
+END;
+/
+
+/**
+ * Example 5.2: CHANGE object attributes
+ *
+ * Modify entity attributes using CHANGE statement.
+ */
+CREATE MICROFLOW MfTest.M017_XPathSetAttribute (
+  $Product: MfTest.Product,
+  $NewPrice: Decimal
+)
+RETURNS Boolean AS $Success
+BEGIN
+  CHANGE $Product (Price = $NewPrice);
+  CHANGE $Product (ModifiedDate = [%CurrentDateTime%]);
+
+  COMMIT $Product;
+  DECLARE $Success Boolean = true;
+  RETURN $Success;
+END;
+/
+
+/**
+ * Example 5.3: XPath association navigation
+ *
+ * Navigate associations using XPath.
+ */
+CREATE MICROFLOW MfTest.M018_XPathAssociationNav (
+  $Order: MfTest.Order
+)
+RETURNS String AS $CustomerName
+BEGIN
+  DECLARE $CustomerName String = $Order/MfTest.Order_Customer/MfTest.Customer/Name;
+  RETURN $CustomerName;
+END;
+/
+
+/**
+ * Example 5.4: CHANGE association
+ *
+ * Set associations using CHANGE statement with fully qualified association name.
+ */
+CREATE MICROFLOW MfTest.M019_XPathQualifiedAssociation (
+  $Order: MfTest.Order,
+  $Customer: MfTest.Customer
+)
+RETURNS Boolean AS $Success
+BEGIN
+  CHANGE $Order (MfTest.Order_Customer = $Customer);
+  COMMIT $Order;
+
+  DECLARE $Success Boolean = true;
+  RETURN $Success;
+END;
+/
+
+/**
+ * Example 5.5: XPath in expressions with div
+ *
+ * Combines XPath navigation with div operator.
+ */
+CREATE MICROFLOW MfTest.M020_XPathWithDiv (
+  $Product: MfTest.Product
+)
+RETURNS Decimal AS $DailyAverage
+BEGIN
+  DECLARE $MonthlyTotal Decimal = $Product/MonthlyTotal;
+  DECLARE $DailyAverage Decimal = $MonthlyTotal div 30;
+  RETURN $DailyAverage;
+END;
+/
+-- MARK: loops
+
+-- ============================================================================
+-- LEVEL 6: Loops
+-- ============================================================================
+
+/**
+ * Example 6.1: Simple LOOP over list
+ *
+ * Basic loop over collection.
+ */
+CREATE MICROFLOW MfTest.M021_SimpleLoop (
+  $ProductList: List of MfTest.Product
+)
+RETURNS Integer AS $Count
+BEGIN
+  DECLARE $Count Integer = 0;
+
+  LOOP $Product IN $ProductList
+  BEGIN
+    SET $Count = $Count + 1;
+  END LOOP;
+
+  RETURN $Count;
+END;
+/
+
+/**
+ * Example 6.2: LOOP with object modification
+ *
+ * Loop that modifies each object.
+ */
+CREATE MICROFLOW MfTest.M022_LoopWithChange (
+  $ProductList: List of MfTest.Product
+)
+RETURNS Integer AS $UpdatedCount
+BEGIN
+  DECLARE $UpdatedCount Integer = 0;
+
+  LOOP $Product IN $ProductList
+  BEGIN
+    CHANGE $Product (IsActive = true);
+    COMMIT $Product;
+    SET $UpdatedCount = $UpdatedCount + 1;
+  END LOOP;
+
+  RETURN $UpdatedCount;
+END;
+/
+
+/**
+ * Example 6.3: LOOP with conditional logic
+ *
+ * Loop with IF statement inside.
+ */
+CREATE MICROFLOW MfTest.M023_LoopWithCondition (
+  $ProductList: List of MfTest.Product
+)
+RETURNS Integer AS $ActiveCount
+BEGIN
+  DECLARE $ActiveCount Integer = 0;
+
+  LOOP $Product IN $ProductList
+  BEGIN
+    IF $Product/IsActive THEN
+      SET $ActiveCount = $ActiveCount + 1;
+      LOG INFO NODE 'Test' 'Found active product';
+    END IF;
+  END LOOP;
+
+  RETURN $ActiveCount;
+END;
+/
+
+/**
+ * Example 6.4: Nested loops
+ *
+ * Nested loop iteration.
+ */
+CREATE MICROFLOW MfTest.M024_NestedLoops (
+  $OrderList: List of MfTest.Order
+)
+RETURNS Integer AS $TotalLineItems
+BEGIN
+  DECLARE $TotalLineItems Integer = 0;
+
+  LOOP $Order IN $OrderList
+  BEGIN
+    LOG INFO NODE 'Test' 'Processing order';
+    RETRIEVE $CustomerList FROM MfTest.Customer
+    WHERE MfTest.Order_Customer = $Order;
+    LOOP $Customer IN $CustomerList
+    BEGIN
+      LOG INFO NODE 'Test' 'Processing Customer';
+    END LOOP;
+    SET $TotalLineItems = $TotalLineItems + 1;
+  END LOOP;
+
+  RETURN $TotalLineItems;
+END;
+/
+
+/**
+ * Example 6.5: DECLARE inside LOOP body
+ *
+ * Demonstrates declaring local variables inside a loop.
+ * Each iteration creates a temporary variable for intermediate calculations.
+ */
+CREATE MICROFLOW MfTest.M024_2_DeclareInLoop (
+  $ProductList: List of MfTest.Product
+)
+RETURNS Decimal AS $TotalDiscounted
+BEGIN
+  DECLARE $TotalDiscounted Decimal = 0;
+
+  LOOP $Product IN $ProductList
+  BEGIN
+    DECLARE $OriginalPrice Decimal = $Product/Price;
+    DECLARE $Discount Decimal = $OriginalPrice * 0.1;
+    DECLARE $DiscountedPrice Decimal = $OriginalPrice - $Discount;
+    SET $TotalDiscounted = $TotalDiscounted + $DiscountedPrice;
+  END LOOP;
+
+  RETURN $TotalDiscounted;
+END;
+/
+
+-- ============================================================================
+-- LEVEL 7: RETRIEVE (Database Queries)
+-- ============================================================================
+
+/**
+ * Example 7.1: Simple RETRIEVE
+ *
+ * Basic database query.
+ */
+CREATE MICROFLOW MfTest.M025_SimpleRetrieve ()
+RETURNS List of MfTest.Product AS $ProductList
+BEGIN
+  RETRIEVE $ProductList FROM MfTest.Product;
+  RETURN $ProductList;
+END;
+/
+
+/**
+ * Example 7.2: RETRIEVE with WHERE clause
+ *
+ * Query with filter condition.
+ */
+CREATE MICROFLOW MfTest.M026_RetrieveWithWhere (
+  $SearchCode: String
+)
+RETURNS List of MfTest.Product AS $ProductList
+BEGIN
+  RETRIEVE $ProductList FROM MfTest.Product
+    WHERE Code = $SearchCode;
+  RETURN $ProductList;
+END;
+/
+
+/**
+ * Example 7.3: RETRIEVE with multiple conditions
+ *
+ * Query with AND conditions.
+ */
+CREATE MICROFLOW MfTest.M027_RetrieveMultipleConditions ()
+RETURNS List of MfTest.Product AS $ProductList
+BEGIN
+  RETRIEVE $ProductList FROM MfTest.Product
+    WHERE IsActive = true
+      AND Price > 100;
+
+  RETURN $ProductList;
+END;
+/
+
+/**
+ * Example 7.3b: RETRIEVE with multiple conditions
+ *
+ * Query with AND conditions.
+ */
+CREATE MICROFLOW MfTest.M027_2_RetrieveMultipleConditions ()
+RETURNS List of MfTest.Product AS $ProductList
+BEGIN
+  RETRIEVE $ProductList FROM MfTest.Product
+    WHERE (
+      IsActive = true()
+      and contains(Code, 'a')
+      and Price > 10
+    ) or (
+      DailyAverage < 2
+    )
+    SORT BY MfTest.Product.Name ASC, MfTest.Product.Price DESC
+    LIMIT 10 OFFSET 5 ;
+
+  RETURN $ProductList;
+END;
+/
+
+/**
+ * Example 7.4: RETRIEVE single object
+ *
+ * Query returning single object.
+ */
+CREATE MICROFLOW MfTest.M028_RetrieveSingleObject (
+  $ProductCode: String
+)
+RETURNS MfTest.Product AS $Product
+BEGIN
+  RETRIEVE $Product FROM MfTest.Product
+    WHERE Code = $ProductCode
+    LIMIT 1;
+  RETURN $Product;
+END;
+/
+
+CREATE MICROFLOW MfTest.M028_DataForm_Getter_2 ()
+RETURNS MfTest.Customer AS $FirstCustomer
+BEGIN
+  RETRIEVE $CustomerList FROM MfTest.Customer
+    WHERE ( starts-with(Name, 'a') )
+    LIMIT 2 OFFSET 3;
+  SET $FirstCustomer = HEAD($CustomerList);
+  RETURN $FirstCustomer;
+END;
+/
+
+CREATE MICROFLOW MfTest.M028_DataForm_Getter_3 ()
+RETURNS MfTest.Customer AS $FirstCustomer
+BEGIN
+  RETRIEVE $CustomerList FROM MfTest.Customer
+    WHERE (starts-with(Name, 'a'))
+    SORT BY MfTest.Customer.Name ASC, MfTest.Customer.Email DESC
+    LIMIT 2 +1
+    OFFSET 3 + 3;
+  $FirstCustomer = HEAD($CustomerList);
+  RETURN $FirstCustomer;
+END;
+/
+
+CREATE MICROFLOW MfTest.M028_DataForm_Getter_4 ()
+RETURNS MfTest.Customer AS $FirstCustomer
+BEGIN
+  DECLARE $Lim Long = 3;
+  DECLARE $Off Long = 5;
+  RETRIEVE $CustomerList FROM MfTest.Customer
+    WHERE (starts-with(Name, 'a'))
+    SORT BY MfTest.Customer.Name ASC, MfTest.Customer.Email DESC
+    LIMIT $Lim
+    OFFSET $Off;
+  $FirstCustomer = HEAD($CustomerList);
+  RETURN $FirstCustomer;
+END;
+/
+
+-- MARK: Real World
+
+-- ============================================================================
+-- LEVEL 8: Complex Real-World Microflows
+-- ============================================================================
+
+/**
+ * Example 8.1: Order processing workflow
+ *
+ * Complete order processing with error handling.
+ */
+CREATE MICROFLOW MfTest.M029_ProcessOrder (
+  $OrderNumber: String
+)
+RETURNS Boolean AS $Success
+BEGIN
+  DECLARE $Success Boolean = false;
+
+  -- Find the order
+  RETRIEVE $Order FROM MfTest.Order
+    WHERE OrderNumber = $OrderNumber
+    LIMIT 1;
+
+  -- Validate order exists
+  IF $Order = empty THEN
+    LOG WARNING NODE 'OrderService' 'Order not found: ' + $OrderNumber;
+    RETURN false;
+  END IF;
+
+  -- Update order status
+  CHANGE $Order (
+    Status = 'PROCESSING',
+    ProcessedDate = [%CurrentDateTime%]);
+
+  COMMIT $Order WITH EVENTS;
+
+  LOG INFO NODE 'OrderService' 'Order processed: ' + $OrderNumber;
+  SET $Success = true;
+  RETURN $Success;
+END;
+/
+
+/**
+ * Example 8.2: Batch processing with counter
+ *
+ * Batch process all active products.
+ */
+CREATE MICROFLOW MfTest.M030_BatchProcessProducts ()
+RETURNS Integer AS $ProcessedCount
+BEGIN
+  DECLARE $ProcessedCount Integer = 0;
+
+  -- Get all active products
+  RETRIEVE $ProductList FROM MfTest.Product
+    WHERE IsActive = true;
+
+  -- Process each product
+  LOOP $Product IN $ProductList
+  BEGIN
+    -- Update last processed date
+    CHANGE $Product (LastProcessedDate = [%CurrentDateTime%]);
+    COMMIT $Product;
+
+    -- Increment counter
+    SET $ProcessedCount = $ProcessedCount + 1;
+
+    -- Log progress
+    IF $ProcessedCount > 0 THEN
+      LOG INFO NODE 'BatchService' 'Processed product count: ' + toString($ProcessedCount);
+    END IF;
+  END LOOP;
+
+  RETURN $ProcessedCount;
+END;
+/
+
+/**
+ * Example 8.3: Calculation with XPath and div
+ *
+ * Calculate and update product metrics.
+ */
+CREATE MICROFLOW MfTest.M031_CalculateProductMetrics (
+  $Product: MfTest.Product
+)
+RETURNS Boolean AS $Success
+BEGIN
+  DECLARE $Success Boolean = false;
+  DECLARE $DailyAverage Decimal = 0;
+  DECLARE $MonthlyTotal Decimal = $Product/MonthlyTotal;
+
+  -- Calculate daily average
+  SET $DailyAverage = $MonthlyTotal div 30;
+
+  -- Update product with calculated value using CHANGE
+  CHANGE $Product (
+    DailyAverage = $DailyAverage,
+    LastCalculated = [%CurrentDateTime%]
+  );
+
+  COMMIT $Product WITH EVENTS;
+
+  LOG INFO NODE 'MetricsService' 'Metrics calculated for product';
+  SET $Success = true;
+  RETURN $Success;
+END;
+/
+
+/**
+ * Example 8.4: Multi-step workflow with validation
+ *
+ * Creates order with validation and linking.
+ */
+CREATE MICROFLOW MfTest.M032_CreateAndValidateOrder (
+  $CustomerCode: String,
+  $ProductCode: String,
+  $Quantity: Integer
+)
+RETURNS MfTest.Order AS $NewOrder
+BEGIN
+  --DECLARE $NewOrder AS MfTest.Order;
+  --DECLARE $Customer AS MfTest.Customer;
+  --DECLARE $Product AS MfTest.Product;
+  DECLARE $TotalPrice Decimal = 0;
+
+  -- Step 1: Find customer
+  RETRIEVE $Customer FROM MfTest.Customer
+    WHERE Code = $CustomerCode
+    LIMIT 1;
+
+  IF $Customer = empty THEN
+    LOG ERROR NODE 'OrderService' 'Customer not found: ' + $CustomerCode;
+    RETURN empty;
+  END IF;
+
+  -- Step 2: Find product
+  RETRIEVE $Product FROM MfTest.Product
+    WHERE Code = $ProductCode
+    LIMIT 1;
+
+  IF $Product = empty THEN
+    LOG ERROR NODE 'OrderService' 'Product not found: ' + $ProductCode;
+    RETURN empty;
+  END IF;
+
+  -- Step 3: Calculate total
+  SET $TotalPrice = $Product/Price * $Quantity;
+
+  -- Step 4: Create order
+  $NewOrder = CREATE MfTest.Order (
+    OrderNumber = 'ORD-' + toString(random() * 10000),
+    Quantity = $Quantity,
+    TotalPrice = $TotalPrice,
+    Status = 'PENDING',
+    CreateDate = [%CurrentDateTime%]);
+
+  -- Step 5: Link to customer and product using CHANGE
+  CHANGE $NewOrder (
+    MfTest.Order_Customer = $Customer,
+    MfTest.Order_Product = $Product
+  );
+
+  -- Step 6: Save
+  COMMIT $NewOrder WITH EVENTS;
+
+  LOG INFO NODE 'OrderService' 'Order created successfully';
+  RETURN $NewOrder;
+END;
+/
+
+/**
+ * Example 8.5: Aggregation and reporting
+ *
+ * Generate report with calculations.
+ */
+CREATE MICROFLOW MfTest.M033_GenerateProductReport ()
+RETURNS Boolean AS $Success
+BEGIN
+  DECLARE $Success Boolean = false;
+  DECLARE $TotalProducts Integer = 0;
+  DECLARE $TotalValue Decimal = 0;
+  DECLARE $AveragePrice Decimal = 0;
+
+  -- Get all active products
+  RETRIEVE $ProductList FROM MfTest.Product
+    WHERE IsActive = true;
+
+  -- Calculate metrics
+  LOOP $Product IN $ProductList
+  BEGIN
+    SET $TotalProducts = $TotalProducts + 1;
+    SET $TotalValue = $TotalValue + $Product/Price;
+  END LOOP;
+
+  -- Calculate average
+  IF $TotalProducts > 0 THEN
+    SET $AveragePrice = $TotalValue div $TotalProducts;
+  END IF;
+
+  -- Log results
+  LOG INFO NODE 'ReportService' 'Total products: ' + toString($TotalProducts);
+  LOG INFO NODE 'ReportService' 'Average price: ' + toString($AveragePrice);
+
+  SET $Success = true;
+  RETURN $Success;
+END;
+/
+
+-- ============================================================================
+-- LEVEL 9: Edge Cases and Advanced Patterns
+-- ============================================================================
+
+/**
+ * Example 9.1: Empty list handling
+ *
+ * Safely handle potentially empty lists.
+ */
+CREATE MICROFLOW MfTest.M034_SafeListProcessing (
+  $ProductList: List of MfTest.Product
+)
+RETURNS Integer AS $Count
+BEGIN
+  DECLARE $Count Integer = 0;
+
+  IF $ProductList != empty THEN
+    LOOP $Product IN $ProductList
+    BEGIN
+      SET $Count = $Count + 1;
+    END LOOP;
+  ELSE
+    LOG WARNING 'Product list is empty';
+  END IF;
+
+  RETURN $Count;
+END;
+/
+
+/**
+ * Example 9.2: Multiple return paths
+ *
+ * Microflow with different return conditions.
+ */
+CREATE MICROFLOW MfTest.M035_MultipleReturnPaths (
+  $Value: Integer
+)
+RETURNS String AS $Result
+BEGIN
+  DECLARE $Result String = 'default';
+
+  IF $Value < 0 THEN
+    SET $Result = 'negative';
+    RETURN $Result;
+  END IF;
+
+  IF $Value = 0 THEN
+    SET $Result = 'zero';
+    RETURN $Result;
+  END IF;
+
+  SET $Result = 'positive';
+  RETURN $Result;
+END;
+/
+
+/**
+ * Example 9.3: Empty value comparisons
+ *
+ * Demonstrates empty checks.
+ */
+CREATE MICROFLOW MfTest.M036_EmptyValueChecks (
+  $Product: MfTest.Product,
+  $ProductCode: String
+)
+RETURNS Boolean AS $IsValid
+BEGIN
+  DECLARE $IsValid Boolean = true;
+
+  IF $Product = empty THEN
+    SET $IsValid = false;
+    LOG WARNING 'Product is empty';
+    RETURN false;
+  END IF;
+
+  IF $ProductCode = empty THEN
+    SET $IsValid = false;
+    LOG WARNING 'Product code is empty';
+    RETURN false;
+  END IF;
+
+  RETURN $IsValid;
+END;
+/
+
+/**
+ * Example 9.4: Complex boolean expressions
+ *
+ * Complex AND/OR logic.
+ */
+CREATE MICROFLOW MfTest.M037_ComplexBooleanLogic (
+  $IsActive: Boolean,
+  $IsValid: Boolean,
+  $HasStock: Boolean
+)
+RETURNS Boolean AS $CanProcess
+BEGIN
+  DECLARE $CanProcess Boolean = false;
+
+  -- Complex condition
+  IF $IsActive AND $IsValid AND $HasStock THEN
+    SET $CanProcess = true;
+  END IF;
+
+  RETURN $CanProcess;
+END;
+/
+
+-- MARK: CALL JAVA
+
+/**
+ * Call submicroflow with result
+ */
+CREATE MICROFLOW MfTest.M038_1_TestCallWithResult()
+  RETURNS Boolean AS $Success
+BEGIN         
+  DECLARE $Success Boolean = false;
+  $Result = CALL MICROFLOW MfTest.M001_HelloWorld();
+  SET $Success = true;
+  RETURN $Success;
+END;
+/
+
+/**
+ * Call submicroflow with result
+ */
+CREATE MICROFLOW MfTest.M038_2_TestCallWithParsAndResult()
+  RETURNS Boolean AS $Success
+BEGIN         
+  DECLARE $Success Boolean = false;
+  $Result = CALL MICROFLOW MfTest.M003_StringOperations (FirstName = 'Hello', LastName = 'World!');
+  SET $Success = true;
+  RETURN $Success;
+END;
+/
+
+/** Converts a string to uppercase. */
+CREATE JAVA ACTION MfTest.M038_ExecuteOQLStatement(OqlStatement: String NOT NULL) RETURNS Boolean
+AS $$
+/* Unimplemented Java action body - for illustration only */
+return true;
+$$;
+/
+
+/** Converts a string to uppercase. */
+CREATE JAVA ACTION MfTest.M038_ExecuteOQLStatement_2(OqlStatement: StringTemplate(Sql) NOT NULL) RETURNS Boolean
+AS $$
+/* Unimplemented Java action body - for illustration only */
+return true;
+$$;
+/
+
+/**
+ */
+CREATE MICROFLOW MfTest.M038_CallJavaAction ()
+RETURNS Boolean AS $Success
+BEGIN
+  DECLARE $Success Boolean = false;
+
+  LOG INFO NODE 'Test' 'Call Java Action';
+
+  -- Execute OQL UPDATE via Java action
+  -- Note: OQL string is passed directly to avoid quote escaping issues
+  $OqlResult = CALL JAVA ACTION MfTest.M038_ExecuteOQLStatement_2(
+    OqlStatement = 'UPDATE MfTest.Product SET IsActive = true'
+  );
+
+  SET $Success = true;
+  LOG INFO NODE 'Test' 'Update complete';
+  RETURN $Success;
+END;
+/
+
+
+/**
+ * MfTest microflow call
+ */
+CREATE MICROFLOW MfTest.M039_CallMicroflow()
+RETURNS Boolean AS $Success
+BEGIN
+  DECLARE $Success Boolean = false;
+  $MfResult = CALL MICROFLOW MfTest.M038_CallJavaAction ();
+  SET $Success = true;
+  LOG INFO NODE 'Test' 'Update complete';
+  RETURN $Success;
+END;
+/
+
+-- MARK: LIST OPS
+
+-- ============================================================================
+-- LEVEL 10: List Operations
+-- ============================================================================
+
+/**
+ * Example 10.1: HEAD - Get first element from list
+ *
+ * Returns the first element of a list.
+ */
+CREATE MICROFLOW MfTest.M040_ListHead (
+  $ProductList: List of MfTest.Product
+)
+RETURNS MfTest.Product AS $FirstProduct
+BEGIN
+  $FirstProduct = HEAD($ProductList);
+  RETURN $FirstProduct;
+END;
+/
+
+/**
+ * Example 10.2: TAIL - Get all but first element
+ *
+ * Returns a new list without the first element.
+ */
+CREATE MICROFLOW MfTest.M041_ListTail (
+  $ProductList: List of MfTest.Product
+)
+RETURNS List of MfTest.Product AS $RemainingProducts
+BEGIN
+  $RemainingProducts = TAIL($ProductList);
+  RETURN $RemainingProducts;
+END;
+/
+
+/**
+ * Example 10.3: FIND - Find single element by expression
+ *
+ * Returns the first element matching the expression.
+ */
+CREATE MICROFLOW MfTest.M042_ListFind (
+  $ProductList: List of MfTest.Product,
+  $SearchCode: String
+)
+RETURNS MfTest.Product AS $FoundProduct
+BEGIN
+  $FoundProduct = FIND($ProductList, $currentObject/Code = $SearchCode);
+  RETURN $FoundProduct;
+END;
+/
+
+/**
+ * Example 10.4: FILTER - Filter list by expression
+ *
+ * Returns all elements matching the expression.
+ */
+CREATE MICROFLOW MfTest.M043_ListFilter (
+  $ProductList: List of MfTest.Product
+)
+RETURNS List of MfTest.Product AS $ActiveProducts
+BEGIN
+  $ActiveProducts = FILTER($ProductList, $currentObject/IsActive = true);
+  RETURN $ActiveProducts;
+END;
+/
+
+/**
+ * Example 10.5: SORT - Sort list by attribute
+ *
+ * Returns a sorted list.
+ */
+CREATE MICROFLOW MfTest.M044_ListSort (
+  $ProductList: List of MfTest.Product
+)
+RETURNS List of MfTest.Product AS $SortedProducts
+BEGIN
+  $SortedProducts = SORT($ProductList, Name ASC);
+  RETURN $SortedProducts;
+END;
+/
+
+/**
+ * Example 10.6: SORT descending with multiple columns
+ *
+ * Sort by Price descending, then by Name ascending.
+ */
+CREATE MICROFLOW MfTest.M045_ListSortMultiple (
+  $ProductList: List of MfTest.Product
+)
+RETURNS List of MfTest.Product AS $SortedProducts
+BEGIN
+  $SortedProducts = SORT($ProductList, Price DESC, Name ASC);
+  RETURN $SortedProducts;
+END;
+/
+
+/**
+ * Example 10.7: UNION - Combine two lists
+ *
+ * Returns combined list (may contain duplicates).
+ */
+CREATE MICROFLOW MfTest.M046_ListUnion (
+  $ProductList1: List of MfTest.Product,
+  $ProductList2: List of MfTest.Product
+)
+RETURNS List of MfTest.Product AS $CombinedList
+BEGIN
+  $CombinedList = UNION($ProductList1, $ProductList2);
+  RETURN $CombinedList;
+END;
+/
+
+/**
+ * Example 10.8: INTERSECT - Common elements
+ *
+ * Returns elements present in both lists.
+ */
+CREATE MICROFLOW MfTest.M047_ListIntersect (
+  $ProductList1: List of MfTest.Product,
+  $ProductList2: List of MfTest.Product
+)
+RETURNS List of MfTest.Product AS $CommonProducts
+BEGIN
+  $CommonProducts = INTERSECT($ProductList1, $ProductList2);
+  RETURN $CommonProducts;
+END;
+/
+
+/**
+ * Example 10.9: SUBTRACT - Remove elements
+ *
+ * Returns elements in first list but not in second.
+ */
+CREATE MICROFLOW MfTest.M048_ListSubtract (
+  $ProductList1: List of MfTest.Product,
+  $ProductList2: List of MfTest.Product
+)
+RETURNS List of MfTest.Product AS $DifferenceList
+BEGIN
+  $DifferenceList = SUBTRACT($ProductList1, $ProductList2);
+  RETURN $DifferenceList;
+END;
+/
+
+/**
+ * Example 10.10: CONTAINS - Check if element in list
+ *
+ * Returns true if the object is in the list.
+ */
+CREATE MICROFLOW MfTest.M049_ListContains (
+  $ProductList: List of MfTest.Product,
+  $Product: MfTest.Product
+)
+RETURNS Boolean AS $IsInList
+BEGIN
+  $IsInList = CONTAINS($ProductList, $Product);
+  RETURN $IsInList;
+END;
+/
+
+/**
+ * Example 10.11: EQUALS - Compare two lists
+ *
+ * Returns true if both lists contain the same elements.
+ */
+CREATE MICROFLOW MfTest.M050_ListEquals (
+  $ProductList1: List of MfTest.Product,
+  $ProductList2: List of MfTest.Product
+)
+RETURNS Boolean AS $AreEqual
+BEGIN
+  $AreEqual = EQUALS($ProductList1, $ProductList2);
+  RETURN $AreEqual;
+END;
+/
+
+-- MARK: AGGREGATES
+
+-- ============================================================================
+-- LEVEL 11: Aggregate Functions
+-- ============================================================================
+
+/**
+ * Example 11.1: COUNT - Count elements in list
+ *
+ * Returns the number of elements.
+ */
+CREATE MICROFLOW MfTest.M051_AggregateCount (
+  $ProductList: List of MfTest.Product
+)
+RETURNS Integer AS $ProductCount
+BEGIN
+  $ProductCount = COUNT($ProductList);
+  RETURN $ProductCount;
+END;
+/
+
+/**
+ * Example 11.2: SUM - Sum attribute values
+ *
+ * Returns the sum of an attribute across all elements.
+ */
+CREATE MICROFLOW MfTest.M052_AggregateSum (
+  $ProductList: List of MfTest.Product
+)
+RETURNS Decimal AS $TotalPrice
+BEGIN
+  $TotalPrice = SUM($ProductList.Price);
+  RETURN $TotalPrice;
+END;
+/
+
+/**
+ * Example 11.3: AVERAGE - Calculate average
+ *
+ * Returns the average of an attribute.
+ */
+CREATE MICROFLOW MfTest.M053_AggregateAverage (
+  $ProductList: List of MfTest.Product
+)
+RETURNS Decimal AS $AveragePrice
+BEGIN
+  $AveragePrice = AVERAGE($ProductList.Price);
+  RETURN $AveragePrice;
+END;
+/
+
+/**
+ * Example 11.4: MINIMUM - Find minimum value
+ *
+ * Returns the minimum value of an attribute.
+ */
+CREATE MICROFLOW MfTest.M054_AggregateMinimum (
+  $ProductList: List of MfTest.Product
+)
+RETURNS Decimal AS $MinPrice
+BEGIN
+  $MinPrice = MINIMUM($ProductList.Price);
+  RETURN $MinPrice;
+END;
+/
+
+/**
+ * Example 11.5: MAXIMUM - Find maximum value
+ *
+ * Returns the maximum value of an attribute.
+ */
+CREATE MICROFLOW MfTest.M055_AggregateMaximum (
+  $ProductList: List of MfTest.Product
+)
+RETURNS Decimal AS $MaxPrice
+BEGIN
+  $MaxPrice = MAXIMUM($ProductList.Price);
+  RETURN $MaxPrice;
+END;
+/
+
+/**
+ * Example 11.6: Combined list operations
+ *
+ * Demonstrates chaining multiple list operations.
+ */
+CREATE MICROFLOW MfTest.M056_CombinedListOps (
+  $ProductList: List of MfTest.Product
+)
+RETURNS Decimal AS $AverageActivePrice
+BEGIN
+  -- Filter to active products
+  $ActiveProducts = FILTER($ProductList, $currentObject/IsActive = true);
+
+  -- Sort by price
+  $SortedProducts = SORT($ActiveProducts, Price DESC);
+
+  -- Get count and average
+  $Count = COUNT($SortedProducts);
+  $AverageActivePrice = AVERAGE($SortedProducts.Price);
+
+  LOG INFO NODE 'ListOps' 'Processed ' + toString($Count) + ' active products';
+
+  RETURN $AverageActivePrice;
+END;
+/
+
+/**
+ * Example 11.7: CREATE LIST - Create empty list
+ *
+ * Creates an empty list of a specific entity type.
+ */
+CREATE MICROFLOW MfTest.M057_CreateList ()
+RETURNS List of MfTest.Product AS $EmptyList
+BEGIN
+  $EmptyList = CREATE LIST OF MfTest.Product;
+  RETURN $EmptyList;
+END;
+/
+
+/**
+ * Example 11.8: List with ADD operation
+ *
+ * Demonstrates adding elements to a list.
+ */
+CREATE MICROFLOW MfTest.M058_ListAdd (
+  $ProductList: List of MfTest.Product,
+  $NewProduct: MfTest.Product
+)
+RETURNS List of MfTest.Product AS $UpdatedList
+BEGIN
+  $UpdatedList = CREATE LIST OF MfTest.Product;
+  ADD $ProductList TO $UpdatedList;
+  ADD $NewProduct TO $UpdatedList;
+  RETURN $UpdatedList;
+END;
+/
+
+/**
+ * Example 11.9: List with REMOVE operation
+ *
+ * Demonstrates removing elements from a list.
+ */
+
+CREATE MICROFLOW MfTest.M059_ListRemove (
+  $ProductList: List of MfTest.Product,
+  $ProductToRemove: MfTest.Product
+)
+RETURNS List of MfTest.Product AS $UpdatedList
+BEGIN
+  $UpdatedList = CREATE LIST OF MfTest.Product;
+  ADD $ProductList TO $UpdatedList;
+  REMOVE $ProductToRemove FROM $UpdatedList;
+  RETURN $UpdatedList;
+END;
+/
+
+-- ============================================================================
+-- LEVEL 12: Validation
+-- ============================================================================
+--
+-- Validation feedback shows messages next to specific entity attributes.
+-- Useful for form validation in page-triggered microflows.
+
+/**
+ * Example 12.1: Basic validation feedback
+ *
+ * Validates a Product entity and shows feedback on specific attributes.
+ */
+CREATE MICROFLOW MfTest.M060_ValidateProduct (
+  $Product: MfTest.Product
+)
+RETURNS Boolean AS $IsValid
+BEGIN
+  -- SET $IsValid = true;
+  DECLARE $IsValid Boolean = true;
+
+  IF $Product/Code = empty THEN
+    VALIDATION FEEDBACK $Product/Code MESSAGE 'Product code is required';
+    SET $IsValid = false;
+  END IF;
+
+  IF $Product/Name = empty THEN
+    VALIDATION FEEDBACK $Product/Name MESSAGE 'Product name is required';
+    SET $IsValid = false;
+  END IF;
+
+  RETURN $IsValid;
+END;
+/
+
+/**
+ * Example 12.2: Validation with business rules
+ *
+ * More complex validation including business logic checks.
+ */
+CREATE MICROFLOW MfTest.M061_ValidateProductPrice (
+  $Product: MfTest.Product
+)
+RETURNS Boolean AS $IsValid
+BEGIN
+  DECLARE $IsValid Boolean = true;
+
+  IF $Product/Price < 0 THEN
+    VALIDATION FEEDBACK $Product/Price MESSAGE 'Price cannot be negative';
+    SET $IsValid = false;
+  END IF;
+
+  IF $Product/Price = 0 AND $Product/IsActive = true THEN
+    VALIDATION FEEDBACK $Product/Price MESSAGE 'Active products must have a price greater than zero';
+    SET $IsValid = false;
+  END IF;
+
+  RETURN $IsValid;
+END;
+/
+
+-- MARK: ERROR HANDLING
+
+-- ============================================================================
+-- LEVEL 13: Error Handling
+-- ============================================================================
+--
+-- Error handling controls what happens when an activity fails.
+-- Options:
+--   - ON ERROR CONTINUE - Ignore error and continue execution
+--   - ON ERROR ROLLBACK - Rollback transaction and abort
+--   - ON ERROR { ... } - Execute custom error handler statements
+--   - ON ERROR WITHOUT ROLLBACK { ... } - Custom handler without rollback
+
+/**
+ * Example 13.1: Continue on error
+ *
+ * If the microflow call fails, execution continues without error.
+ * Useful for non-critical operations like logging or notifications.
+ */
+CREATE MICROFLOW MfTest.M062_ErrorContinue (
+  $ProductCode: String
+)
+RETURNS Boolean AS $Success
+BEGIN
+  DECLARE $Success Boolean = false;
+
+  -- Try to find and process the product
+  RETRIEVE $Product FROM MfTest.Product
+    WHERE Code = $ProductCode
+    LIMIT 1;
+
+  IF $Product != empty THEN
+    -- This call will continue even if the submicroflow fails
+    CALL MICROFLOW MfTest.M013_SaveEntity(Product = $Product) ON ERROR CONTINUE;
+    LOG INFO NODE 'ErrorHandling' 'Attempted to save product';
+  END IF;
+
+  SET $Success = true;
+  RETURN $Success;
+END;
+/
+
+/**
+ * Example 13.2: Rollback on error
+ *
+ * If the operation fails, rollback all changes in the current transaction.
+ * Use for operations where partial changes would be inconsistent.
+ */
+CREATE MICROFLOW MfTest.M063_ErrorRollback (
+  $Order: MfTest.Order,
+  $NewStatus: String
+)
+RETURNS Boolean AS $Success
+BEGIN
+  DECLARE $Success Boolean = false;
+
+  -- Update order status - rollback all changes if commit fails
+  CHANGE $Order (Status = $NewStatus);
+  COMMIT $Order WITH EVENTS ON ERROR ROLLBACK;
+
+  SET $Success = true;
+  RETURN $Success;
+END;
+/
+
+/**
+ * Example 13.3: Custom error handler without rollback
+ *
+ * Execute custom logic when an error occurs, without rolling back.
+ * The error handler block contains statements to execute on failure.
+ */
+CREATE MICROFLOW MfTest.M064_ErrorCustomHandler (
+  $ProductCode: String
+)
+RETURNS MfTest.Product AS $Result
+BEGIN
+  -- Try to find the product
+  RETRIEVE $Product FROM MfTest.Product
+    WHERE Code = $ProductCode
+    LIMIT 1;
+
+  IF $Product != empty THEN
+    -- Call external service with custom error handling
+    $Result = CALL MICROFLOW MfTest.M012_CreateEntity(
+      Name = $Product/Name,
+      Code = $ProductCode
+    ) ON ERROR WITHOUT ROLLBACK {
+      LOG ERROR NODE 'ErrorHandling' 'Failed to create entity for: ' + $ProductCode;
+      RETURN empty;
+    };
+    RETURN $Result;
+  ELSE
+    RETURN $Product;
+  END IF;
+END;
+/
+
+/**
+ * Example 13.4: Error handling in loops
+ *
+ * Continue processing remaining items even if one fails.
+ */
+CREATE MICROFLOW MfTest.M065_ErrorInLoop (
+  $ProductList: List of MfTest.Product
+)
+RETURNS Integer AS $ProcessedCount
+BEGIN
+  DECLARE $ProcessedCount Integer = 0;
+  DECLARE $ErrorCount Integer = 0;
+
+  LOOP $Product IN $ProductList
+  BEGIN
+    -- Try to save each product, continue if one fails
+    COMMIT $Product ON ERROR ROLLBACK;
+    SET $ProcessedCount = $ProcessedCount + 1;
+  END LOOP;
+
+  LOG INFO NODE 'BatchProcess' 'Processed: ' + toString($ProcessedCount) + ' products';
+  RETURN $ProcessedCount;
+END;
+/
+
+/**
+ * Example 13.5: Nested error handling with logging
+ *
+ * Multiple activities with different error handling strategies.
+ */
+CREATE MICROFLOW MfTest.M066_NestedErrorHandling (
+  $Order: MfTest.Order
+)
+RETURNS Boolean AS $Success
+BEGIN
+  DECLARE $Success Boolean = false;
+
+  -- Step 1: Validate order (continue on error)
+  CALL MICROFLOW MfTest.M029_ProcessOrder(
+    OrderNumber = $Order/OrderNumber
+  ) ON ERROR CONTINUE;
+
+  -- Step 2: Update status with custom error handler
+  CHANGE $Order (Status = 'VALIDATED');
+  COMMIT $Order ON ERROR WITHOUT ROLLBACK {
+    LOG ERROR NODE 'OrderService' 'Failed to update order status';
+    CHANGE $Order (Status = 'ERROR');
+    COMMIT $Order;
+    RAISE ERROR
+  };
+
+  SET $Success = true;
+  RETURN $Success;
+END;
+/
+
+/**
+ * Example 13.6: Error handling with explicit RAISE ERROR
+ *
+ * Uses RAISE ERROR to terminate the error path with an ErrorEvent
+ * instead of merging back to the main flow.
+ */
+CREATE MICROFLOW MfTest.M067_ErrorWithRaise (
+  $Order: MfTest.Order
+)
+RETURNS Boolean AS $Success
+BEGIN
+  DECLARE $Success Boolean = false;
+
+  -- Commit with error handler that raises an error
+  COMMIT $Order ON ERROR WITHOUT ROLLBACK {
+    LOG ERROR NODE 'OrderService' 'Failed to commit order - raising error';
+    RAISE ERROR;  -- Terminates with ErrorEvent
+  };
+
+  -- This only executes if commit succeeds
+  SET $Success = true;
+  RETURN $Success;
+END;
+/
+
+-- MARK: REST CALLS
+
+-- ============================================================================
+-- LEVEL 14: REST Calls (PROPOSED - NOT YET IMPLEMENTED)
+-- ============================================================================
+--
+-- REST call action allows calling external HTTP APIs from microflows.
+-- This section documents the proposed MDL syntax based on the BSON structure
+-- of RestTemplate.GetWebpage microflow in the test project.
+--
+-- BSON Structure Analysis (from RestTemplate.GetWebpage):
+-- - $Type: Microflows$RestCallAction
+-- - HttpConfiguration: method, URL template, headers, auth
+-- - RequestHandling: body content (for POST/PUT/PATCH)
+-- - ResultHandling: how to process response (String, Mapping, File, None)
+-- - TimeoutExpression: timeout in seconds
+-- - ErrorHandlingType: Rollback, Continue, Custom
+
+/**
+ * Example 14.1: Simple GET request returning string
+ *
+ * Fetches a webpage and returns the HTML content as a string.
+ * Based on RestTemplate.GetWebpage from test project.
+ *
+ * Proposed MDL syntax for REST calls:
+ *   $Variable = REST CALL <METHOD> <URL>
+ *       [HEADER <name> = <expression>, ...]
+ *       [BODY <template> | BODY MAPPING <MappingName> FROM <Variable>]
+ *       [TIMEOUT <expression>]
+ *       RETURNS <ResultType>
+ *       [ON ERROR <error_handling>];
+ *
+ * Result types:
+ *   - String          : Returns response body as string
+ *   - HttpResponse    : Returns System.HttpResponse object
+ *   - MAPPING <Name> AS <Entity> : Uses import mapping
+ *   - FILE <FileEntity>: Stores response as file document
+ *   - Nothing         : Ignores response
+ */
+CREATE MICROFLOW MfTest.M067_RestGetWebpage ()
+RETURNS String AS $PageContent
+BEGIN
+  -- Fetch a webpage using HTTP GET
+  -- The URL is a string template with parameters using {1}, {2}, etc.
+  $PageContent = REST CALL GET 'http://news.ycombinator.com'
+    HEADER Accept = 'text/html'
+    TIMEOUT 300
+    RETURNS String;
+
+  RETURN $PageContent;
+END;
+/
+
+/**
+ * Example 14.2: GET request with URL parameters
+ *
+ * Demonstrates URL template with parameter substitution.
+ */
+CREATE MICROFLOW MfTest.M068_RestGetWithParams (
+  $SearchTerm: String,
+  $Page: Integer
+)
+RETURNS String AS $Response
+BEGIN
+  -- URL template with {1} and {2} placeholders
+  $Response = REST CALL GET 'https://api.example.com/search?q={1}&page={2}' WITH (
+    {1} = urlEncode($SearchTerm),
+    {2} = toString($Page)
+  )
+    HEADER Accept = 'application/json'
+    TIMEOUT 60
+    RETURNS String;
+
+  RETURN $Response;
+END;
+/
+
+/**
+ * Example 14.3: POST request with JSON body
+ *
+ * Sends data to an API using POST method.
+ */
+CREATE MICROFLOW MfTest.M069_RestPostJson (
+  $CustomerName: String,
+  $Email: String
+)
+RETURNS String AS $Response
+BEGIN
+  -- POST with custom JSON body template
+  $Response = REST CALL POST 'https://api.example.com/customers'
+    HEADER 'Content-Type' = 'application/json'
+    HEADER Accept = 'application/json'
+    BODY '{{"name": "{1}", "email": "{2}"}' WITH (
+      {1} = $CustomerName,
+      {2} = $Email
+    )
+    TIMEOUT 30
+    RETURNS String
+    ON ERROR ROLLBACK;
+
+  RETURN $Response;
+END;
+/
+
+-- TODO: Examples with import/export mappings (not yet supported)
+-- Example 14.4: POST with export mapping
+-- CREATE MICROFLOW MfTest.M070_RestPostMapping ($Product: MfTest.Product)
+--   BODY MAPPING MfTest.ExportProduct FROM $Product
+--
+-- Example 14.5: GET with import mapping
+-- CREATE MICROFLOW MfTest.M071_RestGetMapping ()
+--   RETURNS MAPPING MfTest.ImportProduct AS MfTest.Product
+
+/**
+ * Example 14.6: REST call with authentication
+ *
+ * Demonstrates basic HTTP authentication.
+ */
+CREATE MICROFLOW MfTest.M072_RestWithAuth (
+  $Username: String,
+  $Password: String
+)
+RETURNS String AS $Response
+BEGIN
+  -- REST call with basic authentication
+  $Response = REST CALL GET 'https://api.example.com/secure/data'
+    HEADER Accept = 'application/json'
+    AUTH BASIC $Username PASSWORD $Password
+    TIMEOUT 30
+    RETURNS String;
+
+  RETURN $Response;
+END;
+/
+
+/**
+ * Example 14.7: REST call with error handling
+ *
+ * Demonstrates custom error handling for REST calls.
+ */
+CREATE MICROFLOW MfTest.M073_RestWithErrorHandling (
+  $Url: String
+)
+RETURNS Boolean AS $Success
+BEGIN
+  DECLARE $Success Boolean = false;
+
+  -- REST call with custom error handler
+  $Response = REST CALL GET $Url
+    HEADER Accept = 'application/json'
+    TIMEOUT 30
+    RETURNS String
+    ON ERROR WITHOUT ROLLBACK {
+      LOG ERROR NODE 'RestService' 'Failed to fetch: ' + $Url;
+      RETURN false;
+    };
+
+  SET $Success = true;
+  RETURN $Success;
+END;
+/
+
+/**
+ * Example 14.8: PUT request to update resource
+ *
+ * Updates an existing resource using PUT method.
+ */
+CREATE MICROFLOW MfTest.M074_RestPutUpdate (
+  $ProductId: Integer,
+  $NewPrice: Decimal
+)
+RETURNS Boolean AS $Success
+BEGIN
+  DECLARE $Success Boolean = false;
+
+  $Response = REST CALL PUT 'https://api.example.com/products/{1}' WITH (
+    {1} = toString($ProductId)
+  )
+    HEADER 'Content-Type' = 'application/json'
+    BODY '{{"price": {1}}' WITH ({1} = toString($NewPrice))
+    TIMEOUT 30
+    RETURNS String
+    ON ERROR CONTINUE;
+
+  SET $Success = true;
+  RETURN $Success;
+END;
+/
+
+/**
+ * Example 14.9: DELETE request
+ *
+ * Deletes a resource using DELETE method.
+ */
+CREATE MICROFLOW MfTest.M075_RestDelete (
+  $ResourceId: String
+)
+RETURNS Boolean AS $Deleted
+BEGIN
+  DECLARE $Deleted Boolean = false;
+
+  -- DELETE request - typically returns nothing
+  REST CALL DELETE 'https://api.example.com/resources/{1}' WITH (
+    {1} = $ResourceId
+  )
+    HEADER Accept = 'application/json'
+    TIMEOUT 30
+    RETURNS Nothing
+    ON ERROR CONTINUE;
+
+  SET $Deleted = true;
+  RETURN $Deleted;
+END;
+/
+
+-- MARK: MOVE
+
+-- ============================================================================
+-- LEVEL 15: MOVE - Organizing Elements into Folders and Modules
+-- ============================================================================
+--
+-- MOVE relocates microflows, pages, snippets, nanoflows, enumerations, and
+-- entities to folders or other modules. Folders are created automatically
+-- if they don't exist. Nested folders use '/' separators.
+--
+-- WARNING: Moving across modules changes the qualified name. Any by-name
+-- references (microflow calls, page navigation, etc.) will break.
+-- Use `SHOW IMPACT OF Module.Element` before cross-module moves.
+
+-- Example 15.1: Move microflows to folders within the same module
+MOVE MICROFLOW MfTest.M001_HelloWorld TO FOLDER 'Basic';
+MOVE MICROFLOW MfTest.M001_HelloWorld_1 TO FOLDER 'Basic';
+MOVE MICROFLOW MfTest.M001_HelloWorld_2 TO FOLDER 'Basic';
+MOVE MICROFLOW MfTest.M002_BasicVariables TO FOLDER 'Basic';
+MOVE MICROFLOW MfTest.M003_StringOperations TO FOLDER 'Basic';
+MOVE MICROFLOW MfTest.M004_BooleanLogic TO FOLDER 'Basic';
+
+-- Example 15.2: Move to nested folders (auto-created)
+MOVE MICROFLOW MfTest.M005_1_LogParameter TO FOLDER 'Basic/Logging';
+MOVE MICROFLOW MfTest.M005_2_LogParameter TO FOLDER 'Basic/Logging';
+MOVE MICROFLOW MfTest.M005_3_LogParameter TO FOLDER 'Basic/Logging';
+MOVE MICROFLOW MfTest.M009_Logging TO FOLDER 'Basic/Logging';
+MOVE MICROFLOW MfTest.M009_2_LogWithTemplate TO FOLDER 'Basic/Logging';
+
+-- Example 15.3: Organize by feature area
+MOVE MICROFLOW MfTest.M006_SimpleIf TO FOLDER 'ControlFlow';
+MOVE MICROFLOW MfTest.M007_IfElse TO FOLDER 'ControlFlow';
+MOVE MICROFLOW MfTest.M008_NestedIf TO FOLDER 'ControlFlow';
+
+MOVE MICROFLOW MfTest.M021_SimpleLoop TO FOLDER 'ControlFlow/Loops';
+MOVE MICROFLOW MfTest.M022_LoopWithChange TO FOLDER 'ControlFlow/Loops';
+MOVE MICROFLOW MfTest.M023_LoopWithCondition TO FOLDER 'ControlFlow/Loops';
+MOVE MICROFLOW MfTest.M024_NestedLoops TO FOLDER 'ControlFlow/Loops';
+MOVE MICROFLOW MfTest.M024_2_DeclareInLoop TO FOLDER 'ControlFlow/Loops';
+
+-- Example 15.4: Move object operation microflows
+MOVE MICROFLOW MfTest.M012_CreateEntity TO FOLDER 'ObjectOps';
+MOVE MICROFLOW MfTest.M013_SaveEntity TO FOLDER 'ObjectOps';
+MOVE MICROFLOW MfTest.M014_SaveEntityWithEvents TO FOLDER 'ObjectOps';
+MOVE MICROFLOW MfTest.M015_UpdateEntity TO FOLDER 'ObjectOps';
+MOVE MICROFLOW MfTest.M015_2_CreateUpdateEntity TO FOLDER 'ObjectOps';
+
+-- Example 15.5: Move retrieval microflows
+MOVE MICROFLOW MfTest.M025_SimpleRetrieve TO FOLDER 'Retrieve';
+MOVE MICROFLOW MfTest.M026_RetrieveWithWhere TO FOLDER 'Retrieve';
+MOVE MICROFLOW MfTest.M027_RetrieveMultipleConditions TO FOLDER 'Retrieve';
+MOVE MICROFLOW MfTest.M027_2_RetrieveMultipleConditions TO FOLDER 'Retrieve';
+MOVE MICROFLOW MfTest.M028_RetrieveSingleObject TO FOLDER 'Retrieve';
+MOVE MICROFLOW MfTest.M028_DataForm_Getter_2 TO FOLDER 'Retrieve';
+
+-- Example 15.6: Move list operations to deep nested folder
+MOVE MICROFLOW MfTest.M040_ListHead TO FOLDER 'ListOps/Basic';
+MOVE MICROFLOW MfTest.M041_ListTail TO FOLDER 'ListOps/Basic';
+MOVE MICROFLOW MfTest.M042_ListFind TO FOLDER 'ListOps/Search';
+MOVE MICROFLOW MfTest.M043_ListFilter TO FOLDER 'ListOps/Search';
+MOVE MICROFLOW MfTest.M044_ListSort TO FOLDER 'ListOps/Sort';
+MOVE MICROFLOW MfTest.M045_ListSortMultiple TO FOLDER 'ListOps/Sort';
+MOVE MICROFLOW MfTest.M046_ListUnion TO FOLDER 'ListOps/SetOps';
+MOVE MICROFLOW MfTest.M047_ListIntersect TO FOLDER 'ListOps/SetOps';
+MOVE MICROFLOW MfTest.M048_ListSubtract TO FOLDER 'ListOps/SetOps';
+MOVE MICROFLOW MfTest.M049_ListContains TO FOLDER 'ListOps/SetOps';
+MOVE MICROFLOW MfTest.M050_ListEquals TO FOLDER 'ListOps/SetOps';
+
+-- Example 15.7: Move aggregates
+MOVE MICROFLOW MfTest.M051_AggregateCount TO FOLDER 'ListOps/Aggregates';
+MOVE MICROFLOW MfTest.M052_AggregateSum TO FOLDER 'ListOps/Aggregates';
+MOVE MICROFLOW MfTest.M053_AggregateAverage TO FOLDER 'ListOps/Aggregates';
+MOVE MICROFLOW MfTest.M054_AggregateMinimum TO FOLDER 'ListOps/Aggregates';
+MOVE MICROFLOW MfTest.M055_AggregateMaximum TO FOLDER 'ListOps/Aggregates';
+MOVE MICROFLOW MfTest.M056_CombinedListOps TO FOLDER 'ListOps/Aggregates';
+
+-- Example 15.8: Move validation microflows
+MOVE MICROFLOW MfTest.M060_ValidateProduct TO FOLDER 'Validation';
+MOVE MICROFLOW MfTest.M061_ValidateProductPrice TO FOLDER 'Validation';
+
+-- Example 15.9: Move error handling microflows
+MOVE MICROFLOW MfTest.M062_ErrorContinue TO FOLDER 'ErrorHandling';
+MOVE MICROFLOW MfTest.M063_ErrorRollback TO FOLDER 'ErrorHandling';
+MOVE MICROFLOW MfTest.M064_ErrorCustomHandler TO FOLDER 'ErrorHandling';
+MOVE MICROFLOW MfTest.M065_ErrorInLoop TO FOLDER 'ErrorHandling';
+MOVE MICROFLOW MfTest.M066_NestedErrorHandling TO FOLDER 'ErrorHandling';
+MOVE MICROFLOW MfTest.M067_ErrorWithRaise TO FOLDER 'ErrorHandling';
+
+-- Example 15.10: Move enumerations to folders
+-- (First create an enumeration so we can move it)
+CREATE ENUMERATION MfTest.OrderStatus (
+  Pending 'Pending',
+  Processing 'Processing',
+  Completed 'Completed',
+  Cancelled 'Cancelled'
+);
+MOVE ENUMERATION MfTest.OrderStatus TO FOLDER 'Shared';
+
+-- Example 15.11: Cross-module move
+-- WARNING: Moving across modules changes the qualified name (MfTest.X → MfTest2.X).
+-- Any by-name references (microflow calls, page navigation, etc.) will break.
+-- Use `SHOW IMPACT OF Module.Element` before cross-module moves.
+
+-- Create target module
+CREATE MODULE MfTest2;
+
+-- Create microflows specifically for cross-module move demos
+CREATE MICROFLOW MfTest.M076_CrossModuleDemo ()
+RETURNS Boolean AS $Success
+BEGIN
+  DECLARE $Success Boolean = true;
+  LOG INFO NODE 'CrossModule' 'This microflow will be moved to MfTest2';
+  RETURN $Success;
+END;
+/
+
+CREATE MICROFLOW MfTest.M077_CrossModuleFolderDemo ()
+RETURNS Boolean AS $Done
+BEGIN
+  DECLARE $Done Boolean = true;
+  LOG INFO NODE 'CrossModule' 'This microflow will be moved to a folder in MfTest2';
+  RETURN $Done;
+END;
+/
+
+-- Move microflow to another module (root)
+MOVE MICROFLOW MfTest.M076_CrossModuleDemo TO MfTest2;
+
+-- Move microflow to a folder in another module
+MOVE MICROFLOW MfTest.M077_CrossModuleFolderDemo TO FOLDER 'Imported' IN MfTest2;
+
+show microflows;
+show microflows in MfTest;
+show microflows in MfTest2;
+
+-- MARK: ANNOTATIONS
+
+-- ============================================================================
+-- Annotations (@annotation, @position, @caption, @color)
+-- ============================================================================
+--
+-- Activity annotations use @ prefix syntax placed before the activity:
+--   @position(x, y)    - canvas position (always present in DESCRIBE output)
+--   @caption 'text'    - custom caption (only when auto-generate is off)
+--   @color Color        - background color (only when not Default)
+--   @annotation 'text' - visual note attached to the activity
+--
+-- Multiple annotations can be stacked before a single activity.
+-- @annotation without a following activity creates a free-floating note.
+--
+
+/**
+ * M078: Annotation attached to an activity.
+ */
+CREATE MICROFLOW MfTest.M078_AnnotationAttached ()
+BEGIN
+  @annotation 'Log a welcome message to the console'
+  LOG INFO NODE 'App' 'Hello from annotated microflow';
+  RETURN;
+END;
+/
+
+/**
+ * M079: Multiple annotations on different activities.
+ */
+CREATE MICROFLOW MfTest.M079_MultipleAnnotations ()
+RETURNS Boolean AS $Result
+BEGIN
+  @annotation 'Step 1: Create the object'
+  $Obj = CREATE MfTest.Product (Name = 'Annotated Product', Price = 9.99);
+  @annotation 'Step 2: Persist to database'
+  COMMIT $Obj;
+  DECLARE $Result Boolean = true;
+  RETURN $Result;
+END;
+/
+
+/**
+ * M080: Free-floating annotation (not attached to any activity).
+ */
+CREATE MICROFLOW MfTest.M080_FreeAnnotation ()
+BEGIN
+  LOG INFO NODE 'App' 'Working...';
+  @annotation 'This is a free-floating note, not attached to any activity'
+  RETURN;
+END;
+/
+
+/**
+ * M081: Annotation with special characters (escaped single quotes).
+ */
+CREATE MICROFLOW MfTest.M081_AnnotationEscaping ()
+BEGIN
+  @annotation 'Don''t forget to validate the user''s input'
+  LOG INFO NODE 'App' 'Validated';
+  RETURN;
+END;
+/
+
+CREATE MICROFLOW MfTest.M082_ShowMessage_2 ()
+BEGIN
+  SHOW MESSAGE 'Hello {1}' TYPE Information OBJECTS ['World'];
+  SHOW MESSAGE 'Goodbye {1}' TYPE Error OBJECTS ['User'];
+END;
+/
+
+/**
+ * M083: Explicit canvas positions on activities.
+ * @position(x, y) controls where the activity appears on the canvas.
+ */
+CREATE MICROFLOW MfTest.M083_Position ()
+BEGIN
+  @position(200, 200)
+  $Obj = CREATE MfTest.Product (Name = 'Positioned', Price = 1.00);
+  @position(400, 200)
+  COMMIT $Obj;
+END;
+/
+
+/**
+ * M084: Custom caption on an activity.
+ * @caption overrides the auto-generated caption shown on the canvas.
+ */
+CREATE MICROFLOW MfTest.M084_Caption ()
+BEGIN
+  @caption 'Create the product'
+  $Obj = CREATE MfTest.Product (Name = 'Captioned', Price = 5.00);
+  @caption 'Save to database'
+  COMMIT $Obj;
+END;
+/
+
+/**
+ * M085: Background color on an activity.
+ * @color sets the activity background color (Blue, Green, Red, Yellow, Purple, Gray).
+ */
+CREATE MICROFLOW MfTest.M085_Color ()
+BEGIN
+  @color Green
+  LOG INFO NODE 'App' 'This activity has a green background';
+  @color Red
+  LOG ERROR NODE 'App' 'This activity has a red background';
+END;
+/
+
+/**
+ * M086: Combined annotations on a single activity.
+ * Multiple @ annotations can be stacked before one activity.
+ */
+CREATE MICROFLOW MfTest.M086_CombinedAnnotations ()
+BEGIN
+  @position(200, 200)
+  @caption 'Create and persist product'
+  @color Blue
+  @annotation 'This is the main step of the microflow'
+  $Obj = CREATE MfTest.Product (Name = 'Full Annotations', Price = 42.00);
+  @position(500, 200)
+  COMMIT $Obj;
+END;
+/
+
+/**
+ * M087: Annotations on CLOSE PAGE activity.
+ */
+CREATE MICROFLOW MfTest.M087_AnnotatedClosePage ()
+BEGIN
+  @position(200, 200)
+  @caption 'Done editing'
+  @color Green
+  CLOSE PAGE;
+END;
+/
+
+/**
+ * M088: Annotations on SHOW HOME PAGE activity.
+ */
+CREATE MICROFLOW MfTest.M088_AnnotatedShowHomePage ()
+BEGIN
+  @position(200, 200)
+  @caption 'Go home'
+  @color Blue
+  @annotation 'Navigate the user back to the home page'
+  SHOW HOME PAGE;
+END;
+/
+
+/**
+ * M089: Annotations on SHOW MESSAGE activity.
+ */
+CREATE MICROFLOW MfTest.M089_AnnotatedShowMessage ()
+BEGIN
+  @position(200, 200)
+  @caption 'Warn the user'
+  @color Yellow
+  SHOW MESSAGE 'Please review your data before submitting.' TYPE Warning;
+  @position(400, 200)
+  @color Red
+  SHOW MESSAGE 'Operation failed: {1}' TYPE Error OBJECTS ['unknown error'];
+END;
+/
+
+/**
+ * Helper page for M090.
+ */
+CREATE PAGE MfTest.ProductDetail
+(
+  Params: {
+    $Product: MfTest.Product
+  },
+  Title: 'Product Detail',
+  Layout: Atlas_Core.Atlas_Default
+)
+{
+  DYNAMICTEXT text1 (Content: 'Product Detail', RenderMode: H4)
+}
+/
+
+/**
+ * M090: Annotations on SHOW PAGE activity.
+ */
+CREATE MICROFLOW MfTest.M090_AnnotatedShowPage (
+  $Product: MfTest.Product
+)
+BEGIN
+  @position(200, 200)
+  @caption 'Open product detail'
+  @color Purple
+  @annotation 'Shows the product edit page'
+  SHOW PAGE MfTest.ProductDetail($Product = $Product);
+END;
+/
+
+/**
+ * M091: Annotations on VALIDATION FEEDBACK activity.
+ */
+CREATE MICROFLOW MfTest.M091_AnnotatedValidationFeedback (
+  $Product: MfTest.Product
+)
+RETURNS Boolean AS $IsValid
+BEGIN
+  DECLARE $IsValid Boolean = true;
+  IF $Product/Name = empty THEN
+    @position(400, 100)
+    @caption 'Name is required'
+    @color Red
+    VALIDATION FEEDBACK $Product/Name MESSAGE 'Product name cannot be empty';
+    SET $IsValid = false;
+  END IF;
+  IF $Product/Price < 0 THEN
+    @position(400, 300)
+    @color Red
+    @annotation 'Negative prices are not allowed'
+    VALIDATION FEEDBACK $Product/Price MESSAGE 'Price must be zero or greater';
+    SET $IsValid = false;
+  END IF;
+  RETURN $IsValid;
+END;
+/
+
+-- ============================================================================
+-- Summary
+-- ============================================================================
+--
+-- This file demonstrates ALL currently supported microflow features:
+--
+-- ✅ Variables: DECLARE, SET (for primitive variables only)
+-- ✅ Control Flow: IF/THEN/ELSE/END IF with nesting
+-- ✅ Loops: LOOP...IN with BEGIN/END LOOP
+-- ✅ Logging: LOG INFO/WARNING/ERROR with optional NODE and WITH template params
+--            (unified syntax with pages - see STRING_TEMPLATE_SYNTAX.md)
+-- ✅ Objects: CREATE, CHANGE, COMMIT (with/without EVENTS)
+--    - CREATE: $var = CREATE Entity (attr = value);
+--    - CHANGE: CHANGE $var (attr = value);  -- for entity attributes/associations
+--    - SET: SET $var = value;  -- for primitive variables only
+-- ✅ Queries: RETRIEVE with WHERE conditions
+-- ✅ Arithmetic: +, -, *, div, with proper precedence
+-- ✅ XPath Navigation: $Var/Attribute (read-only in expressions)
+-- ✅ Boolean Logic: AND, OR, NOT, comparisons
+-- ✅ Special Values: empty, [%CurrentDateTime%]
+-- ✅ Functions: toString(), randomInt()
+-- ✅ Submicroflow calls: CALL MICROFLOW with named params (Name = value)
+-- ✅ Java action calls: CALL JAVA ACTION with named params (unified syntax)
+-- ✅ List Operations:
+--    - HEAD($List) - get first element
+--    - TAIL($List) - get all but first
+--    - FIND($List, expression) - find single element
+--    - FILTER($List, expression) - filter by condition
+--    - SORT($List, Attribute ASC/DESC) - sort by attribute(s)
+--    - UNION($List1, $List2) - combine lists
+--    - INTERSECT($List1, $List2) - common elements
+--    - SUBTRACT($List1, $List2) - difference
+--    - CONTAINS($List, $Object) - check membership
+--    - EQUALS($List1, $List2) - compare lists
+--    - CREATE LIST OF Entity - create empty list
+--    - ADD $Object TO $List - add element
+--    - REMOVE $Object FROM $List - remove element
+-- ✅ Aggregate Functions:
+--    - COUNT($List) - count elements
+--    - SUM($List.Attribute) - sum values
+--    - AVERAGE($List.Attribute) - calculate average
+--    - MINIMUM($List.Attribute) - find minimum
+--    - MAXIMUM($List.Attribute) - find maximum
+-- ✅ Validation:
+--    - VALIDATION FEEDBACK $Object/Attribute MESSAGE 'text' - show validation message
+-- ✅ Error Handling:
+--    - ON ERROR CONTINUE - ignore error and continue
+--    - ON ERROR ROLLBACK - rollback transaction on error
+--    - ON ERROR { ... } - execute custom error handler block
+--    - ON ERROR WITHOUT ROLLBACK { ... } - custom handler without rollback
+-- ✅ Annotations:
+--    - @position(x, y) - canvas position of the activity
+--    - @caption 'text' - custom caption (overrides auto-generated)
+--    - @color Color - background color (Blue, Green, Red, Yellow, Purple, Gray)
+--    - @annotation 'text' - attach visual note to the next activity
+--    - Multiple annotations can be stacked before a single activity
+--    - Free-floating annotations (not followed by an activity)
+--    - Single quotes escaped by doubling: 'Don''t forget'
+-- ✅ MOVE - Organize elements into folders and across modules:
+--    - MOVE MICROFLOW Module.Name TO FOLDER 'path' - move to folder
+--    - MOVE MICROFLOW Module.Name TO FOLDER 'a/b/c' - nested folders (auto-created)
+--    - MOVE ENUMERATION Module.Name TO FOLDER 'path' - move enum to folder
+--    - MOVE MICROFLOW Module.Name TO OtherModule - move to another module (root)
+--    - MOVE MICROFLOW Module.Name TO FOLDER 'path' IN OtherModule - cross-module with folder
+--    - MOVE ENTITY Module.Name TO OtherModule - move entity across modules
+-- ⏳ REST Calls (PROPOSED - NOT YET IMPLEMENTED):
+--    - REST CALL GET/POST/PUT/PATCH/DELETE <url>
+--    - HEADER <name> = <expression> - custom HTTP headers
+--    - BODY <template> WITH (...) - custom request body
+--    - BODY MAPPING <MappingName> FROM <Variable> - export mapping
+--    - AUTH BASIC <user> PASSWORD <pass> - HTTP basic auth
+--    - TIMEOUT <expression> - timeout in seconds
+--    - RETURNS String | HttpResponse | MAPPING <Name> AS <Entity> | FILE <Entity> | Nothing
+--
+-- Total: 75 example microflows + MOVE examples showcasing parser capabilities
+--
+-- ============================================================================

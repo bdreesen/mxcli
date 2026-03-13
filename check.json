@@ -1,0 +1,22 @@
+{
+  "serialization_version": 1,
+  "errors": [
+    {
+      "code": "CE0463",
+      "message": "The definition of this widget has changed. Update this widget by right-clicking it and selecting 'Update widget', or select 'Update all widgets' to update all widgets in the app.",
+      "locations": [
+        {
+          "module-id": "ea53071b-a716-40fb-a8eb-5f6c08f46c9e",
+          "module-name": "PgTest",
+          "document-name": "Page 'CE463_NoButtons'",
+          "element-name": "Data grid 2 'dgTest'",
+          "element-id": "30c0df54-f2d5-4701-aa74-27b04de4425a",
+          "unit-id": "a5cc7b79-f035-4f71-97d0-620dfb396b35"
+        }
+      ]
+    }
+  ],
+  "warnings": [],
+  "deprecations": [],
+  "total-problems": 1
+}

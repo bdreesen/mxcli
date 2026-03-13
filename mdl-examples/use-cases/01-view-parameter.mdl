@@ -1,0 +1,125 @@
+-- =============================================================================
+-- View Entity Filtering Example
+--
+-- Demonstrates that View Entities do NOT need runtime parameters.
+-- Instead, filtering is done at RETRIEVE time in the microflow.
+--
+-- Pattern:
+--   1. The View Entity aggregates ALL data (no filtering)
+--   2. The microflow retrieves from the View Entity with a WHERE clause
+--      to filter by the desired object
+-- =============================================================================
+
+-- -----------------------------------------------------------------------------
+-- Step 1: Domain Model - Source entities
+-- -----------------------------------------------------------------------------
+
+create module ViewPar;
+
+/**
+ * Product category
+ *
+ * Groups products for reporting purposes.
+ */
+@Position(100, 100)
+CREATE PERSISTENT ENTITY ViewPar.ProductCategory (
+  /** Category name (e.g., Electronics, Clothing) */
+  CategoryName: String(200) NOT NULL ERROR 'Category name is required'
+);
+
+/**
+ * Sale transaction
+ *
+ * Records individual sales with amount and associated category.
+ */
+@Position(300, 100)
+CREATE PERSISTENT ENTITY ViewPar.SaleTransaction (
+  /** Sale amount in euros */
+  Amount: Decimal NOT NULL ERROR 'Amount is required',
+  /** Date of the sale */
+  SaleDate: DateTime
+);
+
+/**
+ * Links a sale to its product category
+ */
+CREATE ASSOCIATION ViewPar.SaleTransaction_ProductCategory
+  FROM ViewPar.SaleTransaction TO ViewPar.ProductCategory
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+
+-- -----------------------------------------------------------------------------
+-- Step 2: View Entity - Aggregates ALL data, no filtering
+--
+-- NOTE: There is no "parameter" syntax for View Entities.
+-- The View computes the totals for ALL categories.
+-- Filtering by a specific category happens in the microflow (Step 3).
+-- -----------------------------------------------------------------------------
+
+/**
+ * Sales total per category
+ *
+ * Aggregates sale amounts grouped by category.
+ * To get the total for a SPECIFIC category, filter when
+ * retrieving from a microflow using a WHERE clause.
+ *
+ * @since 1.0.0
+ */
+@Position(100, 300)
+CREATE VIEW ENTITY ViewPar.SalesTotalByCategory (
+  CategoryName: String(200),
+  TotalAmount: Decimal,
+  TransactionCount: Integer
+) AS (
+  SELECT
+    c.CategoryName AS CategoryName,
+    sum(s.Amount) AS TotalAmount,
+    count(s.ID) AS TransactionCount
+  FROM ViewPar.SaleTransaction AS s
+  INNER JOIN s/ViewPar.SaleTransaction_ProductCategory/ViewPar.ProductCategory AS c
+  GROUP BY c.CategoryName
+);
+
+-- -----------------------------------------------------------------------------
+-- Step 3: Microflow - Retrieves from the View Entity WITH a filter
+--
+-- This is the key pattern: the microflow receives a ProductCategory object
+-- and uses its CategoryName to filter the View Entity at retrieve time.
+-- No "parameter passing" to the View Entity is needed.
+-- -----------------------------------------------------------------------------
+
+/**
+ * Get total sales for a specific category
+ *
+ * Retrieves the aggregated sales total from the SalesTotalByCategory
+ * view entity, filtered by the given category's name.
+ *
+ * This demonstrates that View Entity parameters are NOT needed:
+ * the filtering is done here, in the RETRIEVE WHERE clause.
+ *
+ * @param $Category The category to get the total for
+ * @returns The total sales amount for the given category (0 if none)
+ */
+CREATE MICROFLOW ViewPar.GetSalesTotalForCategory (
+  $Category: ViewPar.ProductCategory
+)
+RETURNS Decimal AS $TotalAmount
+BEGIN
+  DECLARE $TotalAmount Decimal = 0;
+
+  -- Retrieve from the View Entity, filtering by category name.
+  -- The WHERE clause acts as the "parameter" - no special View Entity
+  -- parameter syntax is needed.
+  RETRIEVE $Summary FROM ViewPar.SalesTotalByCategory
+    WHERE CategoryName = $Category/CategoryName
+    LIMIT 1;
+
+  -- If a matching row was found, extract the total
+  IF $Summary != empty THEN
+    SET $TotalAmount = $Summary/TotalAmount;
+  END IF;
+
+  RETURN $TotalAmount;
+END;
+/

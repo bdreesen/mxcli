@@ -1,0 +1,842 @@
+-- =============================================================================
+-- Agentic Search Capabilities - Comprehensive Reference
+-- =============================================================================
+--
+-- This MDL file demonstrates ALL agentic search and code navigation commands
+-- available in mxcli. It first builds a realistic Task Management module with
+-- interconnected entities, microflows, pages, and Java actions, then shows
+-- every search command and what output to expect.
+--
+-- Usage:
+--   1. Connect to your project:  USE 'path/to/app.mpr';
+--   2. Execute the domain model:  EXECUTE SCRIPT '02-agentic-search.mdl';
+--   3. Run the search commands interactively (Section 2 onward)
+--
+-- The module creates a small but richly connected graph:
+--
+--   Entities:  Task, TaskProject, TaskComment, AuditLog
+--   Enums:     TaskStatus, TaskPriority
+--   Microflows: ACT_Task_Create, ACT_Task_Complete, ACT_Task_Delete,
+--               SUB_WriteAuditLog, ACT_Project_Overview, ACT_SendNotification
+--   Validation: SUB_Task_Validate
+--   Pages:      Task_Overview, Task_Detail, Project_Overview
+--   Java:       SendEmailNotification, GenerateTaskReport
+--
+-- =============================================================================
+
+
+-- #############################################################################
+-- SECTION 1: BUILD THE MODULE
+-- #############################################################################
+
+CREATE MODULE TaskMgmt;
+
+-- MARK: ENUMERATIONS
+
+CREATE ENUMERATION TaskMgmt.TaskStatus (
+  Open 'Open',
+  InProgress 'In Progress',
+  Done 'Done',
+  Cancelled 'Cancelled'
+);
+
+CREATE ENUMERATION TaskMgmt.TaskPriority (
+  Low 'Low',
+  Medium 'Medium',
+  High 'High',
+  Critical 'Critical'
+);
+
+-- MARK: ENTITIES
+
+/**
+ * TaskProject
+ *
+ * Top-level container grouping related tasks.
+ */
+@Position(100, 100)
+CREATE PERSISTENT ENTITY TaskMgmt.TaskProject (
+  Name: String(200) NOT NULL ERROR 'Project name is required',
+  Description: String(2000),
+  IsActive: Boolean DEFAULT true,
+  CreatedDate: DateTime
+)
+INDEX (Name);
+
+/**
+ * Task
+ *
+ * A unit of work within a project. Tracks status, priority,
+ * assignment, and due dates.
+ */
+@Position(400, 100)
+CREATE PERSISTENT ENTITY TaskMgmt.Task (
+  TaskTitle: String(500) NOT NULL ERROR 'Task title is required',
+  Description: String(4000),
+  Status: Enumeration(TaskMgmt.TaskStatus) DEFAULT 'Open',
+  Priority: Enumeration(TaskMgmt.TaskPriority) DEFAULT 'Medium',
+  DueDate: DateTime,
+  CompletedDate: DateTime,
+  EstimatedHours: Decimal DEFAULT 0
+)
+INDEX (TaskTitle)
+INDEX (Status)
+INDEX (DueDate);
+
+/**
+ * TaskComment
+ *
+ * User comments attached to a task for collaboration.
+ */
+@Position(700, 100)
+CREATE PERSISTENT ENTITY TaskMgmt.TaskComment (
+  CommentBody: String(4000) NOT NULL ERROR 'Comment body is required',
+  CreatedDate: DateTime,
+  Author: String(200)
+);
+
+/**
+ * AuditLog
+ *
+ * Immutable record of actions taken on tasks and projects.
+ * Written by SUB_WriteAuditLog.
+ */
+@Position(400, 300)
+CREATE PERSISTENT ENTITY TaskMgmt.AuditLog (
+  AuditAction: String(100) NOT NULL,
+  EntityType: String(100),
+  EntityName: String(500),
+  PerformedBy: String(200),
+  PerformedAt: DateTime,
+  Details: String(2000)
+)
+INDEX (AuditAction)
+INDEX (PerformedAt);
+
+-- MARK: ASSOCIATIONS
+
+CREATE ASSOCIATION TaskMgmt.Task_TaskProject
+  FROM TaskMgmt.Task TO TaskMgmt.TaskProject
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+
+CREATE ASSOCIATION TaskMgmt.TaskComment_Task
+  FROM TaskMgmt.TaskComment TO TaskMgmt.Task
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+
+-- MARK: JAVA ACTIONS
+
+/**
+ * Sends an email notification about a task event.
+ *
+ * @param Recipient email address
+ * @param Subject   email subject line
+ * @param MessageBody email body (HTML supported)
+ * @returns true if sent successfully
+ */
+CREATE JAVA ACTION TaskMgmt.SendEmailNotification(
+  Recipient: String NOT NULL,
+  Subject: String NOT NULL,
+  MessageBody: String NOT NULL
+) RETURNS Boolean
+AS $$
+com.mendix.core.Core.getLogger("TaskMgmt").info("Sending email to " + Recipient);
+return true;
+$$;
+
+/**
+ * Generates a PDF report of all tasks in a project.
+ *
+ * @param ProjectName the project name to include in the report
+ * @returns the report file path
+ */
+CREATE JAVA ACTION TaskMgmt.GenerateTaskReport(
+  ProjectName: String NOT NULL
+) RETURNS String
+AS $$
+return "report_" + ProjectName + ".pdf";
+$$;
+
+-- MARK: MICROFLOWS
+
+/**
+ * Write an audit log entry
+ *
+ * Reusable sub-microflow called by all action microflows.
+ * Creates an AuditLog record and commits it.
+ *
+ * @param AuditAction short action name (e.g., 'Create', 'Complete')
+ * @param EntityType type of entity acted upon
+ * @param EntityName name/title of the entity
+ */
+CREATE MICROFLOW TaskMgmt.SUB_WriteAuditLog (
+  $AuditAction: String,
+  $EntityType: String,
+  $EntityName: String
+)
+FOLDER 'SUB'
+BEGIN
+  $Log = CREATE TaskMgmt.AuditLog (
+    AuditAction = $AuditAction,
+    EntityType = $EntityType,
+    EntityName = $EntityName,
+    PerformedBy = '[%CurrentUser%]',
+    PerformedAt = '[%CurrentDateTime%]'
+  );
+  COMMIT $Log;
+  RETURN;
+END;
+
+/**
+ * Send a notification email about a task
+ *
+ * Calls the SendEmailNotification Java action.
+ *
+ * @param Task the task to notify about
+ * @param NotificationMessage the notification message
+ */
+CREATE MICROFLOW TaskMgmt.ACT_SendNotification (
+  $Task: TaskMgmt.Task,
+  $NotificationMessage: String
+)
+FOLDER 'ACT'
+BEGIN
+  DECLARE $Subject String = 'Task Update: ' + $Task/TaskTitle;
+  $Sent = CALL JAVA ACTION TaskMgmt.SendEmailNotification(
+    Recipient = 'team@example.com',
+    Subject = $Subject,
+    MessageBody = $NotificationMessage
+  );
+  IF $Sent = true THEN
+    LOG INFO NODE 'Notification' 'Email sent for task';
+  END IF;
+  RETURN;
+END;
+
+/**
+ * Create a new task
+ *
+ * Creates a task, associates it with a project, writes an audit log,
+ * and sends a notification.
+ *
+ * @param TaskProject the project to add the task to
+ * @param TaskTitle the task title
+ * @param TaskPriority the task priority
+ * @returns the created Task
+ */
+CREATE MICROFLOW TaskMgmt.ACT_Task_Create (
+  $TaskProject: TaskMgmt.TaskProject,
+  $TaskTitle: String,
+  $TaskPriority: String
+)
+RETURNS TaskMgmt.Task AS $NewTask
+FOLDER 'ACT'
+BEGIN
+  $NewTask = CREATE TaskMgmt.Task (
+    TaskTitle = $TaskTitle,
+    Status = 'Open',
+    Priority = $TaskPriority,
+    DueDate = addDays('[%CurrentDateTime%]', 7)
+  );
+  CHANGE $NewTask (Task_TaskProject = $TaskProject);
+  COMMIT $NewTask;
+
+  CALL MICROFLOW TaskMgmt.SUB_WriteAuditLog(
+    AuditAction = 'Create',
+    EntityType = 'Task',
+    EntityName = $TaskTitle
+  );
+
+  CALL MICROFLOW TaskMgmt.ACT_SendNotification(
+    Task = $NewTask,
+    NotificationMessage = 'New task created: ' + $TaskTitle
+  );
+
+  RETURN $NewTask;
+END;
+
+/**
+ * Complete a task
+ *
+ * Sets status to Done, records completion date, writes audit log,
+ * and sends notification.
+ *
+ * @param Task the task to complete
+ */
+CREATE MICROFLOW TaskMgmt.ACT_Task_Complete (
+  $Task: TaskMgmt.Task
+)
+FOLDER 'ACT'
+BEGIN
+  CHANGE $Task (
+    Status = 'Done',
+    CompletedDate = '[%CurrentDateTime%]'
+  );
+  COMMIT $Task;
+
+  CALL MICROFLOW TaskMgmt.SUB_WriteAuditLog(
+    AuditAction = 'Complete',
+    EntityType = 'Task',
+    EntityName = $Task/TaskTitle
+  );
+
+  CALL MICROFLOW TaskMgmt.ACT_SendNotification(
+    Task = $Task,
+    NotificationMessage = 'Task completed: ' + $Task/TaskTitle
+  );
+
+  RETURN;
+END;
+
+/**
+ * Delete a task
+ *
+ * Deletes a task and all its comments. Writes audit log.
+ *
+ * @param Task the task to delete
+ */
+CREATE MICROFLOW TaskMgmt.ACT_Task_Delete (
+  $Task: TaskMgmt.Task
+)
+FOLDER 'ACT'
+BEGIN
+  DECLARE $TaskTitle String = $Task/TaskTitle;
+
+  -- Delete associated comments first
+  RETRIEVE $Comments FROM TaskMgmt.TaskComment
+    WHERE TaskComment_Task = $Task;
+
+  LOOP $Item IN $Comments BEGIN
+    DELETE $Item;
+  END LOOP;
+
+  DELETE $Task;
+
+  CALL MICROFLOW TaskMgmt.SUB_WriteAuditLog(
+    AuditAction = 'Delete',
+    EntityType = 'Task',
+    EntityName = $TaskTitle
+  );
+
+  RETURN;
+END;
+
+/**
+ * Navigate to project overview
+ *
+ * Generates a project report and shows the overview page.
+ *
+ * @param TaskProject the project to display
+ */
+CREATE MICROFLOW TaskMgmt.ACT_Project_Overview (
+  $TaskProject: TaskMgmt.TaskProject
+)
+FOLDER 'ACT'
+BEGIN
+  $ReportPath = CALL JAVA ACTION TaskMgmt.GenerateTaskReport(
+    ProjectName = $TaskProject/Name
+  );
+
+  LOG INFO NODE 'TaskProject' 'Generated report';
+
+  SHOW PAGE TaskMgmt.Project_Overview($TaskProject = $TaskProject);
+  RETURN;
+END;
+
+-- MARK: VALIDATION MICROFLOW
+
+/**
+ * Validate a task before saving
+ *
+ * Checks that the title is not empty and returns validation result.
+ *
+ * @param Task the task to validate
+ * @returns true if valid
+ */
+CREATE MICROFLOW TaskMgmt.SUB_Task_Validate (
+  $Task: TaskMgmt.Task
+)
+RETURNS Boolean AS $IsValid
+FOLDER 'SUB'
+BEGIN
+  DECLARE $IsValid Boolean = true;
+
+  IF $Task/TaskTitle = '' THEN
+    VALIDATION FEEDBACK $Task.TaskTitle MESSAGE 'Task title cannot be empty';
+    SET $IsValid = false;
+  END IF;
+
+  RETURN $IsValid;
+END;
+
+-- MARK: PAGES
+
+/**
+ * Task detail page
+ *
+ * Edit form for a single task with save/cancel actions.
+ */
+CREATE PAGE TaskMgmt.Task_Detail
+(
+  Params: { $Task: TaskMgmt.Task },
+  Title: 'Task Detail',
+  Layout: Atlas_Core.PopupLayout
+)
+{
+  DATAVIEW dvTask (DataSource: $Task) {
+    TEXTBOX txtTitle (Label: 'Title', Attribute: TaskTitle)
+    TEXTAREA txtDesc (Label: 'Description', Attribute: Description)
+    COMBOBOX cbStatus (Label: 'Status', Attribute: Status)
+    COMBOBOX cbPriority (Label: 'Priority', Attribute: Priority)
+    DATEPICKER dpDue (Label: 'Due Date', Attribute: DueDate)
+    TEXTBOX txtHours (Label: 'Estimated Hours', Attribute: EstimatedHours)
+
+    FOOTER footer1 {
+      ACTIONBUTTON btnSave (Caption: 'Save', Action: SAVE_CHANGES, ButtonStyle: Primary)
+      ACTIONBUTTON btnCancel (Caption: 'Cancel', Action: CANCEL_CHANGES)
+    }
+  }
+}
+
+/**
+ * Project overview page
+ *
+ * Shows project details with a nested list of tasks.
+ */
+CREATE PAGE TaskMgmt.Project_Overview
+(
+  Params: { $TaskProject: TaskMgmt.TaskProject },
+  Title: 'Project Overview',
+  Layout: Atlas_Core.Atlas_Default
+)
+{
+  DATAVIEW dvProject (DataSource: $TaskProject) {
+    DYNAMICTEXT dtName (Content: '{1}', ContentParams: [{1} = Name], RenderMode: H2)
+    DYNAMICTEXT dtDesc (Content: '{1}', ContentParams: [{1} = Description])
+
+    CONTAINER cTasks (Class: 'mt-3') {
+      DATAGRID dgProjectTasks (DataSource: DATABASE TaskMgmt.Task) {
+        COLUMN colTaskTitle (Attribute: TaskTitle, Caption: 'Task')
+        COLUMN colTaskStatus (Attribute: Status, Caption: 'Status')
+        COLUMN colTaskPriority (Attribute: Priority, Caption: 'Priority')
+      }
+    }
+  }
+}
+
+/**
+ * Task overview page
+ *
+ * Shows a data grid of all tasks with filtering by status.
+ * Action buttons to create, complete, and delete tasks.
+ */
+CREATE PAGE TaskMgmt.Task_Overview
+(
+  Title: 'Task Overview',
+  Layout: Atlas_Core.Atlas_Default
+)
+{
+  LAYOUTGRID lg1 {
+    ROW row1 {
+      COLUMN col1 (DesktopWidth: 12) {
+        DATAGRID dgTasks (DataSource: DATABASE TaskMgmt.Task) {
+          COLUMN colTitle (Attribute: TaskTitle, Caption: 'Title')
+          COLUMN colStatus (Attribute: Status, Caption: 'Status')
+          COLUMN colPriority (Attribute: Priority, Caption: 'Priority')
+          COLUMN colDue (Attribute: DueDate, Caption: 'Due Date')
+
+          CONTROLBAR cb1 {
+            ACTIONBUTTON btnNew (
+              Caption: 'New Task',
+              Action: SHOW_PAGE TaskMgmt.Task_Detail,
+              ButtonStyle: Primary
+            )
+            ACTIONBUTTON btnComplete (
+              Caption: 'Complete',
+              Action: MICROFLOW TaskMgmt.ACT_Task_Complete
+            )
+            ACTIONBUTTON btnDelete (
+              Caption: 'Delete',
+              Action: MICROFLOW TaskMgmt.ACT_Task_Delete
+            )
+          }
+        }
+      }
+    }
+  }
+}
+
+
+-- #############################################################################
+-- SECTION 2: AGENTIC SEARCH COMMANDS
+-- #############################################################################
+--
+-- The commands below demonstrate every search/navigation capability.
+-- Run them interactively in the REPL after executing Section 1 against
+-- a project.
+--
+-- IMPORTANT: Most search commands require building the catalog first:
+--   REFRESH CATALOG FULL;
+--
+-- =============================================================================
+
+
+-- =============================================================================
+-- 2.1  BASIC SHOW COMMANDS
+-- =============================================================================
+-- These commands list project elements. No catalog required.
+
+-- List all modules in the project
+SHOW MODULES;
+
+-- List all entities (project-wide)
+SHOW ENTITIES;
+
+-- List entities in a specific module
+SHOW ENTITIES IN TaskMgmt;
+
+-- List all microflows
+SHOW MICROFLOWS;
+
+-- List microflows in a specific module
+SHOW MICROFLOWS IN TaskMgmt;
+
+-- List all pages
+SHOW PAGES;
+
+-- List all nanoflows
+SHOW NANOFLOWS;
+
+-- List all enumerations
+SHOW ENUMERATIONS;
+
+-- List all Java actions
+SHOW JAVA ACTIONS;
+
+-- List Java actions in a specific module
+SHOW JAVA ACTIONS IN TaskMgmt;
+
+
+-- =============================================================================
+-- 2.2  DESCRIBE COMMANDS
+-- =============================================================================
+-- Show full details of a specific element. Output is round-trippable MDL.
+
+-- Describe an entity (shows attributes, indexes, associations)
+DESCRIBE ENTITY TaskMgmt.Task;
+
+-- Describe a microflow (shows full MDL body)
+DESCRIBE MICROFLOW TaskMgmt.ACT_Task_Create;
+
+-- Describe a page (shows widget tree in V3 syntax)
+DESCRIBE PAGE TaskMgmt.Task_Overview;
+
+-- Describe an enumeration
+DESCRIBE ENUMERATION TaskMgmt.TaskStatus;
+
+-- Describe a Java action (shows parameters, return type, code)
+DESCRIBE JAVA ACTION TaskMgmt.SendEmailNotification;
+
+-- Describe the validation sub-microflow
+DESCRIBE MICROFLOW TaskMgmt.SUB_Task_Validate;
+
+
+-- =============================================================================
+-- 2.3  CATALOG SETUP
+-- =============================================================================
+-- The catalog indexes the project for advanced queries. Must be built before
+-- using callers, callees, impact, context, refs, or SQL queries.
+
+-- Check if a catalog already exists and its freshness
+SHOW CATALOG STATUS;
+
+-- Build the catalog (fast mode - entities, microflows, pages only)
+REFRESH CATALOG;
+
+-- Build the FULL catalog (includes cross-references, activities, widgets)
+-- Required for: SHOW CALLERS, SHOW CALLEES, SHOW IMPACT, SHOW CONTEXT, REFS
+REFRESH CATALOG FULL;
+
+-- Force rebuild even if cache is fresh
+REFRESH CATALOG FULL FORCE;
+
+-- List all available catalog tables
+SHOW CATALOG TABLES;
+
+
+-- =============================================================================
+-- 2.4  CATALOG SQL QUERIES
+-- =============================================================================
+-- Query catalog tables using SQL-like syntax.
+
+-- List all entities with their module
+SELECT Name, ModuleName
+  FROM CATALOG.ENTITIES
+  ORDER BY Name;
+
+-- Find microflows with their activity counts
+SELECT Name, ActivityCount
+  FROM CATALOG.MICROFLOWS
+  ORDER BY ActivityCount DESC
+  LIMIT 10;
+
+-- List all pages with widget counts
+SELECT Name, WidgetCount
+  FROM CATALOG.PAGES
+  ORDER BY WidgetCount DESC;
+
+-- Query the cross-reference table: who references the Task entity?
+SELECT SourceName, RefKind, TargetName
+  FROM CATALOG.REFS
+  WHERE TargetName = 'TaskMgmt.Task'
+  ORDER BY RefKind;
+
+-- Find all microflow-calls-microflow references
+SELECT SourceName, TargetName
+  FROM CATALOG.REFS
+  WHERE RefKind = 'call'
+  ORDER BY SourceName;
+
+-- Find all show_page references (which microflows open which pages?)
+SELECT SourceName, TargetName
+  FROM CATALOG.REFS
+  WHERE RefKind = 'show_page';
+
+-- Find all entity creates across microflows
+SELECT SourceName, TargetName
+  FROM CATALOG.REFS
+  WHERE RefKind = 'create'
+  ORDER BY TargetName;
+
+-- List all activities in a specific microflow
+SELECT *
+  FROM CATALOG.ACTIVITIES
+  WHERE MicroflowQualifiedName = 'TaskMgmt.ACT_Task_Create';
+
+-- Query widgets on a specific page
+SELECT *
+  FROM CATALOG.WIDGETS
+  WHERE ContainerQualifiedName = 'TaskMgmt.Task_Overview';
+
+
+-- =============================================================================
+-- 2.5  SHOW CALLERS OF (Who calls this?)
+-- =============================================================================
+-- Find all elements that call/reference a given microflow or nanoflow.
+
+-- Who calls SUB_WriteAuditLog?
+-- Expected: ACT_Task_Create, ACT_Task_Complete, ACT_Task_Delete
+SHOW CALLERS OF TaskMgmt.SUB_WriteAuditLog;
+
+-- Who calls ACT_SendNotification?
+-- Expected: ACT_Task_Create, ACT_Task_Complete
+SHOW CALLERS OF TaskMgmt.ACT_SendNotification;
+
+-- Who calls ACT_Task_Complete?
+-- Expected: Task_Overview page (action button)
+SHOW CALLERS OF TaskMgmt.ACT_Task_Complete;
+
+-- TRANSITIVE callers: follow the call chain recursively
+-- For SUB_WriteAuditLog, this includes not just direct callers (ACT_Task_Create,
+-- ACT_Task_Complete, ACT_Task_Delete) but also anything that calls THOSE.
+SHOW CALLERS OF TaskMgmt.SUB_WriteAuditLog TRANSITIVE;
+
+
+-- =============================================================================
+-- 2.6  SHOW CALLEES OF (What does this call?)
+-- =============================================================================
+-- Find all elements that a given microflow calls or references.
+
+-- What does ACT_Task_Create call?
+-- Expected: SUB_WriteAuditLog, ACT_SendNotification (microflows)
+--           Creates TaskMgmt.Task (entity)
+SHOW CALLEES OF TaskMgmt.ACT_Task_Create;
+
+-- What does ACT_Project_Overview call?
+-- Expected: shows Project_Overview (page)
+-- Note: Java action calls (GenerateTaskReport) are NOT tracked in the catalog
+SHOW CALLEES OF TaskMgmt.ACT_Project_Overview;
+
+-- What does ACT_Task_Delete call?
+-- Expected: SUB_WriteAuditLog, retrieves/deletes TaskComment and Task
+SHOW CALLEES OF TaskMgmt.ACT_Task_Delete;
+
+-- Transitive callees: the full dependency tree
+-- ACT_Task_Create -> SUB_WriteAuditLog -> (creates AuditLog)
+-- ACT_Task_Create -> ACT_SendNotification -> (microflow call chain)
+-- Note: Java action calls are not tracked; use DESCRIBE MICROFLOW to see them
+SHOW CALLEES OF TaskMgmt.ACT_Task_Create TRANSITIVE;
+
+
+-- =============================================================================
+-- 2.7  SHOW REFERENCES TO (All references to an element)
+-- =============================================================================
+-- Shows every reference to an entity, microflow, page, or other element.
+-- Includes: creates, retrieves, associations, page data sources, parameters.
+
+-- All references to the Task entity
+-- Expected: created by ACT_Task_Create, retrieved by ACT_Task_Delete,
+--           page parameter in Task_Detail, datasource in Task_Overview,
+--           association targets from TaskComment_Task and Task_TaskProject
+SHOW REFERENCES TO TaskMgmt.Task;
+
+-- All references to the TaskProject entity
+-- Expected: association from Task_TaskProject, page parameter in Project_Overview,
+--           parameter in ACT_Task_Create and ACT_Project_Overview
+SHOW REFERENCES TO TaskMgmt.TaskProject;
+
+-- All references to the AuditLog entity
+-- Expected: created by SUB_WriteAuditLog
+SHOW REFERENCES TO TaskMgmt.AuditLog;
+
+-- References to a page
+-- Expected: shown by ACT_Project_Overview
+SHOW REFERENCES TO TaskMgmt.Project_Overview;
+
+-- References to a microflow
+SHOW REFERENCES TO TaskMgmt.ACT_Task_Complete;
+
+
+-- =============================================================================
+-- 2.8  SHOW IMPACT OF (What breaks if I change this?)
+-- =============================================================================
+-- Shows downstream dependencies: everything that would be affected if you
+-- modify or delete the given element.
+
+-- Impact of changing the Task entity
+-- Affects: all microflows that create/retrieve/change Task, all pages that
+-- display Task, all associations involving Task, the TaskComment entity
+-- (via TaskComment_Task), the validation nanoflow
+SHOW IMPACT OF TaskMgmt.Task;
+
+-- Impact of changing SUB_WriteAuditLog
+-- Affects: every microflow that calls it (ACT_Task_Create, ACT_Task_Complete,
+-- ACT_Task_Delete) and transitively their callers
+SHOW IMPACT OF TaskMgmt.SUB_WriteAuditLog;
+
+-- Impact of changing the TaskProject entity
+-- Affects: Task_TaskProject association, Project_Overview page,
+-- ACT_Project_Overview microflow (Java action refs not tracked)
+SHOW IMPACT OF TaskMgmt.TaskProject;
+
+-- Impact of changing a page
+-- Affects: any microflow that shows this page, navigation entries
+SHOW IMPACT OF TaskMgmt.Task_Overview;
+
+
+-- =============================================================================
+-- 2.9  SHOW CONTEXT OF (Neighborhood exploration)
+-- =============================================================================
+-- Shows the "neighborhood" around an element: the element itself plus
+-- everything connected to it within a given depth. Useful for understanding
+-- a feature area before making changes.
+
+-- Context around ACT_Task_Create (default depth: all reachable)
+-- Shows: the microflow, its parameters (TaskProject, Task entities),
+--        callees (SUB_WriteAuditLog, ACT_SendNotification),
+--        entities it creates (Task), and their callers
+SHOW CONTEXT OF TaskMgmt.ACT_Task_Create;
+
+-- Context with limited depth (1 hop = direct connections only)
+SHOW CONTEXT OF TaskMgmt.ACT_Task_Create DEPTH 1;
+
+-- Context with depth 2 (direct connections + their connections)
+-- Shows: ACT_Task_Create -> SUB_WriteAuditLog -> AuditLog entity
+--        ACT_Task_Create -> ACT_SendNotification -> SendEmailNotification
+SHOW CONTEXT OF TaskMgmt.ACT_Task_Create DEPTH 2;
+
+-- Context around an entity (shows all microflows, pages, associations)
+SHOW CONTEXT OF TaskMgmt.Task DEPTH 2;
+
+-- Context around a page (shows data sources, action targets)
+SHOW CONTEXT OF TaskMgmt.Task_Overview DEPTH 1;
+
+
+-- =============================================================================
+-- 2.10  FULL-TEXT SEARCH
+-- =============================================================================
+-- Search across all strings, names, and source code in the project.
+
+-- Find everything mentioning "audit"
+-- Expected: AuditLog entity, SUB_WriteAuditLog microflow, log messages
+SEARCH 'audit';
+
+-- Find everything mentioning "notification"
+-- Expected: ACT_SendNotification, SendEmailNotification Java action
+SEARCH 'notification';
+
+-- Find references to email
+-- Expected: SendEmailNotification Java action, email strings in microflows
+SEARCH 'email';
+
+-- Find all validation-related code
+-- Expected: NAV_Task_Validate nanoflow, VALIDATION FEEDBACK statements
+SEARCH 'validation';
+
+-- Find everything related to "complete"
+-- Expected: ACT_Task_Complete microflow, TaskStatus.Done references
+SEARCH 'complete';
+
+-- Find all status-related elements
+SEARCH 'status';
+
+
+-- =============================================================================
+-- 2.11  COMBINING COMMANDS (Agentic Workflow Examples)
+-- =============================================================================
+--
+-- These show how an AI agent might chain commands to answer questions.
+--
+-- Q: "What happens when a user clicks 'Delete' on the Task Overview page?"
+--
+--   Step 1: Look at the page
+--   DESCRIBE PAGE TaskMgmt.Task_Overview;
+--     -> Finds: ActionButton calls ACT_Task_Delete
+--
+--   Step 2: What does ACT_Task_Delete do?
+--   SHOW CALLEES OF TaskMgmt.ACT_Task_Delete;
+--     -> Finds: retrieves TaskComments, deletes TaskComment, deletes Task,
+--               calls SUB_WriteAuditLog
+--
+--   Step 3: What entities are affected?
+--   SHOW IMPACT OF TaskMgmt.ACT_Task_Delete;
+--     -> Finds: Task, TaskComment, AuditLog entities are touched
+--
+-- Q: "I want to rename the Task entity. What will break?"
+--
+--   Step 1: Check all references
+--   SHOW REFERENCES TO TaskMgmt.Task;
+--     -> Lists every microflow, page, association, nanoflow referencing Task
+--
+--   Step 2: Check transitive impact
+--   SHOW IMPACT OF TaskMgmt.Task;
+--     -> Shows the full blast radius including downstream pages and microflows
+--
+-- Q: "Which microflows use the SendEmailNotification Java action?"
+--
+--   Note: Java action calls are NOT tracked in the catalog refs table.
+--   Use full-text search + describe to find them instead:
+--
+--   Step 1: Search for the Java action name
+--   SEARCH 'SendEmailNotification';
+--     -> Finds: the Java action itself AND microflows that reference it
+--
+--   Step 2: Describe the calling microflow to confirm
+--   DESCRIBE MICROFLOW TaskMgmt.ACT_SendNotification;
+--     -> Shows: CALL JAVA ACTION TaskMgmt.SendEmailNotification(...)
+--
+--   Step 3: Who calls that microflow?
+--   SHOW CALLERS OF TaskMgmt.ACT_SendNotification;
+--     -> Finds: ACT_Task_Create, ACT_Task_Complete
+--
+-- Q: "Give me context to understand the task creation feature"
+--
+--   SHOW CONTEXT OF TaskMgmt.ACT_Task_Create DEPTH 3;
+--     -> Returns: the microflow, all entities it touches, all sub-microflows,
+--        the Java actions called, the pages that invoke it, etc.
+--        An LLM can use this as grounding context for code generation.
+--
+-- =============================================================================

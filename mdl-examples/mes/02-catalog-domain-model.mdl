@@ -1,0 +1,215 @@
+-- ============================================================================
+-- Product Catalog Domain Model
+-- ============================================================================
+-- Standard (off-the-shelf) furniture designs with categories, variants,
+-- and product images. Supports hierarchical categorization and
+-- multiple product variants per design.
+-- ============================================================================
+
+-- MARK: MODULE
+
+/**
+ * Product Catalog module
+ *
+ * Manages standard furniture product designs, categories,
+ * variants (size/material/finish combinations), and product images.
+ *
+ * @since 1.0.0
+ */
+CREATE MODULE ProductCatalog;
+
+-- MARK: ENUMERATIONS
+
+/**
+ * Product lifecycle status
+ *
+ * Tracks whether a product is actively available for sale.
+ *
+ * @since 1.0.0
+ */
+CREATE ENUMERATION ProductCatalog.ProductStatus (
+  Draft 'Draft',
+  Active 'Active',
+  Discontinued 'Discontinued'
+);
+
+/**
+ * Furniture finish type
+ *
+ * Common finish options for furniture surfaces.
+ *
+ * @since 1.0.0
+ */
+CREATE ENUMERATION ProductCatalog.FinishType (
+  Natural 'Natural',
+  Stained 'Stained',
+  Painted 'Painted',
+  Lacquered 'Lacquered',
+  Oiled 'Oiled',
+  Waxed 'Waxed'
+);
+
+-- MARK: ENTITIES
+
+/**
+ * Product category entity
+ *
+ * Hierarchical categorization of furniture products.
+ * Supports parent-child relationships for nested categories
+ * (e.g. Seating > Chairs > Dining Chairs).
+ *
+ * @since 1.0.0
+ * @see ProductCatalog.CatalogProduct
+ */
+@Position(50, 50)
+CREATE PERSISTENT ENTITY ProductCatalog.ProductCategory (
+  /** Category display name */
+  CategoryName: String(200) NOT NULL ERROR 'Category name is required',
+  /** Brief description of this category */
+  CategoryDescription: String(1000),
+  /** Sort position for display ordering */
+  SortOrder: Integer DEFAULT 0,
+  /** Whether this category is visible to users */
+  IsActive: Boolean DEFAULT true
+);
+
+/**
+ * Catalog product entity
+ *
+ * A standard furniture design available for purchase.
+ * Each product can have multiple variants (size, material, finish)
+ * and multiple images.
+ *
+ * @since 1.0.0
+ * @see ProductCatalog.ProductCategory
+ * @see ProductCatalog.ProductVariant
+ */
+@Position(350, 50)
+CREATE PERSISTENT ENTITY ProductCatalog.CatalogProduct (
+  /** Unique product code / SKU prefix */
+  ProductCode: String(50) NOT NULL ERROR 'Product code is required' UNIQUE ERROR 'Product code must be unique',
+  /** Product display name */
+  ProductName: String(200) NOT NULL ERROR 'Product name is required',
+  /** Detailed product description */
+  ProductDescription: String(4000),
+  /** Base price before variant adjustments */
+  BasePrice: Decimal,
+  /** Estimated production lead time in days */
+  LeadTimeDays: Integer DEFAULT 14,
+  /** Overall dimensions description */
+  Dimensions: String(200),
+  /** Primary material used */
+  PrimaryMaterial: String(100),
+  /** Weight in kilograms */
+  WeightKg: Decimal,
+  /** Lifecycle status */
+  ProductStatus: Enumeration(ProductCatalog.ProductStatus) NOT NULL ERROR 'Product status is required',
+  /** Date when product was first made available */
+  LaunchDate: DateTime
+)
+INDEX (ProductStatus)
+INDEX (ProductCode);
+
+/**
+ * Product variant entity
+ *
+ * A specific size/material/finish combination of a catalog product.
+ * Each variant has its own SKU and price adjustment.
+ *
+ * @since 1.0.0
+ * @see ProductCatalog.CatalogProduct
+ */
+@Position(650, 50)
+CREATE PERSISTENT ENTITY ProductCatalog.ProductVariant (
+  /** Full SKU for this variant */
+  SKU: String(50) NOT NULL ERROR 'SKU is required' UNIQUE ERROR 'SKU must be unique',
+  /** Variant label (e.g. 'Large Oak Natural') */
+  VariantLabel: String(200) NOT NULL ERROR 'Variant label is required',
+  /** Size descriptor (e.g. 'Small', 'Medium', 'Large', '120x80cm') */
+  SizeDescription: String(100),
+  /** Material used for this variant */
+  MaterialDescription: String(100),
+  /** Finish type for this variant */
+  FinishType: Enumeration(ProductCatalog.FinishType),
+  /** Price adjustment from base (can be negative) */
+  PriceAdjustment: Decimal DEFAULT 0,
+  /** Whether this variant is currently available */
+  IsAvailable: Boolean DEFAULT true,
+  /** Current stock quantity */
+  StockQuantity: Integer DEFAULT 0
+)
+INDEX (SKU);
+
+/**
+ * Product image entity
+ *
+ * Images associated with a catalog product.
+ * Inherits from System.Image for file storage.
+ *
+ * @since 1.0.0
+ * @see ProductCatalog.CatalogProduct
+ */
+@Position(350, 250)
+CREATE PERSISTENT ENTITY ProductCatalog.ProductImage
+EXTENDS System.Image (
+  /** Caption describing the image */
+  ImageCaption: String(500),
+  /** Whether this is the primary display image */
+  IsPrimary: Boolean DEFAULT false,
+  /** Sort order for gallery display */
+  SortIndex: Integer DEFAULT 0
+);
+
+-- MARK: ASSOCIATIONS
+
+/**
+ * Self-referencing category hierarchy
+ *
+ * Links a subcategory to its parent category.
+ * Top-level categories have no parent.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION ProductCatalog.ProductCategory_ParentCategory
+  FROM ProductCatalog.ProductCategory TO ProductCatalog.ProductCategory
+  TYPE Reference
+  OWNER Default;
+
+/**
+ * Links products to their category
+ *
+ * Each product belongs to one category.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION ProductCatalog.CatalogProduct_ProductCategory
+  FROM ProductCatalog.CatalogProduct TO ProductCatalog.ProductCategory
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+
+/**
+ * Links variants to their parent product
+ *
+ * Each variant belongs to exactly one product.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION ProductCatalog.ProductVariant_CatalogProduct
+  FROM ProductCatalog.ProductVariant TO ProductCatalog.CatalogProduct
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_AND_REFERENCES;
+
+/**
+ * Links images to their product
+ *
+ * Each image belongs to one product. A product can have many images.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION ProductCatalog.ProductImage_CatalogProduct
+  FROM ProductCatalog.ProductImage TO ProductCatalog.CatalogProduct
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_AND_REFERENCES;

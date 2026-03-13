@@ -1,0 +1,144 @@
+// SPDX-License-Identifier: Apache-2.0
+
+package sql
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+	"strings"
+)
+
+// AssocInfo holds resolved association metadata for an import LINK mapping.
+type AssocInfo struct {
+	// From the LINK clause
+	SourceColumn string // source query column name
+	LookupAttr   string // child entity attribute for lookup (empty = direct ID)
+
+	// Resolved from MPR + system tables
+	AssociationName string // qualified name (e.g., "HR.Employee_Department")
+	ChildEntity     string // qualified name of child entity
+	StorageFormat   string // "Column" or "Table"
+
+	// Database names (from mendixsystem$association or conventions)
+	FKColumnName  string // Column storage: FK column in parent table
+	JunctionTable string // Table storage: junction table name
+	ParentColName string // Table storage: parent ID column in junction table
+	ChildColName  string // Table storage: child ID column in junction table
+
+	// Lookup cache: value → Mendix object ID
+	LookupCache map[string]int64
+}
+
+// Lookup resolves a source value to a Mendix object ID using the pre-built cache.
+// Returns (id, true) if found, (0, false) if not found.
+// If LookupAttr is empty (direct mode), the value is expected to be an int64 already.
+func (a *AssocInfo) Lookup(value any) (int64, bool) {
+	if value == nil {
+		return 0, false
+	}
+	if a.LookupAttr == "" {
+		// Direct ID mode — try to interpret as int64
+		switch v := value.(type) {
+		case int64:
+			return v, true
+		case int32:
+			return int64(v), true
+		case float64:
+			return int64(v), true
+		case int:
+			return int64(v), true
+		default:
+			return 0, false
+		}
+	}
+	// Lookup mode — convert value to string key
+	key := fmt.Sprintf("%v", value)
+	id, ok := a.LookupCache[key]
+	return id, ok
+}
+
+// AssocSystemInfo holds a row from mendixsystem$association.
+type AssocSystemInfo struct {
+	AssociationName string
+	TableName       string
+	ChildColumnName string
+	StorageFormat   string
+}
+
+// LookupAssociationInfo queries mendixsystem$association for the given association name.
+func LookupAssociationInfo(ctx context.Context, conn *Connection, assocName string) (*AssocSystemInfo, error) {
+	query := `
+		SELECT association_name, table_name, child_column_name, storage_format
+		FROM mendixsystem$association
+		WHERE association_name = $1`
+
+	var info AssocSystemInfo
+	var childCol sql.NullString
+	err := conn.DB.QueryRowContext(ctx, query, assocName).Scan(
+		&info.AssociationName, &info.TableName, &childCol, &info.StorageFormat)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil // not found — caller will fall back to conventions
+		}
+		return nil, fmt.Errorf("failed to query mendixsystem$association: %w", err)
+	}
+	info.ChildColumnName = childCol.String
+	return &info, nil
+}
+
+// BuildLookupCache queries the child entity table to build a value → Mendix ID mapping.
+func BuildLookupCache(ctx context.Context, conn *Connection, childTable, lookupColumn string) (map[string]int64, error) {
+	query := fmt.Sprintf(`SELECT id, %q FROM %q`, lookupColumn, childTable)
+
+	rows, err := conn.DB.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query child table %q for lookup cache: %w", childTable, err)
+	}
+	defer rows.Close()
+
+	cache := make(map[string]int64)
+	for rows.Next() {
+		var id int64
+		var val any
+		if err := rows.Scan(&id, &val); err != nil {
+			return nil, fmt.Errorf("failed to scan lookup row: %w", err)
+		}
+		key := fmt.Sprintf("%v", val)
+		if _, exists := cache[key]; exists {
+			return nil, fmt.Errorf("ambiguous lookup: multiple rows in %q have %s = %q", childTable, lookupColumn, key)
+		}
+		cache[key] = id
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("lookup cache iteration error: %w", err)
+	}
+
+	return cache, nil
+}
+
+// AssocColumnNameFromConvention derives the FK column name from Mendix naming conventions.
+// Convention: {module}${association_name_lower} — all lowercase with $ separator.
+func AssocColumnNameFromConvention(assocQualifiedName string) string {
+	parts := strings.SplitN(assocQualifiedName, ".", 2)
+	if len(parts) != 2 {
+		return strings.ToLower(assocQualifiedName)
+	}
+	return strings.ToLower(parts[0]) + "$" + strings.ToLower(parts[1])
+}
+
+// JunctionTableFromConvention derives the junction table name from Mendix naming conventions.
+// Convention: same as column name — {module}${association_name_lower}.
+func JunctionTableFromConvention(assocQualifiedName string) string {
+	return AssocColumnNameFromConvention(assocQualifiedName)
+}
+
+// JunctionColumnFromConvention derives a junction table column name.
+// Convention: {module}${entity_name_lower}id
+func JunctionColumnFromConvention(entityQualifiedName string) string {
+	parts := strings.SplitN(entityQualifiedName, ".", 2)
+	if len(parts) != 2 {
+		return strings.ToLower(entityQualifiedName) + "id"
+	}
+	return strings.ToLower(parts[0]) + "$" + strings.ToLower(parts[1]) + "id"
+}

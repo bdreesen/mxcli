@@ -1,0 +1,34 @@
+{
+  "name": "Mendix Model SDK Go",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "forwardPorts": [8080, 8090, 5432],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",
+        "ms-vscode.makefile-tools",
+        "anthropic.claude-code",
+        "mike-lischke.vscode-antlr4"
+      ],
+      "settings": {
+        "go.toolsManagement.autoUpdate": true,
+        "go.useLanguageServer": true,
+        "go.lintTool": "golangci-lint",
+        "editor.formatOnSave": true,
+        "[go]": {
+          "editor.defaultFormatter": "golang.go"
+        }
+      }
+    }
+  },
+  "postCreateCommand": "curl -fsSL https://claude.ai/install.sh | bash && go mod download",
+  "remoteUser": "vscode",
+  "remoteEnv": {
+    "CGO_ENABLED": "1"
+  }
+}

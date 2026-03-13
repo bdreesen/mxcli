@@ -1,0 +1,146 @@
+-- ============================================================================
+-- Math Microflow Examples
+-- ============================================================================
+--
+-- This file contains example microflows demonstrating mathematical algorithms
+-- implemented in MDL syntax.
+--
+-- Usage:
+--   1. Connect to your project
+--   2. Execute: EXECUTE SCRIPT 'examples/doctype-tests/math-examples.mdl';
+--
+-- ============================================================================
+
+/**
+ * Determine if the input number is a prime number.
+ *
+ * Uses the trial division algorithm to test for primality. This implementation
+ * optimizes by only checking odd divisors up to the square root of the input.
+ *
+ * Algorithm:
+ * - Numbers <= 1 are not prime by definition
+ * - 2 is the only even prime number
+ * - All other even numbers are not prime
+ * - Test divisibility by odd numbers from 3 to sqrt(N)
+ *
+ * @param $Number The integer to test for primality
+ * @returns true if the number is prime, false otherwise
+ */
+CREATE MICROFLOW Math.IsPrime (
+  $Number: Integer
+) RETURNS Boolean AS $IsPrime
+FOLDER 'Math'
+URL 'IsPrime'
+BEGIN
+  -- Edge Case 1: Handle numbers <= 1
+  IF $Number <= 1 THEN
+    LOG INFO NODE 'Math' 'Number is less than or equal to 1, not prime';
+    RETURN false;
+  END IF;
+
+  -- Edge Case 2: Handle the number 2 (only even prime)
+  IF $Number = 2 THEN
+    LOG INFO NODE 'Math' 'Number is 2, which is prime';
+    RETURN true;
+  END IF;
+
+  -- Edge Case 3: Eliminate even numbers > 2
+  IF $Number mod 2 = 0 THEN
+    LOG INFO NODE 'Math' 'Number is even and greater than 2, not prime';
+    RETURN false;
+  END IF;
+
+  -- Initialize trial division variables
+  -- Start checking odd divisors from 3
+  DECLARE $Divisor Integer = 3;
+
+  -- Only need to check up to sqrt(N)
+  -- Mathematical insight: if N = a*b, one factor must be <= sqrt(N)
+  DECLARE $MaxDivisor Integer = round(sqrt($Number));
+
+  -- Main trial division loop
+  WHILE $Divisor <= $MaxDivisor
+  BEGIN
+    -- Test if current divisor divides the number evenly
+    IF $Number mod $Divisor = 0 THEN
+      LOG INFO NODE 'Math' 'Found divisor: {1}, not prime' OBJECTS [toString($Divisor)];
+      RETURN false;
+    END IF;
+
+    -- Increment by 2 to skip even numbers (optimization)
+    SET $Divisor = $Divisor + 2;
+  END WHILE;
+
+  -- No divisors found - number is prime
+  LOG INFO NODE 'Math' 'Number {1} is prime' OBJECTS [toString($Number)];
+
+  RETURN true;
+END;
+/
+
+/**
+ * Calculate the Nth Fibonacci number using iterative approach.
+ *
+ * The Fibonacci sequence is defined as:
+ * - F(0) = 0
+ * - F(1) = 1
+ * - F(n) = F(n-1) + F(n-2) for n > 1
+ *
+ * This implementation uses an iterative sliding window algorithm that
+ * avoids recursion overhead and stack overflow issues.
+ *
+ * @param $N The position in the Fibonacci sequence (0-based index)
+ * @returns The Nth Fibonacci number as a Long integer
+ */
+CREATE MICROFLOW Math.Fibonacci (
+  $N: Integer
+) RETURNS Long AS $Result
+FOLDER 'Math'
+URL 'Fibonacci'
+BEGIN
+  -- Validation: Check for negative input
+  IF $N < 0 THEN
+    LOG ERROR NODE 'Math' 'Fibonacci is not defined for negative numbers';
+    RETURN 0;
+  END IF;
+
+  -- Base Case 1: F(0) = 0
+  IF $N = 0 THEN
+    LOG INFO NODE 'Math' 'Fibonacci(0) = 0';
+    RETURN 0;
+  END IF;
+
+  -- Base Case 2: F(1) = 1
+  IF $N = 1 THEN
+    LOG INFO NODE 'Math' 'Fibonacci(1) = 1';
+    RETURN 1;
+  END IF;
+
+  -- Initialize sliding window variables for iterative calculation
+  -- Previous two values: F(i-2) and F(i-1)
+  DECLARE $Previous2 Long = 0;
+  DECLARE $Previous1 Long = 1;
+  DECLARE $Current Long = 0;
+  DECLARE $Counter Integer = 2;
+  LOG INFO NODE 'Math' 'Calculating Fibonacci({1})' OBJECTS [toString($N)];
+
+  -- Main iteration loop: Calculate F(2) through F(N)
+  -- Uses sliding window: shift values after each calculation
+  WHILE $Counter <= $N
+  BEGIN
+    -- Calculate current Fibonacci number using recurrence relation
+    SET $Current = $Previous1 + $Previous2;
+    LOG DEBUG NODE 'Math' 'F({1}) = {2}' OBJECTS [toString($Counter), toString($Current)];
+
+    -- Slide the window: shift values for next iteration
+    SET $Previous2 = $Previous1;
+    SET $Previous1 = $Current;
+    SET $Counter = $Counter + 1;
+  END WHILE;
+
+  -- Store final result and return
+  SET $Result = $Current;
+  LOG INFO NODE 'Math' 'Fibonacci({1}) = {2}' OBJECTS [toString($N), toString($Result)];
+  RETURN $Result;
+END;
+/

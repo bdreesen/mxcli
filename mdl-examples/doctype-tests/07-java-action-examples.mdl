@@ -1,0 +1,1788 @@
+-- ============================================================================
+-- Java Action Examples - Comprehensive Reference
+-- ============================================================================
+--
+-- This file documents Java action patterns and demonstrates how to call
+-- them from microflows. Java actions are defined in Java code but can be
+-- invoked from MDL microflows using CALL JAVA ACTION.
+--
+-- Usage:
+--   1. Connect to your project: USE 'path/to/app.mpr';
+--   2. List Java actions: SHOW JAVA ACTIONS;
+--   3. Describe a Java action: DESCRIBE JAVA ACTION Module.ActionName;
+--   4. Execute this script: EXECUTE SCRIPT '07-java-action-examples.mdl';
+--
+-- Note: Java actions must be defined in Java code first. This file shows
+-- how to call existing Java actions and documents common patterns.
+--
+-- ============================================================================
+
+-- MARK: Setup
+
+CREATE MODULE JaTest;
+
+-- Create entities used by Java action examples
+@Position(100,100)
+CREATE PERSISTENT ENTITY JaTest.EmailMessage (
+  Recipient: String(500) NOT NULL,
+  SubjectLine: String(500),
+  BodyText: String(2000),
+  IsHtml: Boolean DEFAULT false,
+  SentDate: DateTime,
+  EmailStatus: String(50) DEFAULT 'Pending'
+);
+
+@Position(300,100)
+CREATE PERSISTENT ENTITY JaTest.LogEntry (
+  LogTimestamp: DateTime NOT NULL,
+  LogLevel: String(20),
+  LogMessage: String(2000),
+  LogSource: String(200)
+);
+
+@Position(500,100)
+CREATE PERSISTENT ENTITY JaTest.FileInfo (
+  FileName: String(500) NOT NULL,
+  MimeType: String(200),
+  FileSize: Integer
+);
+
+@Position(100,300)
+CREATE PERSISTENT ENTITY JaTest.ProcessResult (
+  IsSuccess: Boolean DEFAULT false,
+  ResultMessage: String(500),
+  ProcessedCount: Integer,
+  ErrorCount: Integer,
+  DurationMs: Long
+);
+
+-- MARK: Java Action Definitions
+
+-- ============================================================================
+-- Java Action Definitions
+-- ============================================================================
+-- These CREATE JAVA ACTION statements define the Java actions that are called
+-- by the microflows in this file. Each action includes inline Java code.
+-- All actions are in the JaTest module for easy cleanup with:
+--   DROP MODULE JaTest;
+
+-- ----------------------------------------------------------------------------
+-- Level 1: No-Parameter Java Actions
+-- ----------------------------------------------------------------------------
+
+/** Returns the current timestamp. */
+CREATE JAVA ACTION JaTest.GetCurrentTimestamp() RETURNS DateTime
+AS $$
+return new java.util.Date();
+$$;
+
+/** Checks if the system is in maintenance mode (stub: always returns false). */
+CREATE JAVA ACTION JaTest.IsMaintenanceMode() RETURNS Boolean
+AS $$
+// In a real implementation, this would check a system configuration
+return false;
+$$;
+
+/** Returns the application version string. */
+CREATE JAVA ACTION JaTest.GetApplicationVersion() RETURNS String
+AS $$
+return "1.0.0-SNAPSHOT";
+$$;
+/
+
+-- MARK: Level 1 - Basic Calls
+
+-- ============================================================================
+-- LEVEL 1: Simple Java Action Calls (No Parameters)
+-- ============================================================================
+
+/**
+ * Example 1.1: Calling a Java action with no parameters
+ *
+ * Java Action Signature:
+ *   JAVA ACTION Utils.GetCurrentTimestamp() RETURNS DateTime
+ *
+ * This pattern is common for utility functions that don't need input.
+ */
+CREATE MICROFLOW JaTest.M001_GetTimestamp ()
+RETURNS DateTime AS $MF1_Timestamp
+BEGIN
+  -- Call Java action with no arguments
+  $MF1_Timestamp = CALL JAVA ACTION JaTest.GetCurrentTimestamp();
+
+  RETURN $MF1_Timestamp;
+END;
+/
+
+/**
+ * Example 1.2: Java action returning Boolean (validation/check)
+ *
+ * Java Action Signature:
+ *   JAVA ACTION Utils.IsMaintenanceMode() RETURNS Boolean
+ */
+CREATE MICROFLOW JaTest.M002_CheckMaintenanceMode ()
+RETURNS Boolean AS $MF2_InMaintenance
+BEGIN
+  $MF2_InMaintenance = CALL JAVA ACTION JaTest.IsMaintenanceMode();
+
+  RETURN $MF2_InMaintenance;
+END;
+/
+
+/**
+ * Example 1.3: Java action returning String (configuration/info)
+ *
+ * Java Action Signature:
+ *   JAVA ACTION Utils.GetApplicationVersion() RETURNS String
+ */
+CREATE MICROFLOW JaTest.M003_GetAppVersion ()
+RETURNS String AS $MF3_Version
+BEGIN
+  $MF3_Version = CALL JAVA ACTION JaTest.GetApplicationVersion();
+
+  RETURN $MF3_Version;
+END;
+/
+
+
+-- ----------------------------------------------------------------------------
+-- Level 2: Primitive Parameter Java Actions
+-- ----------------------------------------------------------------------------
+
+/** Converts a string to uppercase. */
+CREATE JAVA ACTION JaTest.ToUpperCase(InputText: String NOT NULL) RETURNS String
+AS $$
+if (InputText == null) {
+    return "";
+}
+return InputText.toUpperCase();
+$$;
+/
+
+
+/** Concatenates two strings with an optional separator. */
+CREATE JAVA ACTION JaTest.Concatenate(FirstPart: String NOT NULL, SecondPart: String NOT NULL, Separator: String) RETURNS String
+AS $$
+String sep = Separator != null ? Separator : "";
+String first = FirstPart != null ? FirstPart : "";
+String second = SecondPart != null ? SecondPart : "";
+return first + sep + second;
+$$;
+
+/** Calculates what percentage CurrentValue is of TotalValue. */
+CREATE JAVA ACTION JaTest.CalculatePercentage(CurrentValue: Integer NOT NULL, TotalValue: Integer NOT NULL) RETURNS Decimal
+AS $$
+if (TotalValue == null || TotalValue == 0) {
+    return java.math.BigDecimal.ZERO;
+}
+java.math.BigDecimal current = java.math.BigDecimal.valueOf(CurrentValue != null ? CurrentValue : 0);
+java.math.BigDecimal total = java.math.BigDecimal.valueOf(TotalValue);
+return current.multiply(java.math.BigDecimal.valueOf(100)).divide(total, 2, java.math.RoundingMode.HALF_UP);
+$$;
+
+/** Formats a DateTime as a string, optionally including time. */
+CREATE JAVA ACTION JaTest.FormatDate(InputDate: DateTime NOT NULL, IncludeTime: Boolean) RETURNS String
+AS $$
+if (InputDate == null) {
+    return "";
+}
+java.text.SimpleDateFormat formatter;
+if (IncludeTime != null && IncludeTime) {
+    formatter = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+} else {
+    formatter = new java.text.SimpleDateFormat("yyyy-MM-dd");
+}
+return formatter.format(InputDate);
+$$;
+
+/** Calculates tax amount based on amount and tax rate. */
+CREATE JAVA ACTION JaTest.CalculateTax(Amount: Decimal NOT NULL, TaxRate: Decimal NOT NULL) RETURNS Decimal
+AS $$
+if (Amount == null || TaxRate == null) {
+    return java.math.BigDecimal.ZERO;
+}
+return Amount.multiply(TaxRate).divide(java.math.BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+$$;
+
+
+/** Validates an email address format using regex. */
+CREATE JAVA ACTION JaTest.ValidateEmail(EmailAddress: String) RETURNS Boolean
+AS $$
+if (EmailAddress == null || EmailAddress.isEmpty()) {
+    return false;
+}
+String emailRegex = "^[a-zA-Z0-9_+&*-]+(?:\\.[a-zA-Z0-9_+&*-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,7}$";
+return EmailAddress.matches(emailRegex);
+$$;
+
+
+-- MARK: Level 2 - Primitive Parameters
+
+-- ============================================================================
+-- LEVEL 2: Java Actions with Primitive Parameters
+-- ============================================================================
+
+/**
+ * Example 2.1: String parameter
+ *
+ * Java Action Signature:
+ *   JAVA ACTION StringUtils.ToUpperCase(InputText: String NOT NULL) RETURNS String
+ */
+CREATE MICROFLOW JaTest.M010_StringToUpper ($InputText: String)
+RETURNS String AS $MF10_Result
+BEGIN
+  $MF10_Result = CALL JAVA ACTION JaTest.ToUpperCase(
+    InputText = $InputText
+  );
+
+  RETURN $MF10_Result;
+END;
+/
+
+/**
+ * Example 2.2: Multiple string parameters
+ *
+ * Java Action Signature:
+ *   JAVA ACTION StringUtils.Concatenate(
+ *     FirstPart: String NOT NULL,
+ *     SecondPart: String NOT NULL,
+ *     Separator: String
+ *   ) RETURNS String
+ */
+CREATE MICROFLOW JaTest.M011_ConcatenateStrings (
+  $FirstPart: String,
+  $SecondPart: String
+)
+RETURNS String AS $MF11_Result
+BEGIN
+  $MF11_Result = CALL JAVA ACTION JaTest.Concatenate(
+    FirstPart = $FirstPart,
+    SecondPart = $SecondPart,
+    Separator = ' - '
+  );
+
+  RETURN $MF11_Result;
+END;
+/
+
+/**
+ * Example 2.3: Integer parameters with calculation
+ *
+ * Java Action Signature:
+ *   JAVA ACTION MathUtils.CalculatePercentage(
+ *     CurrentValue: Integer NOT NULL,
+ *     TotalValue: Integer NOT NULL
+ *   ) RETURNS Decimal
+ */
+CREATE MICROFLOW JaTest.M012_CalculatePercentage (
+  $CurrentValue: Integer,
+  $TotalValue: Integer
+)
+RETURNS Decimal AS $MF12_Percentage
+BEGIN
+  $MF12_Percentage = CALL JAVA ACTION JaTest.CalculatePercentage(
+    CurrentValue = $CurrentValue,
+    TotalValue = $TotalValue
+  );
+
+  RETURN $MF12_Percentage;
+END;
+/
+
+/**
+ * Example 2.4: Boolean parameter (conditional behavior)
+ *
+ * Java Action Signature:
+ *   JAVA ACTION FormatUtils.FormatDate(
+ *     InputDate: DateTime NOT NULL,
+ *     IncludeTime: Boolean
+ *   ) RETURNS String
+ */
+CREATE MICROFLOW JaTest.M013_FormatDate (
+  $InputDate: DateTime,
+  $IncludeTime: Boolean
+)
+RETURNS String AS $MF13_Formatted
+BEGIN
+  $MF13_Formatted = CALL JAVA ACTION JaTest.FormatDate(
+    InputDate = $InputDate,
+    IncludeTime = $IncludeTime
+  );
+
+  RETURN $MF13_Formatted;
+END;
+/
+
+/**
+ * Example 2.5: Decimal parameter (financial calculation)
+ *
+ * Java Action Signature:
+ *   JAVA ACTION FinanceUtils.CalculateTax(
+ *     Amount: Decimal NOT NULL,
+ *     TaxRate: Decimal NOT NULL
+ *   ) RETURNS Decimal
+ */
+CREATE MICROFLOW JaTest.M014_CalculateTax (
+  $Amount: Decimal,
+  $TaxRate: Decimal
+)
+RETURNS Decimal AS $MF14_TaxAmount
+BEGIN
+  $MF14_TaxAmount = CALL JAVA ACTION JaTest.CalculateTax(
+    Amount = $Amount,
+    TaxRate = $TaxRate
+  );
+
+  RETURN $MF14_TaxAmount;
+END;
+/
+
+-- exit; -- Commented out to run full script
+
+
+
+-- ----------------------------------------------------------------------------
+-- Level 3: Entity Parameter Java Actions (Stub Implementations)
+-- ----------------------------------------------------------------------------
+
+/**
+ * Sends an email message.
+ * Stub: Simulates sending by returning true if recipient is set.
+ */
+CREATE JAVA ACTION JaTest.SendEmail(EmailMsg: JaTest.EmailMessage NOT NULL) RETURNS Boolean
+AS $$
+// Stub implementation - in production this would actually send email
+// For demo purposes, just simulate success if the object exists
+return EmailMsg != null;
+$$;
+
+/**
+ * Creates a log entry object.
+ * Note: Returns null as creating entities requires Core API not available in basic template.
+ * The microflow should handle null return by creating the entity itself.
+ */
+CREATE JAVA ACTION JaTest.CreateLogEntry(Level: String NOT NULL, Msg: String NOT NULL, LogSource: String) RETURNS JaTest.LogEntry
+AS $$
+// Stub: Entity creation requires Core.instantiate() which needs additional imports
+// In a full implementation: IMendixObject obj = Core.instantiate(getContext(), "JaTest.LogEntry");
+// The calling microflow should create the entity if this returns null
+return null;
+$$;
+
+/**
+ * Attaches a file to an email.
+ * Stub: Returns true to simulate success.
+ */
+CREATE JAVA ACTION JaTest.AttachToEmail(Email: JaTest.EmailMessage NOT NULL, FileDoc: JaTest.FileInfo NOT NULL) RETURNS Boolean
+AS $$
+// Stub implementation
+return Email != null && FileDoc != null;
+$$;
+
+/**
+ * Processes a file document.
+ * Stub: Returns true to simulate successful processing.
+ */
+CREATE JAVA ACTION JaTest.ProcessFile(FileDoc: JaTest.FileInfo) RETURNS Boolean
+AS $$
+// Stub implementation - simulates file processing
+return FileDoc != null;
+$$;
+
+/**
+ * Reads file contents as a string.
+ * Stub: Returns placeholder text.
+ */
+CREATE JAVA ACTION JaTest.ReadFileContents(FileDoc: JaTest.FileInfo NOT NULL, Encoding: String) RETURNS String
+AS $$
+// Stub implementation - would read actual file contents in production
+if (FileDoc == null) {
+    return "";
+}
+return "[File contents would be read here]";
+$$;
+
+-- ----------------------------------------------------------------------------
+-- Level 4: List Parameter Java Actions (Stub Implementations)
+-- ----------------------------------------------------------------------------
+
+/**
+ * Processes a batch of emails.
+ * Stub: Returns null - caller should create result entity.
+ */
+CREATE JAVA ACTION JaTest.ProcessEmails(Emails: List of JaTest.EmailMessage NOT NULL) RETURNS JaTest.ProcessResult
+AS $$
+// Stub: Would process emails and create a result object
+// Returns null - the calling microflow should handle this
+return null;
+$$;
+
+/**
+ * Searches for log entries by keyword.
+ * Stub: Returns empty list.
+ */
+CREATE JAVA ACTION JaTest.FindByKeyword(Keyword: String NOT NULL, MaxResults: Integer) RETURNS List of JaTest.LogEntry
+AS $$
+// Stub: Would search database and return matching entries
+return new java.util.ArrayList<>();
+$$;
+
+/**
+ * Filters log entries by minimum priority level.
+ * Stub: Returns empty list.
+ */
+CREATE JAVA ACTION JaTest.FilterByPriority(Entries: List of JaTest.LogEntry NOT NULL, MinLevel: String NOT NULL) RETURNS List of JaTest.LogEntry
+AS $$
+// Stub: Would filter the input list by log level
+return new java.util.ArrayList<>();
+$$;
+
+-- ----------------------------------------------------------------------------
+-- Level 5: OQL/SQL Template Java Actions (Stub Implementations)
+-- ----------------------------------------------------------------------------
+
+/**
+ * Executes an OQL update statement.
+ * Stub: Returns 0 rows affected.
+ */
+CREATE JAVA ACTION JaTest.ExecuteOQL(OqlStatement: String NOT NULL) RETURNS Long
+AS $$
+// Stub: Would execute OQL using Core.createOQLTextGetRequest()
+// In production: return Core.retrieveOQLDataTable(getContext(), OqlStatement).getRowCount();
+return 0L;
+$$;
+
+/**
+ * Executes an OQL query and returns results.
+ * Stub: Returns empty list.
+ */
+CREATE JAVA ACTION JaTest.ExecuteOQLQuery(OqlStatement: String NOT NULL) RETURNS List of JaTest.LogEntry
+AS $$
+// Stub: Would execute OQL query and return results
+return new java.util.ArrayList<>();
+$$;
+
+/**
+ * Executes a raw SQL statement.
+ * Stub: Returns 0 rows affected.
+ */
+CREATE JAVA ACTION JaTest.ExecuteSQL(SqlStatement: String NOT NULL) RETURNS Long
+AS $$
+// Stub: Would execute SQL - use with caution in production!
+return 0L;
+$$;
+
+-- ----------------------------------------------------------------------------
+-- Level 6: Complex Pattern Java Actions (Stub Implementations)
+-- ----------------------------------------------------------------------------
+
+/**
+ * Sends an email with high priority.
+ * Stub: Returns true to simulate success.
+ */
+CREATE JAVA ACTION JaTest.SendUrgent(EmailMsg: JaTest.EmailMessage) RETURNS Boolean
+AS $$
+// Stub: Would send via priority queue
+return EmailMsg != null;
+$$;
+
+/**
+ * Queues an email for bulk sending.
+ * Stub: Returns true to simulate success.
+ */
+CREATE JAVA ACTION JaTest.QueueForSending(EmailMsg: JaTest.EmailMessage) RETURNS Boolean
+AS $$
+// Stub: Would add to bulk sending queue
+return EmailMsg != null;
+$$;
+
+-- ----------------------------------------------------------------------------
+-- Level 7: Advanced Integration Java Actions
+-- ----------------------------------------------------------------------------
+
+/**
+ * Makes an HTTP REST API call.
+ * Stub: Returns simulated JSON response.
+ */
+CREATE JAVA ACTION JaTest.CallAPI(ApiUrl: String NOT NULL, HttpMethod: String NOT NULL, HttpHeaders: String, RequestBody: String) RETURNS String
+AS $$
+if (ApiUrl == null || ApiUrl.isEmpty()) {
+    return "{\"error\":\"ApiUrl is required\"}";
+}
+if (HttpMethod == null || HttpMethod.isEmpty()) {
+    return "{\"error\":\"HttpMethod is required\"}";
+}
+
+java.net.URL url = new java.net.URL(ApiUrl);
+java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+try {
+    conn.setRequestMethod(HttpMethod.toUpperCase());
+    conn.setConnectTimeout(30000);
+    conn.setReadTimeout(30000);
+
+    // Set headers
+    if (HttpHeaders != null && !HttpHeaders.isEmpty()) {
+        for (String header : HttpHeaders.split("\n")) {
+            header = header.trim();
+            int sep = header.indexOf(':');
+            if (sep > 0) {
+                String key = header.substring(0, sep).trim();
+                String value = header.substring(sep + 1).trim();
+                conn.setRequestProperty(key, value);
+            }
+        }
+    }
+
+    // Send request body for POST/PUT/PATCH
+    if (RequestBody != null && !RequestBody.isEmpty()
+            && ("POST".equalsIgnoreCase(HttpMethod)
+                || "PUT".equalsIgnoreCase(HttpMethod)
+                || "PATCH".equalsIgnoreCase(HttpMethod))) {
+        conn.setDoOutput(true);
+        if (conn.getRequestProperty("Content-Type") == null) {
+            conn.setRequestProperty("Content-Type", "application/json");
+        }
+        try (java.io.OutputStream os = conn.getOutputStream()) {
+            os.write(RequestBody.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        }
+    }
+
+    int status = conn.getResponseCode();
+    java.io.InputStream is = (status >= 200 && status < 400)
+        ? conn.getInputStream()
+        : conn.getErrorStream();
+
+    String body = "";
+    if (is != null) {
+        try (java.io.BufferedReader reader = new java.io.BufferedReader(
+                new java.io.InputStreamReader(is, java.nio.charset.StandardCharsets.UTF_8))) {
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line);
+            }
+            body = sb.toString();
+        }
+    }
+
+    return body;
+} finally {
+    conn.disconnect();
+}
+$$;
+
+/**
+ * Generates a random salt for password hashing.
+ */
+CREATE JAVA ACTION JaTest.GenerateSalt() RETURNS String
+AS $$
+java.security.SecureRandom random = new java.security.SecureRandom();
+byte[] salt = new byte[16];
+random.nextBytes(salt);
+StringBuilder sb = new StringBuilder();
+for (byte b : salt) {
+    sb.append(String.format("%02x", b));
+}
+return sb.toString();
+$$;
+
+/**
+ * Hashes text with an optional salt using SHA-256.
+ */
+CREATE JAVA ACTION JaTest.HashText(PlainText: String NOT NULL, SaltValue: String) RETURNS String
+AS $$
+if (PlainText == null) {
+    return "";
+}
+try {
+    String toHash = PlainText + (SaltValue != null ? SaltValue : "");
+    java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+    byte[] hash = digest.digest(toHash.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    StringBuilder sb = new StringBuilder();
+    for (byte b : hash) {
+        sb.append(String.format("%02x", b));
+    }
+    return sb.toString();
+} catch (java.security.NoSuchAlgorithmException e) {
+    return "";
+}
+$$;
+
+/**
+ * Queues a background task for async processing.
+ * Returns a unique task ID.
+ */
+CREATE JAVA ACTION JaTest.QueueTask(TaskType: String NOT NULL, TaskParams: String NOT NULL, TaskPriority: Integer) RETURNS String
+AS $$
+// Generate a unique task ID
+String taskId = java.util.UUID.randomUUID().toString();
+// In production, would add to a task queue
+// For demo, just return the generated ID
+return taskId;
+$$;
+
+
+-- MARK: Level 3 - Entity Parameters
+
+-- ============================================================================
+-- LEVEL 3: Java Actions with Entity Parameters
+-- ============================================================================
+
+/**
+ * Example 3.1: Single entity parameter
+ *
+ * Java Action Signature:
+ *   JAVA ACTION EmailService.SendEmail(
+ *     EmailMsg: JaTest.EmailMessage NOT NULL
+ *   ) RETURNS Boolean
+ *
+ * Passing an entity object to a Java action for processing.
+ */
+CREATE MICROFLOW JaTest.M020_SendEmail ($Email: JaTest.EmailMessage)
+RETURNS Boolean AS $MF20_Success
+BEGIN
+  DECLARE $MF20_Success Boolean = false;
+
+  -- Validate before sending
+  IF $Email/Recipient != empty THEN
+    $SendResult = CALL JAVA ACTION JaTest.SendEmail(
+      EmailMsg = $Email
+    );
+
+    -- Update status based on result
+    IF $SendResult THEN
+      CHANGE $Email (
+        EmailStatus = 'Sent',
+        SentDate = [%CurrentDateTime%]
+      );
+      SET $MF20_Success = true;
+    ELSE
+      CHANGE $Email (EmailStatus = 'Failed');
+    END IF;
+  END IF;
+
+  RETURN $MF20_Success;
+END;
+/
+
+/**
+ * Example 3.2: Entity as output (Java action creates/modifies object)
+ *
+ * Java Action Signature:
+ *   JAVA ACTION LogService.CreateLogEntry(
+ *     Level: String NOT NULL,
+ *     Msg: String NOT NULL,
+ *     Source: String
+ *   ) RETURNS JaTest.LogEntry
+ */
+CREATE MICROFLOW JaTest.M021_LogMessage (
+  $Level: String,
+  $Msg: String,
+  $Source: String
+)
+RETURNS JaTest.LogEntry AS $MF21_LogEntry
+BEGIN
+  $MF21_LogEntry = CALL JAVA ACTION JaTest.CreateLogEntry(
+    Level = $Level,
+    Msg = $Msg,
+    LogSource =$Source
+  );
+
+  RETURN $MF21_LogEntry;
+END;
+/
+
+/**
+ * Example 3.3: Multiple entity parameters
+ *
+ * Java Action Signature:
+ *   JAVA ACTION FileService.AttachToEmail(
+ *     Email: JaTest.EmailMessage NOT NULL,
+ *     FileDoc: JaTest.FileInfo NOT NULL
+ *   ) RETURNS Boolean
+ */
+CREATE MICROFLOW JaTest.M022_AttachFileToEmail (
+  $Email: JaTest.EmailMessage,
+  $FileDoc: JaTest.FileInfo
+)
+RETURNS Boolean AS $MF22_Success
+BEGIN
+  $MF22_Success = CALL JAVA ACTION JaTest.AttachToEmail(
+    Email = $Email,
+    FileDoc = $FileDoc
+  );
+
+  RETURN $MF22_Success;
+END;
+/
+
+-- MARK: Level 4 - List Parameters
+
+-- ============================================================================
+-- LEVEL 4: Java Actions with List Parameters
+-- ============================================================================
+
+/**
+ * Example 4.1: List of entities as input
+ *
+ * Java Action Signature:
+ *   JAVA ACTION BatchProcessor.ProcessEmails(
+ *     Emails: List of JaTest.EmailMessage NOT NULL
+ *   ) RETURNS JaTest.ProcessResult
+ */
+CREATE MICROFLOW JaTest.M030_BatchSendEmails ()
+RETURNS JaTest.ProcessResult AS $MF30_Result
+BEGIN
+  -- Retrieve pending emails
+  RETRIEVE $MF30_PendingEmails FROM JaTest.EmailMessage
+    WHERE EmailStatus = 'Pending';
+
+  -- Process batch via Java action
+  $MF30_Result = CALL JAVA ACTION JaTest.ProcessEmails(
+    Emails = $MF30_PendingEmails
+  );
+
+  RETURN $MF30_Result;
+END;
+/
+
+/**
+ * Example 4.2: List as return type
+ *
+ * Java Action Signature:
+ *   JAVA ACTION SearchService.FindByKeyword(
+ *     Keyword: String NOT NULL,
+ *     MaxResults: Integer
+ *   ) RETURNS List of JaTest.LogEntry
+ */
+CREATE MICROFLOW JaTest.M031_SearchLogs ($Keyword: String)
+RETURNS List OF JaTest.LogEntry AS $MF31_Results
+BEGIN
+  $MF31_Results = CALL JAVA ACTION JaTest.FindByKeyword(
+    Keyword = $Keyword,
+    MaxResults = 100
+  );
+
+  RETURN $MF31_Results;
+END;
+/
+
+/**
+ * Example 4.3: Filter list using Java action
+ *
+ * Java Action Signature:
+ *   JAVA ACTION FilterService.FilterByPriority(
+ *     Entries: List of JaTest.LogEntry NOT NULL,
+ *     MinLevel: String NOT NULL
+ *   ) RETURNS List of JaTest.LogEntry
+ */
+CREATE MICROFLOW JaTest.M032_FilterErrorLogs ()
+RETURNS List OF JaTest.LogEntry AS $MF32_ErrorLogs
+BEGIN
+  -- Get all logs
+  RETRIEVE $MF32_AllLogs FROM JaTest.LogEntry;
+
+  -- Filter to errors using Java action
+  $MF32_ErrorLogs = CALL JAVA ACTION JaTest.FilterByPriority(
+    Entries = $MF32_AllLogs,
+    MinLevel = 'ERROR'
+  );
+
+  RETURN $MF32_ErrorLogs;
+END;
+/
+
+-- MARK: Level 5 - OQL/SQL Templates
+
+-- ============================================================================
+-- LEVEL 5: Java Actions with OQL/SQL String Templates
+-- ============================================================================
+
+/**
+ * Example 5.1: Execute OQL statement
+ *
+ * Java Action Signature:
+ *   JAVA ACTION OQLService.ExecuteOQL(
+ *     OqlStatement: StringTemplate(Oql) NOT NULL
+ *   ) RETURNS Long
+ *
+ * StringTemplate parameters allow structured query input.
+ */
+CREATE MICROFLOW JaTest.M040_ExecuteOQLUpdate ()
+RETURNS Long AS $MF40_RowsAffected
+BEGIN
+  $MF40_RowsAffected = CALL JAVA ACTION JaTest.ExecuteOQL(
+    OqlStatement = 'UPDATE JaTest.EmailMessage SET EmailStatus = ''Archived'' WHERE SentDate < [%BeginOfCurrentDay%]'
+  );
+
+  RETURN $MF40_RowsAffected;
+END;
+/
+
+/**
+ * Example 5.2: Execute SQL cleanup
+ *
+ * Java Action Signature:
+ *   JAVA ACTION SQLService.ExecuteSQL(
+ *     SqlStatement: StringTemplate(Sql) NOT NULL
+ *   ) RETURNS Long
+ */
+CREATE MICROFLOW JaTest.M041_ExecuteSQLCleanup ($DaysOld: Integer)
+RETURNS Long AS $MF41_DeletedCount
+BEGIN
+  -- Note: In real usage, parameterize properly to prevent SQL injection
+  $MF41_DeletedCount = CALL JAVA ACTION JaTest.ExecuteSQL(
+    SqlStatement = 'DELETE FROM log_entries WHERE log_timestamp < DATEADD(day, -30, GETDATE())'
+  );
+
+  RETURN $MF41_DeletedCount;
+END;
+/
+
+/**
+ * Example 5.3: OQL query returning results
+ *
+ * Java Action Signature:
+ *   JAVA ACTION OQLService.ExecuteOQLQuery(
+ *     OqlStatement: StringTemplate(Oql) NOT NULL
+ *   ) RETURNS List of JaTest.LogEntry
+ */
+CREATE MICROFLOW JaTest.M042_QueryRecentErrors ()
+RETURNS List OF JaTest.LogEntry AS $MF42_Errors
+BEGIN
+  $MF42_Errors = CALL JAVA ACTION JaTest.ExecuteOQLQuery(
+    OqlStatement = 'SELECT * FROM JaTest.LogEntry WHERE LogLevel = ''ERROR'' ORDER BY LogTimestamp DESC'
+  );
+
+  RETURN $MF42_Errors;
+END;
+/
+
+-- MARK: Level 6 - Complex Patterns
+
+-- ============================================================================
+-- LEVEL 6: Complex Java Action Patterns
+-- ============================================================================
+
+/**
+ * Example 6.1: Chain multiple Java action calls
+ *
+ * Shows sequential Java action calls with data flowing between them.
+ */
+CREATE MICROFLOW JaTest.M050_ProcessAndNotify ($Email: JaTest.EmailMessage)
+RETURNS Boolean AS $MF50_Success
+BEGIN
+  DECLARE $MF50_Success Boolean = false;
+
+  -- Step 1: Validate email address
+  $MF50_ValidationResult = CALL JAVA ACTION JaTest.ValidateEmail(
+    EmailAddress = $Email/Recipient
+  );
+
+  IF $MF50_ValidationResult THEN
+    -- Step 2: Send the email
+    $MF50_SendResult = CALL JAVA ACTION JaTest.SendEmail(
+      EmailMsg = $Email
+    );
+
+    -- Step 3: Log the result
+    IF $MF50_SendResult THEN
+      $MF50_InfoLog = CALL JAVA ACTION JaTest.CreateLogEntry(
+        Level = 'INFO',
+        Msg = 'Email sent successfully',
+        LogSource ='M050_ProcessAndNotify'
+      );
+      SET $MF50_Success = true;
+    ELSE
+      $MF50_ErrorLog = CALL JAVA ACTION JaTest.CreateLogEntry(
+        Level = 'ERROR',
+        Msg = 'Failed to send email',
+        LogSource ='M050_ProcessAndNotify'
+      );
+    END IF;
+  ELSE
+    $MF50_WarnLog = CALL JAVA ACTION JaTest.CreateLogEntry(
+      Level = 'WARNING',
+      Msg = 'Invalid email address',
+      LogSource ='M050_ProcessAndNotify'
+    );
+  END IF;
+
+  RETURN $MF50_Success;
+END;
+/
+
+/**
+ * Example 6.2: Java action in a loop
+ *
+ * Processing multiple items with individual Java action calls.
+ */
+CREATE MICROFLOW JaTest.M051_ProcessAllPending ()
+RETURNS JaTest.ProcessResult AS $MF51_Result
+BEGIN
+  DECLARE $MF51_SuccessCount Integer = 0;
+  DECLARE $MF51_FailCount Integer = 0;
+  DECLARE $MF51_AllSuccess Boolean = false;
+
+  -- Retrieve pending emails
+  RETRIEVE $MF51_PendingEmails FROM JaTest.EmailMessage
+    WHERE EmailStatus = 'Pending';
+
+  -- Process each email
+  LOOP $MF51_CurrentEmail IN $MF51_PendingEmails
+  BEGIN
+    $MF51_SendResult = CALL JAVA ACTION JaTest.SendEmail(
+      EmailMsg = $MF51_CurrentEmail
+    );
+
+    IF $MF51_SendResult THEN
+      CHANGE $MF51_CurrentEmail (EmailStatus = 'Sent', SentDate = [%CurrentDateTime%]);
+      SET $MF51_SuccessCount = $MF51_SuccessCount + 1;
+    ELSE
+      CHANGE $MF51_CurrentEmail (EmailStatus = 'Failed');
+      SET $MF51_FailCount = $MF51_FailCount + 1;
+    END IF;
+  END LOOP;
+
+  -- Create result summary
+  IF $MF51_FailCount = 0 THEN
+    SET $MF51_AllSuccess = true;
+  END IF;
+
+  $MF51_Result = CREATE JaTest.ProcessResult (
+    IsSuccess = $MF51_AllSuccess,
+    ResultMessage = 'Processed emails',
+    ProcessedCount = $MF51_SuccessCount,
+    ErrorCount = $MF51_FailCount
+  );
+
+  RETURN $MF51_Result;
+END;
+/
+
+/**
+ * Example 6.3: Error handling with Java actions
+ *
+ * Demonstrates error handling patterns when calling Java actions.
+ */
+CREATE MICROFLOW JaTest.M052_SafeFileProcess ($FileDoc: JaTest.FileInfo)
+RETURNS Boolean AS $MF52_Success
+BEGIN
+  DECLARE $MF52_Success Boolean = false;
+
+  -- Attempt to process file with error handling
+  -- Note: In practice, you'd use error handling settings on the activity
+
+  $MF52_ProcessResult = CALL JAVA ACTION JaTest.ProcessFile(
+    FileDoc = $FileDoc
+  );
+
+  IF $MF52_ProcessResult THEN
+    $MF52_InfoLog = CALL JAVA ACTION JaTest.CreateLogEntry(
+      Level = 'INFO',
+      Msg = 'Successfully processed file',
+      LogSource ='M052_SafeFileProcess'
+    );
+    SET $MF52_Success = true;
+  ELSE
+    $MF52_ErrorLog = CALL JAVA ACTION JaTest.CreateLogEntry(
+      Level = 'ERROR',
+      Msg = 'Failed to process file',
+      LogSource ='M052_SafeFileProcess'
+    );
+  END IF;
+
+  RETURN $MF52_Success;
+END;
+/
+
+/**
+ * Example 6.4: Conditional Java action calls
+ *
+ * Different Java actions based on runtime conditions.
+ */
+CREATE MICROFLOW JaTest.M053_ConditionalProcess (
+  $Email: JaTest.EmailMessage,
+  $Priority: String
+)
+RETURNS Boolean AS $MF53_Success
+BEGIN
+  DECLARE $MF53_Success Boolean = false;
+
+  IF $Priority = 'HIGH' THEN
+    -- Use priority sending service
+    $UrgentResult = CALL JAVA ACTION JaTest.SendUrgent(
+      EmailMsg = $Email
+    );
+    SET $MF53_Success = $UrgentResult;
+  ELSIF $Priority = 'BULK' THEN
+    -- Use bulk sending service
+    $QueueResult = CALL JAVA ACTION JaTest.QueueForSending(
+      EmailMsg = $Email
+    );
+    SET $MF53_Success = $QueueResult;
+  ELSE
+    -- Standard sending
+    $StandardResult = CALL JAVA ACTION JaTest.SendEmail(
+      EmailMsg = $Email
+    );
+    SET $MF53_Success = $StandardResult;
+  END IF;
+
+  RETURN $MF53_Success;
+END;
+/
+
+-- MARK: Level 7 - Advanced Patterns
+
+-- ============================================================================
+-- LEVEL 7: Advanced Integration Patterns
+-- ============================================================================
+
+/**
+ * Example 7.1: REST API call via Java action
+ *
+ * Java Action Signature:
+ *   JAVA ACTION RestClient.CallAPI(
+ *     ApiUrl: String NOT NULL,
+ *     HttpMethod: String NOT NULL,
+ *     HttpHeaders: String,
+ *     RequestBody: String
+ *   ) RETURNS String
+ */
+CREATE MICROFLOW JaTest.M060_CallExternalAPI ($Endpoint: String)
+RETURNS String AS $MF60_Response
+BEGIN
+  DECLARE $MF60_ApiUrl String = 'https://jsonplaceholder.typicode.com/' + $Endpoint;
+
+  $MF60_Response = CALL JAVA ACTION JaTest.CallAPI(
+    ApiUrl = $MF60_ApiUrl,
+    HttpMethod = 'GET',
+    HttpHeaders = 'Authorization: Bearer token123',
+    RequestBody = empty
+  );
+  LOG INFO NODE 'Test' 'CallApi complete: {1} -> {2} -> {3}' WITH ({1} = $Endpoint, {2} = $MF60_ApiUrl, {3} = $MF60_Response);  
+  RETURN $MF60_Response;
+END;
+/
+
+/**
+ * Example 7.2: Cryptographic operations
+ *
+ * Java Action Signature:
+ *   JAVA ACTION CryptoService.HashText(
+ *     PlainText: String NOT NULL,
+ *     SaltValue: String
+ *   ) RETURNS String
+ */
+CREATE MICROFLOW JaTest.M061_HashPassword ($PlainText: String)
+RETURNS String AS $MF61_HashedText
+BEGIN
+  -- Generate salt
+  $MF61_SaltValue = CALL JAVA ACTION JaTest.GenerateSalt();
+
+  -- Hash with salt
+  $MF61_HashedText = CALL JAVA ACTION JaTest.HashText(
+    PlainText = $PlainText,
+    SaltValue = $MF61_SaltValue
+  );
+
+  RETURN $MF61_HashedText;
+END;
+/
+
+/**
+ * Example 7.3: File operations
+ *
+ * Java Action Signature:
+ *   JAVA ACTION FileService.ReadFileContents(
+ *     FileDoc: JaTest.FileInfo NOT NULL,
+ *     Encoding: String
+ *   ) RETURNS String
+ */
+CREATE MICROFLOW JaTest.M062_ReadFileAsText ($FileDoc: JaTest.FileInfo)
+RETURNS String AS $MF62_Contents
+BEGIN
+  $MF62_Contents = CALL JAVA ACTION JaTest.ReadFileContents(
+    FileDoc = $FileDoc,
+    Encoding = 'UTF-8'
+  );
+
+  RETURN $MF62_Contents;
+END;
+/
+
+/**
+ * Example 7.4: Async/background processing trigger
+ *
+ * Java Action Signature:
+ *   JAVA ACTION AsyncService.QueueTask(
+ *     TaskType: String NOT NULL,
+ *     TaskParams: String NOT NULL,
+ *     TaskPriority: Integer
+ *   ) RETURNS String
+ *
+ * Returns a task ID for tracking.
+ */
+CREATE MICROFLOW JaTest.M063_QueueBackgroundTask (
+  $TaskType: String,
+  $TaskParams: String
+)
+RETURNS String AS $MF63_TaskId
+BEGIN
+  $MF63_TaskId = CALL JAVA ACTION JaTest.QueueTask(
+    TaskType = $TaskType,
+    TaskParams = $TaskParams,
+    TaskPriority = 5
+  );
+
+  RETURN $MF63_TaskId;
+END;
+/
+
+-- MARK: Test Wrappers
+
+-- ============================================================================
+-- Test Wrapper Microflows (no-parameter wrappers for the test page)
+-- ============================================================================
+
+/** Test wrapper: M010 - String to upper */
+CREATE MICROFLOW JaTest.Test_M010 ()
+RETURNS String AS $Result
+BEGIN
+  $Result = CALL MICROFLOW JaTest.M010_StringToUpper(InputText = 'hello world');
+  LOG INFO NODE 'JaTest' 'M010 result: ' + $Result;
+  RETURN $Result;
+END;
+/
+
+/** Test wrapper: M011 - Concatenate strings */
+CREATE MICROFLOW JaTest.Test_M011 ()
+RETURNS String AS $Result
+BEGIN
+  $Result = CALL MICROFLOW JaTest.M011_ConcatenateStrings(FirstPart = 'Hello', SecondPart = 'World');
+  LOG INFO NODE 'JaTest' 'M011 result: ' + $Result;
+  RETURN $Result;
+END;
+/
+
+/** Test wrapper: M012 - Calculate percentage */
+CREATE MICROFLOW JaTest.Test_M012 ()
+RETURNS Decimal AS $Result
+BEGIN
+  $Result = CALL MICROFLOW JaTest.M012_CalculatePercentage(CurrentValue = 75, TotalValue = 200);
+  LOG INFO NODE 'JaTest' 'M012 result: ' + toString($Result);
+  RETURN $Result;
+END;
+/
+
+/** Test wrapper: M013 - Format date */
+CREATE MICROFLOW JaTest.Test_M013 ()
+RETURNS String AS $Result
+BEGIN
+  $Result = CALL MICROFLOW JaTest.M013_FormatDate(InputDate = [%CurrentDateTime%], IncludeTime = true);
+  LOG INFO NODE 'JaTest' 'M013 result: ' + $Result;
+  RETURN $Result;
+END;
+/
+
+/** Test wrapper: M014 - Calculate tax */
+CREATE MICROFLOW JaTest.Test_M014 ()
+RETURNS Decimal AS $Result
+BEGIN
+  $Result = CALL MICROFLOW JaTest.M014_CalculateTax(Amount = 100.00, TaxRate = 21.0);
+  LOG INFO NODE 'JaTest' 'M014 result: ' + toString($Result);
+  RETURN $Result;
+END;
+/
+
+/** Test wrapper: M020 - Send email */
+CREATE MICROFLOW JaTest.Test_M020 ()
+RETURNS Boolean AS $Result
+BEGIN
+  $TestEmail = CREATE JaTest.EmailMessage (
+    Recipient = 'test@example.com',
+    SubjectLine = 'Test Subject',
+    BodyText = 'Test body content',
+    IsHtml = false,
+    EmailStatus = 'Pending'
+  );
+  $Result = CALL MICROFLOW JaTest.M020_SendEmail(Email = $TestEmail);
+  LOG INFO NODE 'JaTest' 'M020 result: ' + toString($Result);
+  RETURN $Result;
+END;
+/
+
+/** Test wrapper: M021 - Log message (calls Java action directly to avoid Source keyword) */
+CREATE MICROFLOW JaTest.Test_M021 ()
+RETURNS Boolean AS $Result
+BEGIN
+  DECLARE $Result Boolean = false;
+  $LogEntry = CALL JAVA ACTION JaTest.CreateLogEntry(
+    Level = 'INFO',
+    Msg = 'Test log message',
+    LogSource = 'Test_M021'
+  );
+  LOG INFO NODE 'JaTest' 'M021 completed';
+  SET $Result = true;
+  RETURN $Result;
+END;
+/
+
+/** Test wrapper: M022 - Attach file to email */
+CREATE MICROFLOW JaTest.Test_M022 ()
+RETURNS Boolean AS $Result
+BEGIN
+  $TestEmail = CREATE JaTest.EmailMessage (
+    Recipient = 'test@example.com',
+    SubjectLine = 'With Attachment',
+    BodyText = 'See attached',
+    EmailStatus = 'Pending'
+  );
+  $TestFile = CREATE JaTest.FileInfo (
+    FileName = 'test.txt',
+    MimeType = 'text/plain',
+    FileSize = 1024
+  );
+  $Result = CALL MICROFLOW JaTest.M022_AttachFileToEmail(Email = $TestEmail, FileDoc = $TestFile);
+  LOG INFO NODE 'JaTest' 'M022 result: ' + toString($Result);
+  RETURN $Result;
+END;
+/
+
+/** Test wrapper: M030 - Batch send emails */
+CREATE MICROFLOW JaTest.Test_M030 ()
+RETURNS Boolean AS $Result
+BEGIN
+  DECLARE $Result Boolean = false;
+  $ProcessResult = CALL MICROFLOW JaTest.M030_BatchSendEmails();
+  LOG INFO NODE 'JaTest' 'M030 completed';
+  SET $Result = true;
+  RETURN $Result;
+END;
+/
+
+/** Test wrapper: M031 - Search logs */
+CREATE MICROFLOW JaTest.Test_M031 ()
+RETURNS Boolean AS $Result
+BEGIN
+  DECLARE $Result Boolean = false;
+  $SearchResults = CALL MICROFLOW JaTest.M031_SearchLogs(Keyword = 'error');
+  LOG INFO NODE 'JaTest' 'M031 completed';
+  SET $Result = true;
+  RETURN $Result;
+END;
+/
+
+/** Test wrapper: M032 - Filter error logs */
+CREATE MICROFLOW JaTest.Test_M032 ()
+RETURNS Boolean AS $Result
+BEGIN
+  DECLARE $Result Boolean = false;
+  $ErrorLogs = CALL MICROFLOW JaTest.M032_FilterErrorLogs();
+  LOG INFO NODE 'JaTest' 'M032 completed';
+  SET $Result = true;
+  RETURN $Result;
+END;
+/
+
+/** Test wrapper: M040 - Execute OQL update */
+CREATE MICROFLOW JaTest.Test_M040 ()
+RETURNS Boolean AS $Result
+BEGIN
+  DECLARE $Result Boolean = false;
+  $Rows = CALL MICROFLOW JaTest.M040_ExecuteOQLUpdate();
+  LOG INFO NODE 'JaTest' 'M040 rows affected: ' + toString($Rows);
+  SET $Result = true;
+  RETURN $Result;
+END;
+/
+
+/** Test wrapper: M041 - Execute SQL cleanup */
+CREATE MICROFLOW JaTest.Test_M041 ()
+RETURNS Boolean AS $Result
+BEGIN
+  DECLARE $Result Boolean = false;
+  $Deleted = CALL MICROFLOW JaTest.M041_ExecuteSQLCleanup(DaysOld = 30);
+  LOG INFO NODE 'JaTest' 'M041 deleted: ' + toString($Deleted);
+  SET $Result = true;
+  RETURN $Result;
+END;
+/
+
+/** Test wrapper: M042 - Query recent errors */
+CREATE MICROFLOW JaTest.Test_M042 ()
+RETURNS Boolean AS $Result
+BEGIN
+  DECLARE $Result Boolean = false;
+  $Errors = CALL MICROFLOW JaTest.M042_QueryRecentErrors();
+  LOG INFO NODE 'JaTest' 'M042 completed';
+  SET $Result = true;
+  RETURN $Result;
+END;
+/
+
+/** Test wrapper: M050 - Process and notify */
+CREATE MICROFLOW JaTest.Test_M050 ()
+RETURNS Boolean AS $Result
+BEGIN
+  $TestEmail = CREATE JaTest.EmailMessage (
+    Recipient = 'notify@example.com',
+    SubjectLine = 'Notification',
+    BodyText = 'Process notification',
+    EmailStatus = 'Pending'
+  );
+  $Result = CALL MICROFLOW JaTest.M050_ProcessAndNotify(Email = $TestEmail);
+  LOG INFO NODE 'JaTest' 'M050 result: ' + toString($Result);
+  RETURN $Result;
+END;
+/
+
+/** Test wrapper: M051 - Process all pending */
+CREATE MICROFLOW JaTest.Test_M051 ()
+RETURNS Boolean AS $Result
+BEGIN
+  DECLARE $Result Boolean = false;
+  $ProcessResult = CALL MICROFLOW JaTest.M051_ProcessAllPending();
+  LOG INFO NODE 'JaTest' 'M051 completed';
+  SET $Result = true;
+  RETURN $Result;
+END;
+/
+
+/** Test wrapper: M052 - Safe file process */
+CREATE MICROFLOW JaTest.Test_M052 ()
+RETURNS Boolean AS $Result
+BEGIN
+  $TestFile = CREATE JaTest.FileInfo (
+    FileName = 'process-test.txt',
+    MimeType = 'text/plain',
+    FileSize = 2048
+  );
+  $Result = CALL MICROFLOW JaTest.M052_SafeFileProcess(FileDoc = $TestFile);
+  LOG INFO NODE 'JaTest' 'M052 result: ' + toString($Result);
+  RETURN $Result;
+END;
+/
+
+/** Test wrapper: M053 - Conditional process (HIGH priority) */
+CREATE MICROFLOW JaTest.Test_M053 ()
+RETURNS Boolean AS $Result
+BEGIN
+  $TestEmail = CREATE JaTest.EmailMessage (
+    Recipient = 'urgent@example.com',
+    SubjectLine = 'Urgent',
+    BodyText = 'High priority message',
+    EmailStatus = 'Pending'
+  );
+  $Result = CALL MICROFLOW JaTest.M053_ConditionalProcess(Email = $TestEmail, Priority = 'HIGH');
+  LOG INFO NODE 'JaTest' 'M053 result: ' + toString($Result);
+  RETURN $Result;
+END;
+/
+
+/** Test wrapper: M060 - Call external API */
+CREATE MICROFLOW JaTest.Test_M060 ()
+RETURNS Boolean AS $Result
+BEGIN
+  DECLARE $Result Boolean = false;
+  $Response = CALL MICROFLOW JaTest.M060_CallExternalAPI(Endpoint = 'test/health');
+  LOG INFO NODE 'JaTest' 'M060 response: ' + $Response;
+  SET $Result = true;
+  RETURN $Result;
+END;
+/
+
+/** Test wrapper: M061 - Hash password */
+CREATE MICROFLOW JaTest.Test_M061 ()
+RETURNS Boolean AS $Result
+BEGIN
+  DECLARE $Result Boolean = false;
+  $Hash = CALL MICROFLOW JaTest.M061_HashPassword(PlainText = 'test-password-123');
+  LOG INFO NODE 'JaTest' 'M061 hash: ' + $Hash;
+  SET $Result = true;
+  RETURN $Result;
+END;
+/
+
+/** Test wrapper: M062 - Read file as text */
+CREATE MICROFLOW JaTest.Test_M062 ()
+RETURNS Boolean AS $Result
+BEGIN
+  $TestFile = CREATE JaTest.FileInfo (
+    FileName = 'read-test.txt',
+    MimeType = 'text/plain',
+    FileSize = 512
+  );
+  DECLARE $Result Boolean = false;
+  $Contents = CALL MICROFLOW JaTest.M062_ReadFileAsText(FileDoc = $TestFile);
+  LOG INFO NODE 'JaTest' 'M062 contents: ' + $Contents;
+  SET $Result = true;
+  RETURN $Result;
+END;
+/
+
+/** Test wrapper: M063 - Queue background task */
+CREATE MICROFLOW JaTest.Test_M063 ()
+RETURNS Boolean AS $Result
+BEGIN
+  DECLARE $Result Boolean = false;
+  $TaskId = CALL MICROFLOW JaTest.M063_QueueBackgroundTask(TaskType = 'cleanup', TaskParams = '{"daysOld": 30}');
+  LOG INFO NODE 'JaTest' 'M063 task ID: ' + $TaskId;
+  SET $Result = true;
+  RETURN $Result;
+END;
+/
+
+-- MARK: Test Page
+
+-- ============================================================================
+-- Test Page - Invoke All Java Action Examples
+-- ============================================================================
+
+CREATE PAGE JaTest.JavaActionTestPage
+(
+  Title: 'Java Action Tests',
+  Layout: Atlas_Core.Atlas_Default
+)
+{
+  LAYOUTGRID mainGrid {
+    ROW rowHeader {
+      COLUMN colHeader (DesktopWidth: 12) {
+        DYNAMICTEXT heading (Content: 'Java Action Test Suite', RenderMode: H2)
+        DYNAMICTEXT subheading (Content: 'Click buttons to invoke each test microflow. Check the console log for results.')
+      }
+    }
+
+    ROW rowLevel1 {
+      COLUMN colLevel1 (DesktopWidth: 12) {
+        DYNAMICTEXT heading1 (Content: 'Level 1: No-Parameter Actions', RenderMode: H3)
+      }
+    }
+    ROW rowLevel1Btns {
+      COLUMN col1a (DesktopWidth: 4) {
+        ACTIONBUTTON btnM001 (Caption: 'M001 GetTimestamp', Action: MICROFLOW JaTest.M001_GetTimestamp, ButtonStyle: Primary)
+      }
+      COLUMN col1b (DesktopWidth: 4) {
+        ACTIONBUTTON btnM002 (Caption: 'M002 CheckMaintenance', Action: MICROFLOW JaTest.M002_CheckMaintenanceMode, ButtonStyle: Primary)
+      }
+      COLUMN col1c (DesktopWidth: 4) {
+        ACTIONBUTTON btnM003 (Caption: 'M003 GetAppVersion', Action: MICROFLOW JaTest.M003_GetAppVersion, ButtonStyle: Primary)
+      }
+    }
+
+    ROW rowLevel2 {
+      COLUMN colLevel2 (DesktopWidth: 12) {
+        DYNAMICTEXT heading2 (Content: 'Level 2: Primitive Parameters', RenderMode: H3)
+      }
+    }
+    ROW rowLevel2Btns1 {
+      COLUMN col2a (DesktopWidth: 4) {
+        ACTIONBUTTON btnM010 (Caption: 'M010 StringToUpper', Action: MICROFLOW JaTest.Test_M010, ButtonStyle: Primary)
+      }
+      COLUMN col2b (DesktopWidth: 4) {
+        ACTIONBUTTON btnM011 (Caption: 'M011 Concatenate', Action: MICROFLOW JaTest.Test_M011, ButtonStyle: Primary)
+      }
+      COLUMN col2c (DesktopWidth: 4) {
+        ACTIONBUTTON btnM012 (Caption: 'M012 Percentage', Action: MICROFLOW JaTest.Test_M012, ButtonStyle: Primary)
+      }
+    }
+    ROW rowLevel2Btns2 {
+      COLUMN col2d (DesktopWidth: 4) {
+        ACTIONBUTTON btnM013 (Caption: 'M013 FormatDate', Action: MICROFLOW JaTest.Test_M013, ButtonStyle: Primary)
+      }
+      COLUMN col2e (DesktopWidth: 4) {
+        ACTIONBUTTON btnM014 (Caption: 'M014 CalculateTax', Action: MICROFLOW JaTest.Test_M014, ButtonStyle: Primary)
+      }
+    }
+
+    ROW rowLevel3 {
+      COLUMN colLevel3 (DesktopWidth: 12) {
+        DYNAMICTEXT heading3 (Content: 'Level 3: Entity Parameters', RenderMode: H3)
+      }
+    }
+    ROW rowLevel3Btns1 {
+      COLUMN col3a (DesktopWidth: 4) {
+        ACTIONBUTTON btnM020 (Caption: 'M020 SendEmail', Action: MICROFLOW JaTest.Test_M020, ButtonStyle: Success)
+      }
+      COLUMN col3b (DesktopWidth: 4) {
+        ACTIONBUTTON btnM021 (Caption: 'M021 LogMessage', Action: MICROFLOW JaTest.Test_M021, ButtonStyle: Success)
+      }
+      COLUMN col3c (DesktopWidth: 4) {
+        ACTIONBUTTON btnM022 (Caption: 'M022 AttachFile', Action: MICROFLOW JaTest.Test_M022, ButtonStyle: Success)
+      }
+    }
+
+    ROW rowLevel4 {
+      COLUMN colLevel4 (DesktopWidth: 12) {
+        DYNAMICTEXT heading4 (Content: 'Level 4: List Parameters', RenderMode: H3)
+      }
+    }
+    ROW rowLevel4Btns {
+      COLUMN col4a (DesktopWidth: 4) {
+        ACTIONBUTTON btnM030 (Caption: 'M030 BatchSend', Action: MICROFLOW JaTest.Test_M030, ButtonStyle: Danger)
+      }
+      COLUMN col4b (DesktopWidth: 4) {
+        ACTIONBUTTON btnM031 (Caption: 'M031 SearchLogs', Action: MICROFLOW JaTest.Test_M031, ButtonStyle: Danger)
+      }
+      COLUMN col4c (DesktopWidth: 4) {
+        ACTIONBUTTON btnM032 (Caption: 'M032 FilterErrors', Action: MICROFLOW JaTest.Test_M032, ButtonStyle: Danger)
+      }
+    }
+
+    ROW rowLevel5 {
+      COLUMN colLevel5 (DesktopWidth: 12) {
+        DYNAMICTEXT heading5 (Content: 'Level 5: OQL/SQL Templates', RenderMode: H3)
+      }
+    }
+    ROW rowLevel5Btns {
+      COLUMN col5a (DesktopWidth: 4) {
+        ACTIONBUTTON btnM040 (Caption: 'M040 OQL Update', Action: MICROFLOW JaTest.Test_M040, ButtonStyle: Danger)
+      }
+      COLUMN col5b (DesktopWidth: 4) {
+        ACTIONBUTTON btnM041 (Caption: 'M041 SQL Cleanup', Action: MICROFLOW JaTest.Test_M041, ButtonStyle: Danger)
+      }
+      COLUMN col5c (DesktopWidth: 4) {
+        ACTIONBUTTON btnM042 (Caption: 'M042 Query Errors', Action: MICROFLOW JaTest.Test_M042, ButtonStyle: Danger)
+      }
+    }
+
+    ROW rowLevel6 {
+      COLUMN colLevel6 (DesktopWidth: 12) {
+        DYNAMICTEXT heading6 (Content: 'Level 6: Complex Patterns', RenderMode: H3)
+      }
+    }
+    ROW rowLevel6Btns1 {
+      COLUMN col6a (DesktopWidth: 4) {
+        ACTIONBUTTON btnM050 (Caption: 'M050 ProcessNotify', Action: MICROFLOW JaTest.Test_M050, ButtonStyle: Default)
+      }
+      COLUMN col6b (DesktopWidth: 4) {
+        ACTIONBUTTON btnM051 (Caption: 'M051 ProcessPending', Action: MICROFLOW JaTest.Test_M051, ButtonStyle: Default)
+      }
+      COLUMN col6c (DesktopWidth: 4) {
+        ACTIONBUTTON btnM052 (Caption: 'M052 SafeFileProc', Action: MICROFLOW JaTest.Test_M052, ButtonStyle: Default)
+      }
+    }
+    ROW rowLevel6Btns2 {
+      COLUMN col6d (DesktopWidth: 4) {
+        ACTIONBUTTON btnM053 (Caption: 'M053 Conditional', Action: MICROFLOW JaTest.Test_M053, ButtonStyle: Default)
+      }
+    }
+
+    ROW rowLevel7 {
+      COLUMN colLevel7 (DesktopWidth: 12) {
+        DYNAMICTEXT heading7 (Content: 'Level 7: Advanced Integration', RenderMode: H3)
+      }
+    }
+    ROW rowLevel7Btns1 {
+      COLUMN col7a (DesktopWidth: 4) {
+        ACTIONBUTTON btnM060 (Caption: 'M060 CallAPI', Action: MICROFLOW JaTest.Test_M060, ButtonStyle: Default)
+      }
+      COLUMN col7b (DesktopWidth: 4) {
+        ACTIONBUTTON btnM061 (Caption: 'M061 HashPassword', Action: MICROFLOW JaTest.Test_M061, ButtonStyle: Default)
+      }
+      COLUMN col7c (DesktopWidth: 4) {
+        ACTIONBUTTON btnM062 (Caption: 'M062 ReadFile', Action: MICROFLOW JaTest.Test_M062, ButtonStyle: Default)
+      }
+    }
+    ROW rowLevel7Btns2 {
+      COLUMN col7d (DesktopWidth: 4) {
+        ACTIONBUTTON btnM063 (Caption: 'M063 QueueTask', Action: MICROFLOW JaTest.Test_M063, ButtonStyle: Default)
+      }
+    }
+  }
+}
+/
+
+-- MARK: Level 8 - Type Parameters & Toolbox Exposure
+
+-- ============================================================================
+-- LEVEL 8: Type Parameters (Generics) & EXPOSED AS (Toolbox Exposure)
+-- ============================================================================
+-- Type parameters let Java actions accept entity types dynamically via generics.
+-- EXPOSED AS makes the action appear as a toolbox item in Studio Pro.
+
+-- ----------------------------------------------------------------------------
+-- 8.1: Single Type Parameter — Generic entity processor
+-- ----------------------------------------------------------------------------
+-- ENTITY <pEntity> declares a type parameter inline. The parameter typed as
+-- ENTITY <pEntity> becomes the entity type selector (receives entity type name).
+-- Subsequent bare pEntity parameters receive entity instances.
+
+CREATE JAVA ACTION JaTest.GenericEntityValidator(
+  EntityType: ENTITY <pEntity> NOT NULL,
+  InputObject: pEntity NOT NULL
+) RETURNS Boolean
+AS $$
+// Generic validation - works with any entity type
+if (InputObject == null) return false;
+return InputObject.getMembers().values().stream()
+    .allMatch(m -> !m.isRequired() || m.getValue(getContext()) != null);
+$$;
+/
+
+-- ----------------------------------------------------------------------------
+-- 8.2: Type Parameter with Multiple Parameters
+-- ----------------------------------------------------------------------------
+-- ENTITY <pEntity> declares the type parameter. The ENTITY <pEntity> parameter
+-- becomes the entity type selector (EntityTypeParameterType) and receives the
+-- entity type name (e.g., 'Module.Entity'). Bare pEntity parameters become
+-- ParameterizedEntityType and receive entity instances (e.g., $Variable).
+
+CREATE JAVA ACTION JaTest.CopyAttributes(
+  EntityType: ENTITY <pEntity> NOT NULL,
+  Source: pEntity NOT NULL,
+  Target: pEntity NOT NULL,
+  AttributeNames: String NOT NULL
+) RETURNS Boolean
+AS $$
+// Copy specified attributes from source to target entity
+String[] attrs = AttributeNames.split(",");
+for (String attr : attrs) {
+    String trimmed = attr.trim();
+    Target.setValue(getContext(), trimmed,
+        Source.getValue(getContext(), trimmed));
+}
+return true;
+$$;
+/
+
+-- ----------------------------------------------------------------------------
+-- 8.3: EXPOSED AS — Toolbox-visible action (no type params)
+-- ----------------------------------------------------------------------------
+-- EXPOSED AS makes the action appear in Studio Pro's microflow toolbox.
+
+CREATE JAVA ACTION JaTest.FormatCurrency(
+  Amount: Decimal NOT NULL,
+  CurrencyCode: String NOT NULL
+) RETURNS String
+EXPOSED AS 'Format Currency' IN 'Formatting'
+AS $$
+java.text.NumberFormat formatter = java.text.NumberFormat.getCurrencyInstance();
+formatter.setCurrency(java.util.Currency.getInstance(CurrencyCode));
+return formatter.format(Amount);
+$$;
+/
+
+-- ----------------------------------------------------------------------------
+-- 8.4: Type Parameter + EXPOSED AS combined
+-- ----------------------------------------------------------------------------
+-- A generic action exposed in the toolbox.
+
+CREATE JAVA ACTION JaTest.DeepClone(
+  EntityType: ENTITY <pEntity> NOT NULL,
+  Original: pEntity NOT NULL
+) RETURNS Boolean
+EXPOSED AS 'Deep Clone Object' IN 'Object Utils'
+AS $$
+// Deep clone an entity including associated objects
+com.mendix.core.Core.instantiate(getContext(),
+    Original.getType()).setValues(getContext(),
+    Original.getMembers());
+return true;
+$$;
+/
+
+-- ----------------------------------------------------------------------------
+-- 8.5: Microflow calling a type-parameter Java action
+-- ----------------------------------------------------------------------------
+-- When calling a generic Java action, the EntityType param receives the entity
+-- type name as a string literal (EntityTypeCodeActionParameterValue), while
+-- instance params receive variables (BasicCodeActionParameterValue).
+
+CREATE MICROFLOW JaTest.Test_M070 ()
+RETURNS Boolean AS $IsValid
+BEGIN
+  $Email = CREATE JaTest.EmailMessage (Recipient = 'test@example.com');
+  $IsValid = CALL JAVA ACTION JaTest.GenericEntityValidator(
+    EntityType = 'JaTest.EmailMessage',
+    InputObject = $Email
+  );
+
+  RETURN $IsValid;
+END;
+/
+
+-- ----------------------------------------------------------------------------
+-- 8.6: Microflow calling type-parameter action with multiple params
+-- ----------------------------------------------------------------------------
+-- The EntityType param gets the entity type name as a string literal,
+-- while Source/Target params get entity instances as variable references.
+
+CREATE MICROFLOW JaTest.Test_M071 ()
+RETURNS Boolean AS $Result
+BEGIN
+  $Source = CREATE JaTest.ProcessResult (IsSuccess = true, ResultMessage = 'Source', ProcessedCount = 10);
+  $Target = CREATE JaTest.ProcessResult (IsSuccess = false, ResultMessage = 'Target', ProcessedCount = 0);
+
+  $Result = CALL JAVA ACTION JaTest.CopyAttributes(
+    EntityType = 'JaTest.ProcessResult',
+    Source = $Source,
+    Target = $Target,
+    AttributeNames = 'ProcessedCount,ResultMessage'
+  );
+
+  RETURN $Result;
+END;
+/
+
+-- ----------------------------------------------------------------------------
+-- 8.7: Microflow calling EXPOSED action
+-- ----------------------------------------------------------------------------
+
+CREATE MICROFLOW JaTest.Test_M072 ()
+RETURNS String AS $Formatted
+BEGIN
+  $Formatted = CALL JAVA ACTION JaTest.FormatCurrency(
+    Amount = 1234.56,
+    CurrencyCode = 'USD'
+  );
+
+  RETURN $Formatted;
+END;
+/
+
+-- MARK: Summary
+
+-- ============================================================================
+-- Java Action Feature Summary
+-- ============================================================================
+--
+-- DESCRIBE JAVA ACTION shows action signature:
+--   JAVA ACTION Module.Name(params) RETURNS type
+--   ... with ENTITY <pEntity> for type parameter declarations
+--   ... EXPOSED AS 'Caption' IN 'Category'
+--
+-- Call syntax in microflows:
+--   $Result = CALL JAVA ACTION Module.Name(
+--     ParamName = value,
+--     AnotherParam = $variable
+--   );
+--
+-- Parameter Types Supported:
+--   - String, Integer, Long, Decimal, Boolean, DateTime
+--   - Entity types (Module.EntityName)
+--   - List of Entity (List of Module.EntityName)
+--   - StringTemplate(Oql), StringTemplate(Sql) for queries
+--   - Microflow (for callback patterns)
+--   - Enumeration types
+--   - Type parameters (ENTITY <pEntity> declares, bare pEntity references)
+--
+-- Return Types Supported:
+--   - Void (no return, no assignment needed)
+--   - String, Integer, Long, Decimal, Boolean, DateTime
+--   - Entity types
+--   - List of Entity
+--
+-- Key Patterns:
+--   1. Utility functions (no params, primitive return)
+--   2. Data transformation (primitive params, primitive return)
+--   3. Entity processing (entity param, Boolean/entity return)
+--   4. Batch processing (list param, result entity return)
+--   5. Database operations (OQL/SQL template params)
+--   6. External integrations (string params for URLs/APIs)
+--   7. Chained calls (output of one is input to next)
+--   8. Generic actions with type parameters (ENTITY <pEntity>)
+--   9. Toolbox-exposed actions (EXPOSED AS 'caption' IN 'category')
+--
+-- ============================================================================

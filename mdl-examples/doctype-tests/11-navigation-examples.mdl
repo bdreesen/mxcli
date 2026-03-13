@@ -1,0 +1,130 @@
+-- ============================================================================
+-- Navigation Examples
+-- ============================================================================
+--
+-- These commands inspect and modify the project's navigation structure:
+-- profiles, home pages, menu items, and role-based routing.
+--
+-- ============================================================================
+
+-- MARK: Setup
+
+-- ============================================================================
+-- Setup: Create a module and page so this example is self-contained
+-- ============================================================================
+
+CREATE MODULE NavTest;
+
+CREATE PAGE NavTest.NavTest_Home
+(
+  Title: 'Navigation Test Home',
+  Layout: Atlas_Core.Atlas_Default
+)
+{
+  CONTAINER ctnMain {
+    DYNAMICTEXT txtWelcome (Content: 'Welcome to the Navigation Test page.')
+  }
+}
+
+-- MARK: Show Commands
+
+-- ============================================================================
+-- SHOW NAVIGATION — summary of all profiles
+-- ============================================================================
+
+SHOW NAVIGATION;
+
+-- ============================================================================
+-- DESCRIBE NAVIGATION — full detail for a specific profile
+-- ============================================================================
+
+DESCRIBE NAVIGATION Responsive;
+
+-- ============================================================================
+-- SHOW NAVIGATION MENU — menu tree for a specific profile
+-- ============================================================================
+
+SHOW NAVIGATION MENU Responsive;
+
+-- ============================================================================
+-- SHOW NAVIGATION MENU (all) — menu tree for all profiles
+-- ============================================================================
+
+SHOW NAVIGATION MENU;
+
+-- ============================================================================
+-- SHOW NAVIGATION HOMES — home page assignments across all profiles and roles
+-- ============================================================================
+
+SHOW NAVIGATION HOMES;
+
+-- MARK: CREATE OR REPLACE NAVIGATION
+
+-- ============================================================================
+-- CREATE OR REPLACE NAVIGATION — full replacement of a navigation profile
+-- Sets home page, login page, and menu tree in one statement.
+-- Output from DESCRIBE NAVIGATION can be pasted back directly.
+-- ============================================================================
+
+-- Set the home page and login page for Responsive profile
+CREATE OR REPLACE NAVIGATION Responsive
+  HOME PAGE NavTest.NavTest_Home
+  LOGIN PAGE Administration.Login;
+
+-- Set home page with a role-based override
+CREATE OR REPLACE NAVIGATION Responsive
+  HOME PAGE NavTest.NavTest_Home
+  HOME PAGE NavTest.NavTest_Home FOR Administration.Administrator
+  LOGIN PAGE Administration.Login;
+
+-- Replace the entire menu tree
+CREATE OR REPLACE NAVIGATION Responsive
+  HOME PAGE NavTest.NavTest_Home
+  LOGIN PAGE Administration.Login
+  MENU (
+    MENU ITEM 'Home' PAGE NavTest.NavTest_Home;
+    MENU 'Admin' (
+      MENU ITEM 'Users' PAGE Administration.Account_Overview;
+    );
+  );
+
+-- Clear the menu (empty MENU block removes all items)
+CREATE OR REPLACE NAVIGATION Responsive
+  HOME PAGE NavTest.NavTest_Home
+  MENU ();
+
+-- Verify the changes
+DESCRIBE NAVIGATION Responsive;
+
+-- MARK: Catalog Queries
+
+-- ============================================================================
+-- Navigation refs in the catalog
+-- After REFRESH CATALOG FULL, navigation references appear in the refs table
+-- with kinds: home_page, menu_item, login_page
+-- ============================================================================
+
+REFRESH CATALOG FULL;
+
+-- Find all pages that are navigation entry points
+SELECT SourceName, TargetName, RefKind
+FROM CATALOG.REFS
+WHERE RefKind IN ('home_page', 'menu_item', 'login_page');
+
+-- ============================================================================
+-- Impact & context analysis on the page we created
+-- ============================================================================
+
+SHOW IMPACT OF NavTest.NavTest_Home;
+
+SHOW CONTEXT OF NavTest.NavTest_Home;
+
+/**
+ * Responsive navigation
+ */
+CREATE OR REPLACE NAVIGATION Responsive
+  HOME PAGE MyFirstModule.Home_Web
+  MENU (
+    MENU ITEM 'Home' PAGE MyFirstModule.Home_Web;
+  )
+;

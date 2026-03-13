@@ -1,0 +1,397 @@
+-- ============================================================================
+-- Fragment Examples - Reusable Widget Groups
+-- ============================================================================
+--
+-- This file demonstrates fragments, which are script-scoped reusable
+-- widget groups that can be defined once and inserted into page/snippet
+-- bodies.
+--
+-- Key concepts:
+--   DEFINE FRAGMENT Name AS { widgets }     - Define a reusable group
+--   USE FRAGMENT Name                       - Insert widgets inline
+--   USE FRAGMENT Name AS prefix_            - Insert with name prefix
+--   SHOW FRAGMENTS                          - List defined fragments
+--   DESCRIBE FRAGMENT Name                  - Show fragment definition
+--
+-- Fragments are transient — they exist only during script execution
+-- and are NOT persisted in the MPR file.
+--
+-- ============================================================================
+
+-- MARK: Setup
+
+-- ============================================================================
+-- Setup: Ensure FragTest Entities Exist
+-- ============================================================================
+
+CREATE MODULE FragTest;
+
+@Position(100,100)
+CREATE PERSISTENT ENTITY FragTest.Customer (
+  Name: String(200) NOT NULL,
+  Email: String(200),
+  Phone: String(50)
+);
+
+@Position(300,100)
+CREATE PERSISTENT ENTITY FragTest.Order (
+  OrderNumber: String(50) NOT NULL,
+  TotalAmount: Decimal,
+  OrderDate: DateTime
+);
+
+CREATE ASSOCIATION FragTest.Order_Customer
+FROM FragTest.Order TO FragTest.Customer
+TYPE Reference
+OWNER Both;
+
+-- MARK: Basic Fragments
+
+-- ============================================================================
+-- LEVEL 1: Basic Fragment Definition
+-- ============================================================================
+
+/**
+ * Simple save/cancel footer — the most common reusable pattern.
+ */
+DEFINE FRAGMENT SaveCancelFooter AS {
+  FOOTER footer1 {
+    ACTIONBUTTON btnSave (Caption: 'Save', Action: SAVE_CHANGES, ButtonStyle: Primary)
+    ACTIONBUTTON btnCancel (Caption: 'Cancel', Action: CANCEL_CHANGES)
+  }
+};
+
+/**
+ * Fragment with multiple top-level widgets.
+ */
+DEFINE FRAGMENT CustomerFields AS {
+  TEXTBOX txtName (Label: 'Name', Attribute: Name)
+  TEXTBOX txtEmail (Label: 'Email', Attribute: Email)
+  TEXTBOX txtPhone (Label: 'Phone', Attribute: Phone)
+};
+
+-- MARK: Show & Describe
+
+-- ============================================================================
+-- LEVEL 2: Show and Describe Fragments
+-- ============================================================================
+
+-- List all defined fragments (works without project connection)
+SHOW FRAGMENTS;
+
+-- Show the full MDL definition of a fragment
+DESCRIBE FRAGMENT SaveCancelFooter;
+DESCRIBE FRAGMENT CustomerFields;
+
+-- MARK: Use in Pages
+
+-- ============================================================================
+-- LEVEL 3: Using Fragments in Pages
+-- ============================================================================
+
+/**
+ * Edit page using a fragment for the footer.
+ * The SaveCancelFooter widgets are cloned and inserted inline.
+ */
+CREATE PAGE FragTest.P001_Customer_Edit
+(
+  Params: { $Customer: FragTest.Customer },
+  Title: 'Edit Customer',
+  Layout: Atlas_Core.PopupLayout
+)
+{
+  DATAVIEW dvCustomer (DataSource: $Customer) {
+    USE FRAGMENT CustomerFields
+    USE FRAGMENT SaveCancelFooter
+  }
+};
+
+-- Verify the page was created with expanded widgets
+DESCRIBE PAGE FragTest.P001_Customer_Edit;
+
+-- MARK: Prefix
+
+-- ============================================================================
+-- LEVEL 4: Fragments with Prefix (Avoiding Name Conflicts)
+-- ============================================================================
+
+/**
+ * When using the same fragment multiple times on one page,
+ * use AS prefix_ to create unique widget names.
+ */
+DEFINE FRAGMENT StatusButtons AS {
+  ACTIONBUTTON btnApprove (Caption: 'Approve', Action: SAVE_CHANGES, ButtonStyle: Success)
+  ACTIONBUTTON btnReject (Caption: 'Reject', Action: CANCEL_CHANGES, ButtonStyle: Danger)
+};
+
+/**
+ * Page with the same fragment used twice with different prefixes.
+ * The first instance creates cust_btnApprove, cust_btnReject.
+ * The second creates order_btnApprove, order_btnReject.
+ */
+CREATE PAGE FragTest.P002_Dual_Fragment
+(
+  Title: 'Dual Fragment Example',
+  Layout: Atlas_Core.Atlas_Default,
+  Url: 'frag_002_dual'
+)
+{
+  LAYOUTGRID lgMain {
+    ROW row1 {
+      COLUMN col1 (DesktopWidth: 6) {
+        DYNAMICTEXT txtCustHeader (Content: 'Customer Actions', RenderMode: H4)
+        USE FRAGMENT StatusButtons AS cust_
+      }
+      COLUMN col2 (DesktopWidth: 6) {
+        DYNAMICTEXT txtOrderHeader (Content: 'Order Actions', RenderMode: H4)
+        USE FRAGMENT StatusButtons AS order_
+      }
+    }
+  }
+};
+
+-- MARK: Nested Use
+
+-- ============================================================================
+-- LEVEL 5: Fragments Inside Nested Containers
+-- ============================================================================
+
+/**
+ * Fragments can be used inside any container widget — DATAVIEW,
+ * LAYOUTGRID columns, CONTAINER, etc.
+ */
+DEFINE FRAGMENT OrderFields AS {
+  TEXTBOX txtOrderNumber (Label: 'Order #', Attribute: OrderNumber)
+  DATEPICKER dpOrderDate (Label: 'Order Date', Attribute: OrderDate)
+  TEXTBOX txtTotal (Label: 'Total', Attribute: TotalAmount)
+};
+
+CREATE PAGE FragTest.P003_Order_Form
+(
+  Params: { $Order: FragTest.Order },
+  Title: 'Edit Order',
+  Layout: Atlas_Core.PopupLayout
+)
+{
+  DATAVIEW dvOrder (DataSource: $Order) {
+    LAYOUTGRID lgForm {
+      ROW row1 {
+        COLUMN col1 (DesktopWidth: 12) {
+          USE FRAGMENT OrderFields
+        }
+      }
+    }
+    USE FRAGMENT SaveCancelFooter
+  }
+};
+
+-- MARK: Multiple Pages
+
+-- ============================================================================
+-- LEVEL 6: Sharing Fragments Across Pages
+-- ============================================================================
+
+/**
+ * The main benefit of fragments: define once, use in many pages.
+ * Here we create two different pages reusing the same footer.
+ */
+CREATE PAGE FragTest.P004_Customer_New
+(
+  Title: 'New Customer',
+  Layout: Atlas_Core.Atlas_Default,
+  Url: 'frag_004_customer_new'
+)
+{
+  DATAVIEW dvCustomer (DataSource: DATABASE FragTest.Customer) {
+    USE FRAGMENT CustomerFields
+    USE FRAGMENT SaveCancelFooter
+  }
+};
+
+CREATE PAGE FragTest.P005_Quick_View
+(
+  Params: { $Customer: FragTest.Customer },
+  Title: 'Customer Details',
+  Layout: Atlas_Core.PopupLayout
+)
+{
+  DATAVIEW dvCustomer (DataSource: $Customer) {
+    DYNAMICTEXT txtHeader (Content: 'Customer Details', RenderMode: H3)
+    USE FRAGMENT CustomerFields
+    FOOTER footer1 {
+      ACTIONBUTTON btnClose (Caption: 'Close', Action: CLOSE_PAGE)
+    }
+  }
+};
+
+-- MARK: Snippets
+
+-- ============================================================================
+-- LEVEL 7: Fragments in Snippets
+-- ============================================================================
+
+/**
+ * Fragments also work inside snippets, not just pages.
+ */
+CREATE SNIPPET FragTest.CustomerCard
+(
+  Params: { $Customer: FragTest.Customer }
+)
+{
+  CONTAINER ctnCard (Class: 'card') {
+    DYNAMICTEXT txtCardTitle (Content: 'Customer', RenderMode: H4)
+    DATAVIEW dvCustomer (DataSource: $Customer) {
+      USE FRAGMENT CustomerFields
+    }
+  }
+};
+
+-- MARK: Extract from Page/Snippet
+
+-- ============================================================================
+-- LEVEL 8: Extract Widget from Page/Snippet as Fragment
+-- ============================================================================
+
+-- Extract a widget subtree from an existing page or snippet as MDL.
+-- These commands require a project connection (CONNECT LOCAL).
+-- Uncomment and adjust for your project:
+
+-- DESCRIBE FRAGMENT FROM PAGE FragTest.P001_Customer_Edit WIDGET dvCustomer;
+-- DESCRIBE FRAGMENT FROM SNIPPET FragTest.CustomerCard WIDGET ctnCard;
+
+-- MARK: ALTER PAGE
+
+-- ============================================================================
+-- LEVEL 9: ALTER PAGE — In-Place Widget Modification
+-- ============================================================================
+
+-- ALTER PAGE modifies an existing page's widget tree without full round-trip.
+-- It works directly on raw BSON, preserving unsupported widget types.
+-- These examples require a project connection opened for writing.
+-- Uncomment to run against a real project:
+
+-- Drop a widget from a page
+-- ALTER PAGE FragTest.P001_Customer_Edit {
+--   DROP WIDGET txtPhone
+-- };
+
+-- Set property on a widget
+-- ALTER PAGE FragTest.P001_Customer_Edit {
+--   SET Caption = 'Update Customer' ON btnSave
+-- };
+
+-- Set multiple properties at once
+-- ALTER PAGE FragTest.P001_Customer_Edit {
+--   SET (Caption = 'Save & Close', ButtonStyle = Success) ON btnSave
+-- };
+
+-- Insert a widget after another
+-- ALTER PAGE FragTest.P001_Customer_Edit {
+--   INSERT AFTER txtName {
+--     TEXTBOX txtMiddle (Label: 'Middle Name', Attribute: Name)
+--   }
+-- };
+
+-- Insert a widget before another
+-- ALTER PAGE FragTest.P001_Customer_Edit {
+--   INSERT BEFORE txtEmail {
+--     DYNAMICTEXT txtDivider (Content: '---', RenderMode: P)
+--   }
+-- };
+
+-- Replace a widget subtree
+-- ALTER PAGE FragTest.P001_Customer_Edit {
+--   REPLACE footer1 WITH {
+--     FOOTER newFooter {
+--       ACTIONBUTTON btnSave (Caption: 'Save', Action: SAVE_CHANGES, ButtonStyle: Primary)
+--       ACTIONBUTTON btnCancel (Caption: 'Cancel', Action: CANCEL_CHANGES)
+--       ACTIONBUTTON btnDelete (Caption: 'Delete', Action: CANCEL_CHANGES, ButtonStyle: Danger)
+--     }
+--   }
+-- };
+
+-- Multiple operations in one ALTER PAGE
+-- ALTER PAGE FragTest.P002_Dual_Fragment {
+--   SET Caption = 'Approve Order' ON cust_btnApprove;
+--   DROP WIDGET order_btnReject;
+--   INSERT AFTER cust_btnReject {
+--     ACTIONBUTTON btnNew (Caption: 'New', Action: SAVE_CHANGES, ButtonStyle: Info)
+--   }
+-- };
+
+-- MARK: ALTER SNIPPET
+
+-- ============================================================================
+-- LEVEL 10: ALTER SNIPPET — In-Place Snippet Widget Modification
+-- ============================================================================
+
+-- ALTER SNIPPET works exactly like ALTER PAGE but targets snippets.
+-- It modifies the snippet's widget tree without full round-trip,
+-- preserving unsupported widget types in the raw BSON.
+-- These examples require a project connection opened for writing.
+-- Uncomment to run against a real project:
+
+-- Drop a widget from a snippet
+-- ALTER SNIPPET FragTest.CustomerCard {
+--   DROP WIDGET txtCardTitle
+-- };
+
+-- Set a property on a widget inside a snippet
+-- ALTER SNIPPET FragTest.CustomerCard {
+--   SET Class = 'card card-highlighted' ON ctnCard
+-- };
+
+-- Replace a widget inside a snippet
+-- ALTER SNIPPET FragTest.CustomerCard {
+--   REPLACE txtCardTitle WITH {
+--     DYNAMICTEXT txtCardTitle (Content: 'Customer Info', RenderMode: H3)
+--   }
+-- };
+
+-- Multiple operations on a snippet
+-- ALTER SNIPPET FragTest.CustomerCard {
+--   SET Class = 'card-lg' ON ctnCard;
+--   INSERT BEFORE dvCustomer {
+--     DYNAMICTEXT txtSubtitle (Content: 'Details below', RenderMode: P)
+--   }
+-- };
+
+-- MARK: Summary
+
+-- ============================================================================
+-- Summary
+-- ============================================================================
+--
+-- Fragments provide script-scoped widget reuse:
+--
+--   DEFINE FRAGMENT Name AS { widgets };   -- Define
+--   USE FRAGMENT Name                      -- Use (clone & insert)
+--   USE FRAGMENT Name AS prefix_           -- Use with unique names
+--   SHOW FRAGMENTS;                        -- List all
+--   DESCRIBE FRAGMENT Name;                -- Show definition
+--   DESCRIBE FRAGMENT FROM PAGE Mod.Page WIDGET name;   -- Extract from page
+--   DESCRIBE FRAGMENT FROM SNIPPET Mod.Snip WIDGET name; -- Extract from snippet
+--
+-- ALTER PAGE/SNIPPET provides in-place widget modification:
+--
+--   ALTER PAGE Mod.Page {
+--     SET prop = value ON widgetName        -- Modify widget property
+--     INSERT AFTER/BEFORE name { widgets }  -- Add widgets
+--     DROP WIDGET name1, name2             -- Remove widgets
+--     REPLACE name WITH { widgets }        -- Replace widget subtree
+--   };
+--
+--   ALTER SNIPPET Mod.Snippet {
+--     -- Same operations as ALTER PAGE
+--   };
+--
+-- Key characteristics:
+--   - Not persisted (script-scoped only)
+--   - Widgets are deep-cloned on expansion
+--   - Prefix support avoids name conflicts
+--   - Works in both pages and snippets
+--   - Works inside any container (DATAVIEW, COLUMN, CONTAINER, etc.)
+--   - No project connection needed for SHOW/DESCRIBE FRAGMENT
+--   - DESCRIBE FRAGMENT FROM requires a project connection
+--   - ALTER PAGE/SNIPPET works on raw BSON (preserves unsupported widgets)
+--   - ALTER PAGE/SNIPPET requires write-mode project connection

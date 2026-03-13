@@ -1,0 +1,634 @@
+-- ============================================================================
+-- Manufacturing Domain Model (MES Core)
+-- ============================================================================
+-- The heart of the MES application. Manages workstations, production
+-- templates, work orders, bills of materials, production steps,
+-- time tracking, and production notes.
+-- ============================================================================
+
+-- MARK: MODULE
+
+/**
+ * Manufacturing module (MES Core)
+ *
+ * Core Manufacturing Execution System functionality. Manages the entire
+ * production lifecycle from work order creation through production step
+ * execution to completion. Includes workstation management, reusable
+ * production templates, BOM tracking, and time registration.
+ *
+ * @since 1.0.0
+ */
+CREATE MODULE Manufacturing;
+
+-- MARK: ENUMERATIONS
+
+/**
+ * Work order lifecycle status
+ *
+ * Tracks work orders from planning through completion.
+ *
+ * @since 1.0.0
+ */
+CREATE ENUMERATION Manufacturing.WorkOrderStatus (
+  Planned 'Planned',
+  Released 'Released',
+  InProgress 'In Progress',
+  OnHold 'On Hold',
+  Completed 'Completed',
+  Cancelled 'Cancelled'
+);
+
+/**
+ * Production step status
+ *
+ * Tracks the progress of individual production steps.
+ *
+ * @since 1.0.0
+ */
+CREATE ENUMERATION Manufacturing.StepStatus (
+  Pending 'Pending',
+  Ready 'Ready',
+  InProgress 'In Progress',
+  Completed 'Completed',
+  Skipped 'Skipped',
+  Failed 'Failed'
+);
+
+/**
+ * Workstation availability status
+ *
+ * Current operational status of a workstation.
+ *
+ * @since 1.0.0
+ */
+CREATE ENUMERATION Manufacturing.WorkstationStatus (
+  Available 'Available',
+  InUse 'In Use',
+  Maintenance 'Under Maintenance',
+  Offline 'Offline'
+);
+
+/**
+ * Production priority levels
+ *
+ * Urgency classification for work orders.
+ *
+ * @since 1.0.0
+ */
+CREATE ENUMERATION Manufacturing.ProductionPriority (
+  Low 'Low',
+  Normal 'Normal',
+  High 'High',
+  Urgent 'Urgent'
+);
+
+-- MARK: ENTITIES
+
+-- MARK: - Workstation Management
+
+/**
+ * Workstation group entity
+ *
+ * Logical grouping of similar workstations by capability.
+ * Examples: Cutting, Joinery, Assembly, Sanding, Finishing, Packaging.
+ * Production templates reference groups rather than specific stations.
+ *
+ * @since 1.0.0
+ * @see Manufacturing.Workstation
+ */
+@Position(50, 50)
+CREATE PERSISTENT ENTITY Manufacturing.WorkstationGroup (
+  /** Group name (e.g. 'Cutting', 'Assembly', 'Finishing') */
+  GroupName: String(200) NOT NULL ERROR 'Group name is required',
+  /** Description of capabilities */
+  GroupDescription: String(1000),
+  /** Sort order for display */
+  SortOrder: Integer DEFAULT 0,
+  /** Whether this group is active */
+  IsActive: Boolean DEFAULT true
+);
+
+/**
+ * Workstation entity
+ *
+ * An individual workstation or machine on the shop floor.
+ * Belongs to a workstation group and tracks availability.
+ *
+ * @since 1.0.0
+ * @see Manufacturing.WorkstationGroup
+ */
+@Position(50, 250)
+CREATE PERSISTENT ENTITY Manufacturing.Workstation (
+  /** Unique workstation code */
+  WorkstationCode: String(50) NOT NULL ERROR 'Workstation code is required' UNIQUE ERROR 'Workstation code must be unique',
+  /** Workstation display name */
+  WorkstationName: String(200) NOT NULL ERROR 'Workstation name is required',
+  /** Description and capabilities */
+  WorkstationDescription: String(1000),
+  /** Current operational status */
+  CurrentStatus: Enumeration(Manufacturing.WorkstationStatus) NOT NULL ERROR 'Status is required',
+  /** Physical location on the shop floor */
+  FloorLocation: String(100),
+  /** Last maintenance date */
+  LastMaintenanceDate: DateTime,
+  /** Next scheduled maintenance */
+  NextMaintenanceDate: DateTime
+)
+INDEX (CurrentStatus);
+
+-- MARK: - Production Templates
+
+/**
+ * Production template entity
+ *
+ * A reusable sequence of production steps for manufacturing
+ * a type of furniture. Standard products have predefined templates;
+ * bespoke items can use templates as a starting point.
+ *
+ * @since 1.0.0
+ * @see Manufacturing.TemplateStep
+ * @see ProductCatalog.CatalogProduct
+ */
+@Position(350, 50)
+CREATE PERSISTENT ENTITY Manufacturing.ProductionTemplate (
+  /** Template name */
+  TemplateName: String(200) NOT NULL ERROR 'Template name is required',
+  /** Template description */
+  TemplateDescription: String(2000),
+  /** Estimated total production hours */
+  EstimatedHours: Decimal,
+  /** Number of steps in this template */
+  StepCount: Integer DEFAULT 0,
+  /** Whether this template is active */
+  IsActive: Boolean DEFAULT true,
+  /** Version of this template */
+  TemplateVersion: Integer DEFAULT 1
+);
+
+/**
+ * Template step entity
+ *
+ * A single step within a production template.
+ * Defines what needs to be done, at which workstation group,
+ * and the expected duration.
+ *
+ * @since 1.0.0
+ * @see Manufacturing.ProductionTemplate
+ * @see Manufacturing.WorkstationGroup
+ */
+@Position(350, 250)
+CREATE PERSISTENT ENTITY Manufacturing.TemplateStep (
+  /** Step sequence number */
+  StepSequence: Integer NOT NULL ERROR 'Step sequence is required',
+  /** Step name */
+  StepName: String(200) NOT NULL ERROR 'Step name is required',
+  /** Detailed work instructions */
+  WorkInstructions: String(4000),
+  /** Estimated duration in hours */
+  EstimatedHours: Decimal DEFAULT 1,
+  /** Whether this step is mandatory */
+  IsMandatory: Boolean DEFAULT true,
+  /** Quality check required after this step */
+  RequiresQualityCheck: Boolean DEFAULT false
+);
+
+-- MARK: - Work Orders
+
+/**
+ * Work order entity
+ *
+ * A production work order that drives manufacturing.
+ * Links to a customer order and contains one or more work order lines.
+ * Each line represents an item to be manufactured.
+ *
+ * @since 1.0.0
+ * @see SalesOrder.CustomerOrder
+ * @see Manufacturing.WorkOrderLine
+ */
+@Position(650, 50)
+CREATE PERSISTENT ENTITY Manufacturing.WorkOrder (
+  /** Auto-generated work order number */
+  WorkOrderNumber: AutoNumber DEFAULT 1,
+  /** Current status */
+  WorkOrderStatus: Enumeration(Manufacturing.WorkOrderStatus) NOT NULL ERROR 'Work order status is required',
+  /** Priority level */
+  Priority: Enumeration(Manufacturing.ProductionPriority) NOT NULL ERROR 'Priority is required' DEFAULT 'Normal',
+  /** Planned start date */
+  PlannedStartDate: DateTime,
+  /** Planned completion date */
+  PlannedEndDate: DateTime,
+  /** Actual start date */
+  ActualStartDate: DateTime,
+  /** Actual completion date */
+  ActualEndDate: DateTime,
+  /** Overall progress percentage */
+  ProgressPercent: Decimal DEFAULT 0,
+  /** Notes from production manager */
+  ProductionNotes: String(4000)
+)
+INDEX (WorkOrderStatus)
+INDEX (Priority)
+INDEX (PlannedStartDate);
+
+/**
+ * Work order line entity
+ *
+ * An individual item to be manufactured within a work order.
+ * Links to a sales order line and tracks production progress.
+ *
+ * @since 1.0.0
+ * @see Manufacturing.WorkOrder
+ * @see SalesOrder.OrderLine
+ */
+@Position(650, 250)
+CREATE PERSISTENT ENTITY Manufacturing.WorkOrderLine (
+  /** Line number within the work order */
+  LineNumber: Integer NOT NULL ERROR 'Line number is required',
+  /** Item description */
+  ItemDescription: String(500) NOT NULL ERROR 'Item description is required',
+  /** Quantity to produce */
+  QuantityToProduce: Integer NOT NULL ERROR 'Quantity is required' DEFAULT 1,
+  /** Quantity completed */
+  QuantityCompleted: Integer DEFAULT 0,
+  /** Whether this line is complete */
+  IsComplete: Boolean DEFAULT false,
+  /** Line-specific notes */
+  LineNotes: String(2000)
+);
+
+-- MARK: - Production Execution
+
+/**
+ * Production step entity
+ *
+ * An actual production step being executed for a work order line.
+ * Created from template steps or manually for bespoke items.
+ * Tracks the real-time status and assignment to workstations.
+ *
+ * @since 1.0.0
+ * @see Manufacturing.WorkOrderLine
+ * @see Manufacturing.Workstation
+ */
+@Position(950, 50)
+CREATE PERSISTENT ENTITY Manufacturing.ProductionStep (
+  /** Step sequence number */
+  StepSequence: Integer NOT NULL ERROR 'Step sequence is required',
+  /** Step name */
+  StepName: String(200) NOT NULL ERROR 'Step name is required',
+  /** Work instructions */
+  WorkInstructions: String(4000),
+  /** Current step status */
+  StepStatus: Enumeration(Manufacturing.StepStatus) NOT NULL ERROR 'Step status is required',
+  /** Planned start */
+  PlannedStart: DateTime,
+  /** Planned end */
+  PlannedEnd: DateTime,
+  /** Actual start */
+  ActualStart: DateTime,
+  /** Actual end */
+  ActualEnd: DateTime,
+  /** Estimated duration in hours */
+  EstimatedHours: Decimal,
+  /** Actual hours spent */
+  ActualHours: Decimal DEFAULT 0,
+  /** Whether quality check is required */
+  RequiresQualityCheck: Boolean DEFAULT false,
+  /** Whether quality check has passed */
+  QualityCheckPassed: Boolean DEFAULT false,
+  /** Operator notes */
+  OperatorNotes: String(2000)
+)
+INDEX (StepStatus)
+INDEX (PlannedStart);
+
+-- MARK: - Bill of Materials
+
+/**
+ * Bill of Materials entity
+ *
+ * Material requirements header for a work order line.
+ * Lists all raw materials needed to manufacture the item.
+ *
+ * @since 1.0.0
+ * @see Manufacturing.WorkOrderLine
+ * @see Manufacturing.BOMLine
+ */
+@Position(950, 250)
+CREATE PERSISTENT ENTITY Manufacturing.BillOfMaterials (
+  /** BOM reference description */
+  BOMDescription: String(200),
+  /** Total estimated material cost */
+  TotalMaterialCost: Decimal DEFAULT 0,
+  /** Whether all materials are available */
+  AllMaterialsAvailable: Boolean DEFAULT false,
+  /** Date this BOM was created */
+  CreatedDate: DateTime
+);
+
+/**
+ * BOM line entity
+ *
+ * A single material requirement within a bill of materials.
+ * Specifies the material, required quantity, and consumption tracking.
+ *
+ * @since 1.0.0
+ * @see Manufacturing.BillOfMaterials
+ * @see Materials.Material
+ */
+@Position(1250, 250)
+CREATE PERSISTENT ENTITY Manufacturing.BOMLine (
+  /** Line number */
+  LineNumber: Integer NOT NULL ERROR 'Line number is required',
+  /** Required quantity */
+  QuantityRequired: Decimal NOT NULL ERROR 'Required quantity is required',
+  /** Quantity already consumed/issued */
+  QuantityConsumed: Decimal DEFAULT 0,
+  /** Unit cost at time of BOM creation */
+  UnitCost: Decimal DEFAULT 0,
+  /** Line cost (quantity x unit cost) */
+  LineCost: Decimal DEFAULT 0,
+  /** Notes about material usage */
+  UsageNotes: String(500)
+);
+
+-- MARK: - Time and Notes
+
+/**
+ * Time registration entity
+ *
+ * Records time spent by workers on production steps.
+ * Used for costing, capacity planning, and productivity analysis.
+ *
+ * @since 1.0.0
+ * @see Manufacturing.ProductionStep
+ */
+@Position(1250, 50)
+CREATE PERSISTENT ENTITY Manufacturing.TimeRegistration (
+  /** Start time of the work period */
+  StartTime: DateTime NOT NULL ERROR 'Start time is required',
+  /** End time of the work period */
+  EndTime: DateTime,
+  /** Duration in hours (auto-calculated or manual) */
+  DurationHours: Decimal,
+  /** Description of work performed */
+  WorkDescription: String(500),
+  /** Date this entry was created */
+  RegistrationDate: DateTime
+);
+
+/**
+ * Production note entity
+ *
+ * Notes and issues logged during production.
+ * Provides a communication channel between operators,
+ * supervisors, and quality inspectors.
+ *
+ * @since 1.0.0
+ * @see Manufacturing.ProductionStep
+ */
+@Position(1250, 450)
+CREATE PERSISTENT ENTITY Manufacturing.ProductionNote (
+  /** Note content */
+  NoteContent: String(4000) NOT NULL ERROR 'Note content is required',
+  /** Whether this note flags an issue */
+  IsIssue: Boolean DEFAULT false,
+  /** Whether the issue is resolved */
+  IsResolved: Boolean DEFAULT false,
+  /** Date and time the note was created */
+  NoteDate: DateTime
+);
+
+-- MARK: ASSOCIATIONS
+
+-- MARK: - Workstation Associations
+
+/**
+ * Links workstation to its group
+ *
+ * Each workstation belongs to one capability group.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION Manufacturing.Workstation_WorkstationGroup
+  FROM Manufacturing.Workstation TO Manufacturing.WorkstationGroup
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+
+-- MARK: - Template Associations
+
+/**
+ * Links template step to its template
+ *
+ * Each step belongs to one production template.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION Manufacturing.TemplateStep_ProductionTemplate
+  FROM Manufacturing.TemplateStep TO Manufacturing.ProductionTemplate
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_AND_REFERENCES;
+
+/**
+ * Links template step to the required workstation group
+ *
+ * Specifies which workstation capability group handles this step.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION Manufacturing.TemplateStep_WorkstationGroup
+  FROM Manufacturing.TemplateStep TO Manufacturing.WorkstationGroup
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+
+/**
+ * Links production template to a catalog product (optional)
+ *
+ * Standard products can have a default production template.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION Manufacturing.ProductionTemplate_CatalogProduct
+  FROM Manufacturing.ProductionTemplate TO ProductCatalog.CatalogProduct
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+
+-- MARK: - Work Order Associations
+
+/**
+ * Links work order to a customer order
+ *
+ * Each work order is driven by a customer order.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION Manufacturing.WorkOrder_CustomerOrder
+  FROM Manufacturing.WorkOrder TO SalesOrder.CustomerOrder
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+
+/**
+ * Links work order line to its work order
+ *
+ * Each line belongs to one work order.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION Manufacturing.WorkOrderLine_WorkOrder
+  FROM Manufacturing.WorkOrderLine TO Manufacturing.WorkOrder
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_AND_REFERENCES;
+
+/**
+ * Links work order line to a sales order line
+ *
+ * Traces the production item back to the sales order.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION Manufacturing.WorkOrderLine_OrderLine
+  FROM Manufacturing.WorkOrderLine TO SalesOrder.OrderLine
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+
+/**
+ * Links work order line to a production template (optional)
+ *
+ * The template used to generate production steps.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION Manufacturing.WorkOrderLine_ProductionTemplate
+  FROM Manufacturing.WorkOrderLine TO Manufacturing.ProductionTemplate
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+
+-- MARK: - Production Step Associations
+
+/**
+ * Links production step to its work order line
+ *
+ * Each production step is part of one work order line.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION Manufacturing.ProductionStep_WorkOrderLine
+  FROM Manufacturing.ProductionStep TO Manufacturing.WorkOrderLine
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_AND_REFERENCES;
+
+/**
+ * Links production step to the assigned workstation
+ *
+ * Each step is executed at a specific workstation.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION Manufacturing.ProductionStep_Workstation
+  FROM Manufacturing.ProductionStep TO Manufacturing.Workstation
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+
+-- MARK: - BOM Associations
+
+/**
+ * Links BOM to its work order line
+ *
+ * Each BOM belongs to one work order line.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION Manufacturing.BillOfMaterials_WorkOrderLine
+  FROM Manufacturing.BillOfMaterials TO Manufacturing.WorkOrderLine
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_AND_REFERENCES;
+
+/**
+ * Links BOM line to its BOM
+ *
+ * Each BOM line belongs to one bill of materials.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION Manufacturing.BOMLine_BillOfMaterials
+  FROM Manufacturing.BOMLine TO Manufacturing.BillOfMaterials
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_AND_REFERENCES;
+
+/**
+ * Links BOM line to the required material
+ *
+ * Each BOM line references one material from inventory.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION Manufacturing.BOMLine_Material
+  FROM Manufacturing.BOMLine TO Materials.Material
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+
+-- MARK: - Time and Note Associations
+
+/**
+ * Links time registration to a production step
+ *
+ * Each time entry is for one production step.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION Manufacturing.TimeRegistration_ProductionStep
+  FROM Manufacturing.TimeRegistration TO Manufacturing.ProductionStep
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_AND_REFERENCES;
+
+/**
+ * Links time registration to the worker
+ *
+ * Records which user/operator logged the time.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION Manufacturing.TimeRegistration_Account
+  FROM Manufacturing.TimeRegistration TO Administration.Account
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+
+/**
+ * Links production note to a production step
+ *
+ * Notes are associated with specific production steps.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION Manufacturing.ProductionNote_ProductionStep
+  FROM Manufacturing.ProductionNote TO Manufacturing.ProductionStep
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_AND_REFERENCES;
+
+/**
+ * Links production note to the author
+ *
+ * Records who created the note.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION Manufacturing.ProductionNote_Account
+  FROM Manufacturing.ProductionNote TO Administration.Account
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;

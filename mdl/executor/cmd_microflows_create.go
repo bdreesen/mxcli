@@ -1,0 +1,214 @@
+// SPDX-License-Identifier: Apache-2.0
+
+// Package executor - CREATE MICROFLOW command
+package executor
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/mendixlabs/mxcli/mdl/ast"
+	"github.com/mendixlabs/mxcli/model"
+	"github.com/mendixlabs/mxcli/sdk/microflows"
+	"github.com/mendixlabs/mxcli/sdk/mpr"
+)
+
+// execCreateMicroflow handles CREATE MICROFLOW statements.
+func (e *Executor) execCreateMicroflow(s *ast.CreateMicroflowStmt) error {
+	if e.writer == nil {
+		return fmt.Errorf("not connected to a project")
+	}
+
+	// Find the module
+	module, err := e.findModule(s.Name.Module)
+	if err != nil {
+		return err
+	}
+
+	// Resolve folder if specified
+	containerID := module.ID
+	if s.Folder != "" {
+		folderID, err := e.resolveFolder(module.ID, s.Folder)
+		if err != nil {
+			return fmt.Errorf("failed to resolve folder %s: %w", s.Folder, err)
+		}
+		containerID = folderID
+	}
+
+	// Check if microflow with same name already exists in this module
+	var existingID model.ID
+	var existingContainerID model.ID
+	existingMicroflows, err := e.reader.ListMicroflows()
+	if err != nil {
+		return fmt.Errorf("failed to check existing microflows: %w", err)
+	}
+	for _, existing := range existingMicroflows {
+		if existing.Name == s.Name.Name && e.getModuleID(existing.ContainerID) == module.ID {
+			if !s.CreateOrModify {
+				return fmt.Errorf("microflow '%s.%s' already exists (use CREATE OR REPLACE to overwrite)", s.Name.Module, s.Name.Name)
+			}
+			existingID = existing.ID
+			existingContainerID = existing.ContainerID
+			break
+		}
+	}
+
+	// For CREATE OR REPLACE/MODIFY, reuse the existing ID to preserve references
+	microflowID := model.ID(mpr.GenerateID())
+	if existingID != "" {
+		microflowID = existingID
+		// Keep the original folder unless a new folder is explicitly specified
+		if s.Folder == "" {
+			containerID = existingContainerID
+		}
+	}
+
+	// Build the microflow
+	mf := &microflows.Microflow{
+		BaseElement: model.BaseElement{
+			ID: microflowID,
+		},
+		ContainerID:              containerID,
+		Name:                     s.Name.Name,
+		Documentation:            s.Documentation,
+		AllowConcurrentExecution: true, // Default: allow concurrent execution
+		MarkAsUsed:               false,
+		Excluded:                 false,
+	}
+
+	// Build entity resolver function for parameter/return types
+	entityResolver := func(qn ast.QualifiedName) model.ID {
+		// Get all domain models and build module name map
+		dms, err := e.reader.ListDomainModels()
+		if err != nil {
+			return ""
+		}
+		modules, _ := e.reader.ListModules()
+		moduleNames := make(map[model.ID]string)
+		for _, m := range modules {
+			moduleNames[m.ID] = m.Name
+		}
+		// Search for entity in all domain models
+		for _, dm := range dms {
+			modName := moduleNames[dm.ContainerID]
+			if modName != qn.Module {
+				continue
+			}
+			for _, ent := range dm.Entities {
+				if ent.Name == qn.Name {
+					return ent.ID
+				}
+			}
+		}
+		return ""
+	}
+
+	// Validate and add parameters
+	for _, p := range s.Parameters {
+		// Validate entity references for List and Entity types
+		if p.Type.EntityRef != nil {
+			entityID := entityResolver(*p.Type.EntityRef)
+			if entityID == "" {
+				return fmt.Errorf("entity '%s.%s' not found for parameter '%s'",
+					p.Type.EntityRef.Module, p.Type.EntityRef.Name, p.Name)
+			}
+		}
+		param := &microflows.MicroflowParameter{
+			BaseElement: model.BaseElement{
+				ID: model.ID(mpr.GenerateID()),
+			},
+			ContainerID: mf.ID,
+			Name:        p.Name,
+			Type:        convertASTToMicroflowDataType(p.Type, entityResolver),
+		}
+		mf.Parameters = append(mf.Parameters, param)
+	}
+
+	// Validate and set return type
+	if s.ReturnType != nil {
+		// Validate entity references for return type
+		if s.ReturnType.Type.EntityRef != nil {
+			entityID := entityResolver(*s.ReturnType.Type.EntityRef)
+			if entityID == "" {
+				return fmt.Errorf("entity '%s.%s' not found for return type",
+					s.ReturnType.Type.EntityRef.Module, s.ReturnType.Type.EntityRef.Name)
+			}
+		}
+		mf.ReturnType = convertASTToMicroflowDataType(s.ReturnType.Type, entityResolver)
+		// Set return variable name if provided (AS $VarName)
+		if s.ReturnType.Variable != "" {
+			mf.ReturnVariableName = s.ReturnType.Variable
+		}
+	} else {
+		mf.ReturnType = &microflows.VoidType{}
+	}
+
+	// Build flow graph from body statements
+	// Initialize variable types from parameters
+	varTypes := make(map[string]string)
+	declaredVars := make(map[string]string)
+
+	for _, p := range s.Parameters {
+		if p.Type.EntityRef != nil {
+			entityQN := p.Type.EntityRef.Module + "." + p.Type.EntityRef.Name
+			if p.Type.Kind == ast.TypeListOf {
+				// Store "List of Module.Entity" for list parameters
+				varTypes[p.Name] = "List of " + entityQN
+			} else {
+				// Store "Module.Entity" for single entity parameters
+				varTypes[p.Name] = entityQN
+			}
+		} else {
+			// Primitive type parameters are also considered declared
+			declaredVars[p.Name] = p.Type.Kind.String()
+		}
+	}
+	// Get hierarchy for resolving page/microflow references
+	hierarchy, _ := e.getHierarchy()
+
+	builder := &flowBuilder{
+		posX:         200,
+		posY:         200,
+		baseY:        200, // Base Y for happy path
+		spacing:      HorizontalSpacing,
+		varTypes:     varTypes,
+		declaredVars: declaredVars,
+		measurer:     &layoutMeasurer{varTypes: varTypes},
+		reader:       e.reader,
+		hierarchy:    hierarchy,
+	}
+
+	mf.ObjectCollection = builder.buildFlowGraph(s.Body, s.ReturnType)
+
+	// Check for validation errors
+	if errors := builder.GetErrors(); len(errors) > 0 {
+		// Report all errors to the user
+		var errMsg strings.Builder
+		errMsg.WriteString(fmt.Sprintf("microflow '%s.%s' has validation errors:\n", s.Name.Module, s.Name.Name))
+		for _, err := range errors {
+			errMsg.WriteString(fmt.Sprintf("  - %s\n", err))
+		}
+		return fmt.Errorf("%s", errMsg.String())
+	}
+
+	// Create or update the microflow
+	if existingID != "" {
+		if err := e.writer.UpdateMicroflow(mf); err != nil {
+			return fmt.Errorf("failed to update microflow: %w", err)
+		}
+		fmt.Fprintf(e.output, "Replaced microflow: %s.%s\n", s.Name.Module, s.Name.Name)
+	} else {
+		if err := e.writer.CreateMicroflow(mf); err != nil {
+			return fmt.Errorf("failed to create microflow: %w", err)
+		}
+		fmt.Fprintf(e.output, "Created microflow: %s.%s\n", s.Name.Module, s.Name.Name)
+	}
+
+	// Track the created microflow so it can be resolved by subsequent page creations
+	returnEntityName := extractEntityFromReturnType(mf.ReturnType)
+	e.trackCreatedMicroflow(s.Name.Module, s.Name.Name, mf.ID, containerID, returnEntityName)
+
+	// Invalidate hierarchy cache so the new microflow's container is visible
+	e.invalidateHierarchy()
+	return nil
+}

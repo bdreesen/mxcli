@@ -1,0 +1,680 @@
+-- =============================================================================
+-- Shop Module - E-commerce Domain Model Example
+-- =============================================================================
+-- This MDL file demonstrates a complete e-commerce domain model including:
+-- - Customer management with addresses
+-- - Order processing with line items
+-- - Product catalog with categories, tags, and pricing
+-- - Payment and delivery tracking
+-- - Multi-tenancy support
+-- =============================================================================
+
+CREATE MODULE Shop;
+
+-- MARK: CORE ORDER ENTITIES
+
+/**
+ * Customer purchase order
+ *
+ * Represents a customer's order containing order metadata, pricing,
+ * and links to customer, order lines, payment, and delivery status.
+ *
+ * @since 1.0.0
+ * @see Shop.OrderLine
+ * @see Shop.Customer
+ */
+@Position(560, 260)
+CREATE PERSISTENT ENTITY Shop.Order (
+  /** Unique identifier for the order. Auto-generated sequence. */
+  OrderId: Long NOT NULL UNIQUE DEFAULT 0,
+  /** Date and time when the order was placed. */
+  OrderDate: DateTime,
+  /** Discount percentage applied to the order (0-100). */
+  Discount: Integer DEFAULT 0,
+  /** Calculated total price after discount, in euros. */
+  TotalPrice: Decimal DEFAULT 0
+)
+INDEX (OrderId)
+INDEX (OrderDate);
+
+GRANT Shop.ShopUser, Shop.UserRole ON Shop.Order (DELETE, READ *, WRITE *);
+/
+
+/**
+ * Order line item
+ *
+ * Represents a single line item in an order. Links a product
+ * to an order with quantity and optional notes.
+ *
+ * @since 1.0.0
+ * @see Shop.Order
+ * @see Shop.Product
+ */
+@Position(870, 260)
+CREATE PERSISTENT ENTITY Shop.OrderLine (
+  /** Unique identifier for the order line. */
+  OrderLineId: Long NOT NULL UNIQUE DEFAULT 0,
+  /** Quantity of the product ordered. */
+  Amount: Long DEFAULT 0,
+  /** Optional note or special instructions for this line item. */
+  Note: String
+)
+INDEX (OrderLineId)
+INDEX (Note);
+
+GRANT Shop.ShopUser ON Shop.OrderLine (DELETE, READ *, WRITE *);
+/
+
+/**
+ * Archived orders
+ *
+ * Archive table for historical orders. Mirrors the Order entity
+ * structure for long-term storage and reporting.
+ *
+ * @since 1.0.0
+ */
+@Position(570, 400)
+CREATE PERSISTENT ENTITY Shop.OrdersArchived (
+  /** Original order identifier from the archived order. */
+  OrderId: Long NOT NULL UNIQUE DEFAULT 0,
+  /** Original date when the order was placed. */
+  OrderDate: DateTime,
+  /** Discount percentage that was applied to the order. */
+  Discount: Integer DEFAULT 0,
+  /** Final total price of the archived order. */
+  TotalPrice: Decimal DEFAULT 0
+)
+INDEX (OrderId);
+/
+
+-- MARK: CUSTOMER ENTITIES
+
+/**
+ * Shop customer
+ *
+ * Represents a customer in the shop. Contains personal information
+ * and supports multi-tenancy through TenantId.
+ *
+ * @since 1.0.0
+ * @see Shop.Address
+ * @see Shop.Order
+ */
+@Position(560, 50)
+CREATE PERSISTENT ENTITY Shop.Customer (
+  /** Unique identifier for the customer. */
+  CustomerId: Long NOT NULL UNIQUE DEFAULT 0,
+  /** Customer first name. */
+  FirstName: String,
+  /** Customer last name. Indexed for fast lookup. */
+  LastName: String,
+  /** Customer email address for communications and login. */
+  EmailAddress: String,
+  /** Customer date of birth for age verification and marketing. */
+  DateOfBirth: DateTime,
+  /** Tenant identifier for multi-tenant deployments. */
+  TenantId: Long DEFAULT 0
+)
+INDEX (CustomerId)
+INDEX (LastName);
+
+GRANT Shop.ShopUser ON Shop.Customer (DELETE, READ *, WRITE *);
+/
+
+/**
+ * Customer address
+ *
+ * Represents a physical address. Used for both billing and delivery
+ * addresses via separate associations to Customer.
+ *
+ * @since 1.0.0
+ * @see Shop.Customer
+ */
+@Position(950, 50)
+CREATE PERSISTENT ENTITY Shop.Address (
+  /** Unique identifier for the address. */
+  AddressId: Long NOT NULL UNIQUE DEFAULT 0,
+  /** Street name of the address. */
+  Streetname: String,
+  /** Street/house number. */
+  StreetNumber: Integer DEFAULT 0,
+  /** Postal/ZIP code. */
+  Zipcode: String,
+  /** City name. Indexed for geographic queries. */
+  City: String,
+  /** Country name. Indexed for geographic queries and reporting. */
+  Country: String
+)
+INDEX (AddressId)
+INDEX (City)
+INDEX (Country);
+
+GRANT Shop.ShopUser ON Shop.Address (DELETE, READ *, WRITE *);
+/
+
+/**
+ * User tenant
+ *
+ * Defines tenants for multi-tenant deployments.
+ * Links users to their organizational context.
+ *
+ * @since 1.0.0
+ */
+@Position(580, 640)
+CREATE PERSISTENT ENTITY Shop.UserTenant (
+  /** Unique identifier for the tenant. */
+  TenantId: Long DEFAULT 0,
+  /** Display name of the tenant organization. */
+  TenantName: String
+);
+/
+
+-- MARK: PRODUCT CATALOG ENTITIES
+
+/**
+ * Product
+ *
+ * Represents a product in the catalog. Contains core product information;
+ * pricing is managed separately via the Price entity for time-based pricing support.
+ *
+ * @since 1.0.0
+ * @see Shop.Price
+ * @see Shop.Category
+ */
+@Position(1150, 210)
+CREATE PERSISTENT ENTITY Shop.Product (
+  /** Unique identifier for the product (SKU). */
+  ProductId: Integer NOT NULL UNIQUE DEFAULT 0,
+  /** Product display name. Indexed for search. */
+  Name: String,
+  /** Detailed product description for display. */
+  Description: String,
+  /** Product weight in grams for shipping calculations. */
+  WeightInGrams: Long DEFAULT 0,
+  /** Whether the product is active and available for sale. */
+  IsActive: Boolean DEFAULT true
+)
+INDEX (ProductId)
+INDEX (Name)
+INDEX (IsActive);
+
+GRANT Shop.ShopUser ON Shop.Product (DELETE, READ *, WRITE *);
+/
+
+/**
+ * Product price
+ *
+ * Represents a price point for a product. Supports time-based pricing
+ * with start dates, enabling historical price tracking and future price scheduling.
+ *
+ * @since 1.0.0
+ * @see Shop.Product
+ */
+@Position(1150, 40)
+CREATE PERSISTENT ENTITY Shop.Price (
+  /** Unique identifier for the price record. */
+  PriceId: Long NOT NULL UNIQUE DEFAULT 0,
+  /** Product price in euros. */
+  PriceInEuro: Decimal DEFAULT 0,
+  /** Date when this price becomes effective. */
+  StartDate: DateTime,
+  /** Composite key combining ProductId and StartDate for uniqueness. */
+  ProductIdPriceDate: String UNIQUE
+)
+INDEX (PriceId)
+INDEX (StartDate)
+INDEX (PriceInEuro);
+
+GRANT Shop.ShopUser ON Shop.Price (DELETE, READ *, WRITE *);
+/
+
+/**
+ * Product category
+ *
+ * Represents a product category. Supports hierarchical categorization
+ * through self-referencing ParentCategoryId.
+ *
+ * @since 1.0.0
+ */
+@Position(1480, 220)
+CREATE PERSISTENT ENTITY Shop.Category (
+  /** Unique identifier for the category. */
+  CategoryId: Long NOT NULL UNIQUE DEFAULT 0,
+  /** Category display name. Required and indexed. */
+  Name: String NOT NULL,
+  /** Detailed description of the category. */
+  Description: String,
+  /** Reference to parent category for hierarchical structure. 0 indicates root category. */
+  ParentCategoryId: Long DEFAULT 0
+)
+INDEX (CategoryId)
+INDEX (Name)
+INDEX (ParentCategoryId);
+
+GRANT Shop.ShopUser ON Shop.Category (DELETE, READ *, WRITE *);
+/
+
+/**
+ * Product translations
+ *
+ * Stores translations of product name and description for
+ * internationalization (i18n) support.
+ *
+ * @since 1.0.0
+ * @see Shop.Product
+ */
+@Position(1170, 410)
+CREATE PERSISTENT ENTITY Shop.ProductTranslations (
+  /** Reference to the product being translated. */
+  ProductId: Integer DEFAULT 0,
+  /** ISO language code (e.g., en, nl, de, fr). */
+  LanguageCode: String,
+  /** Translated product name. */
+  Name: String,
+  /** Translated product description. */
+  Description: String
+);
+
+GRANT Shop.ShopUser ON Shop.ProductTranslations (CREATE, DELETE, READ *, WRITE *);
+/
+
+-- MARK: TAGGING SYSTEM
+
+/**
+ * Tag type
+ *
+ * Defines a tag type for product categorization.
+ * Examples: Color, Size, Material. Products are associated
+ * with TagValues, not directly with Tags.
+ *
+ * @since 1.0.0
+ * @see Shop.TagValue
+ */
+@Position(820, 640)
+CREATE PERSISTENT ENTITY Shop.Tag (
+  /** Unique identifier for the tag type. */
+  TagId: Long NOT NULL UNIQUE DEFAULT 0,
+  /** Tag type name (e.g., Color, Size, Material). Must be unique. */
+  Name: String UNIQUE,
+  /** Description of what this tag type represents. */
+  Description: String
+)
+INDEX (TagId);
+
+GRANT Shop.ShopUser ON Shop.Tag (DELETE, READ *, WRITE *);
+/
+
+/**
+ * Tag value
+ *
+ * Represents a specific value for a tag type. Examples: Red (for Color),
+ * Large (for Size). Products link to TagValues via a many-to-many relationship.
+ *
+ * @since 1.0.0
+ * @see Shop.Tag
+ * @see Shop.Product
+ */
+@Position(980, 490)
+CREATE PERSISTENT ENTITY Shop.TagValue (
+  /** Unique identifier for the tag value. */
+  TagValueId: Long NOT NULL UNIQUE DEFAULT 0,
+  /** Reference to the parent Tag type. */
+  TagId: Long NOT NULL DEFAULT 0,
+  /** The actual tag value (e.g., Red, Large, Cotton). */
+  Value: String NOT NULL,
+  /** Optional description of this tag value. */
+  Description: String
+)
+INDEX (TagValueId)
+INDEX (TagId);
+
+GRANT Shop.ShopUser ON Shop.TagValue (DELETE, READ *, WRITE *);
+/
+
+-- MARK: PAYMENT AND DELIVERY ENTITIES
+
+/**
+ * Payment transaction
+ *
+ * Records payment transactions for orders. Stores payment timestamp
+ * and payment method reference.
+ *
+ * @since 1.0.0
+ * @see Shop.Order
+ */
+@Position(220, 440)
+CREATE PERSISTENT ENTITY Shop.Payment (
+  /** Unique identifier for the payment transaction. */
+  PaymentId: Long NOT NULL UNIQUE DEFAULT 0,
+  /** Date and time when the payment was processed. */
+  PaymentTimestamp: DateTime,
+  /** Masked or tokenized credit card number for reference. */
+  CreditcardNumber: String
+)
+INDEX (PaymentId);
+
+GRANT Shop.ShopUser ON Shop.Payment (DELETE, READ *, WRITE *);
+/
+
+/**
+ * Delivery status
+ *
+ * Tracks delivery progress for an order. Multiple status records
+ * per order create a delivery history timeline.
+ *
+ * @since 1.0.0
+ * @see Shop.Order
+ */
+@Position(220, 310)
+CREATE PERSISTENT ENTITY Shop.DeliveryStatus (
+  /** Unique identifier for the delivery status record. */
+  DeliveryStatusId: Long NOT NULL UNIQUE DEFAULT 0,
+  /** Current delivery status (Pending, Shipped, InTransit, Delivered, etc.). */
+  Status: Enumeration(Shop.DeliveryStatusEnum),
+  /** Date and time when this status was recorded. */
+  DeliveryStatusTimestamp: DateTime,
+  /** Current location or tracking information. */
+  Location: String
+);
+
+GRANT Shop.ShopUser ON Shop.DeliveryStatus (DELETE, READ *, WRITE *);
+/
+
+-- MARK: VIEW ENTITIES
+
+/**
+ * Task queue view
+ *
+ * Unified view combining queued and processed tasks.
+ * Provides a single view for monitoring all task queue activity.
+ *
+ * @since 1.0.0
+ */
+@Position(2340, 410)
+CREATE VIEW ENTITY Shop.TaskQueue (
+  /** Sequence number of the task. */
+  TaskSequence: Long,
+  /** Current status of the task. */
+  Status: Enumeration(System.QueueTaskStatus),
+  /** Identifier of the queue. */
+  QueueId: String,
+  /** Name of the queue. */
+  QueueName: String,
+  /** Name of the microflow being executed. */
+  MicroflowName: String,
+  /** When the task was created. */
+  Created: DateTime,
+  /** Scheduled start time. */
+  StartedAt: DateTime,
+  /** Actual start time. */
+  Started: DateTime,
+  /** Completion time. */
+  Finished: DateTime,
+  /** Duration in seconds. */
+  Duration: Long
+) AS (
+  from System.ProcessedQueueTask as pqt
+  select
+    pqt.Sequence as TaskSequence
+  , pqt.Status as Status
+  , pqt.QueueId as QueueId
+  , pqt.QueueName as QueueName
+  , pqt.MicroflowName as MicroflowName
+  , pqt.Created as Created
+  , pqt.StartAt as StartedAt
+  , pqt.Started as Started
+  , pqt.Finished as Finished
+  , pqt.Duration as Duration
+  union
+  from System.QueuedTask as qt
+  select
+    qt.Sequence as TaskSequence
+  , qt.Status as Status
+  , qt.QueueId as QueueId
+  , qt.QueueName as QueueName
+  , qt.MicroflowName as MicroflowName
+  , qt.Created as Created
+  , qt.StartAt as StartedAt
+  , qt.Started as Started
+  , '[%CurrentDateTime%]' as Finished
+  , datediff(SECOND, qt.Started, '[%CurrentDateTime%]') as Duration
+);
+
+GRANT Shop.ShopUser ON Shop.TaskQueue (READ *, WRITE *);
+/
+
+/**
+ * EU customer count by country
+ *
+ * Aggregates customer counts by EU country based on billing addresses.
+ * Useful for geographic distribution analysis and reporting.
+ *
+ * @since 1.0.0
+ */
+@Position(820, 840)
+CREATE VIEW ENTITY Shop.OrderTotalsVE (
+  /** EU country name. */
+  Country: String,
+  /** Number of customers with billing addresses in this country. */
+  CustomerCount: Integer
+) AS (
+  from Shop.Address as a
+    inner join Shop.BillingAddress_Customer/Shop.Customer as c
+  where a.Country in ('Austria', 'Belgium', 'Bulgaria', 'Croatia', 'Cyprus', 'Czech Republic', 'Denmark', 'Estonia', 'Finland', 'France', 'Germany', 'Greece', 'Hungary', 'Ireland', 'Italy', 'Latvia', 'Lithuania', 'Luxembourg', 'Malta', 'Netherlands', 'Poland', 'Portugal', 'Romania', 'Slovakia', 'Slovenia', 'Spain', 'Sweden')
+  group by a.Country
+  select a.Country as Country,
+         count(c.CustomerId) as CustomerCount
+  order by CustomerCount desc limit 1000
+);
+/
+
+/**
+ * Key European markets customer count
+ *
+ * Customer count for key European markets (Netherlands, Germany, Italy)
+ * based on delivery addresses.
+ *
+ * @since 1.0.0
+ */
+@Position(580, 840)
+CREATE VIEW ENTITY Shop.EuropeanCountryCustomerCountVe (
+  /** Country name (Netherlands, Germany, or Italy). */
+  Country: String,
+  /** Number of customers with delivery addresses in this country. */
+  CustomerCount: Integer
+) AS (
+  SELECT
+    a.Country AS Country,
+    COUNT(c.CustomerId) AS CustomerCount
+  FROM
+    Shop.Customer AS c
+    INNER JOIN c/Shop.DeliveryAddress_Customer/Shop.Address AS a
+  WHERE
+    a.Country = 'Netherlands'
+    OR a.Country = 'Germany'
+    OR a.Country = 'Italy'
+  GROUP BY
+    a.Country
+);
+/
+
+-- MARK: ASSOCIATIONS
+
+/**
+ * Order line to order
+ *
+ * Links order lines to their parent order.
+ * Each order line belongs to exactly one order.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION Shop.OrderLine_Order
+FROM Shop.OrderLine TO Shop.Order
+TYPE Reference
+OWNER Default
+DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+/
+
+/**
+ * Order to customer
+ *
+ * Links orders to the customer who placed them.
+ * Each order is placed by one customer.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION Shop.Order_Customer
+FROM Shop.Order TO Shop.Customer
+TYPE Reference
+OWNER Default
+DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+/
+
+/**
+ * Order line to product
+ *
+ * Links order lines to the purchased product.
+ * Each order line references one product.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION Shop.OrderLine_Product
+FROM Shop.OrderLine TO Shop.Product
+TYPE Reference
+OWNER Default
+DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+/
+
+/**
+ * Payment to order
+ *
+ * Links payment transactions to orders.
+ * Each payment is associated with one order.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION Shop.Payment_Order
+FROM Shop.Payment TO Shop.Order
+TYPE Reference
+OWNER Both
+DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+/
+
+/**
+ * Delivery status to order
+ *
+ * Links delivery status updates to orders.
+ * Multiple status updates can exist per order (tracking history).
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION Shop.DeliveryStatus_Order
+FROM Shop.DeliveryStatus TO Shop.Order
+TYPE Reference
+OWNER Default
+DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+/
+
+/**
+ * Price to product
+ *
+ * Links prices to products.
+ * Multiple prices per product for historical/scheduled pricing.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION Shop.Price_Product
+FROM Shop.Price TO Shop.Product
+TYPE Reference
+OWNER Default
+DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+/
+
+/**
+ * Billing address to customer
+ *
+ * Links billing addresses to customers.
+ * Customer's billing address.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION Shop.BillingAddress_Customer
+FROM Shop.Address TO Shop.Customer
+TYPE Reference
+OWNER Both
+DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+/
+
+/**
+ * Delivery address to customer
+ *
+ * Links delivery addresses to customers.
+ * Customer's delivery address (can differ from billing).
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION Shop.DeliveryAddress_Customer
+FROM Shop.Address TO Shop.Customer
+TYPE Reference
+OWNER Both
+DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+/
+
+/**
+ * Product to tag values
+ *
+ * Links products to their tag values.
+ * Products can have multiple tag values (e.g., Color: Red, Size: Large).
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION Shop.Product_TagValue
+FROM Shop.Product TO Shop.TagValue
+TYPE ReferenceSet
+OWNER Default
+DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+/
+
+/**
+ * Tag value to tag
+ *
+ * Links tag values to their parent tag type.
+ * Each tag value belongs to one tag type.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION Shop.TagValue_Tag
+FROM Shop.TagValue TO Shop.Tag
+TYPE Reference
+OWNER Default
+DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+/
+
+/**
+ * Product to category
+ *
+ * Links products to their category.
+ * Each product belongs to one category.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION Shop.Product_Category
+FROM Shop.Product TO Shop.Category
+TYPE Reference
+OWNER Default
+DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+/
+
+/**
+ * Product translations to product
+ *
+ * Links translations to their product.
+ * Multiple translations per product for i18n support.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION Shop.ProductTranslations_Product
+FROM Shop.ProductTranslations TO Shop.Product
+TYPE Reference
+OWNER Default
+DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+/

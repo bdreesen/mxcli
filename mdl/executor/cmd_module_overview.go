@@ -1,0 +1,226 @@
+// SPDX-License-Identifier: Apache-2.0
+
+package executor
+
+import (
+	"encoding/json"
+	"fmt"
+)
+
+// moduleOverviewData is the JSON output schema for the module overview ELK diagram.
+type moduleOverviewData struct {
+	Format  string               `json:"format"`
+	Type    string               `json:"type"`
+	Modules []moduleOverviewNode `json:"modules"`
+	Edges   []moduleOverviewEdge `json:"edges"`
+}
+
+type moduleOverviewNode struct {
+	ID             string `json:"id"`
+	Name           string `json:"name"`
+	IsSystem       bool   `json:"isSystem"`
+	EntityCount    int    `json:"entityCount"`
+	MicroflowCount int    `json:"microflowCount"`
+	PageCount      int    `json:"pageCount"`
+}
+
+type moduleOverviewEdge struct {
+	Source string         `json:"source"`
+	Target string         `json:"target"`
+	Count  int            `json:"count"`
+	Kinds  map[string]int `json:"kinds"`
+}
+
+// systemModuleNames is the set of well-known system/marketplace modules.
+var systemModuleNames = map[string]bool{
+	"System":               true,
+	"Administration":       true,
+	"Atlas_Core":           true,
+	"Atlas_Web_Content":    true,
+	"Atlas_Native_Content": true,
+	"MxModelReflection":    true,
+	"CommunityCommons":     true,
+}
+
+// ModuleOverview generates a JSON graph of all project modules and their
+// cross-module dependencies, suitable for rendering with ELK.js.
+func (e *Executor) ModuleOverview() error {
+	if e.reader == nil {
+		return fmt.Errorf("not connected to a project")
+	}
+
+	// Ensure catalog is built with full mode for refs
+	if err := e.ensureCatalog(true); err != nil {
+		return fmt.Errorf("failed to build catalog: %w", err)
+	}
+
+	// Get all module names
+	moduleResult, err := e.catalog.Query("SELECT Name FROM modules")
+	if err != nil {
+		return fmt.Errorf("failed to query modules: %w", err)
+	}
+
+	moduleNames := make(map[string]bool)
+	for _, row := range moduleResult.Rows {
+		if name, ok := row[0].(string); ok {
+			moduleNames[name] = true
+		}
+	}
+
+	// Get entity counts per module
+	entityCounts := make(map[string]int)
+	result, err := e.catalog.Query("SELECT ModuleName, COUNT(*) FROM entities GROUP BY ModuleName")
+	if err == nil {
+		for _, row := range result.Rows {
+			if name, ok := row[0].(string); ok {
+				entityCounts[name] = toInt(row[1])
+			}
+		}
+	}
+
+	// Get microflow counts per module
+	mfCounts := make(map[string]int)
+	result, err = e.catalog.Query("SELECT ModuleName, COUNT(*) FROM microflows GROUP BY ModuleName")
+	if err == nil {
+		for _, row := range result.Rows {
+			if name, ok := row[0].(string); ok {
+				mfCounts[name] = toInt(row[1])
+			}
+		}
+	}
+
+	// Get page counts per module
+	pageCounts := make(map[string]int)
+	result, err = e.catalog.Query("SELECT ModuleName, COUNT(*) FROM pages GROUP BY ModuleName")
+	if err == nil {
+		for _, row := range result.Rows {
+			if name, ok := row[0].(string); ok {
+				pageCounts[name] = toInt(row[1])
+			}
+		}
+	}
+
+	// Build module nodes
+	var modules []moduleOverviewNode
+	for name := range moduleNames {
+		modules = append(modules, moduleOverviewNode{
+			ID:             name,
+			Name:           name,
+			IsSystem:       systemModuleNames[name],
+			EntityCount:    entityCounts[name],
+			MicroflowCount: mfCounts[name],
+			PageCount:      pageCounts[name],
+		})
+	}
+
+	// Sort modules alphabetically for deterministic output
+	sortModuleNodes(modules)
+
+	// Query cross-module dependency edges from REFS
+	edgeResult, err := e.catalog.Query(`
+		SELECT
+			SUBSTR(SourceName, 1, INSTR(SourceName, '.') - 1) as SourceModule,
+			SUBSTR(TargetName, 1, INSTR(TargetName, '.') - 1) as TargetModule,
+			RefKind,
+			COUNT(*) as RefCount
+		FROM refs
+		WHERE INSTR(SourceName, '.') > 0 AND INSTR(TargetName, '.') > 0
+		GROUP BY SourceModule, TargetModule, RefKind
+		HAVING SourceModule != TargetModule
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to query refs: %w", err)
+	}
+
+	// Aggregate edges by source/target pair
+	type edgeKey struct {
+		source, target string
+	}
+	edgeMap := make(map[edgeKey]*moduleOverviewEdge)
+	for _, row := range edgeResult.Rows {
+		src, _ := row[0].(string)
+		tgt, _ := row[1].(string)
+		kind, _ := row[2].(string)
+		count := toInt(row[3])
+
+		if src == "" || tgt == "" {
+			continue
+		}
+
+		key := edgeKey{src, tgt}
+		edge, ok := edgeMap[key]
+		if !ok {
+			edge = &moduleOverviewEdge{
+				Source: src,
+				Target: tgt,
+				Kinds:  make(map[string]int),
+			}
+			edgeMap[key] = edge
+		}
+		edge.Kinds[kind] += count
+		edge.Count += count
+	}
+
+	// Collect edges into slice, filtering out edges referencing unknown modules
+	var edges []moduleOverviewEdge
+	for _, edge := range edgeMap {
+		if moduleNames[edge.Source] && moduleNames[edge.Target] {
+			edges = append(edges, *edge)
+		}
+	}
+
+	// Sort edges for deterministic output
+	sortModuleEdges(edges)
+
+	data := moduleOverviewData{
+		Format:  "elk",
+		Type:    "module-overview",
+		Modules: modules,
+		Edges:   edges,
+	}
+
+	out, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal JSON: %w", err)
+	}
+
+	fmt.Fprint(e.output, string(out))
+	return nil
+}
+
+// toInt converts an interface{} value to int.
+func toInt(v any) int {
+	switch n := v.(type) {
+	case int64:
+		return int(n)
+	case float64:
+		return int(n)
+	case int:
+		return n
+	default:
+		return 0
+	}
+}
+
+// sortModuleNodes sorts module nodes alphabetically by name.
+func sortModuleNodes(nodes []moduleOverviewNode) {
+	for i := 0; i < len(nodes)-1; i++ {
+		for j := i + 1; j < len(nodes); j++ {
+			if nodes[i].Name > nodes[j].Name {
+				nodes[i], nodes[j] = nodes[j], nodes[i]
+			}
+		}
+	}
+}
+
+// sortModuleEdges sorts edges by source then target.
+func sortModuleEdges(edges []moduleOverviewEdge) {
+	for i := 0; i < len(edges)-1; i++ {
+		for j := i + 1; j < len(edges); j++ {
+			if edges[i].Source > edges[j].Source ||
+				(edges[i].Source == edges[j].Source && edges[i].Target > edges[j].Target) {
+				edges[i], edges[j] = edges[j], edges[i]
+			}
+		}
+	}
+}

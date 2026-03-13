@@ -1,0 +1,164 @@
+-- ============================================================================
+-- CRM Domain Model
+-- ============================================================================
+-- Customer Relationship Management module for managing customers,
+-- their contacts, and addresses. Lightweight CRM for a furniture company.
+-- ============================================================================
+
+-- MARK: MODULE
+
+/**
+ * Customer Relationship Management module
+ *
+ * Manages customer profiles, contact persons, and addresses.
+ * Supports both company and individual customers.
+ *
+ * @since 1.0.0
+ */
+CREATE MODULE CRM;
+
+-- MARK: ENUMERATIONS
+
+/**
+ * Customer type classification
+ *
+ * Distinguishes between company and individual customers
+ * for billing and communication purposes.
+ *
+ * @since 1.0.0
+ */
+CREATE ENUMERATION CRM.CustomerType (
+  Company 'Company',
+  Individual 'Individual'
+);
+
+/**
+ * Address type classification
+ *
+ * Categorizes customer addresses for shipping and billing.
+ *
+ * @since 1.0.0
+ */
+CREATE ENUMERATION CRM.AddressType (
+  Billing 'Billing',
+  Delivery 'Delivery',
+  BillingAndDelivery 'Billing and Delivery'
+);
+
+-- MARK: ENTITIES
+
+/**
+ * Customer entity
+ *
+ * Core customer record. Can represent a company or individual.
+ * Links to contacts and addresses for communication and delivery.
+ *
+ * @since 1.0.0
+ * @see CRM.CustomerContact
+ * @see CRM.CustomerAddress
+ */
+@Position(50, 50)
+CREATE PERSISTENT ENTITY CRM.Customer (
+  /** Unique customer number for reference */
+  CustomerNumber: AutoNumber DEFAULT 1,
+  /** Display name (company name or full name) */
+  CustomerName: String(200) NOT NULL ERROR 'Customer name is required',
+  /** Company or individual */
+  CustomerType: Enumeration(CRM.CustomerType) NOT NULL ERROR 'Customer type is required',
+  /** Primary email address */
+  Email: String(200),
+  /** Primary phone number */
+  Phone: String(50),
+  /** General notes about this customer */
+  Notes: String(2000),
+  /** Whether this customer is currently active */
+  IsActive: Boolean DEFAULT true
+)
+INDEX (CustomerType)
+INDEX (IsActive);
+
+/**
+ * Customer contact entity
+ *
+ * Contact persons at a customer company. For individual customers,
+ * this may be the customer themselves or an alternate contact.
+ *
+ * @since 1.0.0
+ * @see CRM.Customer
+ */
+@Position(350, 50)
+CREATE PERSISTENT ENTITY CRM.CustomerContact (
+  /** Contact's first name */
+  FirstName: String(100) NOT NULL ERROR 'First name is required',
+  /** Contact's last name */
+  LastName: String(100) NOT NULL ERROR 'Last name is required',
+  /** Job title or role at the company */
+  JobTitle: String(100),
+  /** Direct email address */
+  Email: String(200),
+  /** Direct phone number */
+  Phone: String(50),
+  /** Mobile phone number */
+  MobilePhone: String(50),
+  /** Whether this is the primary contact */
+  IsPrimaryContact: Boolean DEFAULT false
+);
+
+/**
+ * Customer address entity
+ *
+ * Physical addresses for a customer, used for billing and delivery.
+ * A customer can have multiple addresses of different types.
+ *
+ * @since 1.0.0
+ * @see CRM.Customer
+ */
+@Position(350, 250)
+CREATE PERSISTENT ENTITY CRM.CustomerAddress (
+  /** Address label (e.g. 'Main Office', 'Warehouse') */
+  AddressLabel: String(100),
+  /** Street and house number */
+  Street: String(200) NOT NULL ERROR 'Street is required',
+  /** City */
+  City: String(100) NOT NULL ERROR 'City is required',
+  /** State or province */
+  StateProvince: String(100),
+  /** Postal or zip code */
+  PostalCode: String(20),
+  /** Country */
+  Country: String(100) NOT NULL ERROR 'Country is required',
+  /** Type of address */
+  AddressType: Enumeration(CRM.AddressType) NOT NULL ERROR 'Address type is required',
+  /** Whether this is the default address for its type */
+  IsDefault: Boolean DEFAULT false
+);
+
+-- MARK: ASSOCIATIONS
+
+/**
+ * Links contact persons to their customer
+ *
+ * Each contact belongs to exactly one customer.
+ * A customer can have multiple contacts.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION CRM.CustomerContact_Customer
+  FROM CRM.CustomerContact TO CRM.Customer
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_AND_REFERENCES;
+
+/**
+ * Links addresses to their customer
+ *
+ * Each address belongs to exactly one customer.
+ * A customer can have multiple addresses.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION CRM.CustomerAddress_Customer
+  FROM CRM.CustomerAddress TO CRM.Customer
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_AND_REFERENCES;

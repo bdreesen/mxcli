@@ -1,0 +1,422 @@
+// SPDX-License-Identifier: Apache-2.0
+
+package visitor
+
+import (
+	"strconv"
+	"strings"
+
+	"github.com/mendixlabs/mxcli/mdl/ast"
+	"github.com/mendixlabs/mxcli/mdl/grammar/parser"
+)
+
+// ============================================================================
+// OData CREATE Statements
+// ============================================================================
+
+// ExitCreateODataClientStatement handles CREATE ODATA CLIENT Module.Name (...).
+func (b *Builder) ExitCreateODataClientStatement(ctx *parser.CreateODataClientStatementContext) {
+	stmt := &ast.CreateODataClientStmt{
+		Name: buildQualifiedName(ctx.QualifiedName()),
+	}
+
+	// Parse property assignments
+	for _, propCtx := range ctx.AllOdataPropertyAssignment() {
+		prop := propCtx.(*parser.OdataPropertyAssignmentContext)
+		name := identifierOrKeywordText(prop.IdentifierOrKeyword())
+		value := odataAssignmentValueText(prop)
+
+		switch strings.ToLower(name) {
+		case "version":
+			stmt.Version = value
+		case "odataversion":
+			stmt.ODataVersion = value
+		case "metadataurl":
+			stmt.MetadataUrl = value
+		case "timeout":
+			stmt.TimeoutExpression = value
+		case "proxytype":
+			stmt.ProxyType = value
+		case "description":
+			stmt.Description = value
+		case "serviceurl":
+			stmt.ServiceUrl = value
+		case "useauthentication":
+			stmt.UseAuthentication = strings.EqualFold(value, "true") || strings.EqualFold(value, "yes")
+		case "httpusername":
+			stmt.HttpUsername = value
+		case "httppassword":
+			stmt.HttpPassword = value
+		case "clientcertificate":
+			stmt.ClientCertificate = value
+		case "configurationmicroflow":
+			stmt.ConfigurationMicroflow = value
+		case "errorhandlingmicroflow":
+			stmt.ErrorHandlingMicroflow = value
+		case "proxyhost":
+			stmt.ProxyHost = value
+		case "proxyport":
+			stmt.ProxyPort = value
+		case "proxyusername":
+			stmt.ProxyUsername = value
+		case "proxypassword":
+			stmt.ProxyPassword = value
+		case "folder":
+			stmt.Folder = value
+		}
+	}
+
+	// Parse HEADERS clause
+	if headersCtx := ctx.OdataHeadersClause(); headersCtx != nil {
+		stmt.Headers = parseODataHeaders(headersCtx)
+	}
+
+	// Check for CREATE OR MODIFY
+	createStmt := findParentCreateStatement(ctx)
+	if createStmt != nil {
+		if createStmt.OR() != nil && (createStmt.MODIFY() != nil || createStmt.REPLACE() != nil) {
+			stmt.CreateOrModify = true
+		}
+	}
+	stmt.Documentation = findDocCommentText(ctx)
+
+	b.statements = append(b.statements, stmt)
+}
+
+// ExitCreateODataServiceStatement handles CREATE ODATA SERVICE Module.Name (...) AUTHENTICATION ... { ... }.
+func (b *Builder) ExitCreateODataServiceStatement(ctx *parser.CreateODataServiceStatementContext) {
+	stmt := &ast.CreateODataServiceStmt{
+		Name: buildQualifiedName(ctx.QualifiedName()),
+	}
+
+	// Parse property assignments
+	for _, propCtx := range ctx.AllOdataPropertyAssignment() {
+		prop := propCtx.(*parser.OdataPropertyAssignmentContext)
+		name := identifierOrKeywordText(prop.IdentifierOrKeyword())
+		value := odataAssignmentValueText(prop)
+
+		switch strings.ToLower(name) {
+		case "path":
+			stmt.Path = value
+		case "version":
+			stmt.Version = value
+		case "odataversion":
+			stmt.ODataVersion = value
+		case "namespace":
+			stmt.Namespace = value
+		case "servicename":
+			stmt.ServiceName = value
+		case "summary":
+			stmt.Summary = value
+		case "description":
+			stmt.Description = value
+		case "publishassociations":
+			stmt.PublishAssociations = strings.EqualFold(value, "true") || strings.EqualFold(value, "yes")
+		case "folder":
+			stmt.Folder = value
+		}
+	}
+
+	// Parse authentication clause
+	if authCtx := ctx.OdataAuthenticationClause(); authCtx != nil {
+		stmt.AuthenticationTypes = parseODataAuthTypes(authCtx)
+	}
+
+	// Parse PUBLISH ENTITY blocks
+	for _, blockCtx := range ctx.AllPublishEntityBlock() {
+		entity := parsePublishEntityBlock(blockCtx)
+		if entity != nil {
+			stmt.Entities = append(stmt.Entities, entity)
+		}
+	}
+
+	// Check for CREATE OR MODIFY
+	createStmt := findParentCreateStatement(ctx)
+	if createStmt != nil {
+		if createStmt.OR() != nil && (createStmt.MODIFY() != nil || createStmt.REPLACE() != nil) {
+			stmt.CreateOrModify = true
+		}
+	}
+	stmt.Documentation = findDocCommentText(ctx)
+
+	b.statements = append(b.statements, stmt)
+}
+
+// ============================================================================
+// External Entity Statements
+// ============================================================================
+
+// ExitCreateExternalEntityStatement handles CREATE [OR MODIFY] EXTERNAL ENTITY Module.Name FROM ODATA CLIENT ... (...) (...);
+func (b *Builder) ExitCreateExternalEntityStatement(ctx *parser.CreateExternalEntityStatementContext) {
+	names := ctx.AllQualifiedName()
+	if len(names) < 2 {
+		return
+	}
+
+	stmt := &ast.CreateExternalEntityStmt{
+		Name:       buildQualifiedName(names[0]),
+		ServiceRef: buildQualifiedName(names[1]),
+	}
+
+	// Parse OData property assignments (EntitySet, RemoteName, Countable, etc.)
+	for _, propCtx := range ctx.AllOdataPropertyAssignment() {
+		prop := propCtx.(*parser.OdataPropertyAssignmentContext)
+		name := identifierOrKeywordText(prop.IdentifierOrKeyword())
+		value := odataAssignmentValueText(prop)
+
+		switch strings.ToLower(name) {
+		case "entityset":
+			stmt.EntitySet = value
+		case "remotename":
+			stmt.RemoteName = value
+		case "countable":
+			stmt.Countable = strings.EqualFold(value, "true") || strings.EqualFold(value, "yes")
+		case "creatable":
+			stmt.Creatable = strings.EqualFold(value, "true") || strings.EqualFold(value, "yes")
+		case "deletable":
+			stmt.Deletable = strings.EqualFold(value, "true") || strings.EqualFold(value, "yes")
+		case "updatable":
+			stmt.Updatable = strings.EqualFold(value, "true") || strings.EqualFold(value, "yes")
+		}
+	}
+
+	// Parse attribute definitions (second optional parenthesized block)
+	if attrList := ctx.AttributeDefinitionList(); attrList != nil {
+		stmt.Attributes = buildAttributes(attrList, b)
+	}
+
+	// Check for CREATE OR MODIFY
+	createStmt := findParentCreateStatement(ctx)
+	if createStmt != nil {
+		if createStmt.OR() != nil && (createStmt.MODIFY() != nil || createStmt.REPLACE() != nil) {
+			stmt.CreateOrModify = true
+		}
+	}
+	stmt.Documentation = findDocCommentText(ctx)
+
+	b.statements = append(b.statements, stmt)
+}
+
+// ============================================================================
+// OData ALTER / DROP Statements
+// ============================================================================
+
+// ExitAlterStatement handles ALTER statements that include OData alternatives.
+// Other ALTER alternatives (ENTITY, ASSOCIATION, etc.) are handled by sub-rule listeners.
+func (b *Builder) ExitAlterStatement(ctx *parser.AlterStatementContext) {
+	// Handle ALTER PAGE / ALTER SNIPPET
+	if (ctx.PAGE() != nil || ctx.SNIPPET() != nil) && len(ctx.AllAlterPageOperation()) > 0 {
+		b.exitAlterPageStatement(ctx)
+		return
+	}
+
+	// Handle ALTER STYLING
+	if ctx.STYLING() != nil {
+		b.exitAlterStylingStatement(ctx)
+		return
+	}
+
+	if ctx.ODATA() == nil {
+		return // Not an OData alter - handled elsewhere
+	}
+
+	qn := ctx.QualifiedName()
+	if qn == nil {
+		return
+	}
+
+	changes := make(map[string]any)
+	for _, propCtx := range ctx.AllOdataAlterAssignment() {
+		prop := propCtx.(*parser.OdataAlterAssignmentContext)
+		name := identifierOrKeywordText(prop.IdentifierOrKeyword())
+		val := prop.OdataPropertyValue()
+		if val != nil {
+			changes[name] = odataValueText(val.(*parser.OdataPropertyValueContext))
+		}
+	}
+
+	if ctx.CLIENT() != nil {
+		b.statements = append(b.statements, &ast.AlterODataClientStmt{
+			Name:    buildQualifiedName(qn),
+			Changes: changes,
+		})
+	} else if ctx.SERVICE() != nil {
+		b.statements = append(b.statements, &ast.AlterODataServiceStmt{
+			Name:    buildQualifiedName(qn),
+			Changes: changes,
+		})
+	}
+}
+
+// ============================================================================
+// Helpers
+// ============================================================================
+
+// odataValueText extracts the string value from an OData property value context.
+func odataValueText(val *parser.OdataPropertyValueContext) string {
+	if sl := val.STRING_LITERAL(); sl != nil {
+		return unquoteString(sl.GetText())
+	}
+	if nl := val.NUMBER_LITERAL(); nl != nil {
+		return nl.GetText()
+	}
+	if val.TRUE() != nil {
+		return "true"
+	}
+	if val.FALSE() != nil {
+		return "false"
+	}
+	if val.MICROFLOW() != nil {
+		if qn := val.QualifiedName(); qn != nil {
+			return "MICROFLOW " + getQualifiedNameText(qn)
+		}
+		return "MICROFLOW"
+	}
+	if qn := val.QualifiedName(); qn != nil {
+		return getQualifiedNameText(qn)
+	}
+	return ""
+}
+
+// odataAssignmentValueText extracts the string value from an OData property assignment.
+func odataAssignmentValueText(prop *parser.OdataPropertyAssignmentContext) string {
+	valCtx := prop.OdataPropertyValue()
+	if valCtx == nil {
+		return ""
+	}
+	return odataValueText(valCtx.(*parser.OdataPropertyValueContext))
+}
+
+// parseODataAuthTypes extracts authentication types from the clause.
+func parseODataAuthTypes(authCtx parser.IOdataAuthenticationClauseContext) []string {
+	clause := authCtx.(*parser.OdataAuthenticationClauseContext)
+	var types []string
+
+	for _, atCtx := range clause.AllOdataAuthType() {
+		at := atCtx.(*parser.OdataAuthTypeContext)
+		if at.BASIC() != nil {
+			types = append(types, "Basic")
+		} else if at.SESSION() != nil {
+			types = append(types, "Session")
+		} else if at.GUEST() != nil {
+			types = append(types, "Guest")
+		} else if at.MICROFLOW() != nil {
+			types = append(types, "Microflow")
+		} else if at.IDENTIFIER() != nil {
+			types = append(types, at.IDENTIFIER().GetText())
+		}
+	}
+
+	return types
+}
+
+// parsePublishEntityBlock converts a PUBLISH ENTITY parse context into an AST node.
+func parsePublishEntityBlock(ctx parser.IPublishEntityBlockContext) *ast.PublishedEntityDef {
+	block := ctx.(*parser.PublishEntityBlockContext)
+
+	entity := &ast.PublishedEntityDef{
+		Entity: buildQualifiedName(block.QualifiedName()),
+	}
+
+	// Optional AS 'ExposedName'
+	if sl := block.STRING_LITERAL(); sl != nil {
+		entity.ExposedName = unquoteString(sl.GetText())
+	}
+
+	// Parse entity-level properties (ReadMode, InsertMode, etc.)
+	for _, propCtx := range block.AllOdataPropertyAssignment() {
+		prop := propCtx.(*parser.OdataPropertyAssignmentContext)
+		name := identifierOrKeywordText(prop.IdentifierOrKeyword())
+		value := odataAssignmentValueText(prop)
+
+		switch strings.ToLower(name) {
+		case "readmode":
+			entity.ReadMode = value
+		case "insertmode":
+			entity.InsertMode = value
+		case "updatemode":
+			entity.UpdateMode = value
+		case "deletemode":
+			entity.DeleteMode = value
+		case "usepaging":
+			entity.UsePaging = strings.EqualFold(value, "true") || strings.EqualFold(value, "yes")
+		case "pagesize":
+			if n, err := strconv.Atoi(value); err == nil {
+				entity.PageSize = n
+			}
+		}
+	}
+
+	// Parse EXPOSE clause
+	if exposeCtx := block.ExposeClause(); exposeCtx != nil {
+		entity.Members = parseExposeMembers(exposeCtx)
+	}
+
+	return entity
+}
+
+// parseODataHeaders converts a HEADERS clause into header definitions.
+func parseODataHeaders(ctx parser.IOdataHeadersClauseContext) []ast.HeaderDef {
+	clause := ctx.(*parser.OdataHeadersClauseContext)
+	var headers []ast.HeaderDef
+
+	for _, entryCtx := range clause.AllOdataHeaderEntry() {
+		entry := entryCtx.(*parser.OdataHeaderEntryContext)
+		key := unquoteString(entry.STRING_LITERAL().GetText())
+		value := ""
+		if valCtx := entry.OdataPropertyValue(); valCtx != nil {
+			value = odataValueText(valCtx.(*parser.OdataPropertyValueContext))
+		}
+		headers = append(headers, ast.HeaderDef{Key: key, Value: value})
+	}
+
+	return headers
+}
+
+// parseExposeMembers converts an EXPOSE clause into AST member definitions.
+func parseExposeMembers(ctx parser.IExposeClauseContext) []*ast.PublishedMemberDef {
+	expose := ctx.(*parser.ExposeClauseContext)
+
+	// EXPOSE (*) means all members — return nil to signal wildcard
+	if expose.STAR() != nil {
+		return nil
+	}
+
+	var members []*ast.PublishedMemberDef
+	for _, memberCtx := range expose.AllExposeMember() {
+		member := memberCtx.(*parser.ExposeMemberContext)
+
+		// Guard against incomplete parse (e.g., user typing in LSP)
+		if member.IDENTIFIER() == nil {
+			continue
+		}
+
+		m := &ast.PublishedMemberDef{
+			Name: member.IDENTIFIER().GetText(),
+		}
+
+		// Optional AS 'ExposedName'
+		if sl := member.STRING_LITERAL(); sl != nil {
+			m.ExposedName = unquoteString(sl.GetText())
+		}
+
+		// Optional options (Filterable, Sortable, IsPartOfKey)
+		if opts := member.ExposeMemberOptions(); opts != nil {
+			optsCtx := opts.(*parser.ExposeMemberOptionsContext)
+			for _, id := range optsCtx.AllIDENTIFIER() {
+				switch strings.ToLower(id.GetText()) {
+				case "filterable":
+					m.Filterable = true
+				case "sortable":
+					m.Sortable = true
+				case "ispartofkey":
+					m.IsPartOfKey = true
+				}
+			}
+		}
+
+		members = append(members, m)
+	}
+
+	return members
+}

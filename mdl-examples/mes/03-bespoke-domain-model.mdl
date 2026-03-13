@@ -1,0 +1,274 @@
+-- ============================================================================
+-- Bespoke Design Domain Model
+-- ============================================================================
+-- Custom furniture design management with full approval workflow.
+-- Tracks the lifecycle from customer request through design drafts,
+-- revisions, and approval before feeding into production.
+-- ============================================================================
+
+-- MARK: MODULE
+
+/**
+ * Bespoke Design module
+ *
+ * Manages custom furniture design requests, drafts, revisions,
+ * and the design approval workflow. Supports document attachments
+ * for sketches, renderings, and technical drawings.
+ *
+ * @since 1.0.0
+ */
+CREATE MODULE BespokeDesign;
+
+-- MARK: ENUMERATIONS
+
+/**
+ * Design request lifecycle status
+ *
+ * Tracks the full lifecycle of a bespoke design request
+ * from initial submission through approval to production handoff.
+ *
+ * @since 1.0.0
+ */
+CREATE ENUMERATION BespokeDesign.DesignRequestStatus (
+  Submitted 'Submitted',
+  UnderReview 'Under Review',
+  DesignInProgress 'Design In Progress',
+  PendingApproval 'Pending Approval',
+  Approved 'Approved',
+  Rejected 'Rejected',
+  Cancelled 'Cancelled'
+);
+
+/**
+ * Furniture style preference
+ *
+ * Common furniture design styles to guide the design process.
+ *
+ * @since 1.0.0
+ */
+CREATE ENUMERATION BespokeDesign.FurnitureStyle (
+  Modern 'Modern',
+  Traditional 'Traditional',
+  Rustic 'Rustic',
+  Industrial 'Industrial',
+  Scandinavian 'Scandinavian',
+  MidCentury 'Mid-Century Modern',
+  ArtDeco 'Art Deco',
+  CustomStyle 'Custom / Other'
+);
+
+-- MARK: ENTITIES
+
+/**
+ * Design request entity
+ *
+ * A customer's request for a custom piece of furniture.
+ * Contains high-level requirements and preferences that
+ * guide the designer during the drafting phase.
+ *
+ * @since 1.0.0
+ * @see CRM.Customer
+ * @see BespokeDesign.DesignDraft
+ */
+@Position(50, 50)
+CREATE PERSISTENT ENTITY BespokeDesign.DesignRequest (
+  /** Auto-generated request number */
+  RequestNumber: AutoNumber DEFAULT 1,
+  /** Brief title for the request */
+  RequestTitle: String(200) NOT NULL ERROR 'Request title is required',
+  /** Detailed description of what the customer wants */
+  RequestDescription: String(4000),
+  /** Preferred furniture style */
+  PreferredStyle: Enumeration(BespokeDesign.FurnitureStyle),
+  /** Budget indication from the customer */
+  BudgetIndication: Decimal,
+  /** Customer's desired delivery date */
+  DesiredDeliveryDate: DateTime,
+  /** Current lifecycle status */
+  RequestStatus: Enumeration(BespokeDesign.DesignRequestStatus) NOT NULL ERROR 'Request status is required',
+  /** Date when the request was submitted */
+  SubmittedDate: DateTime,
+  /** Date when the request was last updated */
+  LastUpdatedDate: DateTime,
+  /** Internal notes (not visible to customer) */
+  InternalNotes: String(4000)
+)
+INDEX (RequestStatus);
+
+/**
+ * Design draft entity
+ *
+ * A designer's proposal/draft for a bespoke request.
+ * A request can have multiple drafts as the design evolves.
+ * Contains the proposed specifications and pricing.
+ *
+ * @since 1.0.0
+ * @see BespokeDesign.DesignRequest
+ * @see BespokeDesign.DesignRevision
+ */
+@Position(350, 50)
+CREATE PERSISTENT ENTITY BespokeDesign.DesignDraft (
+  /** Draft version number */
+  VersionNumber: Integer NOT NULL ERROR 'Version number is required' DEFAULT 1,
+  /** Draft title or summary */
+  DraftTitle: String(200) NOT NULL ERROR 'Draft title is required',
+  /** Detailed design description */
+  DesignDescription: String(4000),
+  /** Proposed price for this design */
+  ProposedPrice: Decimal,
+  /** Estimated production time in days */
+  EstimatedProductionDays: Integer,
+  /** Whether this is the active/current draft */
+  IsCurrentDraft: Boolean DEFAULT true,
+  /** Date this draft was created */
+  CreatedDate: DateTime,
+  /** Designer's notes */
+  DesignerNotes: String(4000)
+);
+
+/**
+ * Design specification entity
+ *
+ * Detailed technical specifications for a design draft.
+ * Captures dimensions, materials, finishes, and other
+ * manufacturing-relevant details.
+ *
+ * @since 1.0.0
+ * @see BespokeDesign.DesignDraft
+ */
+@Position(350, 250)
+CREATE PERSISTENT ENTITY BespokeDesign.DesignSpecification (
+  /** Overall width in millimeters */
+  WidthMM: Integer,
+  /** Overall height in millimeters */
+  HeightMM: Integer,
+  /** Overall depth in millimeters */
+  DepthMM: Integer,
+  /** Primary wood type */
+  PrimaryWoodType: String(100),
+  /** Secondary wood type (if applicable) */
+  SecondaryWoodType: String(100),
+  /** Finish specification */
+  FinishDescription: String(500),
+  /** Upholstery fabric (if applicable) */
+  UpholsteryFabric: String(200),
+  /** Hardware specification (handles, hinges, etc.) */
+  HardwareDescription: String(500),
+  /** Additional technical notes */
+  TechnicalNotes: String(4000),
+  /** Estimated weight in kilograms */
+  EstimatedWeightKg: Decimal
+);
+
+/**
+ * Design revision entity
+ *
+ * Tracks changes between draft versions. Records what changed,
+ * why, and who requested the change. Provides an audit trail
+ * of the design evolution.
+ *
+ * @since 1.0.0
+ * @see BespokeDesign.DesignDraft
+ */
+@Position(650, 50)
+CREATE PERSISTENT ENTITY BespokeDesign.DesignRevision (
+  /** Revision number within this draft */
+  RevisionNumber: Integer NOT NULL ERROR 'Revision number is required',
+  /** Summary of what changed */
+  ChangeDescription: String(2000) NOT NULL ERROR 'Change description is required',
+  /** Who requested this change */
+  RequestedBy: String(200),
+  /** Date of this revision */
+  RevisionDate: DateTime,
+  /** Whether this revision was accepted */
+  IsAccepted: Boolean DEFAULT false
+);
+
+/**
+ * Design document entity
+ *
+ * File attachments for design drafts: sketches, renderings,
+ * technical drawings, material samples, etc.
+ * Inherits from System.FileDocument for file storage.
+ *
+ * @since 1.0.0
+ * @see BespokeDesign.DesignDraft
+ */
+@Position(650, 250)
+CREATE PERSISTENT ENTITY BespokeDesign.DesignDocument
+EXTENDS System.FileDocument (
+  /** Document description */
+  DocumentDescription: String(500),
+  /** Document category (Sketch, Rendering, Technical Drawing, etc.) */
+  DocumentCategory: String(100),
+  /** Upload date */
+  UploadDate: DateTime
+);
+
+-- MARK: ASSOCIATIONS
+
+/**
+ * Links design request to the customer
+ *
+ * Each design request comes from one customer.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION BespokeDesign.DesignRequest_Customer
+  FROM BespokeDesign.DesignRequest TO CRM.Customer
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_BUT_KEEP_REFERENCES;
+
+/**
+ * Links design draft to its request
+ *
+ * Each draft belongs to one design request.
+ * A request can have multiple drafts.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION BespokeDesign.DesignDraft_DesignRequest
+  FROM BespokeDesign.DesignDraft TO BespokeDesign.DesignRequest
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_AND_REFERENCES;
+
+/**
+ * Links specification to its draft
+ *
+ * Each specification belongs to one draft. One-to-one relationship.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION BespokeDesign.DesignSpecification_DesignDraft
+  FROM BespokeDesign.DesignSpecification TO BespokeDesign.DesignDraft
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_AND_REFERENCES;
+
+/**
+ * Links revisions to their draft
+ *
+ * Each revision belongs to one draft.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION BespokeDesign.DesignRevision_DesignDraft
+  FROM BespokeDesign.DesignRevision TO BespokeDesign.DesignDraft
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_AND_REFERENCES;
+
+/**
+ * Links documents to their draft
+ *
+ * Each document belongs to one draft.
+ *
+ * @since 1.0.0
+ */
+CREATE ASSOCIATION BespokeDesign.DesignDocument_DesignDraft
+  FROM BespokeDesign.DesignDocument TO BespokeDesign.DesignDraft
+  TYPE Reference
+  OWNER Default
+  DELETE_BEHAVIOR DELETE_AND_REFERENCES;

@@ -1,0 +1,358 @@
+-- ############################################################################
+-- ODATA EXAMPLES
+-- ############################################################################
+--
+-- This file demonstrates the MDL syntax for OData clients (consumed services),
+-- OData services (published services), and external entities.
+--
+-- Prerequisites: Assumes a module 'OdTest' exists with some entities.
+--
+-- ############################################################################
+
+CREATE MODULE OdTest;
+
+-- Create some entities that will be published via OData
+CREATE PERSISTENT ENTITY OdTest.Customer (
+  Name: String(200),
+  Email: String(200),
+  Phone: String(50),
+  IsActive: Boolean Default True
+);
+
+CREATE PERSISTENT ENTITY OdTest.Order (
+  OrderNumber: String(50),
+  OrderDate: DateTime,
+  TotalAmount: Decimal,
+  Status: String(50)
+);
+
+CREATE ASSOCIATION OdTest.Order_Customer
+FROM OdTest.Order TO OdTest.Customer
+TYPE Reference
+OWNER Default;
+
+-- ############################################################################
+-- MARK: - Show OData Clients
+-- ############################################################################
+
+/**
+ * Level 1.1: Show all OData clients
+ * Lists all consumed OData services across all modules.
+ * Output columns: Module, QualifiedName, Version, OData, MetadataUrl, Validated
+ */
+SHOW ODATA CLIENTS;
+/
+
+/**
+ * Level 1.2: Show OData clients in a specific module
+ * Lists only consumed OData services in the specified module.
+ */
+SHOW ODATA CLIENTS IN OdTest;
+/
+
+-- ############################################################################
+-- MARK: - Describe OData Client
+-- ############################################################################
+
+-- Level 2.1: Describe an OData client
+-- Shows the full MDL definition of a consumed OData service, including
+-- version, OData version, metadata URL, timeout, and proxy settings.
+-- The output is a re-executable CREATE ODATA CLIENT statement.
+-- Usage: DESCRIBE ODATA CLIENT OdTest.ExternalAPI;
+
+-- ############################################################################
+-- MARK: - Show OData Services
+-- ############################################################################
+
+/**
+ * Level 3.1: Show all OData services
+ * Lists all published OData services across all modules.
+ * Output columns: Module, QualifiedName, Path, Version, OData, EntitySets, AuthTypes
+ */
+SHOW ODATA SERVICES;
+/
+
+/**
+ * Level 3.2: Show OData services in a specific module
+ * Lists only published OData services in the specified module.
+ */
+SHOW ODATA SERVICES IN OdTest;
+/
+
+-- ############################################################################
+-- MARK: - Describe OData Service
+-- ############################################################################
+
+-- Level 4.1: Describe an OData service
+-- Shows the full MDL definition of a published OData service, including:
+-- - Service properties (path, version, namespace, authentication)
+-- - Published entity types with EXPOSE member lists
+-- - Entity set configurations (read/insert/update/delete modes, paging)
+-- The output is a re-executable CREATE ODATA SERVICE statement.
+-- Usage: DESCRIBE ODATA SERVICE OdTest.CustomerAPI;
+
+-- ############################################################################
+-- MARK: - Show External Entities
+-- ############################################################################
+
+/**
+ * Level 5.1: Show all external entities
+ * Lists all entities backed by OData remote sources across all modules.
+ * Output columns: Module, QualifiedName, Service, EntitySet, RemoteName, Countable
+ */
+SHOW EXTERNAL ENTITIES;
+/
+
+/**
+ * Level 5.2: Show external entities in a specific module
+ * Lists only external entities in the specified module.
+ */
+SHOW EXTERNAL ENTITIES IN OdTest;
+/
+
+-- ############################################################################
+-- MARK: - Describe External Entity
+-- ############################################################################
+
+-- Level 6.1: Describe an external entity
+-- Shows the full MDL definition of an external entity, including:
+-- - The source OData client reference
+-- - Entity set and remote name mappings
+-- - Capabilities (countable, creatable, deletable, updatable)
+-- - Attributes with their types
+-- The output is a re-executable CREATE EXTERNAL ENTITY statement.
+-- Usage: DESCRIBE EXTERNAL ENTITY OdTest.RemoteCustomer;
+
+-- ############################################################################
+-- MARK: - Catalog Queries
+-- ############################################################################
+
+/**
+ * Level 7.1: Query OData clients from the catalog
+ * The CATALOG.ODATA_CLIENTS table contains all consumed OData services.
+ */
+SELECT * FROM CATALOG.ODATA_CLIENTS;
+/
+
+/**
+ * Level 7.2: Query OData services from the catalog
+ * The CATALOG.ODATA_SERVICES table contains all published OData services.
+ */
+SELECT * FROM CATALOG.ODATA_SERVICES;
+/
+
+/**
+ * Level 7.3: Find external entities via catalog
+ * External entities have IsExternal = 1 in the CATALOG.ENTITIES table.
+ */
+SELECT * FROM CATALOG.ENTITIES WHERE IsExternal = 1;
+/
+
+-- ############################################################################
+-- MARK: - Write Support (CREATE / ALTER / DROP)
+-- ############################################################################
+
+/**
+ * Level 8.1: Create a consumed OData service (client)
+ * Registers an external OData API that the application can consume.
+ */
+CREATE ODATA CLIENT OdTest.SalesforceAPI (
+  Version: '1.0',
+  ODataVersion: OData4,
+  MetadataUrl: 'https://api.salesforce.com/odata/v4/$metadata',
+  Timeout: 300,
+  ProxyType: DefaultProxy,
+  Folder: 'Integration/Salesforce'
+);
+/
+
+/**
+ * Level 8.2: Create a published OData service
+ * Exposes domain model entities as OData endpoints with authentication and CRUD modes.
+ */
+CREATE ODATA SERVICE OdTest.CustomerAPI (
+  Path: '/odata/customers',
+  Version: '1.0.0',
+  ODataVersion: OData4,
+  Namespace: 'OdTest.Customers',
+  ServiceName: 'Customer Service',
+  Summary: 'API for managing customers',
+  PublishAssociations: Yes,
+  Folder: 'Integration/APIs'
+)
+AUTHENTICATION Basic, Session
+{
+  PUBLISH ENTITY OdTest.Customer AS 'Customers' (
+    ReadMode: SOURCE,
+    InsertMode: SOURCE,
+    UpdateMode: SOURCE,
+    DeleteMode: NOT_SUPPORTED,
+    UsePaging: Yes,
+    PageSize: 100
+  )
+  EXPOSE (
+    Id AS 'customerId',
+    Name (Filterable, Sortable),
+    Email
+  );
+
+  PUBLISH ENTITY OdTest.Order AS 'Orders' (
+    ReadMode: SOURCE,
+    InsertMode: NOT_SUPPORTED,
+    UpdateMode: NOT_SUPPORTED,
+    DeleteMode: NOT_SUPPORTED
+  )
+  EXPOSE (*);
+};
+/
+
+/**
+ * Level 8.2a: Create a consumed OData service with full HTTP configuration
+ * Includes authentication, custom service URL, microflow references, and headers.
+ */
+CREATE ODATA CLIENT OdTest.FullConfigAPI (
+  Version: '3.0',
+  ODataVersion: OData4,
+  MetadataUrl: 'https://api.example.com/odata/v4/$metadata',
+  Timeout: 300,
+  ServiceUrl: 'https://api.example.com/odata/v4',
+  UseAuthentication: Yes,
+  HttpUsername: 'admin',
+  HttpPassword: 'secret',
+  ClientCertificate: 'my-cert',
+  ConfigurationMicroflow: MICROFLOW OdTest.ConfigureRequest,
+  ErrorHandlingMicroflow: MICROFLOW OdTest.HandleError,
+  ProxyHost: OdTest.ProxyHostConst,
+  ProxyPort: OdTest.ProxyPortConst
+)
+HEADERS (
+  'X-Api-Key': 'abc123',
+  'Accept': 'application/json'
+);
+/
+
+/**
+ * Level 8.3: Create or modify (idempotent) - updates if it already exists
+ */
+CREATE OR MODIFY ODATA CLIENT OdTest.SalesforceAPI (
+  Version: '2.0',
+  ODataVersion: OData4,
+  MetadataUrl: 'https://api.salesforce.com/odata/v4/$metadata',
+  Timeout: 600
+);
+/
+
+/**
+ * Level 8.4: Alter an OData client property
+ */
+ALTER ODATA CLIENT OdTest.SalesforceAPI
+  SET Timeout = 600;
+/
+
+/**
+ * Level 8.5: Alter an OData service property
+ */
+ALTER ODATA SERVICE OdTest.CustomerAPI
+  SET Version = '2.0.0';
+/
+
+-- ############################################################################
+-- LEVEL 8.6: CREATE EXTERNAL ENTITY
+-- ############################################################################
+
+/**
+ * Level 8.6a: Create an external entity from a consumed OData service
+ * Maps a remote entity to a local entity with attributes.
+ */
+CREATE EXTERNAL ENTITY OdTest.RemoteAccount
+FROM ODATA CLIENT OdTest.SalesforceAPI
+(
+  EntitySet: 'Accounts',
+  RemoteName: 'Account',
+  Countable: Yes,
+  Creatable: Yes,
+  Deletable: No,
+  Updatable: No
+)
+(
+  AccountId: String(200),
+  AccountName: String(255),
+  Industry: String(100),
+  Revenue: Decimal
+);
+/
+
+/**
+ * Level 8.6b: Create or modify (idempotent) external entity
+ */
+CREATE OR MODIFY EXTERNAL ENTITY OdTest.RemoteAccount
+FROM ODATA CLIENT OdTest.SalesforceAPI
+(
+  EntitySet: 'Accounts',
+  RemoteName: 'Account',
+  Countable: Yes,
+  Creatable: Yes,
+  Deletable: No,
+  Updatable: Yes
+)
+(
+  AccountId: String(200),
+  AccountName: String(255),
+  Industry: String(100),
+  Revenue: Decimal,
+  Website: String(500)
+);
+/
+
+-- ############################################################################
+-- LEVEL 8.7: GRANT/REVOKE ACCESS ON ODATA SERVICE
+-- ############################################################################
+
+/**
+ * Level 8.7a: Grant access on a published OData service
+ */
+CREATE MODULE ROLE OdTest.Admin;
+CREATE MODULE ROLE OdTest.User;
+GRANT ACCESS ON ODATA SERVICE OdTest.CustomerAPI TO OdTest.Admin, OdTest.User;
+/
+
+/**
+ * Level 8.7b: Revoke access on a published OData service
+ */
+REVOKE ACCESS ON ODATA SERVICE OdTest.CustomerAPI FROM OdTest.User;
+/
+
+-- ############################################################################
+-- LEVEL 8.8: DROP (cleanup)
+-- ############################################################################
+
+/**
+ * Level 8.8a: Drop an OData client
+ */
+DROP ODATA CLIENT OdTest.SalesforceAPI;
+/
+
+/**
+ * Level 8.8b: Drop an OData service
+ */
+DROP ODATA SERVICE OdTest.CustomerAPI;
+/
+
+-- ############################################################################
+-- LEVEL 9: EXTERNAL ACTION CALLS IN MICROFLOWS
+-- ############################################################################
+
+/**
+ * Level 9.1: Call an external action with parameters and result variable
+ */
+CREATE MICROFLOW OdTest.ACT_CallExternalAction() RETURNS Boolean
+BEGIN
+    $Result = CALL EXTERNAL ACTION OdTest.SalesforceAPI.GetAccounts(Status = 'active', Region = $SelectedRegion);
+    CALL EXTERNAL ACTION OdTest.SalesforceAPI.NotifyUpdate(AccountId = $AccountId) ON ERROR CONTINUE;
+    RETURN true;
+END;
+/
+
+-- ############################################################################
+-- END OF ODATA EXAMPLES
+-- ############################################################################

@@ -1,0 +1,826 @@
+* 5932ca54 - (30 minutes ago) Comment out exit statement so all page examples execute - Andrej Koelewijn (HEAD -> main, siemens/main, siemens/HEAD)
+* fb4e4b82 - (53 minutes ago) Add FOLDER to all microflows and add MOVE examples section - Andrej Koelewijn
+* 9f42562b - (60 minutes ago) Organize page examples into folders by section type - Andrej Koelewijn
+* a3479fc0 - (9 hours ago) Support short attribute names in Gallery TEXTFILTER Attributes - Andrej Koelewijn
+* b18cb41f - (11 hours ago) Fix DESCRIBE PAGE outputting fully qualified attribute names instead of short names - Andrej Koelewijn
+*   97de865f - (23 hours ago) Merge branch 'pages' - fix null AttributeRef crash for microflow return types - Andrej Koelewijn
+|\  
+| * 21cd2309 - (23 hours ago) Fix null AttributeRef crash by resolving microflow return types from exec cache - Andrej Koelewijn (pages)
+* | 63f4a509 - (23 hours ago) Update manage-security skill with DESCRIBE, catalog queries, and Starlark APIs - Andrej Koelewijn
+* | f2f67456 - (24 hours ago) Add migration guide and fix mxcli overview documentation - Andrej Koelewijn (docs)
+* | c383b2c0 - (24 hours ago) Move MDL_FEATURE_MATRIX.md and MDL_QUICK_REFERENCE.md to docs/01-project/ - Andrej Koelewijn
+* | da5959c5 - (24 hours ago) Update docs for new Starlark APIs: permissions, module_roles, role_mappings - Andrej Koelewijn
+* | 116cb929 - (24 hours ago) Add permissions() Starlark function for all element types - Andrej Koelewijn
+* | 977311fb - (24 hours ago) Add role_mappings catalog table and expose roles to Starlark API - Andrej Koelewijn
+* | e9593b7a - (25 hours ago) Fix SHOW CATALOG TABLES parsing and add catalog unit tests - Andrej Koelewijn
+|/  
+* f1896a90 - (34 hours ago) Add enumeration, microflow datasource page, and minor fixes to MDL examples - Andrej Koelewijn
+* 951a24a4 - (2 days ago) Update feature matrix and quick reference with implemented features - Andrej Koelewijn (tag: v0.1.0)
+* 18998304 - (2 days ago) Add database connections to catalog, linter, REPL, and DESCRIBE MODULE - Andrej Koelewijn (sql)
+*   48b0dfde - (2 days ago) Merge branch 'sql' - add SHOW DATABASE CONNECTIONS command - Andrej Koelewijn
+|\  
+| * 97b21e14 - (2 days ago) Implement SHOW DATABASE CONNECTIONS command - Andrej Koelewijn
+* |   3d6804bc - (2 days ago) Merge branch 'docs' - Andrej Koelewijn
+|\ \  
+| * | 316c74f4 - (2 days ago) Update user docs with implemented features and fix MDL syntax errors - Andrej Koelewijn
+| * | 9ffff6f1 - (2 days ago) Update MDL specification docs with all implemented features - Andrej Koelewijn
+* | | f6d74c66 - (2 days ago) Mark 'run app in docker container' as done in todo - Andrej Koelewijn
+|/ /  
+* |   e9a364d1 - (2 days ago) Merge branch 'vscode-ext' - Andrej Koelewijn
+|\ \  
+| * | 668e9403 - (2 days ago) Show integration documents in folder hierarchy with expandable children - Andrej Koelewijn (vscode-ext)
+| * | c2fe26b2 - (2 days ago) Fix describe support for new project explorer types - Andrej Koelewijn
+* | |   81dbac1b - (2 days ago) Merge branch 'pages' (resolve conflict keeping Forms$ serialization) - Andrej Koelewijn
+|\ \ \  
+| * | | 825b40f1 - (3 days ago) Fix microflow/nanoflow datasource serialization for pluggable widgets (DATAGRID, GALLERY) - Andrej Koelewijn
+| |/ /  
+* | |   8f6b4460 - (3 days ago) Merge branch 'sql' - Andrej Koelewijn
+|\ \ \  
+| | |/  
+| |/|   
+| * | 74175c13 - (3 days ago) Document EXECUTE DATABASE QUERY microflow action - Andrej Koelewijn
+| |/  
+* |   ed7a3243 - (3 days ago) Merge branch 'pages' - Andrej Koelewijn
+|\ \  
+| * | 2b7352eb - (3 days ago) Fix microflow/nanoflow datasource serialization for pluggable widgets (DATAGRID, GALLERY) - Andrej Koelewijn
+| |/  
+* / 9d92fa27 - (3 days ago) Update architecture doc with sql/, vscode-mdl/, LSP, and catalog sections - Andrej Koelewijn
+|/  
+* c97d2592 - (3 days ago) Add missing document types to project explorer tree - Andrej Koelewijn
+* 733e6bef - (3 days ago) Comment out runtime connection example pending Studio Pro dependency - Andrej Koelewijn
+* 769b1ea4 - (4 days ago) Fix parameter name in query example to match query definition - Andrej Koelewijn
+* 8760f44b - (4 days ago) Add CONNECTION clause for runtime database connection override - Andrej Koelewijn
+* 3ff8ca48 - (4 days ago) Fix DynamicQuery to wrap SQL in single quotes as Mendix expression - Andrej Koelewijn
+* 66821c5d - (4 days ago) Remove ON ERROR CONTINUE example for database query action - Andrej Koelewijn
+* b009c02b - (4 days ago) Fix ExecuteDatabaseQueryAction BSON field order to match Studio Pro - Andrej Koelewijn
+* f9585d4f - (4 days ago) Uncomment verification queries in database connection examples - Andrej Koelewijn
+*   8052d855 - (4 days ago) Merge branch 'sql' - Andrej Koelewijn
+|\  
+| * 6699178a - (4 days ago) Add MOVE support for CONSTANT and DATABASE CONNECTION - Andrej Koelewijn
+* | 46108559 - (4 days ago) Add MOVE support for CONSTANT and DATABASE CONNECTION - Andrej Koelewijn
+|/  
+* 8582bac9 - (4 days ago) Fix EXECUTE DATABASE QUERY to use full 3-part identifier - Andrej Koelewijn
+*   e9c46dad - (4 days ago) Merge branch 'sql' - Andrej Koelewijn
+|\  
+| * f23461c9 - (4 days ago) Add EXECUTE DATABASE QUERY microflow action and fix BSON field names - Andrej Koelewijn
+* | bb08e0e7 - (4 days ago) Document dev container setup and mx tool location - Andrej Koelewijn
+* | 04a440b8 - (4 days ago) Rename PROJECT_AI.md to AGENTS.md - Andrej Koelewijn
+* | ae92df68 - (4 days ago) Remove generated JS files from git, add dist/ to gitignore - Andrej Koelewijn
+* | 31f62e8c - (4 days ago) Update page examples: remove V3 references, add column DesignProperties test - Andrej Koelewijn
+* | 481ff1a9 - (4 days ago) Add CHANGELOG.md and mxcli changelog subcommand - Andrej Koelewijn
+* | c1418e0a - (4 days ago) Remove all "V3" references from user-facing documentation - Andrej Koelewijn
+* | d174f43d - (4 days ago) Change license to Apache 2.0, add alpha warning, strip stale BSON properties - Andrej Koelewijn
+|/  
+* db45ec47 - (4 days ago) Add parameter test values (DEFAULT/NULL) to DATABASE CONNECTION queries - Andrej Koelewijn
+* 787ee97a - (4 days ago) Fix SQL parameter syntax: use {param} instead of :param - Andrej Koelewijn
+* cd81c0fc - (4 days ago) Update database connection examples to use F1 database and fix RETURNS optionality - Andrej Koelewijn
+* b1adb4a2 - (4 days ago) Add CREATE/DESCRIBE DATABASE CONNECTION with roundtrip tests - Andrej Koelewijn
+* 36fe3e52 - (4 days ago) Fix constant naming to match Mendix Database Connector convention - Andrej Koelewijn
+* ca7fb8d2 - (5 days ago) Fix EXEC mode and extend DATABASE CONNECTION grammar - Andrej Koelewijn
+* 2fcb8459 - (5 days ago) Add SQL GENERATE CONNECTOR command for auto-creating Database Connector MDL - Andrej Koelewijn
+* 6c4748dd - (5 days ago) Invalidate reader cache after MPR v2 unit writes - Andrej Koelewijn
+* 7b03a27b - (5 days ago) Add SQL GENERATE CONNECTOR command for auto-creating Database Connector MDL - Andrej Koelewijn
+* 4a04a001 - (5 days ago) Restore XPathConstraintCaption for Mendix 10.10+ projects - Andrej Koelewijn
+* 8d8c3e84 - (5 days ago) Remove invalid AllowRead/AllowWrite BSON properties from AccessRule - Andrej Koelewijn
+* 48709e9f - (5 days ago) Fix duplicate access rules on re-GRANT and pass member-specific access rights - Andrej Koelewijn
+* 4e98e0e0 - (5 days ago) Fix ReconcileMemberAccesses to detect changes when entries are both added and removed - Andrej Koelewijn
+* d4abc5ad - (5 days ago) Add security reconciliation, UPDATE SECURITY command, and unreserve common attribute names - Andrej Koelewijn
+* a3419c32 - (6 days ago) Fix YAML config loading and auto-detect driver from DSN scheme - Andrej Koelewijn
+* f707b569 - (6 days ago) Add LINK clause to IMPORT for association mapping - Andrej Koelewijn
+* 11b22981 - (6 days ago) Add proposal for association mapping in IMPORT command - Andrej Koelewijn
+* de0a8e30 - (6 days ago) Add defensive validation for placeholder ID leaks in widget templates - Andrej Koelewijn
+* 3ff0d300 - (6 days ago) Add assess-quality skill and update generated CLAUDE.md with CONV rules and report command - Andrej Koelewijn (catalog)
+*   ff537afa - (6 days ago) Merge branch 'sql' - Andrej Koelewijn
+|\  
+| * 9a2c7678 - (6 days ago) Support multi-line QUERY strings in IMPORT via dollar-quoting - Andrej Koelewijn
+* | 44222404 - (6 days ago) Merge branch 'sql' - Andrej Koelewijn
+|\| 
+| * 27ae7366 - (6 days ago) Fix IMPORT bugs and add full MXCLI_DB_* env var overrides - Andrej Koelewijn
+* | 3c28c12c - (7 days ago) Add CONV001-CONV017 best practice lint rules and mxcli report command - Andrej Koelewijn
+|/  
+* a7833574 - (6 days ago) Add IMPORT FROM command for bulk data import from external databases - Andrej Koelewijn
+* c6e69a02 - (6 days ago) Reuse generateClaudeMD() for PROJECT_AI.md generation - Andrej Koelewijn
+*   e6eb171a - (6 days ago) Merge branch 'sql' - Andrej Koelewijn
+|\  
+| * 81c21a01 - (6 days ago) Update docs and help text for Oracle and SQL Server driver support - Andrej Koelewijn
+| * cf465ea9 - (6 days ago) Add SQL Server (Azure SQL Edge) driver support - Andrej Koelewijn
+| * 33648a5f - (7 days ago) Add Oracle driver support and SHOW VIEWS/FUNCTIONS commands - Andrej Koelewijn
+* | 7dce3997 - (6 days ago) Update generateClaudeMD() to reflect actual mxcli capabilities - Andrej Koelewijn
+|/  
+* 59285870 - (7 days ago) Add direct SQL query execution against external databases (Phase 1) - Andrej Koelewijn
+* bf81b399 - (7 days ago) Fix microflow datasource entity context and AccessRules serialization - Andrej Koelewijn
+* afe047fd - (7 days ago) Add full DataGrid2 column property support in MDL - Andrej Koelewijn
+* 0764fb2c - (8 days ago) Fix javadoc comments not saved to page Documentation field - Andrej Koelewijn
+* 08d52245 - (8 days ago) Unify inline WHERE/SORT BY in DataSource syntax and update docs - Andrej Koelewijn
+* 6751be82 - (8 days ago) Fix DataSource WHERE roundtrip, long-line wrapping, and javadoc formatting - Andrej Koelewijn
+* 926173d7 - (8 days ago) Add DataGrid example with DATABASE FROM syntax and DesignProperties - Andrej Koelewijn
+* bb56fd93 - (8 days ago) Add styled DataGrid page example with paging and column alignment - Andrej Koelewijn
+* d9759eda - (8 days ago) Add DataGrid2 column styling (Alignment, WrapText) and Selection support - Andrej Koelewijn
+* e051fedd - (8 days ago) Stop tracking cmd/mxcli/lint-rules, use .claude/lint-rules instead - Andrej Koelewijn
+* 20971389 - (8 days ago) Fix XPath constraint formatting: whitespace, lowercase ops, OR handling - Andrej Koelewijn
+*   60328771 - (8 days ago) Merge branch 'pages' - Andrej Koelewijn
+|\  
+| * b84ddb78 - (8 days ago) Fix DataGrid and Gallery Where/OrderBy not stored in BSON - Andrej Koelewijn
+* | 617e6498 - (8 days ago) Merge branch 'pages' - Andrej Koelewijn
+|\| 
+| * 6da668a7 - (9 days ago) Add MOVE PAGE and MOVE SNIPPET examples to page examples - Andrej Koelewijn
+* | 19f48fe5 - (8 days ago) Update examples with LIMIT/OFFSET variants, retrieve getters, and misc fixes - Andrej Koelewijn
+|/  
+* 7a9cffab - (9 days ago) Refactor cmd_microflows_builder.go into 6 focused files - Andrej Koelewijn
+* 43e73ece - (9 days ago) Fix RETRIEVE BSON serialization for LIMIT/OFFSET/SORT BY - Andrej Koelewijn
+* 26f50a7c - (9 days ago) Expand microflow test coverage from 15 to 41 test cases - Andrej Koelewijn
+* 584aa678 - (9 days ago) Fix parseRange to extract LimitExpression/OffsetExpression from ConstantRange - Andrej Koelewijn
+* 60f5f9bb - (9 days ago) Fix LIMIT/OFFSET order in page examples to match updated grammar - Andrej Koelewijn
+* 0d2428a1 - (9 days ago) Use LIMIT before OFFSET order in RETRIEVE grammar and describe output - Andrej Koelewijn
+* eaa8e277 - (9 days ago) Support expressions in RETRIEVE LIMIT/OFFSET clauses - Andrej Koelewijn
+* fd8610e1 - (9 days ago) Fix missing RETRIEVE sorting by adding NewSortings BSON field name - Andrej Koelewijn
+* d6c68237 - (9 days ago) Add custom LIMIT and OFFSET to RETRIEVE describe output - Andrej Koelewijn
+| * ab1cf061 - (8 days ago) Add eval framework Phase 2: automated Claude invocation and Docker checks - Andrej Koelewijn (eval)
+|/  
+* 6512e993 - (10 days ago) Fix duplicate lint rule IDs between built-in and Starlark rules - Andrej Koelewijn
+* 435c5106 - (10 days ago) Update lint help text to list bundled Starlark security rules (SEC004-SEC009) - Andrej Koelewijn
+* 47bfaaa1 - (10 days ago) Add SEC007, SEC008, SEC009 Starlark security lint rules - Andrej Koelewijn
+* d38bf0ce - (10 days ago) Expose entity permissions and user roles to Starlark lint API - Andrej Koelewijn
+* 99746211 - (10 days ago) Add Starlark security lint rules and security linting proposal - Andrej Koelewijn
+* a4532598 - (10 days ago) Fix entity permissions missing from CATALOG.PERMISSIONS (FR-01) - Andrej Koelewijn
+* ece297e7 - (10 days ago) Add table alias, JOIN, and NOT EXISTS support to catalog SELECT queries - Andrej Koelewijn
+* ace20b41 - (10 days ago) Fix SEC001/MDL003 EntityType mismatch between catalog and linter - Andrej Koelewijn
+* 5f87c25d - (10 days ago) Expose security data to Starlark lint rules and add documentation - Andrej Koelewijn
+* 7693b9db - (10 days ago) Add SEC001, SEC002, SEC003 security lint rules - Andrej Koelewijn
+* ddc8a13b - (10 days ago) Fix catalog SQL alias bug, add AccessRuleCount, and update security report - Andrej Koelewijn
+* 12100498 - (10 days ago) Add bug reports from 2026-02-23 to 2026-02-28 - Andrej Koelewijn
+* f7dd7e55 - (10 days ago) Fix association ref to use AttributeRef with 3-part member path - Andrej Koelewijn
+* b186a6b0 - (10 days ago) Remove deprecated DROPDOWN widget from ComboBox enum example - Andrej Koelewijn
+*   0bd59226 - (10 days ago) Merge branch 'pages' - Andrej Koelewijn
+|\  
+| * d3a06162 - (10 days ago) Fix crash by using DomainModels$AssociationRef for ComboBox association binding - Andrej Koelewijn
+* | 88de8d9b - (10 days ago) Merge branch 'pages' - Andrej Koelewijn
+|\| 
+| * cb2c435f - (10 days ago) Fix CE0642 by using association path and adding CaptionAttribute for ComboBox - Andrej Koelewijn
+* | 3019ae23 - (10 days ago) Merge branch 'pages' - Andrej Koelewijn
+|\| 
+| * 773fda90 - (10 days ago) Add GroupBox properties: Caption (ClientTemplate), HeaderMode, Collapsible - Andrej Koelewijn
+* | a81c52eb - (11 days ago) Merge branch 'pages' - Andrej Koelewijn
+|\| 
+| * 98096df0 - (11 days ago) Add GROUPBOX widget support for grammar, describe, and examples - Andrej Koelewijn
+* | b0c52c5e - (11 days ago) Merge branch 'pages' - Andrej Koelewijn
+|\| 
+| * a0ef8986 - (11 days ago) Fix ComboBox association mode: Attribute is display attr of target entity - Andrej Koelewijn
+* | d1df9e45 - (11 days ago) Merge branch 'pages' - Andrej Koelewijn
+|\| 
+| * e51468ad - (11 days ago) Fix ComboBox association: use AttributeRef not AssociationRef - Andrej Koelewijn
+* | eb8b2c7d - (11 days ago) Merge branch 'pages' - Andrej Koelewijn
+|\| 
+| * 7b046dff - (11 days ago) Fix CE1613 by using AssociationRef for ComboBox association mode - Andrej Koelewijn
+* | 410c10c8 - (11 days ago) Merge branch 'pages': resolve P035_Order_Edit ordering conflict - Andrej Koelewijn
+|\| 
+| * 515ed378 - (11 days ago) Add association-mode ComboBox support (DataSource: DATABASE Entity) - Andrej Koelewijn
+* | 22fe38c2 - (11 days ago) Add association-mode ComboBox support (DataSource: DATABASE Entity) - Andrej Koelewijn
+|/  
+* 32fd440d - (11 days ago) Fix CE0463 by extracting ComboBox template from enum-mode widget - Andrej Koelewijn
+* 0bb93dcd - (11 days ago) Unify widget attribute property: Binds:/Attr: → Attribute: - Andrej Koelewijn
+* 48100c14 - (12 days ago) Fix CE0720 by adding template parameter support to SHOW MESSAGE - Andrej Koelewijn
+* f8a34777 - (12 days ago) Add CE1613 microflow body reference validation to check --references - Andrej Koelewijn
+* 51bb2369 - (12 days ago) Add missing ProductDetail page for M090 annotation example - Andrej Koelewijn
+* 565b7a61 - (12 days ago) Add BSON serialization for ShowHomePageAction and ShowMessageAction - Andrej Koelewijn
+* 938dd246 - (12 days ago) Add dollar-quote balancing for multi-line REPL input - Andrej Koelewijn
+* 02bf017d - (12 days ago) Fix Java action TypeParameter and EntityTypeParameterType BSON serialization - Andrej Koelewijn
+* d7548b18 - (12 days ago) Remove ANNOTATE keyword and update docs for @ annotation syntax - Andrej Koelewijn
+* 75cd963b - (12 days ago) Add @ annotation syntax for microflow activities (@position, @caption, @color, @annotation) - Andrej Koelewijn
+* 6daa1ed9 - (12 days ago) Change Java action type parameter syntax to ENTITY <pEntity> - Andrej Koelewijn
+* 86e32200 - (13 days ago) Add eval framework for testing mxcli + Claude Code (Phase 1) - Andrej Koelewijn
+* e011ca9d - (13 days ago) Fix EntityTypeCodeActionParameterValue variable resolution and ImageData serialization - Andrej Koelewijn
+* ebc437e0 - (13 days ago) Apply gofmt/goimports formatting across codebase - Andrej Koelewijn
+*   e5f00cb1 - (13 days ago) Merge branch 'catalog' - Andrej Koelewijn
+|\  
+| * 6a88aa5c - (13 days ago) Add CATALOG.PERMISSIONS table for queryable security matrix - Andrej Koelewijn
+* | 41c2db12 - (13 days ago) Add Java action type parameters, EXPOSED AS, and EntityTypeCodeActionParameterValue - Andrej Koelewijn
+* | 8c967df6 - (13 days ago) Fix microflow/page writers to use actual AllowedModuleRoles from struct - Andrej Koelewijn
+|/  
+* 695b138c - (13 days ago) Slim down CLAUDE.md from 955 to 332 lines, extract syntax reference - Andrej Koelewijn
+* 75ec6688 - (2 weeks ago) Add migrate-outsystems skill with LifeTime API download instructions - Andrej Koelewijn
+* e5e07ca8 - (2 weeks ago) Fix 4 Playwright testing gotchas in test-app skill template - Andrej Koelewijn
+* bc96cdf9 - (2 weeks ago) Add empty_container lint rule, admin API proposal, and update skills/extension - Andrej Koelewijn (testing)
+* 42505641 - (2 weeks ago) Fix CB-002: DESCRIBE now shows Label for COMBOBOX and other pluggable widgets - Andrej Koelewijn
+* 5633af2b - (2 weeks ago) Fix catalog bugs CAT-001, CAT-002, CAT-003: mode warnings, WidgetType parsing, DESCRIBE CATALOG - Andrej Koelewijn
+* dab9ef66 - (2 weeks ago) Fix bugs 002, 003, 004, 006: grammar gaps, ALTER PAGE Binds, REPL pipe - Andrej Koelewijn
+* 76a7b0bd - (2 weeks ago) Add 12 DESCRIBE MICROFLOW roundtrip tests for regression coverage - Andrej Koelewijn
+* 7459949a - (2 weeks ago) Fix DESCRIBE MICROFLOW producing empty IF/ELSE bodies - Andrej Koelewijn
+* e76fa7b3 - (2 weeks ago) Fix test runner crash with VALIDATION FEEDBACK and settings nil pointer - Andrej Koelewijn
+* 8e5ab3c0 - (2 weeks ago) Document mxcli test command in CLAUDE.md, README, and help topics - Andrej Koelewijn
+* ed52698a - (2 weeks ago) Add VS Code IDE integration phase to test framework proposal - Andrej Koelewijn
+* 815671a2 - (2 weeks ago) Add mxcli test command for MDL-based microflow testing - Andrej Koelewijn
+* ad106d21 - (2 weeks ago) Use APP_PORT from .env in startup success message - Andrej Koelewijn
+* 79ef94d6 - (2 weeks ago) Fix devcontainer: use Adoptium JDK 21 and add port forwarding - Andrej Koelewijn
+* 22fe41aa - (2 weeks ago) Add MDL007 lint rule for page navigation security (CE0557) - Andrej Koelewijn
+* aa6c0f74 - (2 weeks ago) Add build time and commit identifier to MDL VS Code extension - Andrej Koelewijn (clean-visualization)
+* b923d9f5 - (2 weeks ago) Document mdl.diagramTheme setting in CLAUDE.md and architecture docs - Andrej Koelewijn
+* 2996f854 - (2 weeks ago) Split cmd_microflows_show_helpers_test.go into focused test files - Andrej Koelewijn
+* e80f07ee - (2 weeks ago) Fix REVOKE for multi-role rules and add cascade to DROP MODULE ROLE - Andrej Koelewijn
+* 88a14ac0 - (2 weeks ago) Fix pluggable widget property setting via TypePointer resolution - Andrej Koelewijn
+* b05a30f7 - (2 weeks ago) Change default association storage from junction table to foreign key column - Andrej Koelewijn
+* 6499c729 - (2 weeks ago) Add DATAGRID paging properties and fix DesignProperties version marker - Andrej Koelewijn
+*   558d7b57 - (2 weeks ago) Merge branch 'clean-visualization' - Andrej Koelewijn
+|\  
+| * f5354f2f - (2 weeks ago) Add clean professional theme to MDL diagram visualizations - Andrej Koelewijn
+* | 584fc9c6 - (2 weeks ago) Add ANNOTATE statement for microflow annotations - Andrej Koelewijn
+|/  
+* d97b4cb6 - (2 weeks ago) Fix ALTER PAGE SET Content on DYNAMICTEXT and document Style limitation - Andrej Koelewijn
+* 08ba83be - (2 weeks ago) Document ALTER PAGE/SNIPPET for Claude discoverability - Andrej Koelewijn
+* 2f0f6951 - (2 weeks ago) Add MDL005 lint rule to detect unconfigured IMAGE widgets - Andrej Koelewijn
+* 5aab7e15 - (2 weeks ago) Fix run-app docs for hot reload and add CALL parameter name warning - Andrej Koelewijn
+* 684583b6 - (2 weeks ago) Document hot reload workflow in docker skill - Andrej Koelewijn
+* ae429256 - (2 weeks ago) Add admin API bind patch and OQL verification skill - Andrej Koelewijn
+* b91ea6b0 - (2 weeks ago) Add docker reload command with M2EE hot reload support - Andrej Koelewijn
+* eb527324 - (2 weeks ago) Add runtime admin API proposal with review notes and microflow testing - Andrej Koelewijn
+* 05597cae - (2 weeks ago) Add runtime admin API skill documenting M2EE curl syntax - Andrej Koelewijn
+* 6a09590c - (3 weeks ago) Fix phantom CONTAINER nesting in DESCRIBE PAGE output - Andrej Koelewijn
+* b4f3f423 - (3 weeks ago) Improve UX: DROP MODULE summary, HELP docs, apostrophe error hints - Andrej Koelewijn
+* de700dfe - (3 weeks ago) Add COMMIT REFRESH support and fix OQL response envelope parsing - Andrej Koelewijn
+* 08b8f6d0 - (3 weeks ago) Document OQL live-preview troubleshooting in help topics and skills - Andrej Koelewijn
+* 4a3b690e - (3 weeks ago) Fix SHOW PAGE parameter mappings lost during BSON roundtrip - Andrej Koelewijn
+* 0db30d15 - (3 weeks ago) Fix mxcli oql compose file path and enable live-preview for OQL - Andrej Koelewijn
+* 67ac50a9 - (3 weeks ago) Fix CREATE OR REPLACE PAGE atomicity and microflow resolution in folders - Andrej Koelewijn
+* 23741cb5 - (3 weeks ago) Fix mxcli oql: base64-encode M2EE auth header, route via docker exec - Andrej Koelewijn
+* c10c4ffc - (3 weeks ago) Add mxcli oql command for previewing OQL queries against running runtime - Andrej Koelewijn
+* 8b20ef5c - (3 weeks ago) Add Playwright testing support to devcontainer and mxcli init - Andrej Koelewijn
+* 23baac5f - (3 weeks ago) Fix sum(CASE WHEN ... THEN integer ELSE integer END) returning Decimal - Andrej Koelewijn
+* d7b8d914 - (3 weeks ago) Broaden "read first" gate to cover database and import work - Andrej Koelewijn
+* d0c0dbd2 - (3 weeks ago) Improve OQL type inference, add DROP ENTITY warnings, support CREATE OR REPLACE VIEW ENTITY - Andrej Koelewijn
+* 4cfae8ca - (3 weeks ago) Fix docker up to force-recreate containers and ignore old logs - Andrej Koelewijn
+* 771b1620 - (3 weeks ago) Fix docker build: extract ZIP on subsequent builds, chmod bin/start always - Andrej Koelewijn
+* d88bc97f - (3 weeks ago) Add Playwright testing proposal with phased approach - Andrej Koelewijn
+* b857258c - (3 weeks ago) Fix spurious M2EE_ADMIN_PASS warning in bin/start - Andrej Koelewijn
+* 8963503b - (3 weeks ago) Add docker run command, --wait flag, volume mounts, and ZIP cleanup - Andrej Koelewijn
+* e6fd5dc5 - (3 weeks ago) Fix docker build: ZIP extraction, CMD leading-space, runtime download, env vars - Andrej Koelewijn
+* 5ad1f6ef - (3 weeks ago) Add Docker workflow skill and docker-in-docker to mxcli init template - Andrej Koelewijn
+* ed778cee - (3 weeks ago) Add docker-in-docker feature to devcontainer - Andrej Koelewijn
+* f37a7bea - (3 weeks ago) Update docs and help text for MxBuild auto-download and JDK 21 - Andrej Koelewijn
+* 43270dba - (3 weeks ago) Add JDK 21 (Adoptium) to mxcli init devcontainer template - Andrej Koelewijn
+* 1fd26020 - (3 weeks ago) Add mxcli setup mxbuild command for auto-downloading MxBuild from CDN - Andrej Koelewijn
+* 18aa891f - (3 weeks ago) Add StorageFormat support to associations (Column/Table) - Andrej Koelewijn
+* d5a514f2 - (3 weeks ago) Fix VS Code extension ENOENT when mxcliPath is relative (e.g. ./mxcli) - Andrej Koelewijn
+* 05e67751 - (3 weeks ago) Fix MDL extension in devcontainer by setting mdl.mxcliPath - Andrej Koelewijn
+*   68a1e03f - (3 weeks ago) Merge branch 'fragments' - Andrej Koelewijn
+|\  
+| * 18e1a4e2 - (3 weeks ago) Add Name field to NavigationListItem to fix Studio Pro validation errors - Andrej Koelewijn (fragments)
+* | 2ae91b2a - (3 weeks ago) Add build time to mxcli --version output - Andrej Koelewijn
+* | 94b108d1 - (3 weeks ago) Fix vsce package interactive prompts by adding repository and LICENSE - Andrej Koelewijn
+|/  
+* b640d6d3 - (3 weeks ago) Add ALTER SNIPPET for in-place snippet widget modification - Andrej Koelewijn
+* 9046a7c3 - (3 weeks ago) Add ALTER PAGE for in-place widget tree modification (Phase 3) - Andrej Koelewijn
+* f8109eae - (3 weeks ago) Add demo-data skill for seeding PostgreSQL with test data - Andrej Koelewijn
+*   a4ea54c6 - (3 weeks ago) Merge branch 'fragments' - Andrej Koelewijn
+|\  
+| * 70499208 - (3 weeks ago) Add DESCRIBE FRAGMENT FROM PAGE/SNIPPET for widget extraction (Phase 2) - Andrej Koelewijn
+| * 8a53c087 - (3 weeks ago) Add fragment system for reusable widget groups (Phase 1) - Andrej Koelewijn
+* |   72d9333a - (3 weeks ago) Merge branch 'fragments' - Andrej Koelewijn
+|\ \  
+| |/  
+|/|   
+| * 8a252908 - (3 weeks ago) Add fragment system for reusable widget groups (Phase 1) - Andrej Koelewijn
+* | fa7432b2 - (3 weeks ago) Add devcontainer support to mxcli init - Andrej Koelewijn
+* | e9b2f53d - (3 weeks ago) Upgrade devcontainer and go.mod to Go 1.26 - Andrej Koelewijn
+* | ec68062c - (3 weeks ago) Apply Go 1.26 go fix modernizers across codebase - Andrej Koelewijn
+|/  
+* ca4f904c - (3 weeks ago) Fix DataGrid2 sortable for unbound columns, gitignore build artifacts, add MES examples - Andrej Koelewijn
+* 94e23ba8 - (3 weeks ago) Add CycloneDX SBOM with dependency license information - Andrej Koelewijn
+* 7be097c2 - (3 weeks ago) Fix TypeCacheUnknownTypeException for Long constants - Andrej Koelewijn
+*   33bc33f0 - (3 weeks ago) Merge branch 'bson-proposal' - Andrej Koelewijn
+|\  
+| * 8c0d975c - (3 weeks ago) Add proposal for version-aware BSON schema registry - Andrej Koelewijn (bson-proposal)
+* | 129706ae - (3 weeks ago) Add runtime widget template augmentation from .mpk files - Andrej Koelewijn
+* | a7b2f770 - (3 weeks ago) Add proposal for version-aware BSON schema registry - Andrej Koelewijn
+|/  
+* ed3a2ad3 - (3 weeks ago) Add business events and settings to show subcommand, support multi-word types - Andrej Koelewijn
+* d37f6315 - (3 weeks ago) Add business events to catalog/structure, fix entity requirements, support multi-word describe types - Andrej Koelewijn
+* 26868ae7 - (3 weeks ago) Add javadoc documentation support for business event services - Andrej Koelewijn
+* afac7f18 - (3 weeks ago) Add Business Events and Project Settings support - Andrej Koelewijn
+* 7d0ef739 - (3 weeks ago) Update grammar, parser, skills, docs, and microflow examples - Andrej Koelewijn
+* d2cfe4e0 - (3 weeks ago) Preserve layout on cross-module move and update BY_NAME references - Andrej Koelewijn
+* 734fa850 - (3 weeks ago) Fix EXTENDS syntax docs, expand reserved keywords, rename Caption examples - Andrej Koelewijn
+* 084de33a - (3 weeks ago) Fix cross-module associations using wrong BSON type (KeyNotFoundException) - Andrej Koelewijn
+* d7ea987b - (3 weeks ago) Add Extends column to SHOW ENTITIES and SHOW ENTITY output - Andrej Koelewijn
+* b4dce573 - (3 weeks ago) Add entity generalization (inheritance) support with EXTENDS keyword - Andrej Koelewijn
+* 04d66c43 - (3 weeks ago) Fix SHOW/DESCRIBE/DROP ASSOCIATIONS ignoring cross-module associations - Andrej Koelewijn
+* 79049904 - (3 weeks ago) Fix cross-module association creation failing with "child entity not found" - Andrej Koelewijn
+* 3eed3727 - (3 weeks ago) Fix CE0463 for DataGrid2 custom content columns with mode-aware property building - Andrej Koelewijn
+* 8d7d8f06 - (3 weeks ago) Add source_tree to README and reverse sort to leaf-packages-last - Andrej Koelewijn
+* d1a13865 - (3 weeks ago) Split cmd_pages_builder_input.go into 4 focused files - Andrej Koelewijn
+* 29090a0f - (3 weeks ago) Split source_tree/main.go into 5 focused files - Andrej Koelewijn
+* a8ce865c - (3 weeks ago) Split writer_widgets.go into 3 focused files - Andrej Koelewijn
+* 5e55aa0b - (3 weeks ago) Add --churn flag for file stability metric to source_tree - Andrej Koelewijn
+* c52b0899 - (3 weeks ago) Add --fn flag for function metrics and --all shorthand to source_tree - Andrej Koelewijn
+* a56f9e86 - (3 weeks ago) Add --dup flag to source_tree for intra-file code duplication detection - Andrej Koelewijn
+* 828e4516 - (3 weeks ago) Split executor.go into 4 focused files - Andrej Koelewijn
+* 46a6a4d2 - (3 weeks ago) Refactor cmd_microflows_show_helpers.go: merge duplicate traversals, extract formatting - Andrej Koelewijn
+* 841fd7ea - (3 weeks ago) Add unit tests for microflow show helpers - Andrej Koelewijn
+* bc532a8b - (3 weeks ago) Refactor mxcli: split main.go into command files and embed help topics - Andrej Koelewijn
+* 85311f81 - (3 weeks ago) Convert source_tree.sh to standalone Go binary - Andrej Koelewijn
+* 9ef19580 - (3 weeks ago) Add per-file recent commit change columns to source_tree.sh - Andrej Koelewijn
+* 8c973058 - (3 weeks ago) Split roundtrip_test.go into per-area test files - Andrej Koelewijn
+* 4a59c7d1 - (3 weeks ago) Add per-file test coverage column to source_tree.sh - Andrej Koelewijn
+* 3b9d7a2c - (3 weeks ago) Add catalog-based qualified name completions to LSP server - Andrej Koelewijn
+* c6fca0c3 - (3 weeks ago) Refactor lsp.go into focused per-feature files - Andrej Koelewijn
+* 14ec2f11 - (3 weeks ago) Refactor previewProvider.ts into smaller files with per-renderer modules - Andrej Koelewijn
+* 9cddfa8e - (3 weeks ago) Fix CE0109 errors: use $currentObject in FILTER/FIND list operations - Andrej Koelewijn
+* 65721cfb - (3 weeks ago) Use fresh project copies for integration tests instead of mutating in-place - Andrej Koelewijn
+* b91313c3 - (3 weeks ago) Add MOVE ENTITY and MOVE ENUMERATION with full reference fixup - Andrej Koelewijn
+* c52b95c3 - (3 weeks ago) Add dependency-sorted source tree script with colorized LOC bars - Andrej Koelewijn
+* 00a939e2 - (3 weeks ago) Fix design property read/write to match Studio Pro's nested BSON format - Andrej Koelewijn (styling)
+* 27058660 - (3 weeks ago) Fix domain model diagram cardinality direction - Andrej Koelewijn (portable-app)
+* 70c2c6fb - (3 weeks ago) Add full workflow support: parse, describe, catalog, navigation, and VS Code integration - Andrej Koelewijn
+* e85bfe24 - (4 weeks ago) Add clickable terminal links for Mendix artifacts in VS Code - Andrej Koelewijn
+* 036f6413 - (4 weeks ago) Add SHOW STRUCTURE command for compact project overview - Andrej Koelewijn
+* 95804ce5 - (4 weeks ago) Update structure proposal with all cataloged element types - Andrej Koelewijn
+* df31683e - (4 weeks ago) Add proposals for workflow support, business events, and missing capabilities - Andrej Koelewijn
+* d6a850ac - (4 weeks ago) Add document caching and parallel source generation for catalog builder - Andrej Koelewijn
+* 19b9ef24 - (4 weeks ago) Add java_actions catalog table, GROUP BY support, and grammar fixes - Andrej Koelewijn
+* 60b0b939 - (4 weeks ago) Add snippets, java actions, and OData services to context command - Andrej Koelewijn
+* 7f75c034 - (4 weeks ago) Fix show subcommand to handle optional 'in' keyword for module filter - Andrej Koelewijn
+* 9315a386 - (4 weeks ago) Add OData clients and services to mxcli show subcommand - Andrej Koelewijn
+* 2c11defa - (4 weeks ago) Add missing artifact types to mxcli show subcommand - Andrej Koelewijn
+* f325a4e8 - (4 weeks ago) Update mxcli-overview.md with recent features and fix MDL syntax - Andrej Koelewijn
+* f7bd544c - (4 weeks ago) Fix skill file paths in generated CLAUDE.md to reference .ai-context/skills/ - Andrej Koelewijn
+* 9a04f157 - (4 weeks ago) Implement SHOW DESIGN PROPERTIES, DESCRIBE STYLING, and ALTER STYLING commands - Andrej Koelewijn
+* 7c6034dd - (4 weeks ago) Add missing CREATE SNIPPET before DESCRIBE SNIPPET in styling examples - Andrej Koelewijn
+* 87ec49b5 - (4 weeks ago) Remove reference/ directory from git tracking - Andrej Koelewijn
+*   033812d7 - (4 weeks ago) Merge branch 'catalog' - Andrej Koelewijn
+|\  
+| * 03caacdb - (4 weeks ago) Fix agentic search example: Java action calls not tracked in catalog refs - Andrej Koelewijn
+* |   ef40fd93 - (4 weeks ago) Merge branch 'styling' - Andrej Koelewijn
+|\ \  
+| * | 445fc2d9 - (4 weeks ago) Convert styling command examples from comments to executable statements - Andrej Koelewijn
+* | | b6d1b25b - (4 weeks ago) Merge branch 'styling' - Andrej Koelewijn
+|\| | 
+| * | 262c531b - (4 weeks ago) Update skills and docs with DesignProperties syntax - Andrej Koelewijn
+* | | 6dda34f0 - (4 weeks ago) Merge branch 'styling' - Andrej Koelewijn
+|\| | 
+| * | b0e486b1 - (4 weeks ago) Add styling examples for Class, Style, and DesignProperties - Andrej Koelewijn
+| * | 5c0da345 - (4 weeks ago) Add Design Properties support (Phase 3 styling) - Andrej Koelewijn
+* | |   892686ca - (4 weeks ago) Merge branch 'catalog' - Andrej Koelewijn
+|\ \ \  
+| |/ /  
+|/| /   
+| |/    
+| * ac56bba5 - (4 weeks ago) Fix catalog query column names in agentic search example - Andrej Koelewijn
+* | 5bae7e04 - (4 weeks ago) Merge branch 'catalog' - Andrej Koelewijn
+|\| 
+| * 33c67c8a - (4 weeks ago) Add agentic search capabilities example with Task Management module - Andrej Koelewijn
+* |   6a73f896 - (4 weeks ago) Merge branch 'styling' - Andrej Koelewijn
+|\ \  
+| * | 0bdb1585 - (4 weeks ago) Add inline DesignProperties syntax to Phase 3 proposal - Andrej Koelewijn
+* | |   4ab8cb15 - (4 weeks ago) Merge branch 'catalog' - Andrej Koelewijn
+|\ \ \  
+| | |/  
+| |/|   
+| * | 9dfca1ce - (4 weeks ago) Add agentic search capabilities example with Task Management module - Andrej Koelewijn
+* | |   e48c3a0a - (4 weeks ago) Merge branch 'styling' - Andrej Koelewijn
+|\ \ \  
+| |/ /  
+|/| /   
+| |/    
+| * 954b621c - (4 weeks ago) Expand Phase 3 styling proposal with design property details and fragment commands - Andrej Koelewijn
+* |   ad5d2450 - (4 weeks ago) Merge branch 'lato-arjen' - Andrej Koelewijn (fixes)
+|\ \  
+| * | ed8e1f51 - (4 weeks ago) Fix DataView crash: guarantee non-null DataSource on all EntityWidgets - Andrej Koelewijn (lato-arjen)
+* | | ebbe498a - (4 weeks ago) Merge branch 'lato-arjen' - Andrej Koelewijn
+|\| | 
+| * | c6252366 - (4 weeks ago) Fix ListView crash: serialize MicroflowSource/NanoflowSource DataSource - Andrej Koelewijn
+| * | fbe7e34f - (4 weeks ago) Update docs and skills for widget reference validation and quoted identifiers - Andrej Koelewijn
+* | | f5c58327 - (4 weeks ago) Merge branch 'lato-arjen' - Andrej Koelewijn
+|\| | 
+| * | 9af91ac9 - (4 weeks ago) Allow quoted identifiers for reserved-word attribute names ("Range", `Order`) - Andrej Koelewijn
+* | | da196892 - (4 weeks ago) Merge branch 'lato-arjen' - Andrej Koelewijn
+|\| | 
+| * | c9e45576 - (4 weeks ago) Validate widget references in mxcli check --references for pages/snippets - Andrej Koelewijn
+* | | 01de29aa - (4 weeks ago) Merge branch 'lato-arjen' - Andrej Koelewijn
+|\| | 
+| * | b0428a1a - (4 weeks ago) Update docs and skills for ALTER ENTITY, image widgets, CUSTOMCONTAINER - Andrej Koelewijn
+| * | 8dc9e23a - (4 weeks ago) Fix CONTAINER describe (was silently unwrapped) and add examples - Andrej Koelewijn
+| * | 82f6d7df - (4 weeks ago) Add CUSTOMCONTAINER as alias for CONTAINER widget type - Andrej Koelewijn
+* | | a4111534 - (4 weeks ago) Add view entity filtering use-case example - Andrej Koelewijn
+* | | 0719ebba - (4 weeks ago) Fix CE0056: set Persistable=true for view entities - Andrej Koelewijn
+* | | c1009b9b - (4 weeks ago) Merge branch 'lato-arjen' - Andrej Koelewijn
+|\| | 
+| * | ae5e5e9f - (4 weeks ago) Fix DynamicImage crash: provide valid ImageViewerSource DataSource - Andrej Koelewijn
+* | | ce28444b - (4 weeks ago) Merge branch 'lato-arjen' - Andrej Koelewijn
+|\| | 
+| * | 7201571e - (4 weeks ago) Add IMAGE, STATICIMAGE, and DYNAMICIMAGE widget support in page builder - Andrej Koelewijn
+| * | 0441206b - (4 weeks ago) Add DECLARE-inside-LOOP example to microflow test suite - Andrej Koelewijn
+| * | a2a76afc - (4 weeks ago) Fix panic on DECLARE inside LOOP body (nil map assignment) - Andrej Koelewijn
+* | | e0e65146 - (4 weeks ago) Merge branch 'lato-arjen' - Andrej Koelewijn
+|\| | 
+| * | 46500387 - (4 weeks ago) Implement ALTER ENTITY pipeline (fix silent failure bug) - Andrej Koelewijn
+* | |   9ca10a1e - (4 weeks ago) Merge branch 'styling' - Andrej Koelewijn
+|\ \ \  
+| |/ /  
+|/| /   
+| |/    
+| * 5e179f1a - (4 weeks ago) Fix DESCRIBE losing styled containers and their Class/Style properties - Andrej Koelewijn
+* |   315b31bc - (4 weeks ago) Merge branch 'portable-app' - Andrej Koelewijn
+|\ \  
+| * | 70c4f2c5 - (4 weeks ago) Add docker check command and pre-build project validation - Andrej Koelewijn
+* | |   3228515c - (4 weeks ago) Merge branch 'styling' - Andrej Koelewijn
+|\ \ \  
+| | |/  
+| |/|   
+| * | be64de39 - (4 weeks ago) Rename Style: to ButtonStyle: on action buttons - Andrej Koelewijn
+* | |   43d3890b - (4 weeks ago) Merge branch 'portable-app' - Andrej Koelewijn
+|\ \ \  
+| | |/  
+| |/|   
+| * | 3a683947 - (4 weeks ago) Pass --java-exe-path to MxBuild alongside --java-home - Andrej Koelewijn
+* | |   8cb694cc - (4 weeks ago) Merge branch 'styling' - Andrej Koelewijn
+|\ \ \  
+| * | | 3dbde62c - (4 weeks ago) Rename Style: to ButtonStyle: on action buttons - Andrej Koelewijn
+| | |/  
+| |/|   
+* | | c609fa19 - (4 weeks ago) Merge branch 'styling' - Andrej Koelewijn
+|\| | 
+| * | e52bf4e6 - (4 weeks ago) Add CSS Class and Style widget properties (Phase 1 styling) - Andrej Koelewijn
+* | |   01cb000a - (4 weeks ago) Merge branch 'portable-app' - Andrej Koelewijn
+|\ \ \  
+| | |/  
+| |/|   
+| * | 9cc0d3d4 - (4 weeks ago) Fix JDK 21 detection on macOS using /usr/libexec/java_home - Andrej Koelewijn
+* | | 3d60f835 - (4 weeks ago) Merge branch 'portable-app' - Andrej Koelewijn
+|\| | 
+| * | 76ba858c - (4 weeks ago) Add docker init and runtime commands (init, up, down, logs, status, shell) - Andrej Koelewijn
+* | | a769416e - (4 weeks ago) Merge branch 'portable-app' - Andrej Koelewijn
+|\| | 
+| * | 06d70597 - (4 weeks ago) Fix --mxbuild-path to accept directories, update docs - Andrej Koelewijn
+* | | 33142b54 - (4 weeks ago) Merge branch 'portable-app' - Andrej Koelewijn
+|\| | 
+| * | 3a4fcaf3 - (4 weeks ago) Add mxcli docker build command for Portable App Distribution - Andrej Koelewijn
+| * | 5d241981 - (4 weeks ago) Update Docker proposal: confirm PAD as long-term supported, fix outdated dependencies - Andrej Koelewijn
+| |/  
+* | 25ee9a3d - (4 weeks ago) Remove tracked mxbuild-11.6.0 directory and arm64 tarball - Andrej Koelewijn
+* |   db7dc739 - (4 weeks ago) Merge branch 'system-overview' - Andrej Koelewijn
+|\ \  
+| * | f579e3e2 - (4 weeks ago) Change system overview diagram layout from left-to-right to top-down - Andrej Koelewijn (system-overview)
+| |/  
+* / cdc58d34 - (4 weeks ago) Add OQL scalar subquery visualization, Graph Studio skill, and proposals - Andrej Koelewijn
+|/  
+* d9788172 - (4 weeks ago) Remove vscode-mdl/node_modules from git tracking - Andrej Koelewijn
+* 2add4c2d - (4 weeks ago) Rename module path to code.siemens.com, improve microflow diagrams - Andrej Koelewijn
+* 43363961 - (4 weeks ago) Fix ELK/Mermaid diagrams crashing on microflows with loops - Andrej Koelewijn
+* a82ffd51 - (4 weeks ago) Add OData folder support, catalog fix, DROP MODULE cleanup, and help topics - Andrej Koelewijn
+* 644047dc - (4 weeks ago) Add full navigation support: read, write, treeview, skill, and documentation - Andrej Koelewijn
+* 6e9ac873 - (4 weeks ago) Add collapse/expand activity detail toggle for microflow diagrams - Andrej Koelewijn
+* ad8a740b - (4 weeks ago) Add expand/collapse attribute toggle for domain model diagrams - Andrej Koelewijn
+* c6b1641a - (4 weeks ago) Add Balsamiq-style page wireframe diagrams with sketch SVG rendering - Andrej Koelewijn
+* 041366d7 - (4 weeks ago) Add synchronized diagram-with-source split view for microflows and domain models - Andrej Koelewijn
+* 6b36302d - (4 weeks ago) Replace regex-based OQL parsing with ANTLR parse tree walking for query plan visualization - Andrej Koelewijn
+* c6164184 - (4 weeks ago) Add Mermaid diagram generation, OData visitor fixes, docs, and dependency updates - Andrej Koelewijn
+* cda3ddb2 - (4 weeks ago) Add System Overview diagram with ELK.js and sketch-style SVG rendering - Andrej Koelewijn
+* 5bcca535 - (4 weeks ago) Add OData artifacts to project treeview and describe command - Andrej Koelewijn
+* c598db36 - (4 weeks ago) Add MDL feature completeness matrix - Andrej Koelewijn
+* 0f075bd9 - (4 weeks ago) Add constant MDL examples for doctype tests - Andrej Koelewijn
+* 74b831b7 - (4 weeks ago) Add CREATE EXTERNAL ENTITY, GRANT/REVOKE on OData services, DESCRIBE MODULE completeness, and OData data sharing skill - Andrej Koelewijn
+* 87b627e1 - (4 weeks ago) Remove top-level COMMIT command from init docs - Andrej Koelewijn
+* 1b8b1825 - (4 weeks ago) Add full OData support: clients, services, external entities, and external action calls - Andrej Koelewijn
+* 278a3529 - (4 weeks ago) Sort all SHOW command output by qualified name - Andrej Koelewijn
+* dc425124 - (4 weeks ago) Avoid unnecessary file writes in Makefile to preserve Go build cache - Andrej Koelewijn
+* 18d0bdbe - (5 weeks ago) Update proposals: rename Published OData Service to OData Service, add PAD to Docker proposal - Andrej Koelewijn
+* e212be3d - (5 weeks ago) Add result reporting to CREATE/DROP CONSTANT commands - Andrej Koelewijn
+* 0c868673 - (5 weeks ago) Fix DELETE_ACTION to DELETE_OBJECT in page describe output - Andrej Koelewijn
+* 3a376adc - (5 weeks ago) Add full support for constants in MDL - Andrej Koelewijn
+* 61374d81 - (5 weeks ago) Move and extend OData proposal: add published services, rename to OData client - Andrej Koelewijn
+* cead3c47 - (5 weeks ago) Add VS Code visualization proposal - Andrej Koelewijn
+* 5bd63b4c - (5 weeks ago) Fix quoted identifier stripping for enumeration values - Andrej Koelewijn
+* bbb32186 - (5 weeks ago) Fix DESCRIBE output, add OQL UNION/association paths, and grammar improvements - Andrej Koelewijn
+* c385fd8c - (5 weeks ago) Add DESCRIBE LAYOUT support - Andrej Koelewijn
+* dfdf15bd - (5 weeks ago) Add javaaction support to describe CLI subcommand - Andrej Koelewijn
+* f3058e7b - (5 weeks ago) Fix BSON storage names for parameter mappings - Andrej Koelewijn
+* 20716784 - (5 weeks ago) Add K2/Nintex to Mendix migration skill - Andrej Koelewijn
+* b3086ec3 - (5 weeks ago) Add microflow action parameter examples to page examples - Andrej Koelewijn
+* 5952a59e - (5 weeks ago) Document microflow parameter support for page action buttons - Andrej Koelewijn
+* a0bb08fe - (5 weeks ago) Add microflow/nanoflow parameter support for page action buttons - Andrej Koelewijn
+* 7ea88768 - (5 weeks ago) Add security roundtrip tests and fix entity GRANT output - Andrej Koelewijn
+* 480dc2fc - (5 weeks ago) Add security access rules to DESCRIBE output and allow keywords as user role names - Andrej Koelewijn
+* 7c055dfe - (5 weeks ago) Add quoted identifier support for reserved words in qualified names - Andrej Koelewijn
+* 41a7d45f - (5 weeks ago) Add session logging, diagnostics command, and security help - Andrej Koelewijn
+* 2b627a87 - (5 weeks ago) Allow widget type keywords as identifiers in qualified names - Andrej Koelewijn
+* e0810dc0 - (5 weeks ago) Add security node icons and context menu support to VS Code extension - Andrej Koelewijn
+* 0aea6b1c - (5 weeks ago) Move MDL security proposal to proposals folder - Andrej Koelewijn
+* 15a48065 - (5 weeks ago) Add MDL security management: roles, access control, GRANT/REVOKE - Andrej Koelewijn
+* fcce5efb - (5 weeks ago) Add multi-tool AI assistant support to mxcli init - Andrej Koelewijn
+* 6f18c498 - (5 weeks ago) Overview doc - Andrej Koelewijn
+* 73988cb5 - (5 weeks ago) Update mxcli-overview.md with correct syntax and missing tools - Andrej Koelewijn
+* c9df1338 - (5 weeks ago) Add MDL security support proposal document - Andrej Koelewijn
+* a98d5c9e - (5 weeks ago) Rename help command to syntax, add TreeView context menu commands - Andrej Koelewijn
+* ca018e48 - (5 weeks ago) Generate LSP completions from grammar, improve project tree structure - Andrej Koelewijn
+* 57a650ec - (5 weeks ago) Update documentation for LSP server and VS Code extension features - Andrej Koelewijn
+* ae2db31e - (5 weeks ago) Install VS Code MDL extension during mxcli init - Andrej Koelewijn
+* afa0857b - (5 weeks ago) Add Run File, Run Selection, and Check File context menu commands - Andrej Koelewijn
+* 72edcaf8 - (5 weeks ago) Add hover, go-to-definition, and semantic diagnostics to LSP server - Andrej Koelewijn
+* 7bdd9e48 - (5 weeks ago) Add Mendix project TreeView to VS Code extension - Andrej Koelewijn
+* 815ff9d7 - (5 weeks ago) Add document symbols and folding ranges to LSP server - Andrej Koelewijn
+* 795c918d - (5 weeks ago) Add context-aware keyword and snippet completion to LSP server - Andrej Koelewijn
+* c04f6dea - (5 weeks ago) Add minimal LSP server and VS Code extension for MDL files - Andrej Koelewijn
+* b055d651 - (5 weeks ago) Add proposals for page styling support and MDL language server - Andrej Koelewijn
+* 63b1242e - (5 weeks ago) Add CREATE OR REPLACE MICROFLOW support and fix duplicate detection - Andrej Koelewijn
+* f960192b - (5 weeks ago) Add zero-step VS Code extension distribution to LSP proposal - Andrej Koelewijn
+* ae4d2372 - (5 weeks ago) Add System module reference skill from Java proxy analysis - Andrej Koelewijn
+* 49f343a4 - (5 weeks ago) Split 9 large files into 29 smaller modules for maintainability - Andrej Koelewijn
+* 0c4e6e7b - (5 weeks ago) Add migration assessment skill for investigating non-Mendix projects - Andrej Koelewijn
+* 83da73a5 - (5 weeks ago) Remove V1 and V2 page syntax, keeping only V3 - Andrej Koelewijn
+* df0c38c3 - (5 weeks ago) Add project organization skill for folders and MOVE command - Andrej Koelewijn
+* 9195780b - (5 weeks ago) Add test page, wrapper microflows, and real CallAPI implementation - Andrej Koelewijn
+* c915dc46 - (5 weeks ago) Fix Java boolean literal casing in MDL examples (True → true) - Andrej Koelewijn
+* cd8c468e - (5 weeks ago) Fix Java action entity param types, expression escaping, and duplicate variables - Andrej Koelewijn
+* 0a62db2c - (5 weeks ago) Update vision document with current implementation status - Andrej Koelewijn
+* de491403 - (5 weeks ago) Improve Java action testability guidance with adapter pattern - Andrej Koelewijn
+* 9c26d320 - (5 weeks ago) Add code organization best practice for Java actions - Andrej Koelewijn
+* d80fcb47 - (5 weeks ago) Document StringTemplate type and CREATE JAVA ACTION syntax in skills - Andrej Koelewijn
+* 18ab1f9e - (5 weeks ago) Add StringTemplate(Sql|Text) type support for Java action parameters - Andrej Koelewijn
+* 5e273568 - (5 weeks ago) Fix BSON serialization issues and add mx debugging workflow - Andrej Koelewijn
+* ccc4f7bc - (5 weeks ago) Add filter widget examples and roundtrip tests - Andrej Koelewijn
+* 69aef989 - (5 weeks ago) Add filter widget support to page builder and describe - Andrej Koelewijn
+* 65a282f0 - (5 weeks ago) Add filter widget tokens and properties to MDL grammar - Andrej Koelewijn
+* ddcd0943 - (5 weeks ago) Fix TextTemplate properties in filter widget templates - Andrej Koelewijn
+* c03d4553 - (5 weeks ago) Update page generation documentation and TextTemplate troubleshooting - Andrej Koelewijn
+* bdec66cd - (5 weeks ago) Fix CREATE OR REPLACE for V3 pages/snippets and fix action parameter syntax - Andrej Koelewijn
+* a2038156 - (5 weeks ago) Fix INDEX syntax and DELETE_BEHAVIOR values in domain model skill - Andrej Koelewijn
+* 1e87a5a2 - (5 weeks ago) Add Gallery widget template for Mendix 11.6 - Andrej Koelewijn
+* c0179e84 - (5 weeks ago) Preserve page parameter context in ContentParams with SourceVariable - Andrej Koelewijn
+* 294085c8 - (6 weeks ago) Add ListView support to DESCRIBE PAGE output - Andrej Koelewijn
+* 80ab115c - (6 weeks ago) Fix ClientTemplateParameter attribute ref validation - Andrej Koelewijn
+* a88c4e7a - (6 weeks ago) Support attribute binding syntax for DynamicText Content - Andrej Koelewijn
+* 0d6d564c - (6 weeks ago) Fix ListenTargetSource serialization for SELECTION datasource - Andrej Koelewijn
+* a1f14eae - (6 weeks ago) Move exit statement after P016_Page_With_Snippet page - Andrej Koelewijn
+* bd6c78a7 - (6 weeks ago) Fix SNIPPETCALL to use BY_NAME_REFERENCE for snippet - Andrej Koelewijn
+* ca41c28f - (6 weeks ago) Fix V3 page builder issues: microflow context, snippet params, page args - Andrej Koelewijn
+* 9a5ad1dd - (6 weeks ago) Fix double-quoting of template parameter literals - Andrej Koelewijn
+* dc50bab1 - (6 weeks ago) Add CaptionParams support for ActionButton in V3 builder - Andrej Koelewijn
+* 87619c37 - (6 weeks ago) Restore AttributeRef validation for fully qualified paths - Andrej Koelewijn
+* 4886d399 - (6 weeks ago) Add ListView serialization support - Andrej Koelewijn
+* d5b7e7b9 - (6 weeks ago) Fix V3 DATAGRID to use DataGrid2 pluggable widget - Andrej Koelewijn
+* 106d6d5e - (6 weeks ago) Fix DataGrid data source entity reference type - Andrej Koelewijn
+* 7afa710f - (6 weeks ago) Add V3 page syntax, SHOW/UPDATE WIDGETS, and bug fixes - Andrej Koelewijn
+* d715c32b - (6 weeks ago) Add V3 page syntax support for custom widgets and DataGrid - Andrej Koelewijn
+* fea0cc82 - (6 weeks ago) Add V2 page syntax support and cleanup - Andrej Koelewijn
+* 1f1cccdb - (6 weeks ago) Update DESCRIBE output to use V2 MDL syntax - Andrej Koelewijn
+* 00939bed - (6 weeks ago) Fix V2 page builder for ComboBox and DataGrid2 pluggable widgets - Andrej Koelewijn
+* af3aa78e - (6 weeks ago) Fix ActionButton parameters not showing in DESCRIBE output - Andrej Koelewijn
+* f7c8a8ed - (6 weeks ago) Update skill documentation based on user feedback - Andrej Koelewijn
+* 2669e6ff - (6 weeks ago) Improve OQL JOIN documentation to clarify both approaches - Andrej Koelewijn
+* f963e1a6 - (6 weeks ago) Fix OQL validation false positives for ORDER BY and JOIN ON - Andrej Koelewijn
+* cb1aff51 - (6 weeks ago) Add MXCLI_QUIET env var to suppress warning banner - Andrej Koelewijn
+* 4645a474 - (6 weeks ago) Update documentation for Page Syntax V2 - Andrej Koelewijn
+* 65e309ff - (6 weeks ago) Fix test syntax errors for COLUMN and ACTIONBUTTON - Andrej Koelewijn
+* 82c28a87 - (6 weeks ago) Add unit tests for microflow parsing bug report - Andrej Koelewijn
+* ef028998 - (6 weeks ago) Add ROLLBACK statement support and fix documentation errors - Andrej Koelewijn
+* 7623824a - (6 weeks ago) Fix microflow/page resolution in same-session scripts and add MDL syntax guidance - Andrej Koelewijn
+* 55e4146b - (6 weeks ago) Fix parse error for qualified names containing plural keywords - Andrej Koelewijn
+* 4b78f7b7 - (6 weeks ago) Add SHOW WIDGETS command for widget discovery in catalog - Andrej Koelewijn
+* 55f942d3 - (6 weeks ago) Add DISTINCT support for catalog queries and update documentation - Andrej Koelewijn
+* 64b95f4a - (6 weeks ago) Add impact warning for cross-module moves - Andrej Koelewijn
+* 7764d01c - (6 weeks ago) Add MOVE command to move documents to different folders/modules - Andrej Koelewijn
+* 857878e9 - (6 weeks ago) Add folder support for microflows, pages, and snippets - Andrej Koelewijn
+* f658b417 - (6 weeks ago) Remove COMMIT MESSAGE utility command from MDL grammar - Andrej Koelewijn
+* 7418095b - (6 weeks ago) Fix page/snippet serialization issues - Andrej Koelewijn
+*   f1a63f34 - (6 weeks ago) Merge siemens/main into main - Andrej Koelewijn
+|\  
+| * d0c75386 - (6 weeks ago) Add REST call action support to MDL - Andrej Koelewijn
+* | 8046dfe3 - (6 weeks ago) RAISE ERROR example - Andrej Koelewijn
+* | 9bd93bcf - (6 weeks ago) Add ErrorEvent parsing and loop error handling validation - Andrej Koelewijn
+* | 02da3bdd - (6 weeks ago) Add REST call action support to MDL - Andrej Koelewijn
+|/  
+* d78065e3 - (6 weeks ago) Add full-text search with SEARCH command and catalog FTS tables - Andrej Koelewijn
+* e7391dd8 - (6 weeks ago) Add microflow, page, and snippet help topics and init example - Andrej Koelewijn
+* 9541d88f - (6 weeks ago) Add missing widget and action keywords to help keywords list - Andrej Koelewijn
+* 3ed00f04 - (6 weeks ago) Update documentation, skills, and MDL examples - Andrej Koelewijn
+* 877d5208 - (6 weeks ago) Add microflow body validation checks to mxcli check command - Andrej Koelewijn
+* 016dffe4 - (6 weeks ago) Add ON ERROR handling support for microflow activities - Andrej Koelewijn
+* 6e84f222 - (6 weeks ago) Add MDL004 lint rule: validation feedback must have non-empty message (CE0091) - Andrej Koelewijn
+* 1065caf6 - (6 weeks ago) Fix TextTemplate BSON serialization field name and marker - Andrej Koelewijn
+* 62d40755 - (6 weeks ago) Fix snippet BSON serialization to match Studio Pro format - Andrej Koelewijn
+* 10159898 - (6 weeks ago) Add NavigationList widget support for describe, create, and serialization - Andrej Koelewijn
+* f48cd93a - (6 weeks ago) Add microflow body validation checks to mxcli check - Andrej Koelewijn
+* 8b6e9f88 - (6 weeks ago) Fix ValidationFeedbackAction: BSON fields and attribute path parsing (CE0091) - Andrej Koelewijn
+* 3722debb - (6 weeks ago) Fix view entity round-trip parsing: add OqlViewValue case (CE6770) - Andrej Koelewijn
+* 1f8ba037 - (6 weeks ago) Add MDL003 lint rule: max 15 persistent entities per domain model - Andrej Koelewijn
+* 04f96169 - (6 weeks ago) Add CALL MICROFLOW parameter mapping documentation - Andrej Koelewijn
+* f613a108 - (6 weeks ago) Fix VALIDATION FEEDBACK association path serialization (CE1613) - Andrej Koelewijn
+* 5b83d674 - (6 weeks ago) Fix duplicate ViewEntitySourceDocuments and batch view entity creation - Andrej Koelewijn
+* 77ad3fb6 - (6 weeks ago) Fix DROP VIEW ENTITY to also delete orphaned OQL source documents - Andrej Koelewijn
+* ec168e24 - (6 weeks ago) Remove unused mendixmodellib tarball and fix script file modes - Andrej Koelewijn
+* d51eef33 - (6 weeks ago) Update skills and MDL examples - Andrej Koelewijn
+* ce646d00 - (6 weeks ago) Simplify devcontainer: native Claude Code install, remove Node.js dependency - Andrej Koelewijn
+* 7bc95d61 - (6 weeks ago) Add CustomWithoutRollBack error handling type - Andrej Koelewijn
+* af8e6fb9 - (6 weeks ago) Add CREATE_OBJECT action and DataGrid header support for pages - Andrej Koelewijn
+* dc67c5d7 - (6 weeks ago) Add domain model validation: reserved words, enum references, and OQL division check - Andrej Koelewijn
+* 02e20f7e - (6 weeks ago) Add static OQL type checking and SELECT alias/ORDER BY validation - Andrej Koelewijn
+* 65c566f5 - (6 weeks ago) Update OQL docs with association path rules and correlated subquery patterns - Andrej Koelewijn
+* 7176a4d1 - (6 weeks ago) Add OQL syntax validation for view entities - Andrej Koelewijn
+* 556caafa - (6 weeks ago) Add enumeration example to CLAUDE.md installed by mxcli init - Andrej Koelewijn
+* 2c21070c - (6 weeks ago) Add help commands and improve error messages for MDL - Andrej Koelewijn
+* 21881d55 - (6 weeks ago) Document ANTLR nil value handling pattern - Andrej Koelewijn
+* d108ff1c - (6 weeks ago) Fix nil pointer panic when parsing malformed entity attributes - Andrej Koelewijn
+* b7441584 - (6 weeks ago) Add helpful error messages with example MDL for malformed enumerations - Andrej Koelewijn
+* b15feb5d - (6 weeks ago) Fix nil pointer panic when parsing malformed enumerations - Andrej Koelewijn
+* 15773c24 - (6 weeks ago) Add view entity OQL type validation - Andrej Koelewijn
+* 6d70f79b - (6 weeks ago) Add mxcli serve command for project visualization - Andrej Koelewijn
+* e3edae6c - (6 weeks ago) Add DESCRIBE SNIPPET command to output snippet MDL syntax - Andrej Koelewijn
+* 052f59ae - (6 weeks ago) Add NANOFLOWS to catalogTableName grammar rule - Andrej Koelewijn
+* 284b011f - (6 weeks ago) Add nanoflows and layouts to catalog tables - Andrej Koelewijn
+* c0a8bc9d - (6 weeks ago) Add SHOW LAYOUTS command to list page layouts in project - Andrej Koelewijn
+* 777b2259 - (6 weeks ago) Add SHOW NANOFLOWS command to list nanoflows in project - Andrej Koelewijn
+* 2fc5e520 - (6 weeks ago) Fix error handling display in DESCRIBE MICROFLOW - Andrej Koelewijn
+* 6b693f99 - (6 weeks ago) Fix microflow traversal to handle intermediate merge points - Andrej Koelewijn
+* 59daa64d - (6 weeks ago) Fix microflow call parameter parsing in DESCRIBE MICROFLOW - Andrej Koelewijn
+* f3f8e441 - (6 weeks ago) Fix ORDER BY DESC/ASC parsing in catalog queries - Andrej Koelewijn
+* d0763031 - (6 weeks ago) Fix association retrieve to show qualified name in DESCRIBE MICROFLOW - Andrej Koelewijn
+* 2363134c - (6 weeks ago) Fix Java action parameter display in DESCRIBE MICROFLOW - Andrej Koelewijn
+* c54cd576 - (6 weeks ago) Fix DESCRIBE MICROFLOW output for messages and CREATE statements - Andrej Koelewijn
+* 0498cd4f - (6 weeks ago) Fix DataGrid2 column visible property and document Expression-type pitfalls - Andrej Koelewijn
+* b22802e1 - (6 weeks ago) Add documentation for property value types and common BSON errors - Andrej Koelewijn
+* 619170fa - (6 weeks ago) Fix DataGrid2 column properties for Studio Pro compatibility - Andrej Koelewijn
+* 4a13c42e - (6 weeks ago) Add SORT BY support for RETRIEVE and improve grammar sharing - Andrej Koelewijn
+* 4920c83e - (6 weeks ago) Add DataGrid2 example and fluent API builder - Andrej Koelewijn
+* 10fadcf7 - (6 weeks ago) Add documentation, bug report, and DataGrid2 comparison tool - Andrej Koelewijn
+* 8c2279b3 - (6 weeks ago) Fix datasource entity serialization and misc updates - Andrej Koelewijn
+* 15446004 - (6 weeks ago) Fix DataGrid2 widget definition changed error (CE0463) - Andrej Koelewijn
+* 547ca850 - (7 weeks ago) Add DATASOURCE output in DESCRIBE PAGE for DataView widgets - Andrej Koelewijn
+* ffe9a7df - (7 weeks ago) Add autocomplete for DROP PAGE and DROP SNIPPET - Andrej Koelewijn
+* 0ec8e7b6 - (7 weeks ago) Fix DataView microflow datasource serialization - Andrej Koelewijn
+* 3a783faa - (7 weeks ago) Introduction powerpoint - Andrej Koelewijn
+* 2f0772be - (7 weeks ago) Add clean exit handling and reconnect on project modification - Andrej Koelewijn
+* f54f60e1 - (7 weeks ago) Implement Phase 1 & 2 of LLM MDL assistance proposal - Andrej Koelewijn
+* 0e3afa3f - (7 weeks ago) Fix catalog ActivityCount to match SHOW MICROFLOWS - Andrej Koelewijn
+* 34f9a0e2 - (7 weeks ago) Fix parser error handling and improve REPL autocomplete - Andrej Koelewijn
+* bb93558a - (7 weeks ago) Improve error messages with code examples for variable declaration - Andrej Koelewijn
+* 082d8f12 - (7 weeks ago) Update LLM assistance proposal: focused skills by document type - Andrej Koelewijn
+* 063ce2d7 - (7 weeks ago) Add proposal: Improving LLM Assistance for MDL Code Generation - Andrej Koelewijn
+* 629797eb - (7 weeks ago) Add Sequence column to CATALOG.ACTIVITIES table - Andrej Koelewijn
+* 4724c5bd - (7 weeks ago) Update docs for check command microflow validation - Andrej Koelewijn
+* a9938f47 - (7 weeks ago) Add microflow semantic validation to check command - Andrej Koelewijn
+* cba3995d - (7 weeks ago) Add VALIDATION FEEDBACK support and variable declaration validation - Andrej Koelewijn
+* c6b0dd78 - (7 weeks ago) Add MDL010 lint rule: Entity Business Key requirement - Andrej Koelewijn
+* d6676161 - (7 weeks ago) Add mxcli location instructions to generated CLAUDE.md - Andrej Koelewijn
+* 4bf0b650 - (7 weeks ago) Implement Phase 3: Starlark lint rules with McCabe complexity - Andrej Koelewijn
+* 62a1e869 - (7 weeks ago) Implement Phase 2 linter: MDL grammar integration and configuration - Andrej Koelewijn
+* df2c6cbc - (7 weeks ago) Implement Phase 1 linter framework with MDL001 and MDL002 rules - Andrej Koelewijn
+* 80d04306 - (7 weeks ago) Add code search commands to explore command documentation - Andrej Koelewijn
+* aa2a6aa0 - (7 weeks ago) Update documentation with code search commands and new ref kinds - Andrej Koelewijn
+* 8466d915 - (7 weeks ago) Add page entity and microflow ref extraction to catalog builder - Andrej Koelewijn
+* 3ec556d3 - (7 weeks ago) Implement Phase 3 context assembly: SHOW CONTEXT OF command - Andrej Koelewijn
+* 8f0c89a2 - (7 weeks ago) Fix catalog to use pure-Go SQLite driver - Andrej Koelewijn
+* d934c867 - (7 weeks ago) Implement Phase 2 code search: SHOW CALLERS/CALLEES/REFERENCES/IMPACT - Andrej Koelewijn
+* 19c7ea83 - (7 weeks ago) Add catalog caching to persist and reuse expensive catalog builds - Andrej Koelewijn
+* 2de563df - (7 weeks ago) Improve SHOW CATALOG TABLES formatting and add REFS to help - Andrej Koelewijn
+* 839b1ae6 - (7 weeks ago) Add CATALOG.REFS table for cross-reference tracking - Andrej Koelewijn
+* 240467f6 - (7 weeks ago) Fix SHOW PAGE to use FormSettings with BY_NAME_REFERENCE - Andrej Koelewijn
+* 3a0f9e56 - (7 weeks ago) Fix SHOW PAGE to use hierarchy for page lookup - Andrej Koelewijn
+* 9bd89f19 - (7 weeks ago) Implement SHOW PAGE and CLOSE PAGE microflow actions - Andrej Koelewijn
+* 8546ebc6 - (7 weeks ago) Document high-level fluent API in CLAUDE.md, README.md, and ARCHITECTURE.md - Andrej Koelewijn
+* 693c407d - (7 weeks ago) Add integration tests for high-level API - Andrej Koelewijn
+* d5957c9c - (7 weeks ago) Implement high-level fluent API for modelsdk-go - Andrej Koelewijn
+* 466cbdbe - (7 weeks ago) Add page creation example and high-level API proposal - Andrej Koelewijn
+* 3cbc3d77 - (7 weeks ago) Fix widget label storage to use Label field instead of Name - Andrej Koelewijn
+* 17b3799f - (7 weeks ago) Add DataView and input widget support to DESCRIBE PAGE command - Andrej Koelewijn
+* 98e3b5bf - (7 weeks ago) Fix ComboBox widget template cloning with correct UUID byte ordering - Andrej Koelewijn
+* d5ae00ce - (7 weeks ago) Fix ComboBox serialization as pluggable widget (CustomWidget) - Andrej Koelewijn
+* f70227ee - (7 weeks ago) Fix input widget attribute resolution and BSON serialization - Andrej Koelewijn
+* ddbeef55 - (7 weeks ago) Add BSON debugging tools and fix DROP MODULE cascade - Andrej Koelewijn
+* 161944b9 - (7 weeks ago) Add revised linter proposal for mxcli - Andrej Koelewijn
+* 531748ff - (7 weeks ago) Update todo list and fix entity positions in page examples - Andrej Koelewijn
+* 06d07665 - (7 weeks ago) Fix ActionButton CaptionTemplate BSON serialization - Andrej Koelewijn
+* c3125c61 - (7 weeks ago) Add proposal for running Mendix projects in Docker containers - Andrej Koelewijn
+* b73b31c0 - (7 weeks ago) Add bug report for cross-module entity parameter issue - Andrej Koelewijn
+* abc6c74b - (7 weeks ago) Fix cross-module entity parameter parsing in MDL - Andrej Koelewijn
+* d5d9117a - (7 weeks ago) Reorganize docs: move proposals to docs/11-proposals - Andrej Koelewijn
+* f30ba673 - (7 weeks ago) Update roundtrip tests and microflow examples - Andrej Koelewijn
+* 1d0bc73d - (7 weeks ago) Minor visitor and AST improvements - Andrej Koelewijn
+* fef506af - (7 weeks ago) Improve microflow parsing, writing, and display - Andrej Koelewijn
+* 081c2ba2 - (7 weeks ago) Add ANTLR grammar rules for CREATE JAVA ACTION syntax - Andrej Koelewijn
+* f2f3fd94 - (7 weeks ago) Add CREATE JAVA ACTION support with parameter type serialization - Andrej Koelewijn
+* 530d820b - (7 weeks ago) Add list operations support and fix RETRIEVE statement issues - Andrej Koelewijn
+* c9e31590 - (7 weeks ago) Fix RETRIEVE type registration: LIMIT 1 returns single entity, not list - Andrej Koelewijn
+* e03ccf5a - (7 weeks ago) Update microflow skill with RETRIEVE list behavior and LOOP type derivation - Andrej Koelewijn
+* 10605da9 - (7 weeks ago) Add microflow builder architecture docs with variable type tracking - Andrej Koelewijn
+* 3bcbd2a1 - (7 weeks ago) Fix CHANGE statement inside loops by correctly tracking RETRIEVE as list type - Andrej Koelewijn
+* 2268fcb5 - (7 weeks ago) Fix hierarchy cache invalidation after creating new units - Andrej Koelewijn
+* 86519168 - (7 weeks ago) Add diff and diff-local commands for comparing MDL scripts and git changes - Andrej Koelewijn
+* 55583c23 - (7 weeks ago) Add dynamic autocomplete for MDL object names in REPL - Andrej Koelewijn
+* eabe004e - (7 weeks ago) Fix CHANGE inside loops to correctly set attribute qualified name - Andrej Koelewijn
+* de42a4db - (7 weeks ago) Fix association storage and display in CHANGE statements - Andrej Koelewijn
+* 3911ca39 - (7 weeks ago) Convert all microflow example comments to JavaDoc style - Andrej Koelewijn
+* 42d99b01 - (7 weeks ago) Update MDL examples to use CHANGE for entity attribute modifications - Andrej Koelewijn
+* b7896fa7 - (7 weeks ago) Fix XPath attribute changes to display as CHANGE statements - Andrej Koelewijn
+* b8dc6d08 - (7 weeks ago) Add build artifacts to .gitignore - Andrej Koelewijn
+* 10a8fff5 - (7 weeks ago) Fix CHANGE action parsing to handle primitive.A BSON type - Andrej Koelewijn
+* 9561831d - (7 weeks ago) Fix LOG message template quoting in DESCRIBE output - Andrej Koelewijn
+* 41050275 - (7 weeks ago) Fix CREATE/CHANGE action BSON serialization and align syntax - Andrej Koelewijn
+* 4fd5991b - (8 weeks ago) Fix page type names and microflow describe flow traversal - Andrej Koelewijn
+* f62e6948 - (8 weeks ago) Add grammar documentation generator with Mermaid state diagrams - Andrej Koelewijn
+* 0049e840 - (8 weeks ago) Add unified string template syntax with WITH clause and tests - Andrej Koelewijn
+* fc0a14f7 - (8 weeks ago) Fix LOG node expression and remove nested ObjectCollection Flows - Andrej Koelewijn
+* 58810fcd - (8 weeks ago) Fix DESCRIBE output for List/Object types and LOG node name - Andrej Koelewijn
+* 305fdf5f - (8 weeks ago) Add support for microflow return variable name (AS $VarName) - Andrej Koelewijn
+* ee631827 - (8 weeks ago) Fix loop layout: proper positioning and flow connections - Andrej Koelewijn
+* 2a0916b2 - (8 weeks ago) Improve microflow layout with proper connection anchors and IF branching - Andrej Koelewijn
+* 2825174d - (8 weeks ago) Update .gitignore for reference files - Andrej Koelewijn
+* 6e61a853 - (8 weeks ago) Improve catalog performance and smart reference validation - Andrej Koelewijn
+* 7a00e590 - (8 weeks ago) Add mxcli init command and java-actions skill - Andrej Koelewijn
+* 9bf39bee - (8 weeks ago) Add check command to documentation - Andrej Koelewijn
+* 4c634130 - (8 weeks ago) Add check command for syntax and reference validation - Andrej Koelewijn
+* d2996888 - (8 weeks ago) Remove test project from version control - Andrej Koelewijn
+* 21d362e0 - (8 weeks ago) Add REFRESH CATALOG command to rebuild catalog tables - Andrej Koelewijn
+* a949e610 - (8 weeks ago) Add proof-of-concept warning to REPL startup - Andrej Koelewijn
+* 8dd9aa8d - (8 weeks ago) Add catalog queries to HELP command output - Andrej Koelewijn
+* 876f46cf - (8 weeks ago) Add catalog query documentation to README and CLAUDE.md - Andrej Koelewijn
+* 7a57cc12 - (8 weeks ago) Add catalog tables for SQL-based project querying - Andrej Koelewijn
+* d2e52774 - (8 weeks ago) Fix TITLE widget visitor to extract name and content from options - Andrej Koelewijn
+* c9f1d370 - (8 weeks ago) Fix TITLE widget creation and description - Andrej Koelewijn
+* c25e3de1 - (8 weeks ago) Add Marketplace source and version to SHOW MODULES output - Andrej Koelewijn
+* 69802176 - (8 weeks ago) Require explicit module when creating objects - Andrej Koelewijn
+* fc298b6e - (8 weeks ago) Update .gitignore to exclude PDFs, tarballs, and test projects - Andrej Koelewijn
+* f99898ec - (8 weeks ago) Add visitor tests, dump_page command, and user documentation - Andrej Koelewijn
+* ed323708 - (8 weeks ago) Add version detection package and reorganize docs - Andrej Koelewijn
+* 77578232 - (8 weeks ago) Add ContainerHierarchy helper and extend grammar keywords - Andrej Koelewijn
+* bd43b9fd - (8 weeks ago) Refactor visitor_microflow.go into focused modules - Andrej Koelewijn
+* 825397ce - (8 weeks ago) Refactor microflow executor and SDK into focused modules - Andrej Koelewijn
+* 309aa5d4 - (8 weeks ago) Refactor reader.go into focused modules - Andrej Koelewijn
+* a7f74ef1 - (8 weeks ago) Refactor large source files into focused modules - Andrej Koelewijn
+* 59aaac25 - (8 weeks ago) Add roundtrip and mx check test framework for MDL - Andrej Koelewijn
+* bdfff258 - (8 weeks ago) Fix page widget serialization bugs and add documentation - Andrej Koelewijn
+* 1b310493 - (8 weeks ago) Add MDL doctype test examples - Andrej Koelewijn
+* 84bf1dbf - (8 weeks ago) Add comprehensive page widget grammar support - Andrej Koelewijn
+* 231430a6 - (8 weeks ago) Add Claude Code skills for Mendix app generation with MDL - Andrej Koelewijn
+* 8aba8e91 - (8 weeks ago) Add CREATE PAGE and DROP PAGE support with Forms$Page format - Andrej Koelewijn
+* d29b50bc - (8 weeks ago) Add IF/LOOP support and fix XPath expression parsing - Andrej Koelewijn
+* 0abe8d18 - (8 weeks ago) Fix log Node field to be expression format - Andrej Koelewijn
+* a176853d - (8 weeks ago) Fix microflow serialization for CREATE, RETRIEVE, LOG actions - Andrej Koelewijn
+* a983c9af - (8 weeks ago) Fix CreateObjectAction and ChangeObjectAction serialization - Andrej Koelewijn
+* 15c550d6 - (8 weeks ago) Add audit and context-specific parsing guidance to skill - Andrej Koelewijn
+* ec548d75 - (8 weeks ago) Fix BY_NAME_REFERENCE serialization for ObjectType and EnumerationType - Andrej Koelewijn
+* 865ca94b - (8 weeks ago) Add mx check validation and debugging techniques to skill - Andrej Koelewijn
+* 972303f5 - (8 weeks ago) Fix ListType Entity reference to use BY_NAME_REFERENCE format - Andrej Koelewijn
+* 1a86e229 - (8 weeks ago) Fix LOG message display in DESCRIBE MICROFLOW - Andrej Koelewijn
+* d0eacf61 - (8 weeks ago) Add entity validation for List and Entity parameter types - Andrej Koelewijn
+* 62d6be02 - (8 weeks ago) Fix List parameter type and LOG message template serialization - Andrej Koelewijn
+* 2f3036ff - (8 weeks ago) Fix expression operators to use lowercase for Mendix compatibility - Andrej Koelewijn
+* be4007d2 - (8 weeks ago) Implement CREATE MICROFLOW support in MDL - Andrej Koelewijn
+* d1c191a0 - (8 weeks ago) Fix microflow parameter serialization to match Studio Pro format - Andrej Koelewijn
+* 447d2475 - (8 weeks ago) Require DEFAULT value for Boolean attributes - Andrej Koelewijn
+* b5cc8778 - (8 weeks ago) Document VIEW ENTITY BSON structure - Andrej Koelewijn
+* e9a0a6f7 - (8 weeks ago) Add unit metadata caching for 10x performance improvement - Andrej Koelewijn
+* 4cd43aea - (8 weeks ago) Fix CREATE OR MODIFY VIEW ENTITY to delete existing OQL query document - Andrej Koelewijn
+* 0f14137a - (8 weeks ago) Add VIEW ENTITY support with ViewEntitySourceDocument - Andrej Koelewijn
+* 6397d797 - (8 weeks ago) Fix multi-line statement parsing in REPL - Andrej Koelewijn
+* e4a4280d - (8 weeks ago) Add MDL language specification documentation - Andrej Koelewijn
+* e3444fa6 - (8 weeks ago) Simplify REPL history to use readline built-in features - Andrej Koelewijn
+* 1e7b6b6d - (8 weeks ago) Fix validation rules and indexes in DESCRIBE ENTITY - Andrej Koelewijn
+* eaed1942 - (8 weeks ago) Add autocomplete and prefix history filtering to REPL - Andrej Koelewijn
+* 45c12250 - (8 weeks ago) Implement microflow object parsing for DESCRIBE MICROFLOW - Andrej Koelewijn
+* 07b14cd5 - (9 weeks ago) Add DESCRIBE MICROFLOW command framework - Andrej Koelewijn
+* 634de51b - (9 weeks ago) Refactor executor into document-type files and add SHOW JAVA ACTIONS - Andrej Koelewijn
+* 9b902be3 - (9 weeks ago) Add SHOW MICROFLOWS/PAGES/SNIPPETS and fix DESCRIBE ENTITY for views - Andrej Koelewijn
+* 9dfd9fd2 - (9 weeks ago) Enhance SHOW ENUMERATIONS with qualified name and folder path - Andrej Koelewijn
+* 865f68e2 - (9 weeks ago) Fix Persistable flag parsing for entities without generalization - Andrej Koelewijn
+* 2664e150 - (9 weeks ago) Enhance SHOW ENTITIES with comprehensive entity details - Andrej Koelewijn
+* 83b9c47b - (9 weeks ago) Add comprehensive element counts to SHOW MODULES - Andrej Koelewijn
+* e56faebe - (9 weeks ago) Fix O(n²) performance in SHOW ENTITIES/ASSOCIATIONS - Andrej Koelewijn
+* 0167592a - (9 weeks ago) Format SHOW output as aligned markdown tables - Andrej Koelewijn
+* 69d9e986 - (9 weeks ago) Fix REPL help/exit/quit/status commands not responding - Andrej Koelewijn
+* c4b9b97f - (9 weeks ago) Replace MDL grammar with comprehensive split lexer/parser - Andrej Koelewijn
+* 53c6e5c3 - (9 weeks ago) Restructure project for cleaner organization - Andrej Koelewijn
+* 4d728b4d - (9 weeks ago) Add original MDL grammar from Mendix REPL and ANTLR4 support - Andrej Koelewijn
+*   5470b0f5 - (9 weeks ago) Merge claude/mendix-go-library-IyGm9 into main - Andrej Koelewijn
+|\  
+* \   0aee0631 - (9 weeks ago) Merge initial Siemens GitLab commit, keep local README - Andrej Koelewijn
+|\ \  
+| | | * a8fea7a9 - (9 weeks ago) Add MDL documentation, inspect_db example, and update gitignore - Andrej Koelewijn (claude/mendix-go-library-IyGm9)
+| | |/  
+| | *   ba1d2638 - (9 weeks ago) Merge initial Siemens GitLab commit, keep local README - Andrej Koelewijn
+| | |\  
+| | |/  
+| |/|   
+| * | e30f65a3 - (9 weeks ago) Initial commit - Koelewijn, Andrej (DI SW MNDX PRO&TECH R&D AD PRM)
+|  /  
+| * 6a20f689 - (9 weeks ago) Fix association parsing to read from correct BSON fields - Andrej Koelewijn
+| * 791a59b8 - (9 weeks ago) Fix BSON serialization for enumerations and IDs - Andrej Koelewijn
+| * e4c86d12 - (9 weeks ago) Fix module serialization to match Mendix Studio Pro format - Andrej Koelewijn
+| * 0eb72e4a - (9 weeks ago) Fix module creation to properly set ContainerID and create DomainModel - Andrej Koelewijn
+| * bb0eb301 - (9 weeks ago) Add DROP MODULE statement support - Andrej Koelewijn
+| * b563c729 - (9 weeks ago) Add CREATE MODULE statement support - Andrej Koelewijn
+| * 88ed4973 - (9 weeks ago) Fix readline history support in mxcli REPL - Andrej Koelewijn
+| * c02610e3 - (9 weeks ago) Add bin/ to .gitignore - Andrej Koelewijn
+| * 4b622964 - (9 weeks ago) Switch to pure Go SQLite, add cross-compilation support - Andrej Koelewijn
+| * 94912130 - (9 weeks ago) Add MDL CLI (mxcli) with ANTLR4 parser for domain model operations - Andrej Koelewijn
+| * 049b4e2d - (9 weeks ago) Add MPR v2 write support with proper BSON serialization - Andrej Koelewijn
+| * b6fea8c6 - (9 weeks ago) Add comprehensive document type support for Mendix 11.6 - Andrej Koelewijn
+| * 5b5235a5 - (9 weeks ago) Fix enumeration value parsing for BSON arrays - Andrej Koelewijn
+| * 366bc892 - (9 weeks ago) Fix Forms namespace for Mendix 10+ compatibility - Andrej Koelewijn
+| * 7de8664b - (9 weeks ago) Fix MPR v2 format support with correct UUID byte ordering - Andrej Koelewijn
+| * 9594f29d - (9 weeks ago) Update to Mendix 11.6.0 metamodel and fix module path - Andrej Koelewijn
+| * a70e305b - (9 weeks ago) Add VS Code devcontainer configuration - Andrej Koelewijn
+| * 65af3d49 - (9 weeks ago) Implement code generator for Mendix metamodel types - Andrej Koelewijn
+| * 8ed89fa7 - (9 weeks ago) Add SDK equivalence documentation and code generation strategy - Andrej Koelewijn
+| * 98a9bbd0 - (9 weeks ago) Fix BSON parsing for Mendix MPR format - Claude (origin/claude/mendix-go-library-IyGm9)
+| * f57acd23 - (9 weeks ago) Implement modelsdk-go library for reading and modifying Mendix projects - Claude
+|/  
+* d1a60d58 - (9 weeks ago) Initial commit - Ako (origin/main, origin/HEAD)

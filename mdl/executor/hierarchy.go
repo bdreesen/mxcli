@@ -1,0 +1,143 @@
+// SPDX-License-Identifier: Apache-2.0
+
+package executor
+
+import (
+	"strings"
+
+	"github.com/mendixlabs/mxcli/model"
+	"github.com/mendixlabs/mxcli/sdk/mpr"
+)
+
+// ContainerHierarchy provides efficient module and folder resolution for documents.
+// It caches the container hierarchy to avoid repeated lookups.
+type ContainerHierarchy struct {
+	moduleIDs       map[model.ID]bool
+	moduleNames     map[model.ID]string
+	containerParent map[model.ID]model.ID
+	folderNames     map[model.ID]string
+}
+
+// NewContainerHierarchy creates a new hierarchy from the reader.
+func NewContainerHierarchy(reader *mpr.Reader) (*ContainerHierarchy, error) {
+	h := &ContainerHierarchy{
+		moduleIDs:       make(map[model.ID]bool),
+		moduleNames:     make(map[model.ID]string),
+		containerParent: make(map[model.ID]model.ID),
+		folderNames:     make(map[model.ID]string),
+	}
+
+	// Load modules
+	modules, err := reader.ListModules()
+	if err != nil {
+		return nil, err
+	}
+	for _, m := range modules {
+		h.moduleIDs[m.ID] = true
+		h.moduleNames[m.ID] = m.Name
+	}
+
+	// Load units for container hierarchy
+	units, _ := reader.ListUnits()
+	for _, u := range units {
+		h.containerParent[u.ID] = u.ContainerID
+	}
+
+	// Load folders
+	folders, _ := reader.ListFolders()
+	for _, f := range folders {
+		h.folderNames[f.ID] = f.Name
+		h.containerParent[f.ID] = f.ContainerID
+	}
+
+	return h, nil
+}
+
+// FindModuleID finds the module ID for any container by traversing the hierarchy.
+func (h *ContainerHierarchy) FindModuleID(containerID model.ID) model.ID {
+	current := containerID
+	for range 100 {
+		if h.moduleIDs[current] {
+			return current
+		}
+		parent, ok := h.containerParent[current]
+		if !ok || parent == current {
+			return containerID
+		}
+		current = parent
+	}
+	return containerID
+}
+
+// GetModuleName returns the module name for a module ID.
+func (h *ContainerHierarchy) GetModuleName(moduleID model.ID) string {
+	return h.moduleNames[moduleID]
+}
+
+// IsModule returns true if the ID is a module ID.
+func (h *ContainerHierarchy) IsModule(id model.ID) bool {
+	return h.moduleIDs[id]
+}
+
+// BuildFolderPath builds a folder path string from container to module.
+func (h *ContainerHierarchy) BuildFolderPath(containerID model.ID) string {
+	var parts []string
+	current := containerID
+	for range 100 {
+		if h.moduleIDs[current] {
+			break
+		}
+		if name := h.folderNames[current]; name != "" {
+			parts = append([]string{name}, parts...)
+		}
+		parent, ok := h.containerParent[current]
+		if !ok || parent == current {
+			break
+		}
+		current = parent
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return strings.Join(parts, "/")
+}
+
+// GetQualifiedName returns the fully qualified name for a document.
+func (h *ContainerHierarchy) GetQualifiedName(containerID model.ID, name string) string {
+	modID := h.FindModuleID(containerID)
+	modName := h.GetModuleName(modID)
+	return modName + "." + name
+}
+
+// getHierarchy returns a cached ContainerHierarchy or creates a new one.
+func (e *Executor) getHierarchy() (*ContainerHierarchy, error) {
+	// Ensure cache exists
+	if e.cache == nil {
+		e.cache = &executorCache{}
+	}
+	if e.cache.hierarchy != nil {
+		return e.cache.hierarchy, nil
+	}
+	h, err := NewContainerHierarchy(e.reader)
+	if err != nil {
+		return nil, err
+	}
+	e.cache.hierarchy = h
+	return h, nil
+}
+
+// invalidateHierarchy clears the cached hierarchy so it will be rebuilt on next access.
+// This should be called after any write operation that creates or deletes units.
+func (e *Executor) invalidateHierarchy() {
+	if e.cache != nil {
+		e.cache.hierarchy = nil
+	}
+}
+
+// invalidateDomainModelsCache clears the cached domain models so they will be reloaded.
+// This should be called after any write operation that creates or modifies entities.
+func (e *Executor) invalidateDomainModelsCache() {
+	if e.cache != nil {
+		e.cache.domainModels = nil
+	}
+}

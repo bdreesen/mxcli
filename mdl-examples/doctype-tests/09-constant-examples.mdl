@@ -1,0 +1,119 @@
+-- ############################################################################
+-- CONSTANT EXAMPLES
+-- ############################################################################
+--
+-- This file demonstrates the MDL syntax for managing constants.
+-- Constants are module-level values that can be configured per environment.
+--
+-- Prerequisites: Assumes a module 'CoTest' exists.
+--
+-- ############################################################################
+
+create module CoTest;
+
+-- MARK: - Create Constants
+
+/**
+ * Level 1.1: Create a string constant
+ * String constants are useful for configuration values like URLs and API keys.
+ */
+CREATE CONSTANT CoTest.ServiceEndpoint
+TYPE String
+DEFAULT 'https://api.example.com/v1';
+/
+
+/**
+ * Level 1.2: Create a string constant with a comment
+ * Comments help explain the purpose and expected values.
+ */
+CREATE CONSTANT CoTest.ApiKey
+TYPE String
+DEFAULT ''
+COMMENT 'API key for external service. Configure per environment.';
+/
+
+/**
+ * Level 1.3: Create an integer constant
+ * Integer constants are useful for configuration like timeouts and limits.
+ */
+CREATE CONSTANT CoTest.MaxRetries
+TYPE Integer
+DEFAULT 3;
+/
+
+/**
+ * Level 1.4: Create a long constant
+ * Long constants support larger numeric values.
+ */
+CREATE CONSTANT CoTest.MaxFileSize
+TYPE Long
+DEFAULT 10485760
+COMMENT 'Maximum file upload size in bytes (default 10MB)';
+/
+
+/**
+ * Level 1.5: Create a decimal constant
+ * Decimal constants are useful for precise numeric values like rates.
+ */
+CREATE CONSTANT CoTest.TaxRate
+TYPE Decimal
+DEFAULT 0.21
+COMMENT 'Default tax rate (21%)';
+/
+
+/**
+ * Level 1.6: Create a boolean constant
+ * Boolean constants are useful for feature flags.
+ */
+CREATE CONSTANT CoTest.EnableDebugLogging
+TYPE Boolean
+DEFAULT false
+COMMENT 'Enable verbose debug logging';
+/
+
+/**
+ * Level 1.7: Create a DateTime constant
+ * DateTime constants for default timestamps.
+ */
+CREATE CONSTANT CoTest.LaunchDate
+TYPE DateTime
+DEFAULT '[%BeginOfCurrentDay%]';
+/
+
+-- MARK: - Show Constants
+
+/**
+ * Level 2.1: Show all constants in the project
+ * Lists all constants across all modules with their types and default values.
+ */
+SHOW CONSTANTS;
+/
+
+/**
+ * Level 2.2: Show constants in a specific module
+ * Lists only constants defined in the specified module.
+ */
+SHOW CONSTANTS IN CoTest;
+/
+
+-- MARK: - Describe Constant
+
+/**
+ * Level 3.1: Describe a constant
+ * Shows the full definition of a constant including its type and default value.
+ */
+DESCRIBE CONSTANT CoTest.ServiceEndpoint;
+/
+
+-- MARK: - Drop Constants
+
+/**
+ * Level 4.1: Drop a constant
+ * Removes a constant from the module.
+ */
+DROP CONSTANT CoTest.LaunchDate;
+/
+
+-- ############################################################################
+-- END OF CONSTANT EXAMPLES
+-- ############################################################################

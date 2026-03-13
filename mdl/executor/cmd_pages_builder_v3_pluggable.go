@@ -1,0 +1,1007 @@
+// SPDX-License-Identifier: Apache-2.0
+
+package executor
+
+import (
+	"fmt"
+	"strings"
+
+	"go.mongodb.org/mongo-driver/bson"
+
+	"github.com/mendixlabs/mxcli/mdl/ast"
+	"github.com/mendixlabs/mxcli/model"
+	"github.com/mendixlabs/mxcli/sdk/mpr"
+	"github.com/mendixlabs/mxcli/sdk/pages"
+	"github.com/mendixlabs/mxcli/sdk/widgets"
+)
+
+// =============================================================================
+// Custom/Pluggable Widget Builders V3
+// =============================================================================
+
+// buildComboBoxV3 creates a ComboBox CustomWidget from V3 syntax.
+// Supports two modes:
+//   - Enumeration mode (default): COMBOBOX name (Attribute: EnumAttr)
+//   - Association mode: COMBOBOX name (Attribute: AssocName, DataSource: DATABASE FROM TargetEntity, CaptionAttribute: DisplayAttr)
+//
+// In association mode:
+//   - Attribute is the association name (e.g., Order_Customer) → sets attributeAssociation
+//   - CaptionAttribute is the display attribute on the target entity (e.g., Name) → sets optionsSourceAssociationCaptionAttribute
+//   - DataSource provides the selectable objects → sets optionsSourceAssociationDataSource
+func (pb *pageBuilder) buildComboBoxV3(w *ast.WidgetV3) (*pages.CustomWidget, error) {
+	widgetID := model.ID(mpr.GenerateID())
+
+	// Load embedded template (required for pluggable widgets to work)
+	embeddedType, embeddedObject, embeddedIDs, embeddedObjectTypeID, err := widgets.GetTemplateFullBSON(pages.WidgetIDComboBox, mpr.GenerateID, pb.reader.Path())
+	if err != nil {
+		return nil, fmt.Errorf("failed to load ComboBox template: %w", err)
+	}
+	if embeddedType == nil || embeddedObject == nil {
+		return nil, fmt.Errorf("ComboBox template not found")
+	}
+
+	// Convert widget IDs to pages.PropertyTypeIDEntry format
+	propertyTypeIDs := convertPropertyTypeIDs(embeddedIDs)
+
+	updatedObject := embeddedObject
+
+	// Check if DataSource is specified → association mode
+	if ds := w.GetDataSource(); ds != nil {
+		// ASSOCIATION MODE
+		// 1. Set optionsSourceType to "association"
+		updatedObject = updateWidgetPropertyValue(updatedObject, propertyTypeIDs, "optionsSourceType", func(val bson.D) bson.D {
+			return setPrimitiveValue(val, "association")
+		})
+
+		// 2. Build datasource to get the entity name for caption attribute resolution
+		dataSource, entityName, err := pb.buildDataSourceV3(ds)
+		if err != nil {
+			return nil, fmt.Errorf("failed to build ComboBox datasource: %w", err)
+		}
+
+		// 3. Set attributeAssociation — this is the association name (e.g., Order_Customer)
+		// resolved to a 3-part member path: Module.Entity.AssociationName
+		// (same format as attributes, since associations are entity members)
+		if attr := w.GetAttribute(); attr != "" {
+			assocPath := pb.resolveAttributePath(attr)
+			updatedObject = updateWidgetPropertyValue(updatedObject, propertyTypeIDs, "attributeAssociation", func(val bson.D) bson.D {
+				return setAssociationRef(val, assocPath)
+			})
+		}
+
+		// 4. Set optionsSourceAssociationDataSource
+		updatedObject = updateWidgetPropertyValue(updatedObject, propertyTypeIDs, "optionsSourceAssociationDataSource", func(val bson.D) bson.D {
+			return setDataSource(val, dataSource)
+		})
+
+		// 5. Set optionsSourceAssociationCaptionAttribute — display attribute on target entity
+		if captionAttr := w.GetStringProp("CaptionAttribute"); captionAttr != "" {
+			var captionAttrPath string
+			if strings.Contains(captionAttr, ".") {
+				captionAttrPath = captionAttr
+			} else if entityName != "" {
+				captionAttrPath = entityName + "." + captionAttr
+			} else {
+				captionAttrPath = captionAttr
+			}
+			updatedObject = updateWidgetPropertyValue(updatedObject, propertyTypeIDs, "optionsSourceAssociationCaptionAttribute", func(val bson.D) bson.D {
+				return setAttributeRef(val, captionAttrPath)
+			})
+		}
+	} else {
+		// ENUMERATION MODE (existing behavior)
+		if attr := w.GetAttribute(); attr != "" {
+			attrPath := pb.resolveAttributePath(attr)
+			updatedObject = updateWidgetPropertyValue(updatedObject, propertyTypeIDs, "attributeEnumeration", func(val bson.D) bson.D {
+				return setAttributeRef(val, attrPath)
+			})
+		}
+	}
+
+	cb := &pages.CustomWidget{
+		BaseWidget: pages.BaseWidget{
+			BaseElement: model.BaseElement{
+				ID:       widgetID,
+				TypeName: "CustomWidgets$CustomWidget",
+			},
+			Name: w.Name,
+		},
+		Label:             w.GetLabel(),
+		Editable:          "Always",
+		RawType:           embeddedType,
+		RawObject:         updatedObject,
+		PropertyTypeIDMap: propertyTypeIDs,
+		ObjectTypeID:      embeddedObjectTypeID,
+	}
+
+	if err := pb.registerWidgetName(w.Name, cb.ID); err != nil {
+		return nil, err
+	}
+
+	return cb, nil
+}
+
+// buildGalleryV3 creates a Gallery widget from V3 syntax using the CustomWidget (pluggable widget) approach.
+func (pb *pageBuilder) buildGalleryV3(w *ast.WidgetV3) (*pages.CustomWidget, error) {
+	widgetID := model.ID(mpr.GenerateID())
+
+	// Load embedded template (required for pluggable widgets to work)
+	embeddedType, embeddedObject, embeddedIDs, embeddedObjectTypeID, err := widgets.GetTemplateFullBSON(pages.WidgetIDGallery, mpr.GenerateID, pb.reader.Path())
+	if err != nil {
+		return nil, fmt.Errorf("failed to load Gallery template: %w", err)
+	}
+	if embeddedType == nil || embeddedObject == nil {
+		return nil, fmt.Errorf("Gallery template not found")
+	}
+
+	// Convert widget IDs to pages.PropertyTypeIDEntry format
+	propertyTypeIDs := convertPropertyTypeIDs(embeddedIDs)
+
+	// Build datasource from V3 DataSource property
+	var datasource pages.DataSource
+	if ds := w.GetDataSource(); ds != nil {
+		dataSource, entityName, err := pb.buildDataSourceV3(ds)
+		if err != nil {
+			return nil, fmt.Errorf("failed to build datasource: %w", err)
+		}
+		datasource = dataSource
+		if entityName != "" {
+			pb.entityContext = entityName
+			// Register widget name with entity for SELECTION datasource lookup
+			if w.Name != "" {
+				pb.paramEntityNames[w.Name] = entityName
+			}
+		}
+	}
+
+	// Get selection mode (Single, Multiple, None)
+	selectionMode := w.GetSelection()
+	if selectionMode == "" {
+		selectionMode = "Single" // Default
+	}
+
+	// Collect content widgets and filter widgets
+	var contentWidgets []bson.D
+	var filterWidgets []bson.D
+
+	for _, child := range w.Children {
+		switch strings.ToUpper(child.Type) {
+		case "TEMPLATE":
+			// Template contains the content widgets - build each child
+			for _, templateChild := range child.Children {
+				widgetBSON, err := pb.buildWidgetV3ToBSON(templateChild)
+				if err != nil {
+					return nil, err
+				}
+				if widgetBSON != nil {
+					contentWidgets = append(contentWidgets, widgetBSON)
+				}
+			}
+		case "FILTER":
+			// Filter section contains filter widgets
+			for _, filterChild := range child.Children {
+				widgetBSON, err := pb.buildWidgetV3ToBSON(filterChild)
+				if err != nil {
+					return nil, err
+				}
+				if widgetBSON != nil {
+					filterWidgets = append(filterWidgets, widgetBSON)
+				}
+			}
+		default:
+			// Direct children become content
+			widgetBSON, err := pb.buildWidgetV3ToBSON(child)
+			if err != nil {
+				return nil, err
+			}
+			if widgetBSON != nil {
+				contentWidgets = append(contentWidgets, widgetBSON)
+			}
+		}
+	}
+
+	// Update the template object with datasource, content, filters, and selection mode
+	updatedObject := pb.cloneGalleryObject(embeddedObject, propertyTypeIDs, datasource, contentWidgets, filterWidgets, selectionMode)
+
+	gallery := &pages.CustomWidget{
+		BaseWidget: pages.BaseWidget{
+			BaseElement: model.BaseElement{
+				ID:       widgetID,
+				TypeName: "CustomWidgets$CustomWidget",
+			},
+			Name: w.Name,
+		},
+		Editable:          "Always",
+		RawType:           embeddedType,
+		RawObject:         updatedObject,
+		PropertyTypeIDMap: propertyTypeIDs,
+		ObjectTypeID:      embeddedObjectTypeID,
+	}
+
+	if err := pb.registerWidgetName(w.Name, gallery.ID); err != nil {
+		return nil, err
+	}
+
+	pb.entityContext = ""
+	return gallery, nil
+}
+
+// cloneGalleryObject clones a Gallery template Object, updating datasource, content, filtersPlaceholder, and selection mode.
+func (pb *pageBuilder) cloneGalleryObject(templateObject bson.D, propertyTypeIDs map[string]pages.PropertyTypeIDEntry, datasource pages.DataSource, contentWidgets []bson.D, filterWidgets []bson.D, selectionMode string) bson.D {
+	result := make(bson.D, 0, len(templateObject))
+
+	for _, elem := range templateObject {
+		if elem.Key == "$ID" {
+			// Generate new ID for the object
+			result = append(result, bson.E{Key: "$ID", Value: mpr.IDToBsonBinary(mpr.GenerateID())})
+		} else if elem.Key == "Properties" {
+			// Update datasource, content, filtersPlaceholder, and itemSelection properties
+			if propsArr, ok := elem.Value.(bson.A); ok {
+				updatedProps := pb.updateGalleryProperties(propsArr, propertyTypeIDs, datasource, contentWidgets, filterWidgets, selectionMode)
+				result = append(result, bson.E{Key: "Properties", Value: updatedProps})
+			} else {
+				result = append(result, elem)
+			}
+		} else {
+			result = append(result, elem)
+		}
+	}
+
+	return result
+}
+
+// updateGalleryProperties updates Gallery properties: datasource, content, filtersPlaceholder, and itemSelection.
+func (pb *pageBuilder) updateGalleryProperties(props bson.A, propertyTypeIDs map[string]pages.PropertyTypeIDEntry, datasource pages.DataSource, contentWidgets []bson.D, filterWidgets []bson.D, selectionMode string) bson.A {
+	result := bson.A{int32(2)} // Version marker
+
+	// Get the property type IDs
+	datasourceEntry := propertyTypeIDs["datasource"]
+	contentEntry := propertyTypeIDs["content"]
+	filtersPlaceholderEntry := propertyTypeIDs["filtersPlaceholder"]
+	itemSelectionEntry := propertyTypeIDs["itemSelection"]
+
+	for _, propVal := range props {
+		if _, ok := propVal.(int32); ok {
+			continue // Skip version markers
+		}
+		propMap, ok := propVal.(bson.D)
+		if !ok {
+			continue
+		}
+
+		typePointer := pb.getTypePointerFromProperty(propMap)
+		if typePointer == datasourceEntry.PropertyTypeID && datasource != nil {
+			// Replace datasource
+			result = append(result, pb.buildGalleryDatasourceProperty(datasourceEntry, datasource))
+		} else if typePointer == contentEntry.PropertyTypeID && len(contentWidgets) > 0 {
+			// Replace content widgets
+			result = append(result, pb.buildGalleryContentProperty(contentEntry, contentWidgets))
+		} else if typePointer == filtersPlaceholderEntry.PropertyTypeID && len(filterWidgets) > 0 {
+			// Replace filter widgets
+			result = append(result, pb.buildGalleryFiltersProperty(filtersPlaceholderEntry, filterWidgets))
+		} else if typePointer == itemSelectionEntry.PropertyTypeID && selectionMode != "" {
+			// Update selection mode
+			result = append(result, pb.buildGallerySelectionProperty(propMap, selectionMode))
+		} else {
+			// Keep as-is but with new IDs
+			result = append(result, pb.clonePropertyWithNewIDs(propMap))
+		}
+	}
+
+	return result
+}
+
+// buildGalleryDatasourceProperty builds the datasource property for Gallery.
+func (pb *pageBuilder) buildGalleryDatasourceProperty(entry pages.PropertyTypeIDEntry, datasource pages.DataSource) bson.D {
+	// Use the same DataSource serialization as DataGrid2
+	return pb.buildDataGrid2Property(entry, datasource, "", "")
+}
+
+// buildGallerySelectionProperty clones an itemSelection property and updates the Selection value.
+func (pb *pageBuilder) buildGallerySelectionProperty(propMap bson.D, selectionMode string) bson.D {
+	result := make(bson.D, 0, len(propMap))
+
+	for _, elem := range propMap {
+		if elem.Key == "$ID" {
+			// Generate new ID
+			result = append(result, bson.E{Key: "$ID", Value: mpr.IDToBsonBinary(mpr.GenerateID())})
+		} else if elem.Key == "Value" {
+			// Clone Value and update Selection
+			if valueMap, ok := elem.Value.(bson.D); ok {
+				result = append(result, bson.E{Key: "Value", Value: pb.cloneGallerySelectionValue(valueMap, selectionMode)})
+			} else {
+				result = append(result, elem)
+			}
+		} else {
+			result = append(result, elem)
+		}
+	}
+
+	return result
+}
+
+// cloneGallerySelectionValue clones a WidgetValue and updates the Selection field.
+func (pb *pageBuilder) cloneGallerySelectionValue(valueMap bson.D, selectionMode string) bson.D {
+	result := make(bson.D, 0, len(valueMap))
+
+	for _, elem := range valueMap {
+		if elem.Key == "$ID" {
+			result = append(result, bson.E{Key: "$ID", Value: mpr.IDToBsonBinary(mpr.GenerateID())})
+		} else if elem.Key == "Selection" {
+			// Update selection mode
+			result = append(result, bson.E{Key: "Selection", Value: selectionMode})
+		} else if elem.Key == "Action" {
+			// Clone action with new ID
+			if actionMap, ok := elem.Value.(bson.D); ok {
+				result = append(result, bson.E{Key: "Action", Value: pb.cloneActionWithNewID(actionMap)})
+			} else {
+				result = append(result, elem)
+			}
+		} else {
+			result = append(result, elem)
+		}
+	}
+
+	return result
+}
+
+// cloneActionWithNewID clones an action (e.g., NoAction) with a new ID.
+func (pb *pageBuilder) cloneActionWithNewID(actionMap bson.D) bson.D {
+	result := make(bson.D, 0, len(actionMap))
+
+	for _, elem := range actionMap {
+		if elem.Key == "$ID" {
+			result = append(result, bson.E{Key: "$ID", Value: mpr.IDToBsonBinary(mpr.GenerateID())})
+		} else {
+			result = append(result, elem)
+		}
+	}
+
+	return result
+}
+
+// buildGalleryContentProperty builds the content property for Gallery (Widgets type).
+func (pb *pageBuilder) buildGalleryContentProperty(entry pages.PropertyTypeIDEntry, contentWidgets []bson.D) bson.D {
+	// Build widgets array
+	widgetsArr := bson.A{int32(2)}
+	for _, w := range contentWidgets {
+		widgetsArr = append(widgetsArr, w)
+	}
+
+	return bson.D{
+		{Key: "$ID", Value: mpr.IDToBsonBinary(mpr.GenerateID())},
+		{Key: "$Type", Value: "CustomWidgets$WidgetProperty"},
+		{Key: "TypePointer", Value: mpr.IDToBsonBinary(entry.PropertyTypeID)},
+		{Key: "Value", Value: bson.D{
+			{Key: "$ID", Value: mpr.IDToBsonBinary(mpr.GenerateID())},
+			{Key: "$Type", Value: "CustomWidgets$WidgetValue"},
+			{Key: "Action", Value: bson.D{
+				{Key: "$ID", Value: mpr.IDToBsonBinary(mpr.GenerateID())},
+				{Key: "$Type", Value: "Forms$NoAction"},
+				{Key: "DisabledDuringExecution", Value: true},
+			}},
+			{Key: "AttributeRef", Value: nil},
+			{Key: "DataSource", Value: nil},
+			{Key: "EntityRef", Value: nil},
+			{Key: "Expression", Value: ""},
+			{Key: "Form", Value: ""},
+			{Key: "Icon", Value: nil},
+			{Key: "Image", Value: ""},
+			{Key: "Microflow", Value: ""},
+			{Key: "Nanoflow", Value: ""},
+			{Key: "Objects", Value: bson.A{int32(2)}},
+			{Key: "PrimitiveValue", Value: ""},
+			{Key: "Selection", Value: "None"},
+			{Key: "SourceVariable", Value: nil},
+			{Key: "TextTemplate", Value: nil},
+			{Key: "TranslatableValue", Value: nil},
+			{Key: "TypePointer", Value: mpr.IDToBsonBinary(entry.ValueTypeID)},
+			{Key: "Widgets", Value: widgetsArr},
+			{Key: "XPathConstraint", Value: ""},
+		}},
+	}
+}
+
+// buildGalleryFiltersProperty builds the filtersPlaceholder property for Gallery (Widgets type).
+func (pb *pageBuilder) buildGalleryFiltersProperty(entry pages.PropertyTypeIDEntry, filterWidgets []bson.D) bson.D {
+	// Build widgets array
+	widgetsArr := bson.A{int32(2)}
+	for _, w := range filterWidgets {
+		widgetsArr = append(widgetsArr, w)
+	}
+
+	return bson.D{
+		{Key: "$ID", Value: mpr.IDToBsonBinary(mpr.GenerateID())},
+		{Key: "$Type", Value: "CustomWidgets$WidgetProperty"},
+		{Key: "TypePointer", Value: mpr.IDToBsonBinary(entry.PropertyTypeID)},
+		{Key: "Value", Value: bson.D{
+			{Key: "$ID", Value: mpr.IDToBsonBinary(mpr.GenerateID())},
+			{Key: "$Type", Value: "CustomWidgets$WidgetValue"},
+			{Key: "Action", Value: bson.D{
+				{Key: "$ID", Value: mpr.IDToBsonBinary(mpr.GenerateID())},
+				{Key: "$Type", Value: "Forms$NoAction"},
+				{Key: "DisabledDuringExecution", Value: true},
+			}},
+			{Key: "AttributeRef", Value: nil},
+			{Key: "DataSource", Value: nil},
+			{Key: "EntityRef", Value: nil},
+			{Key: "Expression", Value: ""},
+			{Key: "Form", Value: ""},
+			{Key: "Icon", Value: nil},
+			{Key: "Image", Value: ""},
+			{Key: "Microflow", Value: ""},
+			{Key: "Nanoflow", Value: ""},
+			{Key: "Objects", Value: bson.A{int32(2)}},
+			{Key: "PrimitiveValue", Value: ""},
+			{Key: "Selection", Value: "None"},
+			{Key: "SourceVariable", Value: nil},
+			{Key: "TextTemplate", Value: nil},
+			{Key: "TranslatableValue", Value: nil},
+			{Key: "TypePointer", Value: mpr.IDToBsonBinary(entry.ValueTypeID)},
+			{Key: "Widgets", Value: widgetsArr},
+			{Key: "XPathConstraint", Value: ""},
+		}},
+	}
+}
+
+// buildWidgetV3ToBSON builds a V3 widget and serializes it directly to BSON.
+func (pb *pageBuilder) buildWidgetV3ToBSON(w *ast.WidgetV3) (bson.D, error) {
+	widget, err := pb.buildWidgetV3(w)
+	if err != nil {
+		return nil, err
+	}
+	if widget == nil {
+		return nil, nil
+	}
+	return mpr.SerializeWidget(widget), nil
+}
+
+// buildTextFilterV3 creates a DataGrid Text Filter pluggable widget.
+func (pb *pageBuilder) buildTextFilterV3(w *ast.WidgetV3) (*pages.CustomWidget, error) {
+	widgetID := model.ID(mpr.GenerateID())
+
+	// Load embedded template with both Type and Object
+	embeddedType, embeddedObject, embeddedIDs, embeddedObjectTypeID, err := widgets.GetTemplateFullBSON(pages.WidgetIDDataGridTextFilter, mpr.GenerateID, pb.reader.Path())
+	if err != nil {
+		return nil, fmt.Errorf("failed to load TextFilter template: %w", err)
+	}
+	if embeddedType == nil || embeddedObject == nil {
+		return nil, fmt.Errorf("TextFilter template not found or incomplete")
+	}
+
+	// Apply Attributes and FilterType properties from AST
+	attributes := w.GetAttributes()
+	filterType := w.GetFilterType()
+	if len(attributes) > 0 || filterType != "" {
+		embeddedObject, err = pb.applyFilterWidgetProperties(embeddedObject, embeddedType, attributes, filterType)
+		if err != nil {
+			return nil, fmt.Errorf("failed to apply filter properties: %w", err)
+		}
+	}
+
+	// Convert widget IDs to pages.PropertyTypeIDEntry format
+	propertyTypeIDs := convertPropertyTypeIDs(embeddedIDs)
+
+	// Create the widget with both Type and Object
+	cw := &pages.CustomWidget{
+		BaseWidget: pages.BaseWidget{
+			BaseElement: model.BaseElement{
+				ID:       widgetID,
+				TypeName: "CustomWidgets$CustomWidget",
+			},
+			Name: w.Name,
+		},
+		Editable:          "Always",
+		RawType:           embeddedType,
+		RawObject:         embeddedObject,
+		PropertyTypeIDMap: propertyTypeIDs,
+		ObjectTypeID:      embeddedObjectTypeID,
+	}
+
+	if err := pb.registerWidgetName(w.Name, cw.ID); err != nil {
+		return nil, err
+	}
+
+	return cw, nil
+}
+
+// buildNumberFilterV3 creates a DataGrid Number Filter pluggable widget.
+func (pb *pageBuilder) buildNumberFilterV3(w *ast.WidgetV3) (*pages.CustomWidget, error) {
+	widgetID := model.ID(mpr.GenerateID())
+
+	// Load embedded template with both Type and Object
+	embeddedType, embeddedObject, embeddedIDs, embeddedObjectTypeID, err := widgets.GetTemplateFullBSON(pages.WidgetIDDataGridNumberFilter, mpr.GenerateID, pb.reader.Path())
+	if err != nil {
+		return nil, fmt.Errorf("failed to load NumberFilter template: %w", err)
+	}
+	if embeddedType == nil || embeddedObject == nil {
+		return nil, fmt.Errorf("NumberFilter template not found or incomplete")
+	}
+
+	// Apply Attributes and FilterType properties from AST
+	attributes := w.GetAttributes()
+	filterType := w.GetFilterType()
+	if len(attributes) > 0 || filterType != "" {
+		embeddedObject, err = pb.applyFilterWidgetProperties(embeddedObject, embeddedType, attributes, filterType)
+		if err != nil {
+			return nil, fmt.Errorf("failed to apply filter properties: %w", err)
+		}
+	}
+
+	// Convert widget IDs to pages.PropertyTypeIDEntry format
+	propertyTypeIDs := convertPropertyTypeIDs(embeddedIDs)
+
+	// Create the widget with both Type and Object
+	cw := &pages.CustomWidget{
+		BaseWidget: pages.BaseWidget{
+			BaseElement: model.BaseElement{
+				ID:       widgetID,
+				TypeName: "CustomWidgets$CustomWidget",
+			},
+			Name: w.Name,
+		},
+		Editable:          "Always",
+		RawType:           embeddedType,
+		RawObject:         embeddedObject,
+		PropertyTypeIDMap: propertyTypeIDs,
+		ObjectTypeID:      embeddedObjectTypeID,
+	}
+
+	if err := pb.registerWidgetName(w.Name, cw.ID); err != nil {
+		return nil, err
+	}
+
+	return cw, nil
+}
+
+// buildDropdownFilterV3 creates a Dropdown Filter pluggable widget.
+func (pb *pageBuilder) buildDropdownFilterV3(w *ast.WidgetV3) (*pages.CustomWidget, error) {
+	widgetID := model.ID(mpr.GenerateID())
+
+	// Load embedded template with both Type and Object
+	embeddedType, embeddedObject, embeddedIDs, embeddedObjectTypeID, err := widgets.GetTemplateFullBSON(pages.WidgetIDDataGridDropdownFilter, mpr.GenerateID, pb.reader.Path())
+	if err != nil {
+		return nil, fmt.Errorf("failed to load DropdownFilter template: %w", err)
+	}
+	if embeddedType == nil || embeddedObject == nil {
+		return nil, fmt.Errorf("DropdownFilter template not found or incomplete")
+	}
+
+	// Apply Attributes and FilterType properties from AST
+	attributes := w.GetAttributes()
+	filterType := w.GetFilterType()
+	if len(attributes) > 0 || filterType != "" {
+		embeddedObject, err = pb.applyFilterWidgetProperties(embeddedObject, embeddedType, attributes, filterType)
+		if err != nil {
+			return nil, fmt.Errorf("failed to apply filter properties: %w", err)
+		}
+	}
+
+	// Convert widget IDs to pages.PropertyTypeIDEntry format
+	propertyTypeIDs := convertPropertyTypeIDs(embeddedIDs)
+
+	// Create the widget with both Type and Object
+	cw := &pages.CustomWidget{
+		BaseWidget: pages.BaseWidget{
+			BaseElement: model.BaseElement{
+				ID:       widgetID,
+				TypeName: "CustomWidgets$CustomWidget",
+			},
+			Name: w.Name,
+		},
+		Editable:          "Always",
+		RawType:           embeddedType,
+		RawObject:         embeddedObject,
+		PropertyTypeIDMap: propertyTypeIDs,
+		ObjectTypeID:      embeddedObjectTypeID,
+	}
+
+	if err := pb.registerWidgetName(w.Name, cw.ID); err != nil {
+		return nil, err
+	}
+
+	return cw, nil
+}
+
+// buildDateFilterV3 creates a Date Filter pluggable widget.
+func (pb *pageBuilder) buildDateFilterV3(w *ast.WidgetV3) (*pages.CustomWidget, error) {
+	widgetID := model.ID(mpr.GenerateID())
+
+	// Load embedded template with both Type and Object
+	embeddedType, embeddedObject, embeddedIDs, embeddedObjectTypeID, err := widgets.GetTemplateFullBSON(pages.WidgetIDDataGridDateFilter, mpr.GenerateID, pb.reader.Path())
+	if err != nil {
+		return nil, fmt.Errorf("failed to load DateFilter template: %w", err)
+	}
+	if embeddedType == nil || embeddedObject == nil {
+		return nil, fmt.Errorf("DateFilter template not found or incomplete")
+	}
+
+	// Apply Attributes and FilterType properties from AST
+	attributes := w.GetAttributes()
+	filterType := w.GetFilterType()
+	if len(attributes) > 0 || filterType != "" {
+		embeddedObject, err = pb.applyFilterWidgetProperties(embeddedObject, embeddedType, attributes, filterType)
+		if err != nil {
+			return nil, fmt.Errorf("failed to apply filter properties: %w", err)
+		}
+	}
+
+	// Convert widget IDs to pages.PropertyTypeIDEntry format
+	propertyTypeIDs := convertPropertyTypeIDs(embeddedIDs)
+
+	// Create the widget with both Type and Object
+	cw := &pages.CustomWidget{
+		BaseWidget: pages.BaseWidget{
+			BaseElement: model.BaseElement{
+				ID:       widgetID,
+				TypeName: "CustomWidgets$CustomWidget",
+			},
+			Name: w.Name,
+		},
+		Editable:          "Always",
+		RawType:           embeddedType,
+		RawObject:         embeddedObject,
+		PropertyTypeIDMap: propertyTypeIDs,
+		ObjectTypeID:      embeddedObjectTypeID,
+	}
+
+	if err := pb.registerWidgetName(w.Name, cw.ID); err != nil {
+		return nil, err
+	}
+
+	return cw, nil
+}
+
+// =============================================================================
+// Filter Widget Property Helpers
+// =============================================================================
+
+// applyFilterWidgetProperties applies Attributes and FilterType to a filter widget's RawObject.
+// This works for TEXTFILTER, NUMBERFILTER, DROPDOWNFILTER, and DATEFILTER widgets.
+func (pb *pageBuilder) applyFilterWidgetProperties(rawObject bson.D, rawType bson.D, attributes []string, filterType string) (bson.D, error) {
+	if len(attributes) == 0 && filterType == "" {
+		return rawObject, nil
+	}
+
+	// Build property key map from RawType.ObjectType.PropertyTypes
+	propKeyMap := make(map[string]string) // TypePointer ID -> PropertyKey
+	objType := getBsonField(rawType, "ObjectType")
+	if objType != nil {
+		propTypes := getBsonArray(objType, "PropertyTypes")
+		for _, pt := range propTypes {
+			ptMap, ok := pt.(bson.D)
+			if !ok {
+				continue
+			}
+			id := getBsonBinaryID(ptMap, "$ID")
+			key := getBsonString(ptMap, "PropertyKey")
+			if id != "" && key != "" {
+				propKeyMap[id] = key
+			}
+		}
+	}
+
+	// Reverse map: PropertyKey -> TypePointer ID
+	keyToIDMap := make(map[string]string)
+	for id, key := range propKeyMap {
+		keyToIDMap[key] = id
+	}
+
+	// Get the ObjectType for the "attributes" property (for nested objects)
+	var attributeObjectTypeID string
+	var attributePropertyTypeID string
+	var attributeValueTypeID string
+	if attrTypePointerID, ok := keyToIDMap["attributes"]; ok {
+		// Find the PropertyType for "attributes" in ObjectType.PropertyTypes
+		for _, pt := range getBsonArray(objType, "PropertyTypes") {
+			ptMap, ok := pt.(bson.D)
+			if !ok {
+				continue
+			}
+			if getBsonBinaryID(ptMap, "$ID") == attrTypePointerID {
+				// Get the ObjectType inside ValueType
+				valueType := getBsonField(ptMap, "ValueType")
+				if valueType != nil {
+					innerObjType := getBsonField(valueType, "ObjectType")
+					if innerObjType != nil {
+						attributeObjectTypeID = getBsonBinaryID(innerObjType, "$ID")
+						// Get the PropertyType for "attribute" inside
+						for _, innerPt := range getBsonArray(innerObjType, "PropertyTypes") {
+							innerPtMap, ok := innerPt.(bson.D)
+							if !ok {
+								continue
+							}
+							if getBsonString(innerPtMap, "PropertyKey") == "attribute" {
+								attributePropertyTypeID = getBsonBinaryID(innerPtMap, "$ID")
+								innerValueType := getBsonField(innerPtMap, "ValueType")
+								if innerValueType != nil {
+									attributeValueTypeID = getBsonBinaryID(innerValueType, "$ID")
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Validate that we have all required IDs for attribute objects
+	canCreateAttributes := len(attributes) > 0 &&
+		attributeObjectTypeID != "" &&
+		attributePropertyTypeID != "" &&
+		attributeValueTypeID != ""
+
+	// Modify Properties array in rawObject
+	propsArray := getBsonArray(rawObject, "Properties")
+	newPropsArray := make([]any, 0, len(propsArray))
+
+	for _, prop := range propsArray {
+		propMap, ok := prop.(bson.D)
+		if !ok {
+			newPropsArray = append(newPropsArray, prop)
+			continue
+		}
+
+		typePointer := getBsonBinaryID(propMap, "TypePointer")
+		propKey := propKeyMap[typePointer]
+
+		switch propKey {
+		case "attrChoice":
+			// Set to "linked" (custom) if attributes are specified and we can create them
+			if canCreateAttributes {
+				propMap = setBsonPrimitiveValue(propMap, "linked")
+			}
+		case "attributes":
+			// Add attribute objects only if we have all required IDs
+			if canCreateAttributes {
+				propMap = pb.buildAttributeObjects(propMap, attributes, attributeObjectTypeID, attributePropertyTypeID, attributeValueTypeID)
+			}
+		case "defaultFilter":
+			// Set filter type
+			if filterType != "" {
+				propMap = setBsonPrimitiveValue(propMap, filterType)
+			}
+		}
+
+		newPropsArray = append(newPropsArray, propMap)
+	}
+
+	// Update Properties in rawObject
+	return setBsonArrayField(rawObject, "Properties", newPropsArray), nil
+}
+
+// buildAttributeObjects creates the Objects array for the "attributes" property.
+func (pb *pageBuilder) buildAttributeObjects(propMap bson.D, attributes []string, objectTypeID, propertyTypeID, valueTypeID string) bson.D {
+	// Get existing Value field
+	value := getBsonField(propMap, "Value")
+	if value == nil {
+		return propMap
+	}
+
+	// Create Objects array with attribute entries
+	objects := make([]any, 0, len(attributes)+1)
+	objects = append(objects, int32(2)) // BSON array prefix
+
+	for _, attr := range attributes {
+		// Resolve short attribute names using entity context (e.g., "Name" → "Module.Entity.Name")
+		resolvedAttr := pb.resolveAttributePath(attr)
+		attrObj := pb.createAttributeObject(resolvedAttr, objectTypeID, propertyTypeID, valueTypeID)
+		objects = append(objects, attrObj)
+	}
+
+	// Update Value.Objects
+	value = setBsonArrayField(value, "Objects", objects)
+	return setBsonField(propMap, "Value", value)
+}
+
+// createAttributeObject creates a single attribute object entry for filter widget Attributes.
+// The structure follows CustomWidgets$WidgetObject with a nested WidgetProperty for "attribute".
+// TypePointers reference the Type's PropertyType IDs (not regenerated).
+func (pb *pageBuilder) createAttributeObject(attributePath string, objectTypeID, propertyTypeID, valueTypeID string) bson.D {
+	return bson.D{
+		{Key: "$ID", Value: hexToBytes(mpr.GenerateID())},
+		{Key: "$Type", Value: "CustomWidgets$WidgetObject"},
+		{Key: "Properties", Value: []any{
+			int32(2),
+			bson.D{
+				{Key: "$ID", Value: hexToBytes(mpr.GenerateID())},
+				{Key: "$Type", Value: "CustomWidgets$WidgetProperty"},
+				{Key: "TypePointer", Value: hexToBytes(propertyTypeID)},
+				{Key: "Value", Value: bson.D{
+					{Key: "$ID", Value: hexToBytes(mpr.GenerateID())},
+					{Key: "$Type", Value: "CustomWidgets$WidgetValue"},
+					{Key: "Action", Value: bson.D{
+						{Key: "$ID", Value: hexToBytes(mpr.GenerateID())},
+						{Key: "$Type", Value: "Forms$NoAction"},
+						{Key: "DisabledDuringExecution", Value: true},
+					}},
+					{Key: "AttributeRef", Value: func() any {
+						if strings.Count(attributePath, ".") < 2 {
+							return nil
+						}
+						return bson.D{
+							{Key: "$ID", Value: hexToBytes(mpr.GenerateID())},
+							{Key: "$Type", Value: "DomainModels$AttributeRef"},
+							{Key: "Attribute", Value: attributePath},
+							{Key: "EntityRef", Value: nil},
+						}
+					}()},
+					{Key: "DataSource", Value: nil},
+					{Key: "EntityRef", Value: nil},
+					{Key: "Expression", Value: ""},
+					{Key: "Form", Value: ""},
+					{Key: "Icon", Value: nil},
+					{Key: "Image", Value: ""},
+					{Key: "Microflow", Value: ""},
+					{Key: "Nanoflow", Value: ""},
+					{Key: "Objects", Value: []any{int32(2)}},
+					{Key: "PrimitiveValue", Value: ""},
+					{Key: "Selection", Value: "None"},
+					{Key: "SourceVariable", Value: nil},
+					{Key: "TextTemplate", Value: nil},
+					{Key: "TranslatableValue", Value: nil},
+					{Key: "TypePointer", Value: hexToBytes(valueTypeID)},
+					{Key: "Widgets", Value: []any{int32(2)}},
+					{Key: "XPathConstraint", Value: ""},
+				}},
+			},
+		}},
+		{Key: "TypePointer", Value: hexToBytes(objectTypeID)},
+	}
+}
+
+// BSON helper functions for filter properties
+
+func getBsonField(d bson.D, key string) bson.D {
+	for _, elem := range d {
+		if elem.Key == key {
+			if nested, ok := elem.Value.(bson.D); ok {
+				return nested
+			}
+		}
+	}
+	return nil
+}
+
+func getBsonArray(d bson.D, key string) []any {
+	for _, elem := range d {
+		if elem.Key == key {
+			switch v := elem.Value.(type) {
+			case []any:
+				return v
+			case bson.A:
+				return []any(v)
+			}
+		}
+	}
+	return nil
+}
+
+func getBsonString(d bson.D, key string) string {
+	for _, elem := range d {
+		if elem.Key == key {
+			if s, ok := elem.Value.(string); ok {
+				return s
+			}
+		}
+	}
+	return ""
+}
+
+func getBsonBinaryID(d bson.D, key string) string {
+	for _, elem := range d {
+		if elem.Key == key {
+			if b, ok := elem.Value.([]byte); ok {
+				return bytesToHex(b)
+			}
+		}
+	}
+	return ""
+}
+
+func setBsonPrimitiveValue(propMap bson.D, value string) bson.D {
+	for i, elem := range propMap {
+		if elem.Key == "Value" {
+			if valueMap, ok := elem.Value.(bson.D); ok {
+				for j, vElem := range valueMap {
+					if vElem.Key == "PrimitiveValue" {
+						valueMap[j].Value = value
+						break
+					}
+				}
+				propMap[i].Value = valueMap
+			}
+			break
+		}
+	}
+	return propMap
+}
+
+func setBsonArrayField(d bson.D, key string, value []any) bson.D {
+	for i, elem := range d {
+		if elem.Key == key {
+			d[i].Value = value
+			return d
+		}
+	}
+	return d
+}
+
+func setBsonField(d bson.D, key string, value bson.D) bson.D {
+	for i, elem := range d {
+		if elem.Key == key {
+			d[i].Value = value
+			return d
+		}
+	}
+	return d
+}
+
+// hexToBytes converts a hex string (with or without dashes) to a 16-byte blob
+// in Microsoft GUID format (little-endian for first 3 segments).
+// This matches the format used by Mendix and uuidToBlob in sdk/mpr/writer_core.go.
+func hexToBytes(hexStr string) []byte {
+	// Remove dashes if present (UUID format)
+	clean := strings.ReplaceAll(hexStr, "-", "")
+	if len(clean) != 32 {
+		return nil
+	}
+
+	// Decode hex to bytes
+	decoded := make([]byte, 16)
+	for i := range 16 {
+		decoded[i] = hexByte(clean[i*2])<<4 | hexByte(clean[i*2+1])
+	}
+
+	// Swap bytes to Microsoft GUID format (little-endian for first 3 segments)
+	blob := make([]byte, 16)
+	// First 4 bytes: reversed
+	blob[0] = decoded[3]
+	blob[1] = decoded[2]
+	blob[2] = decoded[1]
+	blob[3] = decoded[0]
+	// Next 2 bytes: reversed
+	blob[4] = decoded[5]
+	blob[5] = decoded[4]
+	// Next 2 bytes: reversed
+	blob[6] = decoded[7]
+	blob[7] = decoded[6]
+	// Last 8 bytes: unchanged
+	copy(blob[8:], decoded[8:])
+
+	return blob
+}
+
+func hexByte(c byte) byte {
+	switch {
+	case c >= '0' && c <= '9':
+		return c - '0'
+	case c >= 'a' && c <= 'f':
+		return c - 'a' + 10
+	case c >= 'A' && c <= 'F':
+		return c - 'A' + 10
+	}
+	return 0
+}
+
+// bytesToHex converts a 16-byte blob from Microsoft GUID format to a hex string.
+// This reverses the byte swapping done by hexToBytes, matching blobToUUID in sdk/mpr/reader.go.
+func bytesToHex(b []byte) string {
+	if len(b) != 16 {
+		// Fallback for non-standard lengths
+		const hexChars = "0123456789abcdef"
+		result := make([]byte, len(b)*2)
+		for i, v := range b {
+			result[i*2] = hexChars[v>>4]
+			result[i*2+1] = hexChars[v&0x0f]
+		}
+		return string(result)
+	}
+
+	// Reverse Microsoft GUID byte swapping to get canonical hex
+	return fmt.Sprintf("%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
+		b[3], b[2], b[1], b[0], // First 4 bytes: reversed
+		b[5], b[4], // Next 2 bytes: reversed
+		b[7], b[6], // Next 2 bytes: reversed
+		b[8], b[9], b[10], b[11], b[12], b[13], b[14], b[15]) // Last 8 bytes: unchanged
+}
