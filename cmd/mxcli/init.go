@@ -389,8 +389,16 @@ func generateClaudeMD(projectName, mprFile string) string {
 
 	// ── Quick Start ─────────────────────────────────────────────────
 	w("## Quick Start\n\n")
-	w("### Connect to the Project\n\n")
-	w(bt3 + "bash\n./mxcli -p " + mprPath + "\n" + bt3 + "\n\n")
+	w("### Execute a Single Command\n\n")
+	w("Use the " + bt + "-c" + bt + " flag to run a single MDL command:\n\n")
+	w(bt3 + "bash\n")
+	w("./mxcli -p " + mprPath + " -c \"SHOW MODULES\"              # List all modules\n")
+	w("./mxcli -p " + mprPath + " -c \"SHOW STRUCTURE\"             # Project overview\n")
+	w("./mxcli -p " + mprPath + " -c \"SHOW ENTITIES IN MyModule\"  # Entities in a module\n")
+	w("./mxcli -p " + mprPath + " -c \"DESCRIBE ENTITY MyModule.Customer\"  # Entity details\n")
+	w(bt3 + "\n\n")
+	w("### Execute an MDL Script File\n\n")
+	w(bt3 + "bash\n./mxcli exec script.mdl -p " + mprPath + "\n" + bt3 + "\n\n")
 	w("### Start Interactive REPL\n\n")
 	w(bt3 + "bash\n./mxcli\n# Then: CONNECT LOCAL '" + mprPath + "';\n" + bt3 + "\n\n")
 
