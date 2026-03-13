@@ -17,6 +17,13 @@ import (
 	"time"
 )
 
+// Default ports used by the Mendix runtime inside the container.
+// These are fixed regardless of any port offset applied to host-side mappings.
+const (
+	containerAdminPort = 8090
+	containerAppPort   = 8080
+)
+
 // M2EEOptions configures connection to the M2EE admin API.
 type M2EEOptions struct {
 	// Host is the hostname of the Mendix admin API (default: localhost).
@@ -147,10 +154,12 @@ func callM2EEViaDocker(opts M2EEOptions, dockerDir string, action string, params
 
 	authHeader := m2eeAuthHeader(opts.Token)
 
-	// Use curl inside the container to hit localhost:8090
+	// Use curl inside the container to hit the admin API.
+	// Always use the container-internal port (8090), not opts.Port which is the
+	// host-side port (may differ when port offset is applied).
 	curlCmd := fmt.Sprintf(
 		"curl -sf -X POST http://localhost:%d/ -H 'Content-Type: application/json' -H 'X-M2EE-Authentication: %s' -d '%s'",
-		opts.Port, authHeader, strings.ReplaceAll(string(bodyBytes), "'", "'\\''"),
+		containerAdminPort, authHeader, strings.ReplaceAll(string(bodyBytes), "'", "'\\''"),
 	)
 
 	composePath := filepath.Join(dockerDir, "docker-compose.yml")
