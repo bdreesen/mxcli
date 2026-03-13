@@ -7,6 +7,10 @@
     "ghcr.io/devcontainers/features/docker-in-docker:2": {}
   },
   "forwardPorts": [8080, 8090, 5432],
+  "portsAttributes": {
+    "8080-8099": { "onAutoForward": "silent" },
+    "5432-5499": { "onAutoForward": "silent" }
+  },
   "customizations": {
     "vscode": {
       "extensions": [
