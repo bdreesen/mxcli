@@ -262,7 +262,7 @@ func generateDevcontainerJSON(projectName, mprPath string) string {
   "containerEnv": {
     "PLAYWRIGHT_CLI_SESSION": "mendix-app"
   },
-  "postCreateCommand": "curl -fsSL https://claude.ai/install.sh | bash && npm install -g @playwright/cli@latest && playwright-cli install --with-deps chromium && if [ -f ./mxcli ] && ! file ./mxcli | grep -q Linux; then echo '⚠ ./mxcli is not a Linux binary. Replace it with the linux-amd64 or linux-arm64 build.'; fi",
+  "postCreateCommand": "curl -fsSL https://claude.ai/install.sh | bash && npm install -g @playwright/cli@latest && playwright-cli install chromium && if [ -f ./mxcli ] && ! file ./mxcli | grep -q Linux; then echo '⚠ ./mxcli is not a Linux binary. Replace it with the linux-amd64 or linux-arm64 build.'; fi",
   "customizations": {
     "vscode": {
       "extensions": [
@@ -290,6 +290,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends wget apt-transp
        temurin-21-jdk \
        postgresql-client \
        kafkacat \
+       # Chromium runtime dependencies for playwright-cli
+       libglib2.0-0 libnspr4 libnss3 libatk1.0-0 libatk-bridge2.0-0 \
+       libdbus-1-3 libcups2 libxkbcommon0 libatspi2.0-0 libxcomposite1 \
+       libxdamage1 libxfixes3 libxrandr2 libgbm1 libasound2 \
+       libcairo2 libpango-1.0-0 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 `
