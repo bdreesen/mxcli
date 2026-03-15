@@ -1,10 +1,9 @@
-# .github/workflows/test.yml
-name: Test & Lint
+name: Build, Test & Lint
 
 on: [push, pull_request]
 
 jobs:
-  test:
+  build-and-test:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -15,9 +14,9 @@ jobs:
       - uses: actions/setup-go@v4
         with:
           go-version: ${{ matrix.go-version }}
-      - run: go test -v -race -coverprofile=coverage.out ./...
-      - run: go vet ./...
-      - uses: golangci/golangci-lint-action@v3
-        with:
-          version: latest
-          args: --timeout=5m
+      - name: Build
+        run: make build
+      - name: Test
+        run: make test
+      - name: Lint Go
+        run: make lint-go
