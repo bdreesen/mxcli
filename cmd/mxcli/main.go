@@ -21,7 +21,7 @@ var (
 	BuildTime = ""
 )
 
-const warningBanner = "WARNING: This is a vibe-coded PoC, alpha quality, not fit for production use.\n"
+const warningBanner = "WARNING: This is a vibe-coded PoC, alpha quality, use with caution.\n"
 
 func main() {
 	// Show warning banner unless --quiet, -q, --help, -h, or --version is passed
