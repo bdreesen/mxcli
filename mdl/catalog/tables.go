@@ -400,6 +400,54 @@ func (c *Catalog) createTables() error {
 			SourceRevision TEXT
 		)`,
 
+		// Navigation profiles table
+		`CREATE TABLE IF NOT EXISTS navigation_profiles (
+			ProfileName TEXT PRIMARY KEY,
+			Kind TEXT,
+			IsNative INTEGER DEFAULT 0,
+			HomePage TEXT,
+			HomePageType TEXT,
+			LoginPage TEXT,
+			NotFoundPage TEXT,
+			MenuItemCount INTEGER DEFAULT 0,
+			RoleBasedHomeCount INTEGER DEFAULT 0,
+			OfflineEntityCount INTEGER DEFAULT 0,
+			ProjectId TEXT,
+			ProjectName TEXT,
+			SnapshotId TEXT,
+			SnapshotDate TEXT,
+			SnapshotSource TEXT,
+			SourceId TEXT,
+			SourceBranch TEXT,
+			SourceRevision TEXT
+		)`,
+
+		// Navigation menu items table
+		`CREATE TABLE IF NOT EXISTS navigation_menu_items (
+			Id INTEGER PRIMARY KEY AUTOINCREMENT,
+			ProfileName TEXT NOT NULL,
+			ItemPath TEXT NOT NULL,
+			Depth INTEGER DEFAULT 0,
+			Caption TEXT,
+			ActionType TEXT,
+			TargetPage TEXT,
+			TargetMicroflow TEXT,
+			SubItemCount INTEGER DEFAULT 0,
+			ProjectId TEXT,
+			SnapshotId TEXT
+		)`,
+
+		// Navigation role-based home pages table
+		`CREATE TABLE IF NOT EXISTS navigation_role_homes (
+			Id INTEGER PRIMARY KEY AUTOINCREMENT,
+			ProfileName TEXT NOT NULL,
+			UserRole TEXT NOT NULL,
+			Page TEXT,
+			Microflow TEXT,
+			ProjectId TEXT,
+			SnapshotId TEXT
+		)`,
+
 		`CREATE TABLE IF NOT EXISTS database_connections (
 			Id TEXT PRIMARY KEY,
 			Name TEXT,
@@ -569,6 +617,11 @@ func (c *Catalog) createTables() error {
 		`CREATE INDEX IF NOT EXISTS idx_permissions_element ON permissions(ElementType, ElementName)`,
 		`CREATE INDEX IF NOT EXISTS idx_permissions_access ON permissions(AccessType)`,
 		`CREATE INDEX IF NOT EXISTS idx_permissions_module ON permissions(ModuleName)`,
+		`CREATE INDEX IF NOT EXISTS idx_nav_menu_items_profile ON navigation_menu_items(ProfileName)`,
+		`CREATE INDEX IF NOT EXISTS idx_nav_menu_items_target_page ON navigation_menu_items(TargetPage)`,
+		`CREATE INDEX IF NOT EXISTS idx_nav_menu_items_target_mf ON navigation_menu_items(TargetMicroflow)`,
+		`CREATE INDEX IF NOT EXISTS idx_nav_role_homes_profile ON navigation_role_homes(ProfileName)`,
+		`CREATE INDEX IF NOT EXISTS idx_nav_role_homes_role ON navigation_role_homes(UserRole)`,
 	}
 
 	for _, schema := range schemas {
