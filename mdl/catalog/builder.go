@@ -328,6 +328,10 @@ func (b *Builder) Build(progress ProgressFunc) error {
 		return fmt.Errorf("failed to build database connections: %w", err)
 	}
 
+	if err := b.buildNavigation(); err != nil {
+		return fmt.Errorf("failed to build navigation: %w", err)
+	}
+
 	if err := b.buildRoleMappings(); err != nil {
 		return fmt.Errorf("failed to build role mappings: %w", err)
 	}
