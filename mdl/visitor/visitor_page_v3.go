@@ -894,7 +894,7 @@ func buildSortColumnAsOrderBy(ctx parser.ISortColumnContext) ast.OrderByItemV3 {
 	item := ast.OrderByItemV3{Direction: "ASC"}
 
 	if qn := scCtx.QualifiedName(); qn != nil {
-		item.Attribute = qn.GetText()
+		item.Attribute = getQualifiedNameText(qn)
 	} else if id := scCtx.IDENTIFIER(); id != nil {
 		item.Attribute = id.GetText()
 	}

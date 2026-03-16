@@ -251,8 +251,7 @@ func generateDevcontainerJSON(projectName, mprPath string) string {
     "dockerfile": "Dockerfile"
   },
   "features": {
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
-    "ghcr.io/devcontainers/features/node:1": {}
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
   },
   "forwardPorts": [8080, 8090, 5432],
   "portsAttributes": {
@@ -262,7 +261,7 @@ func generateDevcontainerJSON(projectName, mprPath string) string {
   "containerEnv": {
     "PLAYWRIGHT_CLI_SESSION": "mendix-app"
   },
-  "postCreateCommand": "curl -fsSL https://claude.ai/install.sh | bash && npm install -g @playwright/cli@latest && playwright-cli install chromium && if [ -f ./mxcli ] && ! file ./mxcli | grep -q Linux; then echo '⚠ ./mxcli is not a Linux binary. Replace it with the linux-amd64 or linux-arm64 build.'; fi",
+  "postCreateCommand": "curl -fsSL https://claude.ai/install.sh | bash && if [ -f ./mxcli ] && ! file ./mxcli | grep -q Linux; then echo '⚠ ./mxcli is not a Linux binary. Replace it with the linux-amd64 or linux-arm64 build.'; fi",
   "customizations": {
     "vscode": {
       "extensions": [
@@ -281,22 +280,23 @@ func generateDevcontainerJSON(projectName, mprPath string) string {
 func generateDockerfile(projectName, mprPath string) string {
 	return `FROM mcr.microsoft.com/devcontainers/base:bookworm
 
-# Install Adoptium JDK 21 (required by MxBuild) and utility tools
-RUN apt-get update && apt-get install -y --no-install-recommends wget apt-transport-https gpg && \
+# Install Adoptium JDK 21 (required by MxBuild), Node.js 22, and utility tools
+RUN apt-get update && apt-get install -y --no-install-recommends wget apt-transport-https gpg ca-certificates curl && \
     wget -qO - https://packages.adoptium.net/artifactory/api/gpg/key/public | gpg --dearmor -o /etc/apt/keyrings/adoptium.gpg && \
     echo "deb [signed-by=/etc/apt/keyrings/adoptium.gpg] https://packages.adoptium.net/artifactory/deb bookworm main" > /etc/apt/sources.list.d/adoptium.list && \
+    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
        temurin-21-jdk \
+       nodejs \
        postgresql-client \
        kafkacat \
-       # Chromium runtime dependencies for playwright-cli
-       libglib2.0-0 libnspr4 libnss3 libatk1.0-0 libatk-bridge2.0-0 \
-       libdbus-1-3 libcups2 libxkbcommon0 libatspi2.0-0 libxcomposite1 \
-       libxdamage1 libxfixes3 libxrandr2 libgbm1 libasound2 \
-       libcairo2 libpango-1.0-0 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# Install playwright-cli and Chromium with all system dependencies (must run as root)
+RUN npm install -g @playwright/cli@latest && \
+    npx playwright install --with-deps chromium
 `
 }
 
