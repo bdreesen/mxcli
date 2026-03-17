@@ -30,6 +30,7 @@ jobs:
 
       - name: Integration tests
         run: make test-integration
+        timeout-minutes: 30
 
   nightly:
     needs: test
