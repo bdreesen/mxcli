@@ -1,4 +1,4 @@
-name: Nightly Release
+name: Nightly Release & Integration Tests
 
 on:
   schedule:
@@ -10,7 +10,29 @@ permissions:
   contents: write
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+
+      - name: Build
+        run: make build
+
+      - name: Unit tests
+        run: make test
+
+      - name: Setup mxbuild
+        run: ./bin/mxcli setup mxbuild --version 11.6.3
+
+      - name: Integration tests
+        run: make test-integration
+
   nightly:
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
