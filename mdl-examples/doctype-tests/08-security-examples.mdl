@@ -173,7 +173,7 @@ SHOW SECURITY MATRIX IN SecTest;
 DESCRIBE MODULE ROLE SecTest.User;
 
 -- Describe a specific user role (shows DDL + module roles)
-DESCRIBE USER ROLE Administrator;
+DESCRIBE USER ROLE 'Administrator';
 
 -- Describe a specific demo user
 DESCRIBE DEMO USER 'sectest_user';
