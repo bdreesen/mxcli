@@ -90,6 +90,10 @@ The devcontainer is configured for use with playwright-cli so Claude Code can te
 
 Claude code can migrate existing data, or generate demo data in the postgres container when you run your application.
 
+### Edit your Mendix Project in the browser with GitHub Codespaces
+
+![GitHub codespaces](docs/images/mxcli-github-codespaces.png)
+
 ## Quick Start
 
 The recommended way to use mxcli is inside a **Dev Container**. This sandboxes the AI agent so it can only access your project files, preventing unintended changes to your system. `mxcli init` sets up a `.devcontainer/` configuration automatically.
