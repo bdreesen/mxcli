@@ -512,8 +512,12 @@ func (e *Executor) execAlterEntity(s *ast.AlterEntityStmt) error {
 		if idx < 0 {
 			return fmt.Errorf("attribute '%s' not found on entity %s", s.AttributeName, s.Name)
 		}
-		// Clean up all references to the dropped attribute
+		// Clean up entity-level references to the dropped attribute
 		droppedID := entity.Attributes[idx].ID
+
+		// Track what gets cleaned up for reporting
+		origValidationCount := len(entity.ValidationRules)
+		origIndexCount := len(entity.Indexes)
 
 		// Remove validation rules that reference this attribute
 		var keepRules []*domainmodel.ValidationRule
@@ -525,11 +529,14 @@ func (e *Executor) execAlterEntity(s *ast.AlterEntityStmt) error {
 		entity.ValidationRules = keepRules
 
 		// Remove MemberAccess entries from access rules that reference this attribute
+		removedMemberAccess := 0
 		for _, rule := range entity.AccessRules {
 			var keepMembers []*domainmodel.MemberAccess
 			for _, ma := range rule.MemberAccesses {
 				if ma.AttributeID != droppedID {
 					keepMembers = append(keepMembers, ma)
+				} else {
+					removedMemberAccess++
 				}
 			}
 			rule.MemberAccesses = keepMembers
@@ -538,7 +545,6 @@ func (e *Executor) execAlterEntity(s *ast.AlterEntityStmt) error {
 		// Remove index attributes that reference this attribute, and drop empty indexes
 		var keepIndexes []*domainmodel.Index
 		for _, idx := range entity.Indexes {
-			// Filter IndexAttribute entries
 			var keepAttrs []*domainmodel.IndexAttribute
 			for _, ia := range idx.Attributes {
 				if ia.AttributeID != droppedID {
@@ -547,7 +553,6 @@ func (e *Executor) execAlterEntity(s *ast.AlterEntityStmt) error {
 			}
 			idx.Attributes = keepAttrs
 
-			// Filter AttributeIDs list
 			var keepIDs []model.ID
 			for _, id := range idx.AttributeIDs {
 				if id != droppedID {
@@ -556,7 +561,6 @@ func (e *Executor) execAlterEntity(s *ast.AlterEntityStmt) error {
 			}
 			idx.AttributeIDs = keepIDs
 
-			// Keep the index only if it still has attributes
 			if len(idx.Attributes) > 0 || len(idx.AttributeIDs) > 0 {
 				keepIndexes = append(keepIndexes, idx)
 			}
@@ -571,6 +575,22 @@ func (e *Executor) execAlterEntity(s *ast.AlterEntityStmt) error {
 		e.invalidateHierarchy()
 		e.invalidateDomainModelsCache()
 		fmt.Fprintf(e.output, "Dropped attribute '%s' from entity %s\n", s.AttributeName, s.Name)
+
+		// Report what was cleaned up on the entity itself
+		if n := origValidationCount - len(keepRules); n > 0 {
+			fmt.Fprintf(e.output, "  Removed %d validation rule(s)\n", n)
+		}
+		if removedMemberAccess > 0 {
+			fmt.Fprintf(e.output, "  Removed %d access rule member reference(s)\n", removedMemberAccess)
+		}
+		if n := origIndexCount - len(keepIndexes); n > 0 {
+			fmt.Fprintf(e.output, "  Removed %d index(es)\n", n)
+		}
+
+		// Warn about references in other documents that are NOT auto-cleaned
+		entityQName := s.Name.String()
+		fmt.Fprintf(e.output, "  Warning: pages, microflows, and other documents may still reference '%s'. Update them manually.\n", s.AttributeName)
+		fmt.Fprintf(e.output, "  Use SHOW REFERENCES TO %s to find usages (requires REFRESH CATALOG FULL).\n", entityQName)
 
 	case ast.AlterEntitySetDocumentation:
 		entity.Documentation = s.Documentation
