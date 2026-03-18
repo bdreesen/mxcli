@@ -4,6 +4,7 @@ package sql
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
 	"fmt"
 	"strings"
@@ -82,9 +83,13 @@ func HasMxObjectVersion(ctx context.Context, conn *Connection, tableName string)
 }
 
 // GenerateMendixID generates a Mendix object ID from a short_id and sequence number.
-// Format: (short_id << 48) | sequence
+// Format: (short_id << 48) | (sequence << 7) | random_7bits
+// The 7-bit random suffix prevents sequential ID enumeration (IDOR).
 func GenerateMendixID(shortID, sequence int64) int64 {
-	return (shortID << 48) | sequence
+	var b [1]byte
+	_, _ = rand.Read(b[:])
+	random7 := int64(b[0] & 0x7F) // 0–127
+	return (shortID << 48) | (sequence << 7) | random7
 }
 
 // importRow holds a row's mapped attribute values and association source values.
