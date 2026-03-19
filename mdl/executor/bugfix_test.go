@@ -390,6 +390,109 @@ func TestExpressionToXPath_TokenQuoting(t *testing.T) {
 	}
 }
 
+// TestExpressionToXPath_XPathPathExpr verifies that XPathPathExpr (bare association paths,
+// nested predicates) serialize correctly via expressionToXPath.
+func TestExpressionToXPath_XPathPathExpr(t *testing.T) {
+	tests := []struct {
+		name   string
+		expr   ast.Expression
+		wantXP string
+	}{
+		{
+			name: "bare_association_path",
+			expr: &ast.XPathPathExpr{
+				Steps: []ast.XPathStep{
+					{Expr: &ast.QualifiedNameExpr{QualifiedName: ast.QualifiedName{Module: "Module", Name: "Assoc"}}},
+					{Expr: &ast.QualifiedNameExpr{QualifiedName: ast.QualifiedName{Module: "Module", Name: "Entity"}}},
+					{Expr: &ast.IdentifierExpr{Name: "Attr"}},
+				},
+			},
+			wantXP: "Module.Assoc/Module.Entity/Attr",
+		},
+		{
+			name: "path_with_nested_predicate",
+			expr: &ast.XPathPathExpr{
+				Steps: []ast.XPathStep{
+					{Expr: &ast.QualifiedNameExpr{QualifiedName: ast.QualifiedName{Module: "Sys", Name: "roles"}}},
+					{
+						Expr: &ast.QualifiedNameExpr{QualifiedName: ast.QualifiedName{Module: "Sys", Name: "UserRole"}},
+						Predicate: &ast.BinaryExpr{
+							Left:     &ast.IdentifierExpr{Name: "Active"},
+							Operator: "=",
+							Right:    &ast.LiteralExpr{Value: true, Kind: ast.LiteralBoolean},
+						},
+					},
+				},
+			},
+			wantXP: "Sys.roles/Sys.UserRole[Active = true]",
+		},
+		{
+			name: "path_with_reversed",
+			expr: &ast.XPathPathExpr{
+				Steps: []ast.XPathStep{
+					{
+						Expr:      &ast.QualifiedNameExpr{QualifiedName: ast.QualifiedName{Module: "System", Name: "roles"}},
+						Predicate: &ast.FunctionCallExpr{Name: "reversed"},
+					},
+					{Expr: &ast.QualifiedNameExpr{QualifiedName: ast.QualifiedName{Module: "System", Name: "UserRole"}}},
+				},
+			},
+			wantXP: "System.roles[reversed()]/System.UserRole",
+		},
+		{
+			name: "comparison_with_path_and_token",
+			expr: &ast.BinaryExpr{
+				Left: &ast.XPathPathExpr{
+					Steps: []ast.XPathStep{
+						{Expr: &ast.QualifiedNameExpr{QualifiedName: ast.QualifiedName{Module: "System", Name: "owner"}}},
+					},
+				},
+				Operator: "=",
+				Right:    &ast.TokenExpr{Token: "CurrentUser"},
+			},
+			wantXP: "System.owner = '[%CurrentUser%]'",
+		},
+		{
+			name: "not_with_path",
+			expr: &ast.UnaryExpr{
+				Operator: "not",
+				Operand: &ast.XPathPathExpr{
+					Steps: []ast.XPathStep{
+						{Expr: &ast.QualifiedNameExpr{QualifiedName: ast.QualifiedName{Module: "Module", Name: "Assoc"}}},
+						{Expr: &ast.QualifiedNameExpr{QualifiedName: ast.QualifiedName{Module: "Module", Name: "Entity"}}},
+					},
+				},
+			},
+			wantXP: "not(Module.Assoc/Module.Entity)",
+		},
+		{
+			name: "function_with_path_args",
+			expr: &ast.FunctionCallExpr{
+				Name: "contains",
+				Arguments: []ast.Expression{
+					&ast.IdentifierExpr{Name: "Name"},
+					&ast.VariableExpr{Name: "SearchStr"},
+				},
+			},
+			wantXP: "contains(Name, $SearchStr)",
+		},
+		{
+			name:   "empty_literal",
+			expr:   &ast.LiteralExpr{Value: nil, Kind: ast.LiteralEmpty},
+			wantXP: "empty",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotXP := expressionToXPath(tt.expr)
+			if gotXP != tt.wantXP {
+				t.Errorf("expressionToXPath() = %q, want %q", gotXP, tt.wantXP)
+			}
+		})
+	}
+}
+
 // validateMicroflowFromMDL parses a CREATE MICROFLOW statement and runs
 // ValidateMicroflowBody, returning any validation errors.
 func validateMicroflowFromMDL(t *testing.T, input string) []string {

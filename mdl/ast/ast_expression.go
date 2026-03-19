@@ -107,3 +107,23 @@ type QualifiedNameExpr struct {
 }
 
 func (e *QualifiedNameExpr) isExpression() {}
+
+// ============================================================================
+// XPath-Specific Expression Types
+// ============================================================================
+
+// XPathPathExpr represents an XPath path with multiple steps and/or nested predicates.
+// Examples: Module.Assoc/Entity/Attr, $var/Assoc[Active]/Attr, System.roles[reversed()]
+// For single-step paths without predicates, the underlying expression type
+// (IdentifierExpr, QualifiedNameExpr, VariableExpr, etc.) is used directly instead.
+type XPathPathExpr struct {
+	Steps []XPathStep
+}
+
+func (e *XPathPathExpr) isExpression() {}
+
+// XPathStep represents a single step in an XPath path expression.
+type XPathStep struct {
+	Expr      Expression // The step expression (IdentifierExpr, QualifiedNameExpr, VariableExpr, LiteralExpr, TokenExpr)
+	Predicate Expression // Optional nested predicate expression (the content inside [...])
+}

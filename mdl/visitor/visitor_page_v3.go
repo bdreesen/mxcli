@@ -844,8 +844,8 @@ func buildXPathString(xpathConstraints []parser.IXpathConstraintContext, andOrOp
 	var exprs []ast.Expression
 	for _, xc := range xpathConstraints {
 		xcCtx := xc.(*parser.XpathConstraintContext)
-		if expr := xcCtx.Expression(); expr != nil {
-			exprs = append(exprs, buildExpression(expr))
+		if xpathExpr := xcCtx.XpathExpr(); xpathExpr != nil {
+			exprs = append(exprs, buildXPathExpr(xpathExpr))
 		}
 	}
 
@@ -1050,7 +1050,7 @@ func xpathExprToString(expr ast.Expression) string {
 				return "true"
 			}
 			return "false"
-		case ast.LiteralNull:
+		case ast.LiteralNull, ast.LiteralEmpty:
 			return "empty"
 		default:
 			return fmt.Sprintf("%v", e.Value)
@@ -1067,7 +1067,16 @@ func xpathExprToString(expr ast.Expression) string {
 	case *ast.UnaryExpr:
 		operand := xpathExprToString(e.Operand)
 		op := strings.ToLower(e.Operator)
+		// For 'not' with parenthesized operand, output as not(expr) instead of not (expr)
+		if op == "not" {
+			if p, ok := e.Operand.(*ast.ParenExpr); ok {
+				return "not(" + xpathExprToString(p.Inner) + ")"
+			}
+			return "not(" + operand + ")"
+		}
 		return op + " " + operand
+	case *ast.XPathPathExpr:
+		return xpathPathToString(e)
 	case *ast.FunctionCallExpr:
 		var args []string
 		for _, arg := range e.Arguments {
@@ -1085,4 +1094,18 @@ func xpathExprToString(expr ast.Expression) string {
 	default:
 		return ""
 	}
+}
+
+// xpathPathToString serializes an XPathPathExpr to a string like "Module.Assoc/Entity/Attr"
+// or "System.roles[reversed()]/System.UserRole".
+func xpathPathToString(path *ast.XPathPathExpr) string {
+	var parts []string
+	for _, step := range path.Steps {
+		s := xpathExprToString(step.Expr)
+		if step.Predicate != nil {
+			s += "[" + xpathExprToString(step.Predicate) + "]"
+		}
+		parts = append(parts, s)
+	}
+	return strings.Join(parts, "/")
 }

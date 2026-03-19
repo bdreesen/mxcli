@@ -732,8 +732,8 @@ func buildRetrieveStatement(ctx parser.IRetrieveStatementContext) *ast.RetrieveS
 	if retrCtx.WHERE() != nil {
 		if xc := retrCtx.XpathConstraint(); xc != nil {
 			xcCtx := xc.(*parser.XpathConstraintContext)
-			if expr := xcCtx.Expression(); expr != nil {
-				stmt.Where = buildExpression(expr)
+			if xpathExpr := xcCtx.XpathExpr(); xpathExpr != nil {
+				stmt.Where = buildXPathExpr(xpathExpr)
 			}
 		} else if expr := retrCtx.Expression(0); expr != nil {
 			stmt.Where = buildExpression(expr)

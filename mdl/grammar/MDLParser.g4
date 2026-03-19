@@ -1527,12 +1527,97 @@ sortColumn
     ;
 
 xpathConstraint
-    : LBRACKET expression RBRACKET
+    : LBRACKET xpathExpr RBRACKET
     ;
 
 andOrXpath
     : AND
     | OR
+    ;
+
+// =============================================================================
+// XPATH EXPRESSION RULES
+// =============================================================================
+//
+// Dedicated grammar for XPath expressions inside [...] constraints.
+// Separate from the general expression rules because XPath has different semantics:
+// - '/' is always path traversal (not division)
+// - '[...]' inside paths are nested predicates
+// - Bare identifiers/paths are existence checks
+// - Functions like not(), contains(), starts-with() are XPath-native
+//
+
+xpathExpr
+    : xpathAndExpr (OR xpathAndExpr)*
+    ;
+
+xpathAndExpr
+    : xpathNotExpr (AND xpathNotExpr)*
+    ;
+
+xpathNotExpr
+    : NOT xpathNotExpr
+    | xpathComparisonExpr
+    ;
+
+xpathComparisonExpr
+    : xpathValueExpr (comparisonOperator xpathValueExpr)?
+    ;
+
+xpathValueExpr
+    : xpathFunctionCall
+    | xpathPath
+    | LPAREN xpathExpr RPAREN
+    ;
+
+xpathPath
+    : xpathStep (SLASH xpathStep)*
+    ;
+
+xpathStep
+    : xpathStepValue (LBRACKET xpathExpr RBRACKET)?
+    ;
+
+xpathStepValue
+    : xpathQualifiedName
+    | VARIABLE
+    | STRING_LITERAL
+    | NUMBER_LITERAL
+    | MENDIX_TOKEN
+    ;
+
+/** Qualified name in XPath context: accepts any keyword as identifier part.
+ *  Unlike the general qualifiedName rule, this handles ALL lexer keywords
+ *  so that attribute names like 'Attr', 'Entity', etc. work in XPath paths.
+ */
+xpathQualifiedName
+    : xpathWord (DOT xpathWord)*
+    ;
+
+/** Any single-word token that can appear as part of a name in XPath.
+ *  Uses exclusion: matches any token except operators, delimiters, and literals.
+ */
+xpathWord
+    : ~( DOT | SLASH | LBRACKET | RBRACKET | LPAREN | RPAREN | COMMA
+       | EQUALS | NOT_EQUALS | LESS_THAN | LESS_THAN_OR_EQUAL
+       | GREATER_THAN | GREATER_THAN_OR_EQUAL
+       | AND | OR | NOT
+       | SEMICOLON
+       | STRING_LITERAL | NUMBER_LITERAL | VARIABLE | MENDIX_TOKEN | DOLLAR_STRING
+       )
+    ;
+
+xpathFunctionCall
+    : xpathFunctionName LPAREN (xpathExpr (COMMA xpathExpr)*)? RPAREN
+    ;
+
+xpathFunctionName
+    : IDENTIFIER
+    | HYPHENATED_ID
+    | NOT
+    | TRUE
+    | FALSE
+    | CONTAINS
     ;
 
 // =============================================================================

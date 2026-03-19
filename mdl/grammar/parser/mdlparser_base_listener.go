@@ -1048,6 +1048,78 @@ func (s *BaseMDLParserListener) EnterAndOrXpath(ctx *AndOrXpathContext) {}
 // ExitAndOrXpath is called when production andOrXpath is exited.
 func (s *BaseMDLParserListener) ExitAndOrXpath(ctx *AndOrXpathContext) {}
 
+// EnterXpathExpr is called when production xpathExpr is entered.
+func (s *BaseMDLParserListener) EnterXpathExpr(ctx *XpathExprContext) {}
+
+// ExitXpathExpr is called when production xpathExpr is exited.
+func (s *BaseMDLParserListener) ExitXpathExpr(ctx *XpathExprContext) {}
+
+// EnterXpathAndExpr is called when production xpathAndExpr is entered.
+func (s *BaseMDLParserListener) EnterXpathAndExpr(ctx *XpathAndExprContext) {}
+
+// ExitXpathAndExpr is called when production xpathAndExpr is exited.
+func (s *BaseMDLParserListener) ExitXpathAndExpr(ctx *XpathAndExprContext) {}
+
+// EnterXpathNotExpr is called when production xpathNotExpr is entered.
+func (s *BaseMDLParserListener) EnterXpathNotExpr(ctx *XpathNotExprContext) {}
+
+// ExitXpathNotExpr is called when production xpathNotExpr is exited.
+func (s *BaseMDLParserListener) ExitXpathNotExpr(ctx *XpathNotExprContext) {}
+
+// EnterXpathComparisonExpr is called when production xpathComparisonExpr is entered.
+func (s *BaseMDLParserListener) EnterXpathComparisonExpr(ctx *XpathComparisonExprContext) {}
+
+// ExitXpathComparisonExpr is called when production xpathComparisonExpr is exited.
+func (s *BaseMDLParserListener) ExitXpathComparisonExpr(ctx *XpathComparisonExprContext) {}
+
+// EnterXpathValueExpr is called when production xpathValueExpr is entered.
+func (s *BaseMDLParserListener) EnterXpathValueExpr(ctx *XpathValueExprContext) {}
+
+// ExitXpathValueExpr is called when production xpathValueExpr is exited.
+func (s *BaseMDLParserListener) ExitXpathValueExpr(ctx *XpathValueExprContext) {}
+
+// EnterXpathPath is called when production xpathPath is entered.
+func (s *BaseMDLParserListener) EnterXpathPath(ctx *XpathPathContext) {}
+
+// ExitXpathPath is called when production xpathPath is exited.
+func (s *BaseMDLParserListener) ExitXpathPath(ctx *XpathPathContext) {}
+
+// EnterXpathStep is called when production xpathStep is entered.
+func (s *BaseMDLParserListener) EnterXpathStep(ctx *XpathStepContext) {}
+
+// ExitXpathStep is called when production xpathStep is exited.
+func (s *BaseMDLParserListener) ExitXpathStep(ctx *XpathStepContext) {}
+
+// EnterXpathStepValue is called when production xpathStepValue is entered.
+func (s *BaseMDLParserListener) EnterXpathStepValue(ctx *XpathStepValueContext) {}
+
+// ExitXpathStepValue is called when production xpathStepValue is exited.
+func (s *BaseMDLParserListener) ExitXpathStepValue(ctx *XpathStepValueContext) {}
+
+// EnterXpathQualifiedName is called when production xpathQualifiedName is entered.
+func (s *BaseMDLParserListener) EnterXpathQualifiedName(ctx *XpathQualifiedNameContext) {}
+
+// ExitXpathQualifiedName is called when production xpathQualifiedName is exited.
+func (s *BaseMDLParserListener) ExitXpathQualifiedName(ctx *XpathQualifiedNameContext) {}
+
+// EnterXpathWord is called when production xpathWord is entered.
+func (s *BaseMDLParserListener) EnterXpathWord(ctx *XpathWordContext) {}
+
+// ExitXpathWord is called when production xpathWord is exited.
+func (s *BaseMDLParserListener) ExitXpathWord(ctx *XpathWordContext) {}
+
+// EnterXpathFunctionCall is called when production xpathFunctionCall is entered.
+func (s *BaseMDLParserListener) EnterXpathFunctionCall(ctx *XpathFunctionCallContext) {}
+
+// ExitXpathFunctionCall is called when production xpathFunctionCall is exited.
+func (s *BaseMDLParserListener) ExitXpathFunctionCall(ctx *XpathFunctionCallContext) {}
+
+// EnterXpathFunctionName is called when production xpathFunctionName is entered.
+func (s *BaseMDLParserListener) EnterXpathFunctionName(ctx *XpathFunctionNameContext) {}
+
+// ExitXpathFunctionName is called when production xpathFunctionName is exited.
+func (s *BaseMDLParserListener) ExitXpathFunctionName(ctx *XpathFunctionNameContext) {}
+
 // EnterPageHeaderV3 is called when production pageHeaderV3 is entered.
 func (s *BaseMDLParserListener) EnterPageHeaderV3(ctx *PageHeaderV3Context) {}
 

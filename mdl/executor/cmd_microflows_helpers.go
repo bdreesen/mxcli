@@ -154,13 +154,46 @@ func expressionToXPath(expr ast.Expression) string {
 	case *ast.UnaryExpr:
 		operand := expressionToXPath(e.Operand)
 		op := strings.ToLower(e.Operator)
+		// For 'not' with parenthesized operand, output as not(expr)
+		if op == "not" {
+			if p, ok := e.Operand.(*ast.ParenExpr); ok {
+				return "not(" + expressionToXPath(p.Inner) + ")"
+			}
+			return "not(" + operand + ")"
+		}
 		return op + " " + operand
 	case *ast.ParenExpr:
 		return "(" + expressionToXPath(e.Inner) + ")"
+	case *ast.XPathPathExpr:
+		return xpathPathExprToString(e)
+	case *ast.FunctionCallExpr:
+		var args []string
+		for _, arg := range e.Arguments {
+			args = append(args, expressionToXPath(arg))
+		}
+		return e.Name + "(" + strings.Join(args, ", ") + ")"
+	case *ast.LiteralExpr:
+		if e.Kind == ast.LiteralEmpty {
+			return "empty"
+		}
+		return expressionToString(expr)
 	default:
 		// For all other expression types, the standard serialization is correct
 		return expressionToString(expr)
 	}
+}
+
+// xpathPathExprToString serializes an XPathPathExpr to an XPath path string.
+func xpathPathExprToString(path *ast.XPathPathExpr) string {
+	var parts []string
+	for _, step := range path.Steps {
+		s := expressionToXPath(step.Expr)
+		if step.Predicate != nil {
+			s += "[" + expressionToXPath(step.Predicate) + "]"
+		}
+		parts = append(parts, s)
+	}
+	return strings.Join(parts, "/")
 }
 
 // countMicroflowActivities counts the number of meaningful activities in a microflow.

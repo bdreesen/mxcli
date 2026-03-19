@@ -505,6 +505,42 @@ type MDLParserListener interface {
 	// EnterAndOrXpath is called when entering the andOrXpath production.
 	EnterAndOrXpath(c *AndOrXpathContext)
 
+	// EnterXpathExpr is called when entering the xpathExpr production.
+	EnterXpathExpr(c *XpathExprContext)
+
+	// EnterXpathAndExpr is called when entering the xpathAndExpr production.
+	EnterXpathAndExpr(c *XpathAndExprContext)
+
+	// EnterXpathNotExpr is called when entering the xpathNotExpr production.
+	EnterXpathNotExpr(c *XpathNotExprContext)
+
+	// EnterXpathComparisonExpr is called when entering the xpathComparisonExpr production.
+	EnterXpathComparisonExpr(c *XpathComparisonExprContext)
+
+	// EnterXpathValueExpr is called when entering the xpathValueExpr production.
+	EnterXpathValueExpr(c *XpathValueExprContext)
+
+	// EnterXpathPath is called when entering the xpathPath production.
+	EnterXpathPath(c *XpathPathContext)
+
+	// EnterXpathStep is called when entering the xpathStep production.
+	EnterXpathStep(c *XpathStepContext)
+
+	// EnterXpathStepValue is called when entering the xpathStepValue production.
+	EnterXpathStepValue(c *XpathStepValueContext)
+
+	// EnterXpathQualifiedName is called when entering the xpathQualifiedName production.
+	EnterXpathQualifiedName(c *XpathQualifiedNameContext)
+
+	// EnterXpathWord is called when entering the xpathWord production.
+	EnterXpathWord(c *XpathWordContext)
+
+	// EnterXpathFunctionCall is called when entering the xpathFunctionCall production.
+	EnterXpathFunctionCall(c *XpathFunctionCallContext)
+
+	// EnterXpathFunctionName is called when entering the xpathFunctionName production.
+	EnterXpathFunctionName(c *XpathFunctionNameContext)
+
 	// EnterPageHeaderV3 is called when entering the pageHeaderV3 production.
 	EnterPageHeaderV3(c *PageHeaderV3Context)
 
@@ -1497,6 +1533,42 @@ type MDLParserListener interface {
 
 	// ExitAndOrXpath is called when exiting the andOrXpath production.
 	ExitAndOrXpath(c *AndOrXpathContext)
+
+	// ExitXpathExpr is called when exiting the xpathExpr production.
+	ExitXpathExpr(c *XpathExprContext)
+
+	// ExitXpathAndExpr is called when exiting the xpathAndExpr production.
+	ExitXpathAndExpr(c *XpathAndExprContext)
+
+	// ExitXpathNotExpr is called when exiting the xpathNotExpr production.
+	ExitXpathNotExpr(c *XpathNotExprContext)
+
+	// ExitXpathComparisonExpr is called when exiting the xpathComparisonExpr production.
+	ExitXpathComparisonExpr(c *XpathComparisonExprContext)
+
+	// ExitXpathValueExpr is called when exiting the xpathValueExpr production.
+	ExitXpathValueExpr(c *XpathValueExprContext)
+
+	// ExitXpathPath is called when exiting the xpathPath production.
+	ExitXpathPath(c *XpathPathContext)
+
+	// ExitXpathStep is called when exiting the xpathStep production.
+	ExitXpathStep(c *XpathStepContext)
+
+	// ExitXpathStepValue is called when exiting the xpathStepValue production.
+	ExitXpathStepValue(c *XpathStepValueContext)
+
+	// ExitXpathQualifiedName is called when exiting the xpathQualifiedName production.
+	ExitXpathQualifiedName(c *XpathQualifiedNameContext)
+
+	// ExitXpathWord is called when exiting the xpathWord production.
+	ExitXpathWord(c *XpathWordContext)
+
+	// ExitXpathFunctionCall is called when exiting the xpathFunctionCall production.
+	ExitXpathFunctionCall(c *XpathFunctionCallContext)
+
+	// ExitXpathFunctionName is called when exiting the xpathFunctionName production.
+	ExitXpathFunctionName(c *XpathFunctionNameContext)
 
 	// ExitPageHeaderV3 is called when exiting the pageHeaderV3 production.
 	ExitPageHeaderV3(c *PageHeaderV3Context)
