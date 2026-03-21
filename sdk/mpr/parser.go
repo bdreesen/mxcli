@@ -4,6 +4,7 @@ package mpr
 
 import (
 	"encoding/base64"
+	"strings"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -147,4 +148,106 @@ func extractBsonSlice(v any) []any {
 		return []any(val)
 	}
 	return nil
+}
+
+// BsonArrayInfo holds the extracted items and the marker from a Mendix BSON array.
+type BsonArrayInfo struct {
+	Marker int32
+	Items  []any
+}
+
+// extractBsonArrayWithMarker extracts items from a Mendix BSON array, preserving the marker.
+// Returns the marker (1, 2, or 3) and the items after the marker.
+func extractBsonArrayWithMarker(v any) BsonArrayInfo {
+	if v == nil {
+		return BsonArrayInfo{}
+	}
+
+	var slice []any
+	switch val := v.(type) {
+	case primitive.A:
+		slice = []any(val)
+	case []any:
+		slice = val
+	default:
+		return BsonArrayInfo{}
+	}
+
+	if len(slice) > 0 {
+		if marker, ok := slice[0].(int32); ok && (marker == 1 || marker == 2 || marker == 3) {
+			return BsonArrayInfo{Marker: marker, Items: slice[1:]}
+		}
+	}
+	return BsonArrayInfo{Items: slice}
+}
+
+// inferPropertyKind determines the Mendix property kind of a BSON field from its key
+// and value shape. Returns one of: "id", "type-discriminator", "by-name-reference",
+// "primitive", "part", "collection:by-name" (marker=1), "collection:part-secondary"
+// (marker=2), "collection:part-primary" (marker=3), "collection".
+// Used by UnknownElement to surface diagnostic info when an unimplemented $Type is encountered.
+func inferPropertyKind(key string, v any) string {
+	if v == nil {
+		return "primitive"
+	}
+
+	// Key-based shortcuts take priority over value shape.
+	switch key {
+	case "$ID", "$ContainerID":
+		return "id"
+	case "$Type":
+		return "type-discriminator"
+	}
+
+	switch val := v.(type) {
+	case map[string]any:
+		if _, hasType := val["$Type"]; hasType {
+			return "part"
+		}
+		if _, hasID := val["$ID"]; hasID {
+			return "part"
+		}
+		return "primitive"
+
+	case primitive.D:
+		m := val.Map()
+		if _, hasType := m["$Type"]; hasType {
+			return "part"
+		}
+		if _, hasID := m["$ID"]; hasID {
+			return "part"
+		}
+		return "primitive"
+
+	case primitive.M:
+		if _, hasType := val["$Type"]; hasType {
+			return "part"
+		}
+		if _, hasID := val["$ID"]; hasID {
+			return "part"
+		}
+		return "primitive"
+
+	case primitive.A, []any:
+		info := extractBsonArrayWithMarker(v)
+		switch info.Marker {
+		case 1:
+			return "collection:by-name"
+		case 2:
+			return "collection:part-secondary"
+		case 3:
+			return "collection:part-primary"
+		}
+		return "collection"
+
+	case string:
+		// Heuristic: qualified names like "Module.Entity" are likely by-name references.
+		if strings.Contains(val, ".") && !strings.Contains(val, " ") && !strings.Contains(val, "/") {
+			return "by-name-reference"
+		}
+		return "primitive"
+
+	default:
+		return "primitive"
+	}
 }

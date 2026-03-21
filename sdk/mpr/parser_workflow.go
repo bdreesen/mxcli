@@ -161,42 +161,40 @@ func parseWorkflowFlow(raw map[string]any) *workflows.Flow {
 	return flow
 }
 
+// workflowActivityParsers maps Mendix $Type strings to their workflow activity parser functions.
+// Declared as a nil var and populated in init() so that the map literal can
+// reference parseParallelSplitActivity, which itself calls parseWorkflowFlow,
+// keeping the package-level initialization order unambiguous.
+var workflowActivityParsers map[string]func(map[string]any) workflows.WorkflowActivity
+
+func init() {
+	workflowActivityParsers = map[string]func(map[string]any) workflows.WorkflowActivity{
+		"Workflows$EndWorkflowActivity":  func(r map[string]any) workflows.WorkflowActivity { return parseEndWorkflowActivity(r) },
+		"Workflows$UserTask":             func(r map[string]any) workflows.WorkflowActivity { return parseUserTask(r) },
+		"Workflows$SingleUserTaskActivity": func(r map[string]any) workflows.WorkflowActivity { return parseUserTask(r) },
+		"Workflows$MultiUserTaskActivity": func(r map[string]any) workflows.WorkflowActivity { return parseUserTask(r) },
+		"Workflows$CallMicroflowTask":    func(r map[string]any) workflows.WorkflowActivity { return parseCallMicroflowTask(r) },
+		"Workflows$CallWorkflowActivity": func(r map[string]any) workflows.WorkflowActivity { return parseCallWorkflowActivity(r) },
+		"Workflows$ExclusiveSplitActivity": func(r map[string]any) workflows.WorkflowActivity { return parseExclusiveSplitActivity(r) },
+		"Workflows$ParallelSplitActivity": func(r map[string]any) workflows.WorkflowActivity { return parseParallelSplitActivity(r) },
+		"Workflows$JumpToActivity":       func(r map[string]any) workflows.WorkflowActivity { return parseJumpToActivity(r) },
+		"Workflows$WaitForTimerActivity": func(r map[string]any) workflows.WorkflowActivity { return parseWaitForTimerActivity(r) },
+		"Workflows$WaitForNotificationActivity": func(r map[string]any) workflows.WorkflowActivity { return parseWaitForNotificationActivity(r) },
+		"Workflows$StartWorkflowActivity": func(r map[string]any) workflows.WorkflowActivity { return parseEndWorkflowActivity(r) },
+		"Workflows$SystemTask": func(r map[string]any) workflows.WorkflowActivity { return parseSystemTask(r) },
+	}
+}
+
 // parseWorkflowActivity dispatches activity parsing based on $Type.
 func parseWorkflowActivity(raw map[string]any) workflows.WorkflowActivity {
 	typeName := extractString(raw["$Type"])
-
-	switch typeName {
-	case "Workflows$EndWorkflowActivity":
-		return parseEndWorkflowActivity(raw)
-	case "Workflows$UserTask", "Workflows$SingleUserTaskActivity", "Workflows$MultiUserTaskActivity":
-		return parseUserTask(raw)
-	case "Workflows$CallMicroflowTask":
-		return parseCallMicroflowTask(raw)
-	case "Workflows$CallWorkflowActivity":
-		return parseCallWorkflowActivity(raw)
-	case "Workflows$ExclusiveSplitActivity":
-		return parseExclusiveSplitActivity(raw)
-	case "Workflows$ParallelSplitActivity":
-		return parseParallelSplitActivity(raw)
-	case "Workflows$JumpToActivity":
-		return parseJumpToActivity(raw)
-	case "Workflows$WaitForTimerActivity":
-		return parseWaitForTimerActivity(raw)
-	case "Workflows$WaitForNotificationActivity":
-		return parseWaitForNotificationActivity(raw)
-	case "Workflows$StartWorkflowActivity":
-		// Start node — treat as a simple activity
-		return parseEndWorkflowActivity(raw)
-	// Older/alternate type names
-	case "Workflows$SystemTask":
-		return parseSystemTask(raw)
-	default:
-		// Handle unknown types gracefully
-		if typeName != "" {
-			return parseGenericWorkflowActivity(raw, typeName)
-		}
-		return nil
+	if fn, ok := workflowActivityParsers[typeName]; ok {
+		return fn(raw)
 	}
+	if typeName != "" {
+		return parseGenericWorkflowActivity(raw, typeName)
+	}
+	return nil
 }
 
 // parseEndWorkflowActivity parses an EndWorkflowActivity.
