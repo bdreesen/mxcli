@@ -16,14 +16,14 @@ func (w *Writer) CreatePage(page *pages.Page) error {
 	if page.ID == "" {
 		page.ID = model.ID(generateUUID())
 	}
-	page.TypeName = "Pages$Page"
+	page.TypeName = "Forms$Page"
 
 	contents, err := w.serializePage(page)
 	if err != nil {
 		return fmt.Errorf("failed to serialize page: %w", err)
 	}
 
-	return w.insertUnit(string(page.ID), string(page.ContainerID), "Documents", "Pages$Page", contents)
+	return w.insertUnit(string(page.ID), string(page.ContainerID), "Documents", "Forms$Page", contents)
 }
 
 // UpdatePage updates an existing page.
@@ -52,14 +52,14 @@ func (w *Writer) CreateLayout(layout *pages.Layout) error {
 	if layout.ID == "" {
 		layout.ID = model.ID(generateUUID())
 	}
-	layout.TypeName = "Pages$Layout"
+	layout.TypeName = "Forms$Layout"
 
 	contents, err := w.serializeLayout(layout)
 	if err != nil {
 		return fmt.Errorf("failed to serialize layout: %w", err)
 	}
 
-	return w.insertUnit(string(layout.ID), string(layout.ContainerID), "Documents", "Pages$Layout", contents)
+	return w.insertUnit(string(layout.ID), string(layout.ContainerID), "Documents", "Forms$Layout", contents)
 }
 
 // UpdateLayout updates an existing layout.
