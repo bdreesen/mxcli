@@ -122,6 +122,7 @@ BEGIN
 
   -- Initialize sliding window variables for iterative calculation
   -- Previous two values: F(i-2) and F(i-1)
+  DECLARE $Result Long = 0;
   DECLARE $Previous2 Long = 0;
   DECLARE $Previous1 Long = 1;
   DECLARE $Current Long = 0;
