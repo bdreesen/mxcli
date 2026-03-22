@@ -22,10 +22,11 @@ func ValidateMicroflow(stmt *ast.CreateMicroflowStmt) []string {
 
 // microflowValidator holds state for validating a single microflow.
 type microflowValidator struct {
-	mfName     string
-	returnType *ast.MicroflowReturnType // nil = void
-	warnings   []string
-	loopDepth  int // Track nesting depth inside loops
+	mfName        string
+	returnType    *ast.MicroflowReturnType // nil = void
+	warnings      []string
+	loopDepth     int            // Track nesting depth inside loops
+	emptyListVars map[string]bool // List variables declared empty and never populated
 }
 
 func (v *microflowValidator) warn(msg string) {
@@ -35,6 +36,7 @@ func (v *microflowValidator) warn(msg string) {
 // validate runs all checks on the microflow body.
 func (v *microflowValidator) validate(body []ast.MicroflowStatement) {
 	// Walk the body for per-statement checks (validation feedback, return value checks)
+	v.emptyListVars = make(map[string]bool)
 	v.walkBody(body)
 
 	// Check 5: missing RETURN on non-void microflow paths
@@ -63,7 +65,28 @@ func (v *microflowValidator) walkBody(body []ast.MicroflowStatement) {
 		case *ast.IfStmt:
 			v.walkBody(stmt.ThenBody)
 			v.walkBody(stmt.ElseBody)
+		case *ast.DeclareStmt:
+			// Track list variables declared as empty (candidates for the empty-list-in-loop anti-pattern)
+			if stmt.Type.Kind == ast.TypeListOf {
+				if isEmptyInit(stmt.InitialValue) {
+					v.emptyListVars[stmt.Variable] = true
+				}
+			}
+		case *ast.RetrieveStmt:
+			// RETRIEVE populates a list variable — remove from empty tracking
+			delete(v.emptyListVars, stmt.Variable)
 		case *ast.LoopStmt:
+			// Check: nested loop anti-pattern
+			if v.loopDepth > 0 {
+				v.warn("nested LOOP detected (loop inside a loop). " +
+					"Use RETRIEVE $Match FROM $List WHERE ... LIMIT 1 for list matching instead of nested loops (O(N^2) performance).")
+			}
+			// Check: loop over empty declared list
+			if v.emptyListVars[stmt.ListVariable] {
+				v.warn(fmt.Sprintf("LOOP iterates over '$%s' which was declared as an empty list and never populated. "+
+					"Pass the list as a microflow parameter instead of creating an empty variable.",
+					stmt.ListVariable))
+			}
 			v.loopDepth++
 			v.walkBody(stmt.Body)
 			v.loopDepth--
@@ -399,6 +422,17 @@ func stmtErrorHandling(stmt ast.MicroflowStatement) *ast.ErrorHandlingClause {
 		return s.ErrorHandling
 	}
 	return nil
+}
+
+// isEmptyInit checks if a variable initializer is empty/nil (used to detect "DECLARE $List List of ... = empty").
+func isEmptyInit(expr ast.Expression) bool {
+	if expr == nil {
+		return true
+	}
+	if lit, ok := expr.(*ast.LiteralExpr); ok {
+		return lit.Kind == ast.LiteralEmpty || lit.Kind == ast.LiteralNull
+	}
+	return false
 }
 
 // isEmptyMessage checks if a message expression is empty or nil.

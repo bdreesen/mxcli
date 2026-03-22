@@ -290,9 +290,18 @@ Regenerate after modifying `MDLLexer.g4` or `MDLParser.g4`: `make grammar`. See 
 - `.claude/skills/database-connections.md` - External database connections from microflows
 - `.claude/skills/test-microflows.md` - **READ for testing work** - Test annotations, file formats, Docker setup requirement
 
+### Mendix Microflow Idioms (MUST follow)
+
+These rules apply whenever generating microflow MDL. Violations are caught by `mxcli check`.
+
+1. **NEVER create empty list variables as loop sources.** If processing imported data, accept the list as a microflow parameter — `DECLARE $Items List of ... = empty` followed by `LOOP $Item IN $Items` is always wrong.
+2. **NEVER use nested LOOPs for list matching.** Loop over the primary list and use `RETRIEVE $Match FROM $TargetList WHERE Key = $Item/Key LIMIT 1` for O(N) lookup. Nested loops are O(N^2).
+3. **Use append logic when merging**, not overwrite: `$Existing/Field + '\n' + $New/Field` inside an `IF $New/Field != empty` guard.
+4. **Read `.claude/skills/patterns-data-processing.md`** for delta merge, batch processing, and list operation patterns.
+
 **Always validate before presenting to user:**
 ```bash
-./bin/mxcli check script.mdl                    # Syntax check
+./bin/mxcli check script.mdl                    # Syntax + anti-pattern check
 ./bin/mxcli check script.mdl -p app.mpr --references  # With reference validation
 ```
 
