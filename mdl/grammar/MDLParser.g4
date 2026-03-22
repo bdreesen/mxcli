@@ -3013,6 +3013,7 @@ annotationName
     | FOLDER
     | REQUIRED
     | CAPTION
+    | ANNOTATION
     ;
 
 annotationParams
