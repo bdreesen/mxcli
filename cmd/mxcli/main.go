@@ -303,4 +303,5 @@ func init() {
 	rootCmd.AddCommand(testRunCmd)
 	rootCmd.AddCommand(playwrightCmd)
 	rootCmd.AddCommand(evalCmd)
+	rootCmd.AddCommand(tuiCmd)
 }
