@@ -9,6 +9,7 @@ import (
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
 	"github.com/mendixlabs/mxcli/model"
+	"github.com/mendixlabs/mxcli/sdk/domainmodel"
 	"github.com/mendixlabs/mxcli/sdk/microflows"
 	"github.com/mendixlabs/mxcli/sdk/mpr"
 )
@@ -292,14 +293,51 @@ func (fb *flowBuilder) addRetrieveAction(s *ast.RetrieveStmt) model.ID {
 	if s.StartVariable != "" {
 		// Association retrieve: RETRIEVE $List FROM $Parent/Module.AssocName
 		assocQN := s.Source.Module + "." + s.Source.Name
-		source = &microflows.AssociationRetrieveSource{
-			BaseElement:              model.BaseElement{ID: model.ID(mpr.GenerateID())},
-			StartVariable:            s.StartVariable,
-			AssociationQualifiedName: assocQN,
-		}
-		// Association retrieve always returns a list
+
+		// Look up association to determine type and direction.
+		// For Reference associations, AssociationRetrieveSource always returns a single
+		// object (the entity on the other end). When the user navigates from the child
+		// (non-owner) side, the intent is to get a list of parent entities — we must use
+		// a DatabaseRetrieveSource with XPath constraint instead.
+		assocInfo := fb.lookupAssociation(s.Source.Module, s.Source.Name)
+		startVarType := ""
 		if fb.varTypes != nil {
-			fb.varTypes[s.Variable] = "List of " + assocQN
+			startVarType = fb.varTypes[s.StartVariable]
+		}
+
+		if assocInfo != nil && assocInfo.Type == domainmodel.AssociationTypeReference &&
+			assocInfo.childEntityQN != "" && startVarType == assocInfo.childEntityQN {
+			// Reverse traversal on Reference: child → parent (one-to-many)
+			// Use DatabaseRetrieveSource with XPath to get a list of parent entities
+			dbSource := &microflows.DatabaseRetrieveSource{
+				BaseElement:         model.BaseElement{ID: model.ID(mpr.GenerateID())},
+				EntityQualifiedName: assocInfo.parentEntityQN,
+				XPathConstraint:     "[" + assocQN + " = $" + s.StartVariable + "]",
+			}
+			source = dbSource
+			if fb.varTypes != nil {
+				fb.varTypes[s.Variable] = "List of " + assocInfo.parentEntityQN
+			}
+		} else {
+			// Forward traversal or ReferenceSet: use AssociationRetrieveSource
+			source = &microflows.AssociationRetrieveSource{
+				BaseElement:              model.BaseElement{ID: model.ID(mpr.GenerateID())},
+				StartVariable:            s.StartVariable,
+				AssociationQualifiedName: assocQN,
+			}
+			if fb.varTypes != nil {
+				if assocInfo != nil && assocInfo.Type == domainmodel.AssociationTypeReference {
+					// Reference forward traversal: returns single object
+					otherEntity := assocInfo.childEntityQN
+					if startVarType == assocInfo.childEntityQN {
+						otherEntity = assocInfo.parentEntityQN
+					}
+					fb.varTypes[s.Variable] = otherEntity
+				} else {
+					// ReferenceSet or unknown: returns a list
+					fb.varTypes[s.Variable] = "List of " + assocQN
+				}
+			}
 		}
 	} else {
 		// Database retrieve: RETRIEVE $List FROM Module.Entity WHERE ...
@@ -686,4 +724,45 @@ func (fb *flowBuilder) addRemoveFromListAction(s *ast.RemoveFromListStmt) model.
 	fb.objects = append(fb.objects, activity)
 	fb.posX += fb.spacing
 	return activity.ID
+}
+
+// assocLookupResult holds resolved association metadata.
+type assocLookupResult struct {
+	Type           domainmodel.AssociationType
+	parentEntityQN string // Qualified name of the parent (FROM/owner) entity
+	childEntityQN  string // Qualified name of the child (TO/referenced) entity
+}
+
+// lookupAssociation finds an association by module and name, returning its type
+// and the qualified names of its parent and child entities. Returns nil if the
+// association cannot be found (e.g., reader is nil or module doesn't exist).
+func (fb *flowBuilder) lookupAssociation(moduleName, assocName string) *assocLookupResult {
+	if fb.reader == nil {
+		return nil
+	}
+	mod, err := fb.reader.GetModuleByName(moduleName)
+	if err != nil || mod == nil {
+		return nil
+	}
+	dm, err := fb.reader.GetDomainModel(mod.ID)
+	if err != nil || dm == nil {
+		return nil
+	}
+
+	// Build entity ID → qualified name map
+	entityNames := make(map[model.ID]string, len(dm.Entities))
+	for _, e := range dm.Entities {
+		entityNames[e.ID] = moduleName + "." + e.Name
+	}
+
+	for _, a := range dm.Associations {
+		if a.Name == assocName {
+			return &assocLookupResult{
+				Type:           a.Type,
+				parentEntityQN: entityNames[a.ParentID],
+				childEntityQN:  entityNames[a.ChildID],
+			}
+		}
+	}
+	return nil
 }
