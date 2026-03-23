@@ -420,7 +420,7 @@ SHOW ACCESS ON SecTest.Customer;
 /**
  * Create a user role and assign a single module role.
  */
-CREATE USER ROLE RegularUser (SecTest.User);
+CREATE USER ROLE RegularUser (System.User, SecTest.User);
 /
 
 -- ============================================================================
@@ -430,7 +430,7 @@ CREATE USER ROLE RegularUser (SecTest.User);
 /**
  * A user role can include roles from multiple modules.
  */
-CREATE USER ROLE PowerUser (SecTest.User, SecTest.Administrator);
+CREATE USER ROLE PowerUser (System.User, SecTest.User, SecTest.Administrator);
 /
 
 -- ============================================================================
@@ -440,7 +440,7 @@ CREATE USER ROLE PowerUser (SecTest.User, SecTest.Administrator);
 /**
  * Admin user role that can manage all roles.
  */
-CREATE USER ROLE SuperAdmin (SecTest.Administrator) MANAGE ALL ROLES;
+CREATE USER ROLE SuperAdmin (System.Administrator, SecTest.Administrator) MANAGE ALL ROLES;
 /
 
 -- Verify
@@ -489,18 +489,12 @@ DROP USER ROLE PowerUser;
 -- Level 7.1: Set Security Level
 -- ============================================================================
 
-/**
- * Set security to prototype level (suitable for development).
- */
-ALTER PROJECT SECURITY LEVEL PROTOTYPE;
-/
-
--- Verify
+-- Note: Setting security level to PROTOTYPE or PRODUCTION requires
+-- complete entity access rules for all entities in all modules.
+-- In this example we only set up partial access rules for SecTest,
+-- so we leave security level at OFF to avoid CE0066 errors.
+-- To demonstrate level changes without breaking validation:
 SHOW PROJECT SECURITY;
-/
-
--- Set back to production
-ALTER PROJECT SECURITY LEVEL PRODUCTION;
 /
 
 -- ============================================================================

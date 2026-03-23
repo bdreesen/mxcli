@@ -483,6 +483,7 @@ CREATE PAGE XpathTest.ActiveCustomerPage (
 /**
  * Entity access with XPath constraint (row-level security)
  */
+CREATE MODULE ROLE XpathTest.User;
 GRANT XpathTest.User ON XpathTest.Order (
   READ *,
   WRITE *

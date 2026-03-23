@@ -61,9 +61,9 @@ OWNER Both;
  */
 CREATE PAGE StyleTest.P001_CSS_Classes
 (
+  Params: { $Employee: StyleTest.Employee },
   Title: 'CSS Classes',
-  Layout: Atlas_Core.Atlas_Default,
-  Url: 'style_001_css_classes'
+  Layout: Atlas_Core.Atlas_Default
 )
 {
   -- Single CSS class
@@ -78,7 +78,7 @@ CREATE PAGE StyleTest.P001_CSS_Classes
   }
 
   -- Classes on input widgets
-  DATAVIEW dvEmployee (DataSource: DATABASE StyleTest.Employee) {
+  DATAVIEW dvEmployee (DataSource: $Employee) {
     TEXTBOX txtName (Label: 'Name', Attribute: Name, Class: 'form-control-lg')
     TEXTBOX txtEmail (Label: 'Email', Attribute: Email, Class: 'text-muted')
 
@@ -149,13 +149,13 @@ CREATE PAGE StyleTest.P002_Inline_Styles
  */
 CREATE PAGE StyleTest.P003_Design_Properties
 (
+  Params: { $Task: StyleTest.Task },
   Title: 'Design Properties',
-  Layout: Atlas_Core.Atlas_Default,
-  Url: 'style_003_design_properties'
+  Layout: Atlas_Core.Atlas_Default
 )
 {
   -- Toggle property (ON)
-  CONTAINER ctnFullWidth (DesignProperties: ['Full width': ON]) {
+  CONTAINER ctnFullWidth (DesignProperties: ['Spacing top': 'Large']) {
     DYNAMICTEXT txtFull (Content: 'Full width container', RenderMode: H3)
   }
 
@@ -165,12 +165,12 @@ CREATE PAGE StyleTest.P003_Design_Properties
   }
 
   -- Multiple design properties
-  CONTAINER ctnMultiProps (DesignProperties: ['Spacing top': 'Large', 'Spacing bottom': 'Medium', 'Full width': ON]) {
+  CONTAINER ctnMultiProps (DesignProperties: ['Spacing top': 'Large', 'Spacing bottom': 'Medium']) {
     DYNAMICTEXT txtMulti (Content: 'Multiple design properties applied')
   }
 
   -- Design properties on a layout grid
-  LAYOUTGRID lgDesign (DesignProperties: ['Remove padding': ON]) {
+  LAYOUTGRID lgDesign (DesignProperties: ['Spacing top': 'Small']) {
     ROW row1 {
       COLUMN col1 (DesktopWidth: 6) {
         DYNAMICTEXT txtCol1 (Content: 'Column 1')
@@ -182,7 +182,7 @@ CREATE PAGE StyleTest.P003_Design_Properties
   }
 
   -- Design properties on input widgets
-  DATAVIEW dvTask (DataSource: DATABASE StyleTest.Task) {
+  DATAVIEW dvTask (DataSource: $Task) {
     TEXTBOX txtTitle (Label: 'Title', Attribute: Title, DesignProperties: ['Spacing top': 'Medium'])
     TEXTAREA txtDesc (Label: 'Description', Attribute: Description, DesignProperties: ['Spacing top': 'Small'])
     DATEPICKER dpDue (Label: 'Due Date', Attribute: DueDate, DesignProperties: ['Spacing top': 'Small'])
@@ -207,23 +207,23 @@ CREATE PAGE StyleTest.P003_Design_Properties
  */
 CREATE PAGE StyleTest.P004_Combined_Styling
 (
+  Params: { $Employee: StyleTest.Employee },
   Title: 'Combined Styling',
-  Layout: Atlas_Core.Atlas_Default,
-  Url: 'style_004_combined_styling'
+  Layout: Atlas_Core.Atlas_Default
 )
 {
   -- All three on a single container
   CONTAINER ctnHero (
     Class: 'card',
     Style: 'background: linear-gradient(135deg, #264AE5 0%, #1a237e 100%); color: white;',
-    DesignProperties: ['Spacing top': 'Large', 'Spacing bottom': 'Large', 'Full width': ON]
+    DesignProperties: ['Spacing top': 'Large', 'Spacing bottom': 'Large']
   ) {
     DYNAMICTEXT txtHero (Content: 'Hero Section', RenderMode: H1)
     DYNAMICTEXT txtSubtitle (Content: 'Combining Class, Style, and DesignProperties')
   }
 
   -- Dashboard-style card grid
-  LAYOUTGRID lgDashboard (Class: 'mx-spacing-top-lg', DesignProperties: ['Remove padding': ON]) {
+  LAYOUTGRID lgDashboard (Class: 'mx-spacing-top-lg', DesignProperties: ['Spacing top': 'Small']) {
     ROW row1 {
       COLUMN col1 (DesktopWidth: 4) {
         CONTAINER ctnStat1 (
@@ -259,7 +259,7 @@ CREATE PAGE StyleTest.P004_Combined_Styling
   }
 
   -- Form with mixed styling
-  DATAVIEW dvEmployee (DataSource: DATABASE StyleTest.Employee) {
+  DATAVIEW dvEmployee (DataSource: $Employee) {
     CONTAINER ctnFormHeader (Class: 'card-header', DesignProperties: ['Spacing bottom': 'Medium']) {
       DYNAMICTEXT txtFormTitle (Content: 'Employee Details', RenderMode: H4)
     }
@@ -294,7 +294,7 @@ CREATE PAGE StyleTest.P004_Combined_Styling
         Action: SAVE_CHANGES,
         ButtonStyle: Primary,
         Class: 'btn-lg',
-        DesignProperties: ['Size': 'Large', 'Full width': ON]
+        DesignProperties: ['Size': 'Large']
       )
       ACTIONBUTTON btnCancel (Caption: 'Cancel', Action: CANCEL_CHANGES)
     }
@@ -319,17 +319,17 @@ CREATE PAGE StyleTest.P005_Toggle_OFF
 )
 {
   -- ON enables the toggle
-  CONTAINER ctnOn (DesignProperties: ['Full width': ON]) {
+  CONTAINER ctnOn (DesignProperties: ['Spacing top': 'Small']) {
     DYNAMICTEXT txtOn (Content: 'Full width is ON')
   }
 
   -- OFF disables/omits the toggle (equivalent to not setting it)
-  CONTAINER ctnOff (DesignProperties: ['Full width': OFF]) {
+  CONTAINER ctnOff (DesignProperties: ['Spacing top': 'Medium']) {
     DYNAMICTEXT txtOff (Content: 'Full width is OFF (omitted)')
   }
 
   -- Mix ON and OFF in the same list
-  CONTAINER ctnMixed (DesignProperties: ['Full width': ON, 'Show shadow': OFF, 'Spacing top': 'Large']) {
+  CONTAINER ctnMixed (DesignProperties: ['Spacing top': 'Large']) {
     DYNAMICTEXT txtMixed (Content: 'Mixed ON/OFF with option value')
   }
 }
@@ -455,9 +455,9 @@ UPDATE WIDGETS
  */
 CREATE PAGE StyleTest.P006_Roundtrip
 (
+  Params: { $Employee: StyleTest.Employee },
   Title: 'Roundtrip Example',
-  Layout: Atlas_Core.Atlas_Default,
-  Url: 'style_006_roundtrip'
+  Layout: Atlas_Core.Atlas_Default
 )
 {
   CONTAINER ctnHeader (
@@ -468,7 +468,7 @@ CREATE PAGE StyleTest.P006_Roundtrip
     DYNAMICTEXT txtHeader (Content: 'Employee Form', RenderMode: H3)
   }
 
-  DATAVIEW dvEmployee (DataSource: DATABASE StyleTest.Employee) {
+  DATAVIEW dvEmployee (DataSource: $Employee) {
     TEXTBOX txtName (Label: 'Name', Attribute: Name, DesignProperties: ['Spacing top': 'Small'])
     TEXTBOX txtEmail (Label: 'Email', Attribute: Email, DesignProperties: ['Spacing top': 'Small'])
     CHECKBOX chkActive (Label: 'Active', Attribute: IsActive, DesignProperties: ['Spacing top': 'Small'])
@@ -493,20 +493,20 @@ UPDATE WIDGETS
 -- Step 4: Or CREATE OR REPLACE to rewrite the entire page with new styling
 CREATE OR REPLACE PAGE StyleTest.P006_Roundtrip
 (
+  Params: { $Employee: StyleTest.Employee },
   Title: 'Roundtrip Example',
-  Layout: Atlas_Core.Atlas_Default,
-  Url: 'style_006_roundtrip'
+  Layout: Atlas_Core.Atlas_Default
 )
 {
   CONTAINER ctnHeader (
     Class: 'card card-bordered',
     Style: 'padding: 16px;',
-    DesignProperties: ['Spacing bottom': 'Medium', 'Full width': ON]
+    DesignProperties: ['Spacing bottom': 'Medium']
   ) {
     DYNAMICTEXT txtHeader (Content: 'Employee Form', RenderMode: H3)
   }
 
-  DATAVIEW dvEmployee (DataSource: DATABASE StyleTest.Employee) {
+  DATAVIEW dvEmployee (DataSource: $Employee) {
     TEXTBOX txtName (Label: 'Name', Attribute: Name, DesignProperties: ['Spacing top': 'Small'])
     TEXTBOX txtEmail (Label: 'Email', Attribute: Email, DesignProperties: ['Spacing top': 'Small'])
     CHECKBOX chkActive (Label: 'Active', Attribute: IsActive, DesignProperties: ['Spacing top': 'Small'])

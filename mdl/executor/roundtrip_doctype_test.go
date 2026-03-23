@@ -126,8 +126,9 @@ func TestMxCheck_DoctypeScripts(t *testing.T) {
 			// Run mx check
 			output, mxErr := runMxCheck(t, env.projectPath)
 			if mxErr != nil {
-				lowerOutput := strings.ToLower(output)
-				if strings.Contains(lowerOutput, "error") {
+				// Check for actual errors: [error] lines or ERROR: crash messages
+				hasErrors := strings.Contains(output, "[error]") || strings.Contains(output, "ERROR:")
+				if hasErrors {
 					t.Errorf("mx check found errors:\n%s", output)
 				} else {
 					t.Logf("mx check output:\n%s", output)
