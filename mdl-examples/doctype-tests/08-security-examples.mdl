@@ -405,7 +405,6 @@ REVOKE SecTest.Viewer ON SecTest.Customer;
 SHOW ACCESS ON SecTest.Customer;
 /
 
-
 -- ############################################################################
 -- PART 6: USER ROLES (CREATE/ALTER/DROP)
 -- ############################################################################
@@ -420,7 +419,7 @@ SHOW ACCESS ON SecTest.Customer;
 /**
  * Create a user role and assign a single module role.
  */
-CREATE USER ROLE RegularUser (System.User, SecTest.User);
+CREATE or modify USER ROLE RegularUser (System.User, SecTest.User);
 /
 
 -- ============================================================================
@@ -430,7 +429,7 @@ CREATE USER ROLE RegularUser (System.User, SecTest.User);
 /**
  * A user role can include roles from multiple modules.
  */
-CREATE USER ROLE PowerUser (System.User, SecTest.User, SecTest.Administrator);
+CREATE or modify USER ROLE PowerUser (System.User, SecTest.User, SecTest.Administrator);
 /
 
 -- ============================================================================
@@ -440,7 +439,7 @@ CREATE USER ROLE PowerUser (System.User, SecTest.User, SecTest.Administrator);
 /**
  * Admin user role that can manage all roles.
  */
-CREATE USER ROLE SuperAdmin (System.Administrator, SecTest.Administrator) MANAGE ALL ROLES;
+CREATE or modify USER ROLE SuperAdmin (System.Administrator, SecTest.Administrator) MANAGE ALL ROLES;
 /
 
 -- Verify
@@ -526,7 +525,7 @@ SHOW DEMO USERS;
 /**
  * Create a basic demo user with a single user role.
  */
-CREATE DEMO USER 'sectest_user' PASSWORD 'Password1!' (RegularUser);
+CREATE or modify DEMO USER 'sectest_user' PASSWORD 'Password1!' (RegularUser);
 /
 
 -- ============================================================================
@@ -536,7 +535,7 @@ CREATE DEMO USER 'sectest_user' PASSWORD 'Password1!' (RegularUser);
 /**
  * Create a demo user with multiple user roles.
  */
-CREATE DEMO USER 'sectest_admin' PASSWORD 'Admin123!' (RegularUser, SuperAdmin);
+CREATE or modify DEMO USER 'sectest_admin' PASSWORD 'Admin123!' (RegularUser, SuperAdmin);
 /
 
 -- Verify
@@ -615,12 +614,4 @@ SHOW ACCESS ON PAGE SecTest.Customer_Overview;
 SHOW ACCESS ON PAGE SecTest.Order_Overview;
 /
 
--- ============================================================================
--- PART 10: RESET SECURITY LEVEL
--- ============================================================================
--- Security examples demonstrated PRODUCTION-level features. Reset to OFF so
--- subsequent doctype scripts (pages, microflows) don't require allowed roles.
--- This is test cleanup, not avoidance — each script should restore global state.
 
-ALTER PROJECT SECURITY LEVEL OFF;
-/
