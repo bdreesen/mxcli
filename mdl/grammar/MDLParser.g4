@@ -95,6 +95,7 @@ createStatement
       | createNavigationStatement
       | createBusinessEventServiceStatement
       | createWorkflowStatement
+      | createUserRoleStatement
       )
     ;
 
@@ -284,7 +285,6 @@ moveStatement
 securityStatement
     : createModuleRoleStatement
     | dropModuleRoleStatement
-    | createUserRoleStatement
     | alterUserRoleStatement
     | dropUserRoleStatement
     | grantEntityAccessStatement
@@ -312,7 +312,7 @@ dropModuleRoleStatement
     ;
 
 createUserRoleStatement
-    : CREATE USER ROLE identifierOrKeyword
+    : USER ROLE identifierOrKeyword
       LPAREN moduleRoleList RPAREN
       (MANAGE ALL ROLES)?
     ;

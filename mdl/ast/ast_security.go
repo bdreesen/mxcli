@@ -21,11 +21,12 @@ type DropModuleRoleStmt struct {
 
 func (s *DropModuleRoleStmt) isStatement() {}
 
-// CreateUserRoleStmt represents: CREATE USER ROLE Name (ModuleRole, ...) [MANAGE ALL ROLES]
+// CreateUserRoleStmt represents: CREATE [OR MODIFY] USER ROLE Name (ModuleRole, ...) [MANAGE ALL ROLES]
 type CreateUserRoleStmt struct {
 	Name           string
 	ModuleRoles    []QualifiedName
 	ManageAllRoles bool
+	CreateOrModify bool // If true, adds module roles to existing role instead of failing
 }
 
 func (s *CreateUserRoleStmt) isStatement() {}

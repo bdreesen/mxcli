@@ -33,7 +33,7 @@ func (b *Builder) ExitDropModuleRoleStatement(ctx *parser.DropModuleRoleStatemen
 	}
 }
 
-// ExitCreateUserRoleStatement handles CREATE USER ROLE Name (ModuleRole, ...) [MANAGE ALL ROLES]
+// ExitCreateUserRoleStatement handles CREATE [OR MODIFY] USER ROLE Name (ModuleRole, ...) [MANAGE ALL ROLES]
 func (b *Builder) ExitCreateUserRoleStatement(ctx *parser.CreateUserRoleStatementContext) {
 	iok := ctx.IdentifierOrKeyword()
 	if iok == nil {
@@ -43,6 +43,13 @@ func (b *Builder) ExitCreateUserRoleStatement(ctx *parser.CreateUserRoleStatemen
 	stmt := &ast.CreateUserRoleStmt{
 		Name:           identifierOrKeywordText(iok),
 		ManageAllRoles: ctx.MANAGE() != nil,
+	}
+
+	// Check parent createStatement for OR MODIFY
+	if createStmt := findParentCreateStatement(ctx); createStmt != nil {
+		if createStmt.OR() != nil && createStmt.MODIFY() != nil {
+			stmt.CreateOrModify = true
+		}
 	}
 
 	if mrl := ctx.ModuleRoleList(); mrl != nil {

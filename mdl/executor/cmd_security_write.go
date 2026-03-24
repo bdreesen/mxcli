@@ -158,7 +158,7 @@ func (e *Executor) execDropModuleRole(s *ast.DropModuleRoleStmt) error {
 	return nil
 }
 
-// execCreateUserRole handles CREATE USER ROLE Name (ModuleRoles) [MANAGE ALL ROLES].
+// execCreateUserRole handles CREATE [OR MODIFY] USER ROLE Name (ModuleRoles) [MANAGE ALL ROLES].
 func (e *Executor) execCreateUserRole(s *ast.CreateUserRoleStmt) error {
 	if e.writer == nil {
 		return fmt.Errorf("not connected to a project in write mode")
@@ -169,18 +169,26 @@ func (e *Executor) execCreateUserRole(s *ast.CreateUserRoleStmt) error {
 		return fmt.Errorf("failed to read project security: %w", err)
 	}
 
-	// Check if role already exists
-	for _, ur := range ps.UserRoles {
-		if ur.Name == s.Name {
-			return fmt.Errorf("user role already exists: %s", s.Name)
-		}
-	}
-
 	// Build qualified module role names
 	var moduleRoleNames []string
 	for _, mr := range s.ModuleRoles {
 		qn := mr.Module + "." + mr.Name
 		moduleRoleNames = append(moduleRoleNames, qn)
+	}
+
+	// Check if role already exists
+	for _, ur := range ps.UserRoles {
+		if ur.Name == s.Name {
+			if !s.CreateOrModify {
+				return fmt.Errorf("user role already exists: %s", s.Name)
+			}
+			// Additive: ensure specified module roles are present
+			if err := e.writer.AlterUserRoleModuleRoles(ps.ID, s.Name, true, moduleRoleNames); err != nil {
+				return fmt.Errorf("failed to update user role: %w", err)
+			}
+			fmt.Fprintf(e.output, "Modified user role: %s\n", s.Name)
+			return nil
+		}
 	}
 
 	if err := e.writer.AddUserRole(ps.ID, s.Name, moduleRoleNames, s.ManageAllRoles); err != nil {
