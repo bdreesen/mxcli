@@ -96,6 +96,7 @@ createStatement
       | createBusinessEventServiceStatement
       | createWorkflowStatement
       | createUserRoleStatement
+      | createDemoUserStatement
       )
     ;
 
@@ -298,7 +299,6 @@ securityStatement
     | grantODataServiceAccessStatement
     | revokeODataServiceAccessStatement
     | alterProjectSecurityStatement
-    | createDemoUserStatement
     | dropDemoUserStatement
     | updateSecurityStatement
     ;
@@ -374,7 +374,7 @@ alterProjectSecurityStatement
     ;
 
 createDemoUserStatement
-    : CREATE DEMO USER STRING_LITERAL PASSWORD STRING_LITERAL (ENTITY qualifiedName)?
+    : DEMO USER STRING_LITERAL PASSWORD STRING_LITERAL (ENTITY qualifiedName)?
       LPAREN identifierOrKeyword (COMMA identifierOrKeyword)* RPAREN
     ;
 

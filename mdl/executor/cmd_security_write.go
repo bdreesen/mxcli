@@ -870,7 +870,7 @@ func (e *Executor) execAlterProjectSecurity(s *ast.AlterProjectSecurityStmt) err
 	return nil
 }
 
-// execCreateDemoUser handles CREATE DEMO USER 'name' PASSWORD 'pw' [ENTITY Module.Entity] (Roles).
+// execCreateDemoUser handles CREATE [OR MODIFY] DEMO USER 'name' PASSWORD 'pw' [ENTITY Module.Entity] (Roles).
 func (e *Executor) execCreateDemoUser(s *ast.CreateDemoUserStmt) error {
 	if e.writer == nil {
 		return fmt.Errorf("not connected to a project in write mode")
@@ -884,7 +884,32 @@ func (e *Executor) execCreateDemoUser(s *ast.CreateDemoUserStmt) error {
 	// Check if user already exists
 	for _, du := range ps.DemoUsers {
 		if du.UserName == s.UserName {
-			return fmt.Errorf("demo user already exists: %s", s.UserName)
+			if !s.CreateOrModify {
+				return fmt.Errorf("demo user already exists: %s", s.UserName)
+			}
+			// Additive: merge roles, update password. Drop and re-create with merged roles.
+			mergedRoles := du.UserRoles
+			existingSet := make(map[string]bool)
+			for _, r := range mergedRoles {
+				existingSet[r] = true
+			}
+			for _, r := range s.UserRoles {
+				if !existingSet[r] {
+					mergedRoles = append(mergedRoles, r)
+				}
+			}
+			entity := du.Entity
+			if s.Entity != "" {
+				entity = s.Entity
+			}
+			if err := e.writer.RemoveDemoUser(ps.ID, s.UserName); err != nil {
+				return fmt.Errorf("failed to update demo user: %w", err)
+			}
+			if err := e.writer.AddDemoUser(ps.ID, s.UserName, s.Password, entity, mergedRoles); err != nil {
+				return fmt.Errorf("failed to update demo user: %w", err)
+			}
+			fmt.Fprintf(e.output, "Modified demo user: %s\n", s.UserName)
+			return nil
 		}
 	}
 

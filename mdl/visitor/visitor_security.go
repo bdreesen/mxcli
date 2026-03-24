@@ -326,7 +326,7 @@ func (b *Builder) ExitAlterProjectSecurityStatement(ctx *parser.AlterProjectSecu
 	b.statements = append(b.statements, stmt)
 }
 
-// ExitCreateDemoUserStatement handles CREATE DEMO USER 'name' PASSWORD 'pw' [ENTITY Module.Entity] (Role1, Role2)
+// ExitCreateDemoUserStatement handles CREATE [OR MODIFY] DEMO USER 'name' PASSWORD 'pw' [ENTITY Module.Entity] (Role1, Role2)
 func (b *Builder) ExitCreateDemoUserStatement(ctx *parser.CreateDemoUserStatementContext) {
 	sls := ctx.AllSTRING_LITERAL()
 	if len(sls) < 2 {
@@ -336,6 +336,13 @@ func (b *Builder) ExitCreateDemoUserStatement(ctx *parser.CreateDemoUserStatemen
 	stmt := &ast.CreateDemoUserStmt{
 		UserName: unquoteString(sls[0].GetText()),
 		Password: unquoteString(sls[1].GetText()),
+	}
+
+	// Check parent createStatement for OR MODIFY
+	if createStmt := findParentCreateStatement(ctx); createStmt != nil {
+		if createStmt.OR() != nil && createStmt.MODIFY() != nil {
+			stmt.CreateOrModify = true
+		}
 	}
 
 	// Parse optional ENTITY clause
