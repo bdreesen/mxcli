@@ -415,6 +415,8 @@ Modify an existing page or snippet's widget tree in-place without full `CREATE O
 | Drop widgets | `DROP WIDGET name1, name2` | Remove widgets by name |
 | Replace widget | `REPLACE widgetName WITH { widgets }` | Replace widget subtree |
 | Pluggable prop | `SET 'showLabel' = false ON cbStatus` | Quoted name for pluggable widgets |
+| Add variable | `ADD Variables $name: Type = 'expr'` | Add a page variable |
+| Drop variable | `DROP Variables $name` | Remove a page variable |
 
 **Supported SET properties:** Caption, Label, ButtonStyle, Class, Style, Editable, Visible, Name, Title (page-level), and quoted pluggable widget properties.
 

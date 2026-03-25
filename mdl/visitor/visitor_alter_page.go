@@ -3,6 +3,8 @@
 package visitor
 
 import (
+	"strings"
+
 	"github.com/mendixlabs/mxcli/mdl/ast"
 	"github.com/mendixlabs/mxcli/mdl/grammar/parser"
 )
@@ -35,6 +37,10 @@ func (b *Builder) exitAlterPageStatement(ctx *parser.AlterStatementContext) {
 			stmt.Operations = append(stmt.Operations, b.buildAlterPageDrop(dropCtx.(*parser.AlterPageDropContext)))
 		} else if replaceCtx := op.AlterPageReplace(); replaceCtx != nil {
 			stmt.Operations = append(stmt.Operations, b.buildAlterPageReplace(replaceCtx.(*parser.AlterPageReplaceContext)))
+		} else if addVarCtx := op.AlterPageAddVariable(); addVarCtx != nil {
+			stmt.Operations = append(stmt.Operations, b.buildAlterPageAddVariable(addVarCtx.(*parser.AlterPageAddVariableContext)))
+		} else if dropVarCtx := op.AlterPageDropVariable(); dropVarCtx != nil {
+			stmt.Operations = append(stmt.Operations, b.buildAlterPageDropVariable(dropVarCtx.(*parser.AlterPageDropVariableContext)))
 		}
 	}
 
@@ -125,5 +131,23 @@ func (b *Builder) buildAlterPageReplace(ctx *parser.AlterPageReplaceContext) *as
 		op.NewWidgets = buildPageBodyV3(body, b)
 	}
 
+	return op
+}
+
+// buildAlterPageAddVariable builds an AddVariableOp from the parse tree.
+func (b *Builder) buildAlterPageAddVariable(ctx *parser.AlterPageAddVariableContext) *ast.AddVariableOp {
+	op := &ast.AddVariableOp{}
+	if vd := ctx.VariableDeclaration(); vd != nil {
+		op.Variable = buildSingleVariableDeclaration(vd.(*parser.VariableDeclarationContext))
+	}
+	return op
+}
+
+// buildAlterPageDropVariable builds a DropVariableOp from the parse tree.
+func (b *Builder) buildAlterPageDropVariable(ctx *parser.AlterPageDropVariableContext) *ast.DropVariableOp {
+	op := &ast.DropVariableOp{}
+	if varTok := ctx.VARIABLE(); varTok != nil {
+		op.VariableName = strings.TrimPrefix(varTok.GetText(), "$")
+	}
 	return op
 }

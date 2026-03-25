@@ -184,6 +184,8 @@ alterPageOperation
     | alterPageInsert SEMICOLON?
     | alterPageDrop SEMICOLON?
     | alterPageReplace SEMICOLON?
+    | alterPageAddVariable SEMICOLON?
+    | alterPageDropVariable SEMICOLON?
     ;
 
 alterPageSet
@@ -208,6 +210,14 @@ alterPageDrop
 
 alterPageReplace
     : REPLACE identifierOrKeyword WITH LBRACE pageBodyV3 RBRACE
+    ;
+
+alterPageAddVariable
+    : ADD VARIABLES_KW variableDeclaration    // ADD Variables $show: Boolean = 'true'
+    ;
+
+alterPageDropVariable
+    : DROP VARIABLES_KW VARIABLE              // DROP Variables $show
     ;
 
 navigationClause

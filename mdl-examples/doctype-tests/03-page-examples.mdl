@@ -2178,6 +2178,37 @@ CREATE PAGE PgTest.P036_ComboBox_Association
 
 -- ============================================================================================ --
 
+-- MARK: ALTER PAGE Variable Examples
+
+-- =============================================================================
+-- ALTER PAGE - ADD / DROP Page Variables
+-- =============================================================================
+--
+-- Page variables (Forms$LocalVariable) can be added to or removed from existing
+-- pages and snippets using ALTER PAGE / ALTER SNIPPET with ADD/DROP Variables.
+--
+
+-- Add a boolean page variable for controlling column visibility
+ALTER PAGE PgTest.P033b_DataGrid_ColumnProperties {
+  ADD Variables $showPriceColumn: Boolean = 'true';
+};
+
+-- Add a string variable with an escaped string default
+ALTER PAGE PgTest.P033b_DataGrid_ColumnProperties {
+  ADD Variables $filterMode: String = '''active''';
+};
+
+-- Drop a page variable by name
+ALTER PAGE PgTest.P033b_DataGrid_ColumnProperties {
+  DROP Variables $filterMode;
+};
+
+-- Multiple variable operations in a single ALTER statement
+ALTER PAGE PgTest.P033b_DataGrid_ColumnProperties {
+  ADD Variables $pageSize: Integer = '20';
+  DROP Variables $showPriceColumn;
+};
+
 -- MARK: Move Examples
 
 -- =============================================================================

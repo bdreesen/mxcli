@@ -49,6 +49,12 @@ type MDLParserListener interface {
 	// EnterAlterPageReplace is called when entering the alterPageReplace production.
 	EnterAlterPageReplace(c *AlterPageReplaceContext)
 
+	// EnterAlterPageAddVariable is called when entering the alterPageAddVariable production.
+	EnterAlterPageAddVariable(c *AlterPageAddVariableContext)
+
+	// EnterAlterPageDropVariable is called when entering the alterPageDropVariable production.
+	EnterAlterPageDropVariable(c *AlterPageDropVariableContext)
+
 	// EnterNavigationClause is called when entering the navigationClause production.
 	EnterNavigationClause(c *NavigationClauseContext)
 
@@ -1143,6 +1149,12 @@ type MDLParserListener interface {
 
 	// ExitAlterPageReplace is called when exiting the alterPageReplace production.
 	ExitAlterPageReplace(c *AlterPageReplaceContext)
+
+	// ExitAlterPageAddVariable is called when exiting the alterPageAddVariable production.
+	ExitAlterPageAddVariable(c *AlterPageAddVariableContext)
+
+	// ExitAlterPageDropVariable is called when exiting the alterPageDropVariable production.
+	ExitAlterPageDropVariable(c *AlterPageDropVariableContext)
 
 	// ExitNavigationClause is called when exiting the navigationClause production.
 	ExitNavigationClause(c *NavigationClauseContext)

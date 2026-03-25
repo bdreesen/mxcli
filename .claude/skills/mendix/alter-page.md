@@ -123,6 +123,22 @@ REPLACE footer1 WITH {
 
 Replaces the target widget with one or more new widgets. The new widgets use the same syntax as `CREATE PAGE`.
 
+### ADD Variables - Add a Page Variable
+
+```sql
+ADD Variables $showStockColumn: Boolean = 'true'
+```
+
+Adds a new page variable (`Forms$LocalVariable`) to the page/snippet. DataType can be `Boolean`, `String`, `Integer`, `Decimal`, `DateTime`, or an entity type. Default value is a Mendix expression in single quotes.
+
+### DROP Variables - Remove a Page Variable
+
+```sql
+DROP Variables $showStockColumn
+```
+
+Removes a page variable by name.
+
 ## Examples
 
 ### Change button text and style
@@ -140,6 +156,14 @@ ALTER PAGE MyModule.Customer_Edit {
   INSERT AFTER txtEmail {
     TEXTBOX txtPhone (Label: 'Phone', Attribute: Phone)
   }
+};
+```
+
+### Add a page variable for column visibility
+
+```sql
+ALTER PAGE MyModule.ProductOverview {
+  ADD Variables $showStockColumn: Boolean = 'if (3 < 4) then true else false'
 };
 ```
 

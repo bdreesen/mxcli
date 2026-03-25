@@ -52,3 +52,17 @@ type ReplaceWidgetOp struct {
 }
 
 func (s *ReplaceWidgetOp) isAlterPageOperation() {}
+
+// AddVariableOp represents: ADD Variables $name: Type = 'default'
+type AddVariableOp struct {
+	Variable PageVariable
+}
+
+func (s *AddVariableOp) isAlterPageOperation() {}
+
+// DropVariableOp represents: DROP Variables $name
+type DropVariableOp struct {
+	VariableName string // without $ prefix
+}
+
+func (s *DropVariableOp) isAlterPageOperation() {}

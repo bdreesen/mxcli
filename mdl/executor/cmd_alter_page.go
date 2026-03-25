@@ -89,6 +89,14 @@ func (e *Executor) execAlterPage(s *ast.AlterPageStmt) error {
 			if err := e.applyReplaceWidgetWith(rawData, o, modName, containerID, findWidget); err != nil {
 				return fmt.Errorf("REPLACE failed: %w", err)
 			}
+		case *ast.AddVariableOp:
+			if err := applyAddVariable(&rawData, o); err != nil {
+				return fmt.Errorf("ADD VARIABLE failed: %w", err)
+			}
+		case *ast.DropVariableOp:
+			if err := applyDropVariable(rawData, o); err != nil {
+				return fmt.Errorf("DROP VARIABLE failed: %w", err)
+			}
 		default:
 			return fmt.Errorf("unknown ALTER %s operation type: %T", containerType, op)
 		}
@@ -934,6 +942,85 @@ func extractEntityFromDataSource(wDoc bson.D) string {
 		}
 	}
 	return ""
+}
+
+// ============================================================================
+// ADD / DROP variable
+// ============================================================================
+
+// applyAddVariable adds a new LocalVariable to the raw BSON page/snippet.
+func applyAddVariable(rawData *bson.D, op *ast.AddVariableOp) error {
+	// Check for duplicate variable name
+	existingVars := dGetArrayElements(dGet(*rawData, "Variables"))
+	for _, ev := range existingVars {
+		if evDoc, ok := ev.(bson.D); ok {
+			if dGetString(evDoc, "Name") == op.Variable.Name {
+				return fmt.Errorf("variable $%s already exists", op.Variable.Name)
+			}
+		}
+	}
+
+	// Build VariableType BSON
+	varTypeID := mpr.GenerateID()
+	bsonTypeName := mdlTypeToBsonType(op.Variable.DataType)
+	varType := bson.D{
+		{Key: "$ID", Value: mpr.IDToBsonBinary(varTypeID)},
+		{Key: "$Type", Value: bsonTypeName},
+	}
+	if bsonTypeName == "DataTypes$ObjectType" {
+		varType = append(varType, bson.E{Key: "Entity", Value: op.Variable.DataType})
+	}
+
+	// Build LocalVariable BSON document
+	varID := mpr.GenerateID()
+	varDoc := bson.D{
+		{Key: "$ID", Value: mpr.IDToBsonBinary(varID)},
+		{Key: "$Type", Value: "Forms$LocalVariable"},
+		{Key: "DefaultValue", Value: op.Variable.DefaultValue},
+		{Key: "Name", Value: op.Variable.Name},
+		{Key: "VariableType", Value: varType},
+	}
+
+	// Append to existing Variables array, or create new field
+	existing := toBsonA(dGet(*rawData, "Variables"))
+	if existing != nil {
+		elements := dGetArrayElements(dGet(*rawData, "Variables"))
+		elements = append(elements, varDoc)
+		dSetArray(*rawData, "Variables", elements)
+	} else {
+		// Field doesn't exist — append to the document
+		*rawData = append(*rawData, bson.E{Key: "Variables", Value: bson.A{int32(3), varDoc}})
+	}
+
+	return nil
+}
+
+// applyDropVariable removes a LocalVariable from the raw BSON page/snippet.
+func applyDropVariable(rawData bson.D, op *ast.DropVariableOp) error {
+	elements := dGetArrayElements(dGet(rawData, "Variables"))
+	if elements == nil {
+		return fmt.Errorf("variable $%s not found", op.VariableName)
+	}
+
+	// Find and remove the variable
+	found := false
+	var kept []any
+	for _, elem := range elements {
+		if doc, ok := elem.(bson.D); ok {
+			if dGetString(doc, "Name") == op.VariableName {
+				found = true
+				continue
+			}
+		}
+		kept = append(kept, elem)
+	}
+
+	if !found {
+		return fmt.Errorf("variable $%s not found", op.VariableName)
+	}
+
+	dSetArray(rawData, "Variables", kept)
+	return nil
 }
 
 // ============================================================================

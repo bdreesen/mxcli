@@ -229,25 +229,29 @@ func buildVariableDeclarations(ctx parser.IVariableDeclarationListContext) []ast
 	var vars []ast.PageVariable
 
 	for _, vd := range listCtx.AllVariableDeclaration() {
-		vdCtx := vd.(*parser.VariableDeclarationContext)
-		v := ast.PageVariable{}
-
-		if varTok := vdCtx.VARIABLE(); varTok != nil {
-			v.Name = strings.TrimPrefix(varTok.GetText(), "$")
-		}
-
-		if dt := vdCtx.DataType(); dt != nil {
-			v.DataType = dt.GetText()
-		}
-
-		if str := vdCtx.STRING_LITERAL(); str != nil {
-			v.DefaultValue = unquoteString(str.GetText())
-		}
-
-		vars = append(vars, v)
+		vars = append(vars, buildSingleVariableDeclaration(vd.(*parser.VariableDeclarationContext)))
 	}
 
 	return vars
+}
+
+// buildSingleVariableDeclaration builds a single PageVariable from a parse context.
+func buildSingleVariableDeclaration(vdCtx *parser.VariableDeclarationContext) ast.PageVariable {
+	v := ast.PageVariable{}
+
+	if varTok := vdCtx.VARIABLE(); varTok != nil {
+		v.Name = strings.TrimPrefix(varTok.GetText(), "$")
+	}
+
+	if dt := vdCtx.DataType(); dt != nil {
+		v.DataType = dt.GetText()
+	}
+
+	if str := vdCtx.STRING_LITERAL(); str != nil {
+		v.DefaultValue = unquoteString(str.GetText())
+	}
+
+	return v
 }
 
 // buildPageBodyV3 extracts widgets from a V3 page body.

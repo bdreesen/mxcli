@@ -104,6 +104,18 @@ func (s *BaseMDLParserListener) EnterAlterPageReplace(ctx *AlterPageReplaceConte
 // ExitAlterPageReplace is called when production alterPageReplace is exited.
 func (s *BaseMDLParserListener) ExitAlterPageReplace(ctx *AlterPageReplaceContext) {}
 
+// EnterAlterPageAddVariable is called when production alterPageAddVariable is entered.
+func (s *BaseMDLParserListener) EnterAlterPageAddVariable(ctx *AlterPageAddVariableContext) {}
+
+// ExitAlterPageAddVariable is called when production alterPageAddVariable is exited.
+func (s *BaseMDLParserListener) ExitAlterPageAddVariable(ctx *AlterPageAddVariableContext) {}
+
+// EnterAlterPageDropVariable is called when production alterPageDropVariable is entered.
+func (s *BaseMDLParserListener) EnterAlterPageDropVariable(ctx *AlterPageDropVariableContext) {}
+
+// ExitAlterPageDropVariable is called when production alterPageDropVariable is exited.
+func (s *BaseMDLParserListener) ExitAlterPageDropVariable(ctx *AlterPageDropVariableContext) {}
+
 // EnterNavigationClause is called when production navigationClause is entered.
 func (s *BaseMDLParserListener) EnterNavigationClause(ctx *NavigationClauseContext) {}
 
