@@ -682,32 +682,29 @@ type MDLParserListener interface {
 	// EnterCreateRestClientStatement is called when entering the createRestClientStatement production.
 	EnterCreateRestClientStatement(c *CreateRestClientStatementContext)
 
-	// EnterRestClientOptions is called when entering the restClientOptions production.
-	EnterRestClientOptions(c *RestClientOptionsContext)
+	// EnterRestClientBaseUrl is called when entering the restClientBaseUrl production.
+	EnterRestClientBaseUrl(c *RestClientBaseUrlContext)
 
-	// EnterRestClientOption is called when entering the restClientOption production.
-	EnterRestClientOption(c *RestClientOptionContext)
+	// EnterRestClientAuthentication is called when entering the restClientAuthentication production.
+	EnterRestClientAuthentication(c *RestClientAuthenticationContext)
 
-	// EnterRestAuthentication is called when entering the restAuthentication production.
-	EnterRestAuthentication(c *RestAuthenticationContext)
+	// EnterRestAuthValue is called when entering the restAuthValue production.
+	EnterRestAuthValue(c *RestAuthValueContext)
 
-	// EnterRestOperation is called when entering the restOperation production.
-	EnterRestOperation(c *RestOperationContext)
+	// EnterRestOperationDef is called when entering the restOperationDef production.
+	EnterRestOperationDef(c *RestOperationDefContext)
 
-	// EnterRestMethod is called when entering the restMethod production.
-	EnterRestMethod(c *RestMethodContext)
+	// EnterRestHttpMethod is called when entering the restHttpMethod production.
+	EnterRestHttpMethod(c *RestHttpMethodContext)
 
-	// EnterRestOperationOptions is called when entering the restOperationOptions production.
-	EnterRestOperationOptions(c *RestOperationOptionsContext)
+	// EnterRestOperationClause is called when entering the restOperationClause production.
+	EnterRestOperationClause(c *RestOperationClauseContext)
 
-	// EnterRestOperationOption is called when entering the restOperationOption production.
-	EnterRestOperationOption(c *RestOperationOptionContext)
+	// EnterRestHeaderValue is called when entering the restHeaderValue production.
+	EnterRestHeaderValue(c *RestHeaderValueContext)
 
-	// EnterRestResponse is called when entering the restResponse production.
-	EnterRestResponse(c *RestResponseContext)
-
-	// EnterRestParameter is called when entering the restParameter production.
-	EnterRestParameter(c *RestParameterContext)
+	// EnterRestResponseSpec is called when entering the restResponseSpec production.
+	EnterRestResponseSpec(c *RestResponseSpecContext)
 
 	// EnterCreateIndexStatement is called when entering the createIndexStatement production.
 	EnterCreateIndexStatement(c *CreateIndexStatementContext)
@@ -1783,32 +1780,29 @@ type MDLParserListener interface {
 	// ExitCreateRestClientStatement is called when exiting the createRestClientStatement production.
 	ExitCreateRestClientStatement(c *CreateRestClientStatementContext)
 
-	// ExitRestClientOptions is called when exiting the restClientOptions production.
-	ExitRestClientOptions(c *RestClientOptionsContext)
+	// ExitRestClientBaseUrl is called when exiting the restClientBaseUrl production.
+	ExitRestClientBaseUrl(c *RestClientBaseUrlContext)
 
-	// ExitRestClientOption is called when exiting the restClientOption production.
-	ExitRestClientOption(c *RestClientOptionContext)
+	// ExitRestClientAuthentication is called when exiting the restClientAuthentication production.
+	ExitRestClientAuthentication(c *RestClientAuthenticationContext)
 
-	// ExitRestAuthentication is called when exiting the restAuthentication production.
-	ExitRestAuthentication(c *RestAuthenticationContext)
+	// ExitRestAuthValue is called when exiting the restAuthValue production.
+	ExitRestAuthValue(c *RestAuthValueContext)
 
-	// ExitRestOperation is called when exiting the restOperation production.
-	ExitRestOperation(c *RestOperationContext)
+	// ExitRestOperationDef is called when exiting the restOperationDef production.
+	ExitRestOperationDef(c *RestOperationDefContext)
 
-	// ExitRestMethod is called when exiting the restMethod production.
-	ExitRestMethod(c *RestMethodContext)
+	// ExitRestHttpMethod is called when exiting the restHttpMethod production.
+	ExitRestHttpMethod(c *RestHttpMethodContext)
 
-	// ExitRestOperationOptions is called when exiting the restOperationOptions production.
-	ExitRestOperationOptions(c *RestOperationOptionsContext)
+	// ExitRestOperationClause is called when exiting the restOperationClause production.
+	ExitRestOperationClause(c *RestOperationClauseContext)
 
-	// ExitRestOperationOption is called when exiting the restOperationOption production.
-	ExitRestOperationOption(c *RestOperationOptionContext)
+	// ExitRestHeaderValue is called when exiting the restHeaderValue production.
+	ExitRestHeaderValue(c *RestHeaderValueContext)
 
-	// ExitRestResponse is called when exiting the restResponse production.
-	ExitRestResponse(c *RestResponseContext)
-
-	// ExitRestParameter is called when exiting the restParameter production.
-	ExitRestParameter(c *RestParameterContext)
+	// ExitRestResponseSpec is called when exiting the restResponseSpec production.
+	ExitRestResponseSpec(c *RestResponseSpecContext)
 
 	// ExitCreateIndexStatement is called when exiting the createIndexStatement production.
 	ExitCreateIndexStatement(c *CreateIndexStatementContext)

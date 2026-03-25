@@ -594,6 +594,67 @@ type PublishedRestOperation struct {
 }
 
 // ============================================================================
+// Consumed REST Services
+// ============================================================================
+
+// ConsumedRestService represents a Rest$ConsumedRestService document.
+type ConsumedRestService struct {
+	BaseElement
+	ContainerID    ID                     `json:"containerId"`
+	Name           string                 `json:"name"`
+	Documentation  string                 `json:"documentation,omitempty"`
+	Excluded       bool                   `json:"excluded,omitempty"`
+	BaseUrl        string                 `json:"baseUrl"`
+	Authentication *RestAuthentication    `json:"authentication,omitempty"`
+	Operations     []*RestClientOperation `json:"operations,omitempty"`
+}
+
+// GetName returns the service's name.
+func (s *ConsumedRestService) GetName() string {
+	return s.Name
+}
+
+// GetContainerID returns the ID of the containing element.
+func (s *ConsumedRestService) GetContainerID() ID {
+	return s.ContainerID
+}
+
+// RestAuthentication represents authentication configuration for a consumed REST service.
+type RestAuthentication struct {
+	Scheme   string `json:"scheme"`             // "Basic"
+	Username string `json:"username,omitempty"` // literal value or constant reference
+	Password string `json:"password,omitempty"` // literal value or constant reference
+}
+
+// RestClientOperation represents a single operation in a consumed REST service.
+type RestClientOperation struct {
+	Name             string                `json:"name"`
+	Documentation    string                `json:"documentation,omitempty"`
+	HttpMethod       string                `json:"httpMethod"`       // "GET", "POST", etc.
+	Path             string                `json:"path"`             // e.g. "/pet/{petId}"
+	Parameters       []*RestClientParameter `json:"parameters,omitempty"`      // path parameters
+	QueryParameters  []*RestClientParameter `json:"queryParameters,omitempty"` // query parameters
+	Headers          []*RestClientHeader    `json:"headers,omitempty"`
+	BodyType         string                `json:"bodyType,omitempty"`     // "JSON", "FILE", ""
+	BodyVariable     string                `json:"bodyVariable,omitempty"` // variable name
+	ResponseType     string                `json:"responseType"`           // "JSON", "STRING", "FILE", "STATUS", "NONE"
+	ResponseVariable string                `json:"responseVariable,omitempty"`
+	Timeout          int                   `json:"timeout,omitempty"` // 0 = default (300s)
+}
+
+// RestClientParameter represents a path or query parameter.
+type RestClientParameter struct {
+	Name     string `json:"name"`     // parameter name (without $ prefix)
+	DataType string `json:"dataType"` // "String", "Integer", "Boolean", "Decimal"
+}
+
+// RestClientHeader represents an HTTP header in a REST client operation.
+type RestClientHeader struct {
+	Name  string `json:"name"`  // header name, e.g. "Accept"
+	Value string `json:"value"` // literal, $var, or expression like "'Bearer ' + $Token"
+}
+
+// ============================================================================
 // Project Settings
 // ============================================================================
 

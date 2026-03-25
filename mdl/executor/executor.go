@@ -305,6 +305,12 @@ func (e *Executor) executeInner(stmt ast.Statement) error {
 		return e.alterODataService(s)
 	case *ast.DropODataServiceStmt:
 		return e.dropODataService(s)
+
+	// REST client statements
+	case *ast.CreateRestClientStmt:
+		return e.createRestClient(s)
+	case *ast.DropRestClientStmt:
+		return e.dropRestClient(s)
 	case *ast.CreateExternalEntityStmt:
 		return e.execCreateExternalEntity(s)
 	case *ast.GrantODataServiceAccessStmt:
@@ -754,6 +760,8 @@ func (e *Executor) execShow(s *ast.ShowStmt) error {
 		return e.showDatabaseConnections(s.InModule)
 	case ast.ShowImageCollections:
 		return e.showImageCollections(s.InModule)
+	case ast.ShowRestClients:
+		return e.showRestClients(s.InModule)
 	default:
 		return fmt.Errorf("unknown show object type")
 	}
@@ -811,6 +819,8 @@ func (e *Executor) execDescribe(s *ast.DescribeStmt) error {
 		return e.describeFragment(s.Name)
 	case ast.DescribeImageCollection:
 		return e.describeImageCollection(s.Name)
+	case ast.DescribeRestClient:
+		return e.describeRestClient(s.Name)
 	default:
 		return fmt.Errorf("unknown describe object type")
 	}

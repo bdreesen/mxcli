@@ -1412,59 +1412,53 @@ func (s *BaseMDLParserListener) EnterCreateRestClientStatement(ctx *CreateRestCl
 func (s *BaseMDLParserListener) ExitCreateRestClientStatement(ctx *CreateRestClientStatementContext) {
 }
 
-// EnterRestClientOptions is called when production restClientOptions is entered.
-func (s *BaseMDLParserListener) EnterRestClientOptions(ctx *RestClientOptionsContext) {}
+// EnterRestClientBaseUrl is called when production restClientBaseUrl is entered.
+func (s *BaseMDLParserListener) EnterRestClientBaseUrl(ctx *RestClientBaseUrlContext) {}
 
-// ExitRestClientOptions is called when production restClientOptions is exited.
-func (s *BaseMDLParserListener) ExitRestClientOptions(ctx *RestClientOptionsContext) {}
+// ExitRestClientBaseUrl is called when production restClientBaseUrl is exited.
+func (s *BaseMDLParserListener) ExitRestClientBaseUrl(ctx *RestClientBaseUrlContext) {}
 
-// EnterRestClientOption is called when production restClientOption is entered.
-func (s *BaseMDLParserListener) EnterRestClientOption(ctx *RestClientOptionContext) {}
+// EnterRestClientAuthentication is called when production restClientAuthentication is entered.
+func (s *BaseMDLParserListener) EnterRestClientAuthentication(ctx *RestClientAuthenticationContext) {}
 
-// ExitRestClientOption is called when production restClientOption is exited.
-func (s *BaseMDLParserListener) ExitRestClientOption(ctx *RestClientOptionContext) {}
+// ExitRestClientAuthentication is called when production restClientAuthentication is exited.
+func (s *BaseMDLParserListener) ExitRestClientAuthentication(ctx *RestClientAuthenticationContext) {}
 
-// EnterRestAuthentication is called when production restAuthentication is entered.
-func (s *BaseMDLParserListener) EnterRestAuthentication(ctx *RestAuthenticationContext) {}
+// EnterRestAuthValue is called when production restAuthValue is entered.
+func (s *BaseMDLParserListener) EnterRestAuthValue(ctx *RestAuthValueContext) {}
 
-// ExitRestAuthentication is called when production restAuthentication is exited.
-func (s *BaseMDLParserListener) ExitRestAuthentication(ctx *RestAuthenticationContext) {}
+// ExitRestAuthValue is called when production restAuthValue is exited.
+func (s *BaseMDLParserListener) ExitRestAuthValue(ctx *RestAuthValueContext) {}
 
-// EnterRestOperation is called when production restOperation is entered.
-func (s *BaseMDLParserListener) EnterRestOperation(ctx *RestOperationContext) {}
+// EnterRestOperationDef is called when production restOperationDef is entered.
+func (s *BaseMDLParserListener) EnterRestOperationDef(ctx *RestOperationDefContext) {}
 
-// ExitRestOperation is called when production restOperation is exited.
-func (s *BaseMDLParserListener) ExitRestOperation(ctx *RestOperationContext) {}
+// ExitRestOperationDef is called when production restOperationDef is exited.
+func (s *BaseMDLParserListener) ExitRestOperationDef(ctx *RestOperationDefContext) {}
 
-// EnterRestMethod is called when production restMethod is entered.
-func (s *BaseMDLParserListener) EnterRestMethod(ctx *RestMethodContext) {}
+// EnterRestHttpMethod is called when production restHttpMethod is entered.
+func (s *BaseMDLParserListener) EnterRestHttpMethod(ctx *RestHttpMethodContext) {}
 
-// ExitRestMethod is called when production restMethod is exited.
-func (s *BaseMDLParserListener) ExitRestMethod(ctx *RestMethodContext) {}
+// ExitRestHttpMethod is called when production restHttpMethod is exited.
+func (s *BaseMDLParserListener) ExitRestHttpMethod(ctx *RestHttpMethodContext) {}
 
-// EnterRestOperationOptions is called when production restOperationOptions is entered.
-func (s *BaseMDLParserListener) EnterRestOperationOptions(ctx *RestOperationOptionsContext) {}
+// EnterRestOperationClause is called when production restOperationClause is entered.
+func (s *BaseMDLParserListener) EnterRestOperationClause(ctx *RestOperationClauseContext) {}
 
-// ExitRestOperationOptions is called when production restOperationOptions is exited.
-func (s *BaseMDLParserListener) ExitRestOperationOptions(ctx *RestOperationOptionsContext) {}
+// ExitRestOperationClause is called when production restOperationClause is exited.
+func (s *BaseMDLParserListener) ExitRestOperationClause(ctx *RestOperationClauseContext) {}
 
-// EnterRestOperationOption is called when production restOperationOption is entered.
-func (s *BaseMDLParserListener) EnterRestOperationOption(ctx *RestOperationOptionContext) {}
+// EnterRestHeaderValue is called when production restHeaderValue is entered.
+func (s *BaseMDLParserListener) EnterRestHeaderValue(ctx *RestHeaderValueContext) {}
 
-// ExitRestOperationOption is called when production restOperationOption is exited.
-func (s *BaseMDLParserListener) ExitRestOperationOption(ctx *RestOperationOptionContext) {}
+// ExitRestHeaderValue is called when production restHeaderValue is exited.
+func (s *BaseMDLParserListener) ExitRestHeaderValue(ctx *RestHeaderValueContext) {}
 
-// EnterRestResponse is called when production restResponse is entered.
-func (s *BaseMDLParserListener) EnterRestResponse(ctx *RestResponseContext) {}
+// EnterRestResponseSpec is called when production restResponseSpec is entered.
+func (s *BaseMDLParserListener) EnterRestResponseSpec(ctx *RestResponseSpecContext) {}
 
-// ExitRestResponse is called when production restResponse is exited.
-func (s *BaseMDLParserListener) ExitRestResponse(ctx *RestResponseContext) {}
-
-// EnterRestParameter is called when production restParameter is entered.
-func (s *BaseMDLParserListener) EnterRestParameter(ctx *RestParameterContext) {}
-
-// ExitRestParameter is called when production restParameter is exited.
-func (s *BaseMDLParserListener) ExitRestParameter(ctx *RestParameterContext) {}
+// ExitRestResponseSpec is called when production restResponseSpec is exited.
+func (s *BaseMDLParserListener) ExitRestResponseSpec(ctx *RestResponseSpecContext) {}
 
 // EnterCreateIndexStatement is called when production createIndexStatement is entered.
 func (s *BaseMDLParserListener) EnterCreateIndexStatement(ctx *CreateIndexStatementContext) {}

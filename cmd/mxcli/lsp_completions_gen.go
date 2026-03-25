@@ -350,6 +350,7 @@ var mdlGeneratedKeywords = []protocol.CompletionItem{
 	{Label: "JSON", Kind: protocol.CompletionItemKindKeyword, Detail: "REST keyword"},
 	{Label: "XML", Kind: protocol.CompletionItemKindKeyword, Detail: "REST keyword"},
 	{Label: "STATUS", Kind: protocol.CompletionItemKindKeyword, Detail: "REST keyword"},
+	{Label: "FILE", Kind: protocol.CompletionItemKindKeyword, Detail: "REST keyword"},
 	{Label: "VERSION", Kind: protocol.CompletionItemKindKeyword, Detail: "REST keyword"},
 	{Label: "GET", Kind: protocol.CompletionItemKindKeyword, Detail: "REST keyword"},
 	{Label: "POST", Kind: protocol.CompletionItemKindKeyword, Detail: "REST keyword"},

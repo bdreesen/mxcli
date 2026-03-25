@@ -264,6 +264,30 @@ func (e *Executor) GetODataServiceNames(moduleFilter string) []string {
 	return names
 }
 
+// GetRestClientNames returns qualified consumed REST service names, optionally filtered by module.
+func (e *Executor) GetRestClientNames(moduleFilter string) []string {
+	if e.reader == nil {
+		return nil
+	}
+	h, err := e.getHierarchy()
+	if err != nil {
+		return nil
+	}
+	services, err := e.reader.ListConsumedRestServices()
+	if err != nil {
+		return nil
+	}
+	names := make([]string, 0)
+	for _, svc := range services {
+		modID := h.FindModuleID(svc.ContainerID)
+		modName := h.GetModuleName(modID)
+		if moduleFilter == "" || modName == moduleFilter {
+			names = append(names, modName+"."+svc.Name)
+		}
+	}
+	return names
+}
+
 // GetDatabaseConnectionNames returns qualified database connection names, optionally filtered by module.
 func (e *Executor) GetDatabaseConnectionNames(moduleFilter string) []string {
 	if e.reader == nil {

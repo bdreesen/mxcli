@@ -75,6 +75,7 @@ const (
 	ShowFragments             // SHOW FRAGMENTS
 	ShowDatabaseConnections   // SHOW DATABASE CONNECTIONS [IN module]
 	ShowImageCollections      // SHOW IMAGE COLLECTIONS [IN module]
+	ShowRestClients           // SHOW REST CLIENTS [IN module]
 )
 
 // String returns the human-readable name of the show object type.
@@ -172,6 +173,8 @@ func (t ShowObjectType) String() string {
 		return "DATABASE CONNECTIONS"
 	case ShowImageCollections:
 		return "IMAGE COLLECTIONS"
+	case ShowRestClients:
+		return "REST CLIENTS"
 	default:
 		return "UNKNOWN"
 	}
@@ -220,6 +223,7 @@ const (
 	DescribeSettings             // DESCRIBE SETTINGS
 	DescribeFragment             // DESCRIBE FRAGMENT Name
 	DescribeImageCollection      // DESCRIBE IMAGE COLLECTION Module.Name
+	DescribeRestClient           // DESCRIBE REST CLIENT Module.Name
 )
 
 // String returns the human-readable name of the describe object type.
@@ -271,6 +275,8 @@ func (t DescribeObjectType) String() string {
 		return "FRAGMENT"
 	case DescribeImageCollection:
 		return "IMAGE COLLECTION"
+	case DescribeRestClient:
+		return "REST CLIENT"
 	default:
 		return "UNKNOWN"
 	}

@@ -250,6 +250,7 @@ dropStatement
     | DROP BUSINESS EVENT SERVICE qualifiedName
     | DROP WORKFLOW qualifiedName
     | DROP IMAGE COLLECTION qualifiedName
+    | DROP REST CLIENT qualifiedName
     ;
 
 renameStatement
@@ -1994,57 +1995,71 @@ constantOption
     : COMMENT STRING_LITERAL
     ;
 
+/**
+ * CREATE REST CLIENT Module.Name
+ * BASE URL 'https://api.example.com/v1'
+ * AUTHENTICATION NONE | BASIC (USERNAME = ..., PASSWORD = ...)
+ * BEGIN
+ *   OPERATION GetData METHOD GET PATH '/data' RESPONSE JSON AS $Result;
+ * END;
+ */
 createRestClientStatement
     : REST CLIENT qualifiedName
-      restClientOptions
-      BEGIN restOperation* END
+      restClientBaseUrl
+      restClientAuthentication
+      BEGIN restOperationDef* END
     ;
 
-restClientOptions
-    : restClientOption+
-    ;
-
-restClientOption
+restClientBaseUrl
     : BASE URL STRING_LITERAL
-    | TIMEOUT NUMBER_LITERAL
-    | AUTHENTICATION restAuthentication
-    | COMMENT STRING_LITERAL
     ;
 
-restAuthentication
-    : BASIC USERNAME STRING_LITERAL PASSWORD STRING_LITERAL
-    | OAUTH STRING_LITERAL
-    | NONE
+restClientAuthentication
+    : AUTHENTICATION NONE
+    | AUTHENTICATION BASIC LPAREN
+        USERNAME EQUALS restAuthValue COMMA
+        PASSWORD EQUALS restAuthValue
+      RPAREN
     ;
 
-restOperation
-    : OPERATION IDENTIFIER
-      METHOD restMethod
-      PATH STRING_LITERAL
-      restOperationOptions?
+restAuthValue
+    : STRING_LITERAL
+    | VARIABLE
     ;
 
-restMethod
+restOperationDef
+    : docComment?
+      OPERATION (identifierOrKeyword | STRING_LITERAL)
+        METHOD restHttpMethod
+        PATH STRING_LITERAL
+        restOperationClause*
+        RESPONSE restResponseSpec SEMICOLON
+    ;
+
+restHttpMethod
     : GET | POST | PUT | PATCH | DELETE
     ;
 
-restOperationOptions
-    : restOperationOption+
+restOperationClause
+    : PARAMETER VARIABLE COLON dataType                         // path param
+    | QUERY VARIABLE COLON dataType                             // query param
+    | HEADER STRING_LITERAL EQUALS restHeaderValue              // header
+    | BODY (JSON | FILE_KW) FROM VARIABLE                       // request body
+    | TIMEOUT NUMBER_LITERAL                                    // timeout override
     ;
 
-restOperationOption
-    : BODY STRING_LITERAL
-    | RESPONSE restResponse
-    | PARAMETER restParameter
-    | TIMEOUT NUMBER_LITERAL
+restHeaderValue
+    : STRING_LITERAL                                            // 'application/json'
+    | VARIABLE                                                  // $RequestId
+    | STRING_LITERAL PLUS VARIABLE                              // 'Bearer ' + $Token
     ;
 
-restResponse
-    : STATUS NUMBER_LITERAL dataType
-    ;
-
-restParameter
-    : IDENTIFIER COLON dataType (IN (PATH | QUERY | BODY | HEADER))?
+restResponseSpec
+    : JSON AS VARIABLE                                          // JSON response
+    | STRING_TYPE AS VARIABLE                                   // string response
+    | FILE_KW AS VARIABLE                                       // file download
+    | STATUS AS VARIABLE                                        // status code only
+    | NONE                                                      // no response
     ;
 
 // =============================================================================
@@ -2446,6 +2461,7 @@ showStatement
     | SHOW SETTINGS                                            // SHOW SETTINGS
     | SHOW FRAGMENTS                                           // SHOW FRAGMENTS
     | SHOW DATABASE CONNECTIONS (IN (qualifiedName | IDENTIFIER))?  // SHOW DATABASE CONNECTIONS [IN module]
+    | SHOW REST CLIENTS (IN (qualifiedName | IDENTIFIER))?           // SHOW REST CLIENTS [IN module]
     ;
 
 /**
@@ -2528,6 +2544,7 @@ describeStatement
     | DESCRIBE FRAGMENT FROM PAGE qualifiedName WIDGET identifierOrKeyword     // DESCRIBE FRAGMENT FROM PAGE Module.Page WIDGET name
     | DESCRIBE FRAGMENT FROM SNIPPET qualifiedName WIDGET identifierOrKeyword  // DESCRIBE FRAGMENT FROM SNIPPET Module.Snippet WIDGET name
     | DESCRIBE IMAGE COLLECTION qualifiedName           // DESCRIBE IMAGE COLLECTION Module.Name
+    | DESCRIBE REST CLIENT qualifiedName                // DESCRIBE REST CLIENT Module.Name
     | DESCRIBE FRAGMENT identifierOrKeyword            // DESCRIBE FRAGMENT Name
     ;
 
@@ -3146,4 +3163,5 @@ keyword
     | URL | POSITION | SORT                                      // Common attribute names
     | GENERATE | CONNECTOR | EXEC | TABLES | VIEWS              // SQL generate keywords
     | COLLECTION                                               // Image collection keyword
+    | FILE_KW                                                    // REST client file keyword
     ;
