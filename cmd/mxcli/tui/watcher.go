@@ -27,6 +27,7 @@ func (p programSender) Send(msg tea.Msg) { p.prog.Send(msg) }
 type Watcher struct {
 	fsw         *fsnotify.Watcher
 	done        chan struct{}
+	closeOnce   sync.Once
 	mu          sync.Mutex
 	suppressEnd time.Time
 }
@@ -113,11 +114,11 @@ func (w *Watcher) run(sender MsgSender) {
 				sender.Send(MprChangedMsg{})
 			})
 
-		case _, ok := <-w.fsw.Errors:
+		case watchErr, ok := <-w.fsw.Errors:
 			if !ok {
 				return
 			}
-			Trace("watcher: fsnotify error")
+			Trace("watcher: fsnotify error: %v", watchErr)
 		}
 	}
 }
@@ -130,13 +131,10 @@ func (w *Watcher) Suppress(d time.Duration) {
 	w.mu.Unlock()
 }
 
-// Close stops the watcher and releases resources.
+// Close stops the watcher and releases resources. Safe to call concurrently.
 func (w *Watcher) Close() {
-	select {
-	case <-w.done:
-		return
-	default:
-	}
-	close(w.done)
-	w.fsw.Close()
+	w.closeOnce.Do(func() {
+		close(w.done)
+		w.fsw.Close()
+	})
 }

@@ -32,6 +32,7 @@ const helpText = `
     /     search in content
     y     copy to clipboard
     Tab   switch MDL / NDSL
+    r     rerun (check overlay)
     q     close
 
   COMPARE VIEW

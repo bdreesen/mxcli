@@ -134,6 +134,8 @@ func (ev ExecView) StatusInfo() StatusInfo {
 }
 
 // Render returns the ExecView rendered string.
+// Value receiver is intentional: SetWidth/SetHeight mutate only this copy,
+// keeping the authoritative dimensions in Update (same pattern as DiffView).
 func (ev ExecView) Render(width, height int) string {
 	if ev.picking {
 		return ev.renderPicker(width, height)

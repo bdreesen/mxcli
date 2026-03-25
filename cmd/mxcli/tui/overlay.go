@@ -20,6 +20,7 @@ type Overlay struct {
 	visible     bool
 	copiedFlash bool
 	switchable  bool // Tab key switches between NDSL and MDL
+	refreshable bool // show "r rerun" hint
 	width       int
 	height      int
 }
@@ -110,6 +111,9 @@ func (o Overlay) View() string {
 	hints = append(hints, keySt.Render("g/G")+" "+dimSt.Render("top/end"))
 	if o.switchable {
 		hints = append(hints, keySt.Render("Tab")+" "+dimSt.Render("switch"))
+	}
+	if o.refreshable {
+		hints = append(hints, keySt.Render("r")+" "+dimSt.Render("rerun"))
 	}
 	if o.copiedFlash {
 		hints = append(hints, successSt.Render("✓ Copied!"))

@@ -463,8 +463,18 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		projectPath := a.activeTabProjectPath()
 		return a, tea.Batch(a.Init(), runMxCheck(projectPath))
 
+	case MxCheckRerunMsg:
+		Trace("app: manual mx check rerun requested")
+		projectPath := a.activeTabProjectPath()
+		return a, runMxCheck(projectPath)
+
 	case MxCheckStartMsg:
 		a.checkRunning = true
+		// Update check overlay content if it's currently visible
+		if ov, ok := a.views.Active().(OverlayView); ok && ov.refreshable {
+			ov.overlay.Show("mx check", CheckRunningStyle.Render("⟳ Running mx check..."), ov.overlay.width, ov.overlay.height)
+			a.views.SetActive(ov)
+		}
 		return a, nil
 
 	case MxCheckResultMsg:
@@ -475,6 +485,12 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			a.checkErrors = msg.Errors
 			Trace("app: mx check done: %d diagnostics", len(msg.Errors))
+		}
+		// Update check overlay content if it's currently visible
+		if ov, ok := a.views.Active().(OverlayView); ok && ov.refreshable {
+			content := renderCheckResults(a.checkErrors)
+			ov.overlay.Show("mx check", content, ov.overlay.width, ov.overlay.height)
+			a.views.SetActive(ov)
 		}
 		return a, nil
 
@@ -589,9 +605,13 @@ func (a *App) handleBrowserAppKeys(msg tea.KeyMsg) tea.Cmd {
 		a.views.Push(ev)
 		return handledCmd
 
-	case "!", "\\!":
+	case "!", "\\!": // some terminals send "\\!" for shifted-1; accept both forms
 		content := renderCheckResults(a.checkErrors)
-		ov := NewOverlayView("mx check", content, a.width, a.height, OverlayViewOpts{HideLineNumbers: true})
+		ov := NewOverlayView("mx check", content, a.width, a.height, OverlayViewOpts{
+			HideLineNumbers: true,
+			Refreshable:     true,
+			RefreshMsg:      MxCheckRerunMsg{},
+		})
 		a.views.Push(ov)
 		return handledCmd
 

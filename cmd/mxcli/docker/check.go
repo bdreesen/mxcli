@@ -102,11 +102,13 @@ func ResolveMx(mxbuildPath string) (string, error) {
 		return p, nil
 	}
 
-	// Try cached mxbuild installations (~/.mxcli/mxbuild/*/modeler/mx)
+	// Try cached mxbuild installations (~/.mxcli/mxbuild/*/modeler/mx).
+	// NOTE: lexicographic sort is imperfect for versions (e.g. "9.x" > "10.x"),
+	// but this is a fallback-of-last-resort — in practice users typically have
+	// only one mxbuild version installed.
 	if home, err := os.UserHomeDir(); err == nil {
 		matches, _ := filepath.Glob(filepath.Join(home, ".mxcli", "mxbuild", "*", "modeler", mxBinaryName()))
 		if len(matches) > 0 {
-			// Use the last match (highest version when sorted lexicographically)
 			return matches[len(matches)-1], nil
 		}
 	}

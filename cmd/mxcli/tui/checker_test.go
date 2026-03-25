@@ -1,20 +1,65 @@
 package tui
 
-import "testing"
+import (
+	"os"
+	"strings"
+	"testing"
+)
 
-func TestParseCheckOutput(t *testing.T) {
-	input := `Checking your app for issues...
-Checking the version of the mpr file.
-The mpr file version is '11.6.4'.
-Loading the mpr file.
-Checking app for errors...
-[error] [CE1613] "The selected association 'MyModule.Priority' no longer exists." at Combo box 'cmbPriority'
-[warning] [CW0001] "Unused variable '$var' in microflow" at Microflow 'MyModule.DoSomething'
-[error] [CE0463] "Widget definition changed for DataGrid2" at Page 'MyModule.CustomerList'
-The app contains: 2 errors.
-`
+func TestParseCheckJSON(t *testing.T) {
+	jsonContent := `{
+		"serialization_version": 1,
+		"errors": [
+			{
+				"code": "CE1613",
+				"message": "The selected association 'MyModule.Priority' no longer exists.",
+				"locations": [
+					{
+						"module-name": "MyModule",
+						"document-name": "Page 'P_ComboBox'",
+						"element-name": "Property 'Association' of combo box 'cmbPriority'"
+					}
+				]
+			},
+			{
+				"code": "CE0463",
+				"message": "Widget definition changed for DataGrid2",
+				"locations": [
+					{
+						"module-name": "MyModule",
+						"document-name": "Page 'CustomerList'",
+						"element-name": "DataGrid2 widget"
+					}
+				]
+			}
+		],
+		"warnings": [
+			{
+				"code": "CW0001",
+				"message": "Unused variable '$var' in microflow",
+				"locations": [
+					{
+						"module-name": "MyModule",
+						"document-name": "Microflow 'DoSomething'",
+						"element-name": "Variable '$var'"
+					}
+				]
+			}
+		]
+	}`
 
-	errors := parseCheckOutput(input)
+	tmpFile, err := os.CreateTemp("", "mx-check-test-*.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(tmpFile.Name())
+	tmpFile.WriteString(jsonContent)
+	tmpFile.Close()
+
+	errors, err := parseCheckJSON(tmpFile.Name())
+	if err != nil {
+		t.Fatalf("parseCheckJSON: %v", err)
+	}
 	if len(errors) != 3 {
 		t.Fatalf("expected 3 errors, got %d", len(errors))
 	}
@@ -26,39 +71,114 @@ The app contains: 2 errors.
 	if errors[0].Code != "CE1613" {
 		t.Errorf("expected CE1613, got %q", errors[0].Code)
 	}
-	if errors[0].Location != "Combo box 'cmbPriority'" {
-		t.Errorf("unexpected location: %q", errors[0].Location)
+	if errors[0].DocumentName != "Page 'P_ComboBox'" {
+		t.Errorf("unexpected document: %q", errors[0].DocumentName)
+	}
+	if errors[0].ElementName == "" {
+		t.Error("expected non-empty element name")
+	}
+	if errors[0].ModuleName != "MyModule" {
+		t.Errorf("expected MyModule, got %q", errors[0].ModuleName)
 	}
 
-	// Second: warning
-	if errors[1].Severity != "WARNING" {
-		t.Errorf("expected WARNING, got %q", errors[1].Severity)
-	}
-	if errors[1].Code != "CW0001" {
-		t.Errorf("expected CW0001, got %q", errors[1].Code)
+	// Second error
+	if errors[1].Code != "CE0463" {
+		t.Errorf("expected CE0463, got %q", errors[1].Code)
 	}
 
-	// Third: error
-	if errors[2].Code != "CE0463" {
-		t.Errorf("expected CE0463, got %q", errors[2].Code)
+	// Third: warning
+	if errors[2].Severity != "WARNING" {
+		t.Errorf("expected WARNING, got %q", errors[2].Severity)
+	}
+	if errors[2].Code != "CW0001" {
+		t.Errorf("expected CW0001, got %q", errors[2].Code)
 	}
 }
 
-func TestParseCheckOutputEmpty(t *testing.T) {
-	errors := parseCheckOutput("Project check passed.\n")
+func TestParseCheckJSONEmpty(t *testing.T) {
+	tmpFile, err := os.CreateTemp("", "mx-check-test-*.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(tmpFile.Name())
+	tmpFile.WriteString(`{"serialization_version": 1}`)
+	tmpFile.Close()
+
+	errors, err := parseCheckJSON(tmpFile.Name())
+	if err != nil {
+		t.Fatalf("parseCheckJSON: %v", err)
+	}
 	if len(errors) != 0 {
 		t.Fatalf("expected 0 errors, got %d", len(errors))
 	}
 }
 
-func TestParseCheckOutputIgnoresNonMatchingLines(t *testing.T) {
-	input := `Checking your app for issues...
-Loading the mpr file.
-The app contains: 0 errors.
-`
-	errors := parseCheckOutput(input)
-	if len(errors) != 0 {
-		t.Fatalf("expected 0 errors from non-matching lines, got %d", len(errors))
+func TestParseCheckJSONNoLocations(t *testing.T) {
+	jsonContent := `{
+		"serialization_version": 1,
+		"errors": [
+			{
+				"code": "CE9999",
+				"message": "Some error without location",
+				"locations": []
+			}
+		]
+	}`
+
+	tmpFile, err := os.CreateTemp("", "mx-check-test-*.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(tmpFile.Name())
+	tmpFile.WriteString(jsonContent)
+	tmpFile.Close()
+
+	errors, err := parseCheckJSON(tmpFile.Name())
+	if err != nil {
+		t.Fatalf("parseCheckJSON: %v", err)
+	}
+	if len(errors) != 1 {
+		t.Fatalf("expected 1 error, got %d", len(errors))
+	}
+	if errors[0].DocumentName != "" {
+		t.Errorf("expected empty document name, got %q", errors[0].DocumentName)
+	}
+}
+
+func TestRenderCheckResultsNilVsEmpty(t *testing.T) {
+	// nil = no check has run yet
+	result := renderCheckResults(nil)
+	if result == "" {
+		t.Error("expected non-empty result for nil errors")
+	}
+	if strings.Contains(result, "passed") {
+		t.Error("nil errors should NOT show 'passed' — no check has run yet")
+	}
+
+	// empty = check ran, no errors found
+	result = renderCheckResults([]CheckError{})
+	if !strings.Contains(result, "passed") {
+		t.Error("empty errors should show 'passed'")
+	}
+}
+
+func TestRenderCheckResultsWithDocLocation(t *testing.T) {
+	errors := []CheckError{
+		{
+			Severity:     "ERROR",
+			Code:         "CE1613",
+			Message:      "Association no longer exists",
+			DocumentName: "Page 'P_ComboBox'",
+			ElementName:  "combo box 'cmbPriority'",
+			ModuleName:   "MyModule",
+		},
+	}
+	result := renderCheckResults(errors)
+	if !strings.Contains(result, "MyModule.P_ComboBox (Page)") {
+		t.Errorf("expected qualified doc location, got: %s", result)
+	}
+	if !strings.Contains(result, "combo box 'cmbPriority'") {
+		t.Error("expected element name in rendered output")
 	}
 }
 

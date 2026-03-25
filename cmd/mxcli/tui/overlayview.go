@@ -23,6 +23,8 @@ type OverlayViewOpts struct {
 	MxcliPath       string
 	ProjectPath     string
 	HideLineNumbers bool
+	Refreshable     bool // show "r" hint and allow re-triggering via RefreshMsg
+	RefreshMsg      tea.Msg // message to send when "r" is pressed
 }
 
 // OverlayView wraps an Overlay to satisfy the View interface,
@@ -35,6 +37,8 @@ type OverlayView struct {
 	switchable  bool
 	mxcliPath   string
 	projectPath string
+	refreshable bool
+	refreshMsg  tea.Msg
 }
 
 // NewOverlayView creates an OverlayView with the given title, content, dimensions, and options.
@@ -46,9 +50,12 @@ func NewOverlayView(title, content string, width, height int, opts OverlayViewOp
 		switchable:  opts.Switchable,
 		mxcliPath:   opts.MxcliPath,
 		projectPath: opts.ProjectPath,
+		refreshable: opts.Refreshable,
+		refreshMsg:  opts.RefreshMsg,
 	}
 	ov.overlay = NewOverlay()
 	ov.overlay.switchable = opts.Switchable
+	ov.overlay.refreshable = opts.Refreshable
 	ov.overlay.Show(title, content, width, height)
 	if opts.HideLineNumbers {
 		ov.overlay.content.hideLineNumbers = true
@@ -72,6 +79,11 @@ func (ov OverlayView) Update(msg tea.Msg) (View, tea.Cmd) {
 		switch msg.String() {
 		case "esc", "q":
 			return ov, func() tea.Msg { return PopViewMsg{} }
+		case "r":
+			if ov.refreshable && ov.refreshMsg != nil {
+				refreshMsg := ov.refreshMsg
+				return ov, func() tea.Msg { return refreshMsg }
+			}
 		case "tab":
 			if ov.switchable && ov.qname != "" {
 				ov.isNDSL = !ov.isNDSL
@@ -115,6 +127,9 @@ func (ov OverlayView) Hints() []Hint {
 	}
 	if ov.switchable {
 		hints = append(hints, Hint{Key: "Tab", Label: "mdl/ndsl"})
+	}
+	if ov.refreshable {
+		hints = append(hints, Hint{Key: "r", Label: "rerun"})
 	}
 	hints = append(hints, Hint{Key: "q", Label: "close"})
 	return hints
