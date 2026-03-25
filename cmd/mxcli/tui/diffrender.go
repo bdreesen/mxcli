@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/mattn/go-runewidth"
 )
 
 
@@ -301,7 +302,8 @@ func hslice(s string, skip, take int) string {
 			}
 			continue
 		}
-		visW++
+		rw := runewidth.RuneWidth(r)
+		visW += rw
 		if visW <= skip {
 			continue
 		}
@@ -335,10 +337,11 @@ func truncateToWidth(s string, maxW int) string {
 			}
 			continue
 		}
-		visW++
-		if visW > maxW {
+		rw := runewidth.RuneWidth(r)
+		if visW+rw > maxW {
 			break
 		}
+		visW += rw
 		result.WriteRune(r)
 	}
 	return result.String()

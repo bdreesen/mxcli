@@ -62,7 +62,7 @@ var (
 		{Key: "/", Label: "search"},
 		{Key: "s", Label: "sync scroll"},
 		{Key: "1/2/3", Label: "mode"},
-		{Key: "d", Label: "diff"},
+		{Key: "D", Label: "diff"},
 		{Key: "q", Label: "close"},
 	}
 	ExecViewHints = []Hint{

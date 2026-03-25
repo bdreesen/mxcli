@@ -74,7 +74,6 @@ func (p comparePane) lineInfo() string {
 
 // CompareView is a side-by-side comparison overlay (lazygit-style).
 type CompareView struct {
-	visible      bool
 	kind         CompareKind
 	focus        CompareFocus
 	left         comparePane
@@ -107,7 +106,6 @@ func NewCompareView() CompareView {
 }
 
 func (c *CompareView) Show(kind CompareKind, w, h int) {
-	c.visible = true
 	c.kind = kind
 	c.focus = CompareFocusLeft
 	c.width = w
@@ -182,10 +180,6 @@ func (c *CompareView) closePicker() { c.picker = false; c.pickerInput.Blur() }
 // --- Update ---
 
 func (c CompareView) updateInternal(msg tea.Msg) (CompareView, tea.Cmd) {
-	if !c.visible {
-		return c, nil
-	}
-
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		if c.picker {
@@ -247,7 +241,6 @@ func (c CompareView) updateNormal(msg tea.KeyMsg) (CompareView, tea.Cmd) {
 
 	switch msg.String() {
 	case "esc", "q":
-		c.visible = false
 		return c, func() tea.Msg { return PopViewMsg{} }
 
 	// Focus switching — lazygit style: Tab only
@@ -357,10 +350,6 @@ func (c *CompareView) syncOtherPane() {
 // --- View ---
 
 func (c CompareView) View() string {
-	if !c.visible {
-		return ""
-	}
-
 	pw, _ := c.paneDimensions()
 
 	// Pane rendering
@@ -598,24 +587,7 @@ func (c CompareView) Mode() ViewMode {
 
 // loadBsonNDSL loads BSON NDSL content for a compare pane.
 func (c CompareView) loadBsonNDSL(qname, nodeType string, side CompareFocus) tea.Cmd {
-	mxcliPath := c.mxcliPath
-	projectPath := c.projectPath
-	return func() tea.Msg {
-		bsonType := inferBsonType(nodeType)
-		if bsonType == "" {
-			return CompareLoadMsg{Side: side, Title: qname, NodeType: nodeType,
-				Content: fmt.Sprintf("Error: type %q not supported for BSON dump", nodeType),
-				Err:     fmt.Errorf("unsupported type")}
-		}
-		args := []string{"bson", "dump", "-p", projectPath, "--format", "ndsl",
-			"--type", bsonType, "--object", qname}
-		out, err := runMxcli(mxcliPath, args...)
-		out = StripBanner(out)
-		if err != nil {
-			return CompareLoadMsg{Side: side, Title: qname, NodeType: nodeType, Content: "Error: " + out, Err: err}
-		}
-		return CompareLoadMsg{Side: side, Title: qname, NodeType: nodeType, Content: HighlightNDSL(out)}
-	}
+	return loadBsonNDSL(c.mxcliPath, c.projectPath, qname, nodeType, side)
 }
 
 // loadMDL loads MDL content for a compare pane.

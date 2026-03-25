@@ -18,6 +18,9 @@ const (
 	DiffViewPlainDiff // standard unified diff text (LLM-friendly)
 )
 
+// horizontalScrollStep is the number of columns to shift per horizontal scroll event.
+const horizontalScrollStep = 8
+
 // DiffOpenMsg requests opening a diff view.
 type DiffOpenMsg struct {
 	OldText  string
@@ -166,9 +169,9 @@ func (dv DiffView) updateInternal(msg tea.Msg) (DiffView, tea.Cmd) {
 			case tea.MouseButtonWheelDown:
 				dv.scroll(3)
 			case tea.MouseButtonWheelLeft:
-				dv.xOffset = max(0, dv.xOffset-8)
+				dv.xOffset = max(0, dv.xOffset-horizontalScrollStep)
 			case tea.MouseButtonWheelRight:
-				dv.xOffset += 8
+				dv.xOffset += horizontalScrollStep
 			}
 		}
 
@@ -242,9 +245,9 @@ func (dv DiffView) updateNormal(msg tea.KeyMsg) (DiffView, tea.Cmd) {
 
 	// Horizontal scroll
 	case "h", "left":
-		dv.xOffset = max(0, dv.xOffset-8)
+		dv.xOffset = max(0, dv.xOffset-horizontalScrollStep)
 	case "l", "right":
-		dv.xOffset += 8
+		dv.xOffset += horizontalScrollStep
 
 	// View mode toggle: Unified → Side-by-Side → Plain Diff → Unified
 	case "tab":
@@ -258,6 +261,8 @@ func (dv DiffView) updateNormal(msg tea.KeyMsg) (DiffView, tea.Cmd) {
 		}
 		dv.yOffset = 0
 		dv.xOffset = 0
+		// Rebuild search matches for the new mode (indices differ between modes)
+		dv.buildMatchLines()
 
 	// Yank unified diff to clipboard
 	case "y":
@@ -345,8 +350,15 @@ func (dv *DiffView) buildMatchLines() {
 		return
 	}
 	q := strings.ToLower(dv.searchQuery)
-	// Search in the raw content of DiffResult lines (not rendered)
-	if dv.result != nil {
+	if dv.viewMode == DiffViewPlainDiff {
+		// In PlainDiff mode, search against plainLines (which have different indices)
+		for i, line := range dv.plainLines {
+			if strings.Contains(strings.ToLower(line), q) {
+				dv.matchLines = append(dv.matchLines, i)
+			}
+		}
+	} else if dv.result != nil {
+		// Unified and Side-by-Side: search DiffResult lines (1:1 index mapping)
 		for i, dl := range dv.result.Lines {
 			if strings.Contains(strings.ToLower(dl.Content), q) {
 				dv.matchLines = append(dv.matchLines, i)

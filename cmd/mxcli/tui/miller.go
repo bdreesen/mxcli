@@ -20,6 +20,10 @@ const (
 	minCurrentWidth   = 15
 )
 
+// previewDebounceDelay is the delay before requesting a preview for a leaf node,
+// preventing subprocess flooding during rapid cursor movement.
+const previewDebounceDelay = 150 * time.Millisecond
+
 // MillerFocus indicates which pane has keyboard focus.
 type MillerFocus int
 
@@ -229,7 +233,7 @@ func (m MillerView) handleCursorChanged(msg CursorChangedMsg) (MillerView, tea.C
 	counter := m.debounceCounter
 
 	if node.QualifiedName != "" && node.Type != "" {
-		return m, tea.Tick(150*time.Millisecond, func(t time.Time) tea.Msg {
+		return m, tea.Tick(previewDebounceDelay, func(t time.Time) tea.Msg {
 			return previewDebounceMsg{node: node, counter: counter}
 		})
 	}

@@ -14,6 +14,11 @@ import (
 // chromeHeight is the vertical space consumed by tab bar (1) + hint bar (1) + status bar (1).
 const chromeHeight = 3
 
+// handledCmd is returned by handleBrowserAppKeys to signal that a key was
+// consumed without producing a follow-up message.  Using a shared variable
+// avoids allocating a new closure on every handled keystroke.
+var handledCmd tea.Cmd = func() tea.Msg { return nil }
+
 // compareFlashClearMsg is sent 1 s after a clipboard copy in compare view.
 type compareFlashClearMsg struct{}
 
@@ -118,7 +123,6 @@ func (a *App) syncBrowserView() {
 	}
 	bv := NewBrowserView(tab, a.mxcliPath, a.previewEngine)
 	bv.allNodes = tab.AllNodes
-	bv.compareItems = flattenQualifiedNames(tab.AllNodes)
 	// Ensure miller has current dimensions so scroll calculations in
 	// Update() work correctly (Render operates on a value copy).
 	if a.height > 0 {
@@ -162,7 +166,7 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// --- View creation messages ---
 	case OpenOverlayMsg:
-		ov := NewOverlayView(msg.Title, msg.Content, a.width, a.height, OverlayViewOpts{})
+		ov := NewOverlayView(msg.Title, msg.Content, a.width, a.height, msg.Opts)
 		a.views.Push(ov)
 		return a, nil
 
@@ -442,7 +446,6 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Update browser view if it's the base
 				if bv, ok := a.views.Base().(BrowserView); ok {
 					bv.allNodes = msg.Nodes
-					bv.compareItems = flattenQualifiedNames(msg.Nodes)
 					bv.miller = tab.Miller
 					if a.height > 0 {
 						contentH := max(5, a.height-chromeHeight)
@@ -524,14 +527,14 @@ func (a *App) handleBrowserAppKeys(msg tea.KeyMsg) tea.Cmd {
 			a.syncBrowserView()
 			a.syncTabBar()
 		}
-		return func() tea.Msg { return nil }
+		return handledCmd
 
 	case "T":
 		p := NewEmbeddedPicker()
 		p.width = a.width
 		p.height = a.height
 		a.picker = &p
-		return func() tea.Msg { return nil }
+		return handledCmd
 
 	case "W":
 		if len(a.tabs) > 1 {
@@ -543,7 +546,7 @@ func (a *App) handleBrowserAppKeys(msg tea.KeyMsg) tea.Cmd {
 			a.syncBrowserView()
 			a.syncTabBar()
 		}
-		return func() tea.Msg { return nil }
+		return handledCmd
 
 	case "1", "2", "3", "4", "5", "6", "7", "8", "9":
 		idx := int(msg.String()[0]-'0') - 1
@@ -552,7 +555,7 @@ func (a *App) handleBrowserAppKeys(msg tea.KeyMsg) tea.Cmd {
 			a.syncBrowserView()
 			a.syncTabBar()
 		}
-		return func() tea.Msg { return nil }
+		return handledCmd
 
 	case "[":
 		if a.activeTab > 0 {
@@ -560,7 +563,7 @@ func (a *App) handleBrowserAppKeys(msg tea.KeyMsg) tea.Cmd {
 			a.syncBrowserView()
 			a.syncTabBar()
 		}
-		return func() tea.Msg { return nil }
+		return handledCmd
 
 	case "]":
 		if a.activeTab < len(a.tabs)-1 {
@@ -568,7 +571,7 @@ func (a *App) handleBrowserAppKeys(msg tea.KeyMsg) tea.Cmd {
 			a.syncBrowserView()
 			a.syncTabBar()
 		}
-		return func() tea.Msg { return nil }
+		return handledCmd
 
 	case "r":
 		return a.Init()
@@ -579,18 +582,18 @@ func (a *App) handleBrowserAppKeys(msg tea.KeyMsg) tea.Cmd {
 			jumper := NewJumperView(items, a.width, a.height)
 			a.views.Push(jumper)
 		}
-		return func() tea.Msg { return nil }
+		return handledCmd
 
 	case "x":
 		ev := NewExecView(a.mxcliPath, a.activeTabProjectPath(), a.width, a.height)
 		a.views.Push(ev)
-		return func() tea.Msg { return nil }
+		return handledCmd
 
 	case "!", "\\!":
 		content := renderCheckResults(a.checkErrors)
 		ov := NewOverlayView("mx check", content, a.width, a.height, OverlayViewOpts{HideLineNumbers: true})
 		a.views.Push(ov)
-		return func() tea.Msg { return nil }
+		return handledCmd
 
 	case "c":
 		cv := NewCompareView()
@@ -606,7 +609,7 @@ func (a *App) handleBrowserAppKeys(msg tea.KeyMsg) tea.Cmd {
 			}
 		}
 		a.views.Push(cv)
-		return func() tea.Msg { return nil }
+		return handledCmd
 	}
 
 	return nil
@@ -740,6 +743,12 @@ type CmdResultMsg struct {
 	Err    error
 }
 
+// irregularPlurals maps singular type names to their correct plural forms
+// for types where simply appending "s" produces incorrect English.
+var irregularPlurals = map[string]string{
+	"Index": "indexes",
+}
+
 // renderContextSummary counts top-level node types and returns a compact summary.
 func renderContextSummary(nodes []*TreeNode) string {
 	if len(nodes) == 0 {
@@ -772,7 +781,11 @@ func renderContextSummary(nodes []*TreeNode) string {
 	// Add remaining types not in the predefined order
 	for k, c := range counts {
 		if !used[k] {
-			parts = append(parts, fmt.Sprintf("%d %s", c, strings.ToLower(k)+"s"))
+			plural, ok := irregularPlurals[k]
+			if !ok {
+				plural = strings.ToLower(k) + "s"
+			}
+			parts = append(parts, fmt.Sprintf("%d %s", c, plural))
 		}
 	}
 	if len(parts) > 3 {
@@ -795,5 +808,26 @@ func inferBsonType(nodeType string) string {
 		return strings.ToLower(nodeType)
 	default:
 		return ""
+	}
+}
+
+// loadBsonNDSL runs mxcli bson dump in NDSL format and returns a CompareLoadMsg.
+// Shared by BrowserView and CompareView to avoid duplicate implementations.
+func loadBsonNDSL(mxcliPath, projectPath, qname, nodeType string, side CompareFocus) tea.Cmd {
+	return func() tea.Msg {
+		bsonType := inferBsonType(nodeType)
+		if bsonType == "" {
+			return CompareLoadMsg{Side: side, Title: qname, NodeType: nodeType,
+				Content: fmt.Sprintf("Error: type %q not supported for BSON dump", nodeType),
+				Err:     fmt.Errorf("unsupported type")}
+		}
+		args := []string{"bson", "dump", "-p", projectPath, "--format", "ndsl",
+			"--type", bsonType, "--object", qname}
+		out, err := runMxcli(mxcliPath, args...)
+		out = StripBanner(out)
+		if err != nil {
+			return CompareLoadMsg{Side: side, Title: qname, NodeType: nodeType, Content: "Error: " + out, Err: err}
+		}
+		return CompareLoadMsg{Side: side, Title: qname, NodeType: nodeType, Content: HighlightNDSL(out)}
 	}
 }

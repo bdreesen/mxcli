@@ -16,15 +16,10 @@ type BrowserView struct {
 	miller        MillerView
 	tab           *Tab
 	allNodes      []*TreeNode
-	compareItems  []PickerItem
 	mxcliPath     string
 	projectPath   string
 	previewEngine *PreviewEngine
 
-	// Overlay state for NDSL/MDL tab switching context
-	overlayQName    string
-	overlayNodeType string
-	overlayIsNDSL   bool
 }
 
 // NewBrowserView creates a BrowserView wrapping the Miller view from the given tab.
@@ -125,10 +120,7 @@ func (bv BrowserView) handleKey(msg tea.KeyMsg) (View, tea.Cmd) {
 		node := bv.miller.SelectedNode()
 		if node != nil && node.QualifiedName != "" {
 			if bsonType := inferBsonType(node.Type); bsonType != "" {
-				bv.overlayQName = node.QualifiedName
-				bv.overlayNodeType = node.Type
-				bv.overlayIsNDSL = true
-				return bv, bv.runBsonOverlay(bsonType, node.QualifiedName)
+				return bv, bv.runBsonOverlay(bsonType, node.QualifiedName, node.Type)
 			}
 		}
 		return bv, nil
@@ -136,20 +128,9 @@ func (bv BrowserView) handleKey(msg tea.KeyMsg) (View, tea.Cmd) {
 	case "m":
 		node := bv.miller.SelectedNode()
 		if node != nil && node.QualifiedName != "" {
-			bv.overlayQName = node.QualifiedName
-			bv.overlayNodeType = node.Type
-			bv.overlayIsNDSL = false
 			return bv, bv.runMDLOverlay(node.Type, node.QualifiedName)
 		}
 		return bv, nil
-
-	case "c":
-		node := bv.miller.SelectedNode()
-		var loadCmd tea.Cmd
-		if node != nil && node.QualifiedName != "" {
-			loadCmd = bv.loadBsonNDSL(node.QualifiedName, node.Type, CompareFocusLeft)
-		}
-		return bv, loadCmd
 
 	case "d":
 		node := bv.miller.SelectedNode()
@@ -163,10 +144,6 @@ func (bv BrowserView) handleKey(msg tea.KeyMsg) (View, tea.Cmd) {
 			raw := stripAnsi(bv.miller.preview.content)
 			_ = writeClipboard(raw)
 		}
-		return bv, nil
-
-	case "r":
-		// Return nil — App handles refresh via Init()
 		return bv, nil
 
 	case "z":
@@ -190,9 +167,21 @@ func (bv BrowserView) handleKey(msg tea.KeyMsg) (View, tea.Cmd) {
 
 // --- Load helpers (moved from app.go) ---
 
-func (bv BrowserView) runBsonOverlay(bsonType, qname string) tea.Cmd {
+func (bv BrowserView) overlayOpts(qname, nodeType string, isNDSL bool) OverlayViewOpts {
+	return OverlayViewOpts{
+		QName:       qname,
+		NodeType:    nodeType,
+		IsNDSL:      isNDSL,
+		Switchable:  true,
+		MxcliPath:   bv.mxcliPath,
+		ProjectPath: bv.projectPath,
+	}
+}
+
+func (bv BrowserView) runBsonOverlay(bsonType, qname, nodeType string) tea.Cmd {
 	mxcliPath := bv.mxcliPath
 	projectPath := bv.projectPath
+	opts := bv.overlayOpts(qname, nodeType, true)
 	return func() tea.Msg {
 		args := []string{"bson", "dump", "-p", projectPath, "--format", "ndsl",
 			"--type", bsonType, "--object", qname}
@@ -200,45 +189,29 @@ func (bv BrowserView) runBsonOverlay(bsonType, qname string) tea.Cmd {
 		out = StripBanner(out)
 		title := fmt.Sprintf("BSON: %s", qname)
 		if err != nil {
-			return OpenOverlayMsg{Title: title, Content: "Error: " + out}
+			return OpenOverlayMsg{Title: title, Content: "Error: " + out, Opts: opts}
 		}
-		return OpenOverlayMsg{Title: title, Content: HighlightNDSL(out)}
+		return OpenOverlayMsg{Title: title, Content: HighlightNDSL(out), Opts: opts}
 	}
 }
 
 func (bv BrowserView) runMDLOverlay(nodeType, qname string) tea.Cmd {
 	mxcliPath := bv.mxcliPath
 	projectPath := bv.projectPath
+	opts := bv.overlayOpts(qname, nodeType, false)
 	return func() tea.Msg {
 		out, err := runMxcli(mxcliPath, "-p", projectPath, "-c", buildDescribeCmd(nodeType, qname))
 		out = StripBanner(out)
 		title := fmt.Sprintf("MDL: %s", qname)
 		if err != nil {
-			return OpenOverlayMsg{Title: title, Content: "Error: " + out}
+			return OpenOverlayMsg{Title: title, Content: "Error: " + out, Opts: opts}
 		}
-		return OpenOverlayMsg{Title: title, Content: DetectAndHighlight(out)}
+		return OpenOverlayMsg{Title: title, Content: DetectAndHighlight(out), Opts: opts}
 	}
 }
 
 func (bv BrowserView) loadBsonNDSL(qname, nodeType string, side CompareFocus) tea.Cmd {
-	mxcliPath := bv.mxcliPath
-	projectPath := bv.projectPath
-	return func() tea.Msg {
-		bsonType := inferBsonType(nodeType)
-		if bsonType == "" {
-			return CompareLoadMsg{Side: side, Title: qname, NodeType: nodeType,
-				Content: fmt.Sprintf("Error: type %q not supported for BSON dump", nodeType),
-				Err:     fmt.Errorf("unsupported type")}
-		}
-		args := []string{"bson", "dump", "-p", projectPath, "--format", "ndsl",
-			"--type", bsonType, "--object", qname}
-		out, err := runMxcli(mxcliPath, args...)
-		out = StripBanner(out)
-		if err != nil {
-			return CompareLoadMsg{Side: side, Title: qname, NodeType: nodeType, Content: "Error: " + out, Err: err}
-		}
-		return CompareLoadMsg{Side: side, Title: qname, NodeType: nodeType, Content: HighlightNDSL(out)}
-	}
+	return loadBsonNDSL(bv.mxcliPath, bv.projectPath, qname, nodeType, side)
 }
 
 // navigateToNode resets the miller view to root and drills down to the node
