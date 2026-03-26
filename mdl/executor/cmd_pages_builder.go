@@ -50,7 +50,7 @@ type pageBuilder struct {
 
 // initPluggableEngine lazily initializes the pluggable widget engine.
 func (pb *pageBuilder) initPluggableEngine() {
-	if pb.pluggableEngine != nil {
+	if pb.pluggableEngine != nil || pb.pluggableEngineErr != nil {
 		return
 	}
 	registry, err := NewWidgetRegistry()
@@ -60,7 +60,9 @@ func (pb *pageBuilder) initPluggableEngine() {
 		return
 	}
 	if pb.reader != nil {
-		_ = registry.LoadUserDefinitions(pb.reader.Path())
+		if loadErr := registry.LoadUserDefinitions(pb.reader.Path()); loadErr != nil {
+			fmt.Fprintf(os.Stderr, "warning: loading user widget definitions: %v\n", loadErr)
+		}
 	}
 	pb.widgetRegistry = registry
 	pb.pluggableEngine = NewPluggableWidgetEngine(NewOperationRegistry(), pb)

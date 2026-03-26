@@ -93,6 +93,12 @@ type xmlSystemProp struct {
 	Key string `xml:"key,attr"`
 }
 
+// Zip extraction limits to prevent zip-bomb attacks.
+const (
+	maxFileSize  = 50 << 20  // 50MB per individual file
+	maxTotalSize = 200 << 20 // 200MB total extracted
+)
+
 // --- Caching ---
 
 var (
@@ -123,9 +129,13 @@ func ParseMPK(mpkPath string) (*WidgetDefinition, error) {
 	var pkg xmlPackage
 	var widgetFilePath string
 	var version string
+	var totalExtracted uint64
 
 	for _, f := range r.File {
 		if f.Name == "package.xml" {
+			if f.UncompressedSize64 > maxFileSize {
+				return nil, fmt.Errorf("package.xml exceeds max file size (%d > %d)", f.UncompressedSize64, maxFileSize)
+			}
 			rc, err := f.Open()
 			if err != nil {
 				return nil, fmt.Errorf("failed to open package.xml: %w", err)
@@ -134,6 +144,10 @@ func ParseMPK(mpkPath string) (*WidgetDefinition, error) {
 			rc.Close()
 			if err != nil {
 				return nil, fmt.Errorf("failed to read package.xml: %w", err)
+			}
+			totalExtracted += uint64(len(data))
+			if totalExtracted > maxTotalSize {
+				return nil, fmt.Errorf("total extracted size exceeds limit (%d > %d)", totalExtracted, maxTotalSize)
 			}
 			if err := xml.Unmarshal(data, &pkg); err != nil {
 				return nil, fmt.Errorf("failed to parse package.xml: %w", err)
@@ -153,6 +167,9 @@ func ParseMPK(mpkPath string) (*WidgetDefinition, error) {
 	// Parse widget XML
 	for _, f := range r.File {
 		if f.Name == widgetFilePath {
+			if f.UncompressedSize64 > maxFileSize {
+				return nil, fmt.Errorf("%s exceeds max file size (%d > %d)", widgetFilePath, f.UncompressedSize64, maxFileSize)
+			}
 			rc, err := f.Open()
 			if err != nil {
 				return nil, fmt.Errorf("failed to open %s: %w", widgetFilePath, err)
@@ -161,6 +178,10 @@ func ParseMPK(mpkPath string) (*WidgetDefinition, error) {
 			rc.Close()
 			if err != nil {
 				return nil, fmt.Errorf("failed to read %s: %w", widgetFilePath, err)
+			}
+			totalExtracted += uint64(len(data))
+			if totalExtracted > maxTotalSize {
+				return nil, fmt.Errorf("total extracted size exceeds limit (%d > %d)", totalExtracted, maxTotalSize)
 			}
 
 			var widget xmlWidget
@@ -314,8 +335,12 @@ func getWidgetIDFromMPK(mpkPath string) (string, error) {
 
 	// Find package.xml to get widget file path
 	var widgetFilePath string
+	var totalExtracted uint64
 	for _, f := range r.File {
 		if f.Name == "package.xml" {
+			if f.UncompressedSize64 > maxFileSize {
+				return "", fmt.Errorf("package.xml exceeds max file size (%d > %d)", f.UncompressedSize64, maxFileSize)
+			}
 			rc, err := f.Open()
 			if err != nil {
 				return "", err
@@ -324,6 +349,10 @@ func getWidgetIDFromMPK(mpkPath string) (string, error) {
 			rc.Close()
 			if err != nil {
 				return "", err
+			}
+			totalExtracted += uint64(len(data))
+			if totalExtracted > maxTotalSize {
+				return "", fmt.Errorf("total extracted size exceeds limit (%d > %d)", totalExtracted, maxTotalSize)
 			}
 			var pkg xmlPackage
 			if err := xml.Unmarshal(data, &pkg); err != nil {
@@ -343,6 +372,9 @@ func getWidgetIDFromMPK(mpkPath string) (string, error) {
 	// Read widget XML to get the id attribute
 	for _, f := range r.File {
 		if f.Name == widgetFilePath {
+			if f.UncompressedSize64 > maxFileSize {
+				return "", fmt.Errorf("%s exceeds max file size (%d > %d)", widgetFilePath, f.UncompressedSize64, maxFileSize)
+			}
 			rc, err := f.Open()
 			if err != nil {
 				return "", err
@@ -351,6 +383,10 @@ func getWidgetIDFromMPK(mpkPath string) (string, error) {
 			rc.Close()
 			if err != nil {
 				return "", err
+			}
+			totalExtracted += uint64(len(data))
+			if totalExtracted > maxTotalSize {
+				return "", fmt.Errorf("total extracted size exceeds limit (%d > %d)", totalExtracted, maxTotalSize)
 			}
 
 			// Quick XML parse to just get the id attribute

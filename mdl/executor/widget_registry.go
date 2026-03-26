@@ -45,6 +45,10 @@ func NewWidgetRegistry() (*WidgetRegistry, error) {
 			return nil, fmt.Errorf("parse definition %s: %w", entry.Name(), err)
 		}
 
+		if err := validateDefinitionOperations(&def, entry.Name()); err != nil {
+			return nil, err
+		}
+
 		reg.byMDLName[strings.ToUpper(def.MDLName)] = &def
 		reg.byWidgetID[def.WidgetID] = &def
 	}
@@ -136,8 +140,49 @@ func (r *WidgetRegistry) loadDefinitionsFromDir(dir string) error {
 			return fmt.Errorf("invalid definition %s: widgetId and mdlName are required", entry.Name())
 		}
 
+		if err := validateDefinitionOperations(&def, entry.Name()); err != nil {
+			return err
+		}
+
 		r.byMDLName[strings.ToUpper(def.MDLName)] = &def
 		r.byWidgetID[def.WidgetID] = &def
+	}
+	return nil
+}
+
+// validOperations is the set of recognized operation names for property and child-slot mappings.
+var validOperations = map[string]bool{
+	"attribute":   true,
+	"association": true,
+	"primitive":   true,
+	"selection":   true,
+	"datasource":  true,
+	"widgets":     true,
+}
+
+// validateDefinitionOperations checks that all operation names in a definition are recognized.
+func validateDefinitionOperations(def *WidgetDefinition, source string) error {
+	for _, m := range def.PropertyMappings {
+		if !validOperations[m.Operation] {
+			return fmt.Errorf("%s: unknown operation %q in propertyMappings for key %q", source, m.Operation, m.PropertyKey)
+		}
+	}
+	for _, s := range def.ChildSlots {
+		if !validOperations[s.Operation] {
+			return fmt.Errorf("%s: unknown operation %q in childSlots for key %q", source, s.Operation, s.PropertyKey)
+		}
+	}
+	for _, mode := range def.Modes {
+		for _, m := range mode.PropertyMappings {
+			if !validOperations[m.Operation] {
+				return fmt.Errorf("%s: unknown operation %q in mode %q propertyMappings for key %q", source, m.Operation, mode.Name, m.PropertyKey)
+			}
+		}
+		for _, s := range mode.ChildSlots {
+			if !validOperations[s.Operation] {
+				return fmt.Errorf("%s: unknown operation %q in mode %q childSlots for key %q", source, s.Operation, mode.Name, s.PropertyKey)
+			}
+		}
 	}
 	return nil
 }

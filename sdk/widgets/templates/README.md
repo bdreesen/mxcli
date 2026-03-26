@@ -54,9 +54,14 @@ When extracting templates, **always use widgets that have been created or "fixed
 
 2. **If updating an existing template** - If Studio Pro shows "widget definition has changed", right-click and select "Update widget" to let Studio Pro fix it
 
-3. **Extract using mxcli** (planned feature):
+3. **Extract using mxcli**:
 ```bash
-mxcli extract-templates -p /path/to/project.mpr -o sdk/widgets/templates/mendix-11.6/
+# Extract BSON template + skeleton .def.json from .mpk widget package
+mxcli widget extract --mpk path/to/widget.mpk
+
+# Generates:
+#   .mxcli/widgets/<widget-name>.json      (template with type + object)
+#   .mxcli/widgets/<widget-name>.def.json  (skeleton definition)
 ```
 
 4. **Manual extraction** (current method):
@@ -85,13 +90,15 @@ Templates are automatically used when creating pluggable widgets via MDL:
 COMBOBOX myCombo ATTRIBUTE Country;
 ```
 
-### Priority Chain
+### Priority Chain (3-Tier Widget Registry)
 
-When creating a pluggable widget, mxcli uses this priority:
+When creating a pluggable widget, mxcli resolves definitions and templates using a 3-tier registry:
 
-1. **Embedded template** (from this directory) - Ensures consistent results across all projects
-2. **Clone from project** - Falls back to extracting from an existing widget in the target project
-3. **Minimal fallback** - Creates a minimal widget definition (may show warnings in Studio Pro)
+1. **Embedded** (`sdk/widgets/definitions/*.def.json` + `sdk/widgets/templates/`) — Built-in definitions, compiled into the binary
+2. **Global** (`~/.mxcli/widgets/*.def.json` + `*.json`) — User-defined global overrides
+3. **Project** (`<project>/.mxcli/widgets/*.def.json` + `*.json`) — Per-project overrides (highest priority)
+
+Each `.def.json` declares property mappings and child slots; the engine applies them to the BSON template at build time. See `docs/plans/2026-03-25-pluggable-widget-engine-design.md` for the full architecture.
 
 ### Why Templates Are Needed
 

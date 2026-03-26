@@ -14,6 +14,9 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
+// defaultSlotContainer is the MDLContainer name that receives default (non-containerized) child widgets.
+const defaultSlotContainer = "TEMPLATE"
+
 // =============================================================================
 // Pluggable Widget Engine — Core Types and Operation Registry
 // =============================================================================
@@ -297,8 +300,10 @@ func (e *PluggableWidgetEngine) selectMappings(def *WidgetDefinition, w *ast.Wid
 	for i := range def.Modes {
 		mode := &def.Modes[i]
 		if mode.Condition == "" {
-			// No condition = default fallback (use last one if multiple)
-			fallback = mode
+			// No condition = default fallback (use first one if multiple)
+			if fallback == nil {
+				fallback = mode
+			}
 			continue
 		}
 		if e.evaluateCondition(mode.Condition, w) {
@@ -447,7 +452,7 @@ func (e *PluggableWidgetEngine) applyChildSlots(slots []ChildSlotMapping, w *ast
 	for _, slot := range slots {
 		childBSONs := slotWidgets[slot.PropertyKey]
 		// If no explicit container children, use default widgets for the first slot
-		if len(childBSONs) == 0 && len(defaultWidgets) > 0 && slot.MDLContainer == "TEMPLATE" {
+		if len(childBSONs) == 0 && len(defaultWidgets) > 0 && slot.MDLContainer == defaultSlotContainer {
 			childBSONs = defaultWidgets
 			defaultWidgets = nil // consume once
 		}

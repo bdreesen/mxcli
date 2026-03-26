@@ -1,7 +1,7 @@
 # Pluggable Widget Engine: 声明式 Widget 构建系统
 
 **Date**: 2026-03-25
-**Status**: Design (research only)
+**Status**: Implemented
 
 ## Problem
 
@@ -56,18 +56,9 @@
   "templateFile": "combobox.json",
   "defaultEditable": "Always",
 
-  "modes": {
-    "default": {
-      "description": "Enumeration mode",
-      "propertyMappings": [
-        {
-          "propertyKey": "attributeEnumeration",
-          "source": "Attribute",
-          "operation": "attribute"
-        }
-      ]
-    },
-    "association": {
+  "modes": [
+    {
+      "name": "association",
       "condition": "hasDataSource",
       "description": "Association mode with DataSource",
       "propertyMappings": [
@@ -77,14 +68,14 @@
           "operation": "primitive"
         },
         {
-          "propertyKey": "attributeAssociation",
-          "source": "Attribute",
-          "operation": "association"
-        },
-        {
           "propertyKey": "optionsSourceAssociationDataSource",
           "source": "DataSource",
           "operation": "datasource"
+        },
+        {
+          "propertyKey": "attributeAssociation",
+          "source": "Attribute",
+          "operation": "association"
         },
         {
           "propertyKey": "optionsSourceAssociationCaptionAttribute",
@@ -92,8 +83,19 @@
           "operation": "attribute"
         }
       ]
+    },
+    {
+      "name": "default",
+      "description": "Enumeration mode",
+      "propertyMappings": [
+        {
+          "propertyKey": "attributeEnumeration",
+          "source": "Attribute",
+          "operation": "attribute"
+        }
+      ]
     }
-  }
+  ]
 }
 ```
 
@@ -105,33 +107,26 @@ Gallery (with child slots):
   "mdlName": "GALLERY",
   "templateFile": "gallery.json",
   "defaultEditable": "Always",
-  "defaultSelection": "Single",
 
   "propertyMappings": [
-    {
-      "propertyKey": "datasource",
-      "source": "DataSource",
-      "operation": "datasource"
-    },
-    {
-      "propertyKey": "itemSelection",
-      "source": "Selection",
-      "operation": "primitive",
-      "default": "Single"
-    }
+    {"propertyKey": "advanced", "value": "false", "operation": "primitive"},
+    {"propertyKey": "datasource", "source": "DataSource", "operation": "datasource"},
+    {"propertyKey": "itemSelection", "source": "Selection", "operation": "selection"},
+    {"propertyKey": "itemSelectionMode", "value": "clear", "operation": "primitive"},
+    {"propertyKey": "desktopItems", "value": "1", "operation": "primitive"},
+    {"propertyKey": "tabletItems", "value": "1", "operation": "primitive"},
+    {"propertyKey": "phoneItems", "value": "1", "operation": "primitive"},
+    {"propertyKey": "pageSize", "value": "20", "operation": "primitive"},
+    {"propertyKey": "pagination", "value": "buttons", "operation": "primitive"},
+    {"propertyKey": "pagingPosition", "value": "below", "operation": "primitive"},
+    {"propertyKey": "showEmptyPlaceholder", "value": "none", "operation": "primitive"},
+    {"propertyKey": "onClickTrigger", "value": "single", "operation": "primitive"}
   ],
 
   "childSlots": [
-    {
-      "propertyKey": "content",
-      "mdlContainer": "TEMPLATE",
-      "operation": "widgets"
-    },
-    {
-      "propertyKey": "filtersPlaceholder",
-      "mdlContainer": "FILTER",
-      "operation": "widgets"
-    }
+    {"propertyKey": "content", "mdlContainer": "TEMPLATE", "operation": "widgets"},
+    {"propertyKey": "emptyPlaceholder", "mdlContainer": "EMPTYPLACEHOLDER", "operation": "widgets"},
+    {"propertyKey": "filtersPlaceholder", "mdlContainer": "FILTERSPLACEHOLDER", "operation": "widgets"}
   ]
 }
 ```
@@ -192,6 +187,19 @@ type ChildSlotMapping struct {
 }
 ```
 
+### Critical: Property Mapping Order Dependency
+
+**The engine processes `propertyMappings` in array order.** Some operations depend on side effects of earlier ones:
+
+- `datasource` sets `pageBuilder.entityContext` as a side effect
+- `association` reads `pageBuilder.entityContext` to resolve the target entity
+
+Therefore, in any mode that uses both, **`datasource` must come before `association`** in the mappings array. Getting this wrong produces silently incorrect BSON (wrong entity reference).
+
+### Operation Validation
+
+Operation names in `.def.json` files are validated at load time against the 6 known operations: `attribute`, `association`, `primitive`, `selection`, `datasource`, `widgets`. Invalid operation names produce an error when `NewWidgetRegistry()` or `LoadUserDefinitions()` runs, rather than failing silently at build time.
+
 ### Mode Selection Conditions
 
 Built-in conditions (extensible):
@@ -201,7 +209,7 @@ Built-in conditions (extensible):
 | `hasDataSource` | `w.GetDataSource() != nil` |
 | `hasAttribute` | `w.GetAttribute() != ""` |
 | `hasProp:X` | `w.GetStringProp("X") != ""` |
-| (none) | `"default"` mode always selected |
+| (none) | Fallback — first no-condition mode wins if multiple exist |
 
 ### Engine Flow
 
@@ -317,3 +325,6 @@ mxcli widget extract --mpk path/to/widget.mpk
 | Template version drift | Existing `augment.go` handles .mpk sync, works unchanged |
 | Performance regression | Template loading is already cached; engine adds minimal overhead |
 | User-provided templates may be invalid | Validate on load: check type+object sections exist, PropertyKey coverage |
+| MPK zip-bomb attack | `ParseMPK` enforces per-file (50MB) and total (200MB) extraction limits |
+| Invalid operation names in .def.json | Validated at load time, not build time — immediate feedback |
+| Engine init failure retried on every widget | Init error cached; subsequent widgets skip immediately |

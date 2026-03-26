@@ -29,7 +29,7 @@ func TestWidgetDefinitionJSONRoundTrip(t *testing.T) {
 		Modes: []WidgetMode{
 			{
 				Name:        "association",
-				Condition:   "DataSource != nil",
+				Condition:   "hasDataSource",
 				Description: "Association-based ComboBox with datasource",
 				PropertyMappings: []PropertyMapping{
 					{PropertyKey: "attributeAssociation", Source: "Attribute", Operation: "association"},
@@ -87,8 +87,8 @@ func TestWidgetDefinitionJSONRoundTrip(t *testing.T) {
 	if assocMode.Name != "association" {
 		t.Errorf("Mode name: got %q, want %q", assocMode.Name, "association")
 	}
-	if assocMode.Condition != "DataSource != nil" {
-		t.Errorf("Mode condition: got %q, want %q", assocMode.Condition, "DataSource != nil")
+	if assocMode.Condition != "hasDataSource" {
+		t.Errorf("Mode condition: got %q, want %q", assocMode.Condition, "hasDataSource")
 	}
 	if len(assocMode.PropertyMappings) != 2 {
 		t.Errorf("Mode PropertyMappings count: got %d, want 2", len(assocMode.PropertyMappings))

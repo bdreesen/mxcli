@@ -239,8 +239,8 @@ func TestRegistryGalleryChildSlots(t *testing.T) {
 		t.Fatal("GALLERY not found")
 	}
 
-	if len(def.ChildSlots) != 2 {
-		t.Fatalf("childSlots count = %d, want 2", len(def.ChildSlots))
+	if len(def.ChildSlots) != 3 {
+		t.Fatalf("childSlots count = %d, want 3", len(def.ChildSlots))
 	}
 
 	// Verify slot mappings
@@ -257,11 +257,19 @@ func TestRegistryGalleryChildSlots(t *testing.T) {
 		t.Errorf("TEMPLATE slot propertyKey = %q, want content", contentSlot.PropertyKey)
 	}
 
-	filterSlot, ok := slotsByContainer["FILTER"]
+	emptySlot, ok := slotsByContainer["EMPTYPLACEHOLDER"]
 	if !ok {
-		t.Fatal("FILTER slot not found")
+		t.Fatal("EMPTYPLACEHOLDER slot not found")
+	}
+	if emptySlot.PropertyKey != "emptyPlaceholder" {
+		t.Errorf("EMPTYPLACEHOLDER slot propertyKey = %q, want emptyPlaceholder", emptySlot.PropertyKey)
+	}
+
+	filterSlot, ok := slotsByContainer["FILTERSPLACEHOLDER"]
+	if !ok {
+		t.Fatal("FILTERSPLACEHOLDER slot not found")
 	}
 	if filterSlot.PropertyKey != "filtersPlaceholder" {
-		t.Errorf("FILTER slot propertyKey = %q, want filtersPlaceholder", filterSlot.PropertyKey)
+		t.Errorf("FILTERSPLACEHOLDER slot propertyKey = %q, want filtersPlaceholder", filterSlot.PropertyKey)
 	}
 }

@@ -10,8 +10,8 @@
       "description": "Association mode",
       "propertyMappings": [
         {"propertyKey": "optionsSourceType", "value": "association", "operation": "primitive"},
-        {"propertyKey": "attributeAssociation", "source": "Attribute", "operation": "association"},
         {"propertyKey": "optionsSourceAssociationDataSource", "source": "DataSource", "operation": "datasource"},
+        {"propertyKey": "attributeAssociation", "source": "Attribute", "operation": "association"},
         {"propertyKey": "optionsSourceAssociationCaptionAttribute", "source": "CaptionAttribute", "operation": "attribute"}
       ]
     },
