@@ -540,6 +540,12 @@ func (s *BaseMDLParserListener) EnterImageCollectionItem(ctx *ImageCollectionIte
 // ExitImageCollectionItem is called when production imageCollectionItem is exited.
 func (s *BaseMDLParserListener) ExitImageCollectionItem(ctx *ImageCollectionItemContext) {}
 
+// EnterImageName is called when production imageName is entered.
+func (s *BaseMDLParserListener) EnterImageName(ctx *ImageNameContext) {}
+
+// ExitImageName is called when production imageName is exited.
+func (s *BaseMDLParserListener) ExitImageName(ctx *ImageNameContext) {}
+
 // EnterCreateValidationRuleStatement is called when production createValidationRuleStatement is entered.
 func (s *BaseMDLParserListener) EnterCreateValidationRuleStatement(ctx *CreateValidationRuleStatementContext) {
 }

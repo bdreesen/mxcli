@@ -303,7 +303,7 @@ Image Collections:
   CREATE IMAGE COLLECTION Module.Name
     [EXPORT LEVEL 'Hidden'|'Public']
     [COMMENT 'description']
-    [(IMAGE 'name' FROM FILE 'path', ...)];
+    [(IMAGE Name FROM FILE 'path', ...)];
   /
 
   DROP IMAGE COLLECTION Module.Name;

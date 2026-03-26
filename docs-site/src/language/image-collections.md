@@ -24,7 +24,7 @@ CREATE IMAGE COLLECTION <Module>.<Name>
   [EXPORT LEVEL 'Hidden'|'Public']
   [COMMENT '<description>']
   [(
-    IMAGE '<name>' FROM FILE '<path>',
+    IMAGE <Name> FROM FILE '<path>',
     ...
   )];
 ```
@@ -33,7 +33,7 @@ CREATE IMAGE COLLECTION <Module>.<Name>
 |--------|-------------|---------|
 | `EXPORT LEVEL` | `'Hidden'` (internal to module) or `'Public'` (accessible from other modules) | `'Hidden'` |
 | `COMMENT` | Documentation for the collection | (none) |
-| `IMAGE ... FROM FILE` | Load an image from the filesystem into the collection | (none) |
+| `IMAGE Name FROM FILE` | Load an image from the filesystem into the collection | (none) |
 
 The image format is detected automatically from the file extension. Relative paths are resolved from the current working directory. Supported formats: PNG, SVG, GIF, JPEG, BMP, WebP.
 
@@ -52,16 +52,16 @@ CREATE IMAGE COLLECTION MyModule.StatusIcons
 
 -- With images from files
 CREATE IMAGE COLLECTION MyModule.NavigationIcons (
-  IMAGE 'home' FROM FILE 'assets/home.png',
-  IMAGE 'settings' FROM FILE 'assets/settings.svg'
+  IMAGE home FROM FILE 'assets/home.png',
+  IMAGE settings FROM FILE 'assets/settings.svg'
 );
 
 -- All options combined
 CREATE IMAGE COLLECTION MyModule.BrandAssets
   EXPORT LEVEL 'Public'
   COMMENT 'Company branding assets' (
-  IMAGE 'logo-dark' FROM FILE 'assets/logo-dark.png',
-  IMAGE 'logo-light' FROM FILE 'assets/logo-light.png'
+  IMAGE logo_dark FROM FILE 'assets/logo-dark.png',
+  IMAGE logo_light FROM FILE 'assets/logo-light.png'
 );
 ```
 

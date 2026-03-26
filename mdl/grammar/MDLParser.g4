@@ -792,7 +792,13 @@ imageCollectionBody
     ;
 
 imageCollectionItem
-    : IMAGE name=STRING_LITERAL FROM FILE_KW path=STRING_LITERAL   // IMAGE 'name' FROM FILE '/path/to/file.png'
+    : IMAGE imageName FROM FILE_KW path=STRING_LITERAL   // IMAGE MyIcon FROM FILE '/path/to/file.png'
+    ;
+
+imageName
+    : IDENTIFIER
+    | QUOTED_IDENTIFIER
+    | commonNameKeyword
     ;
 
 // =============================================================================

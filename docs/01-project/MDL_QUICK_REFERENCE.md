@@ -309,7 +309,7 @@ CREATE OR REPLACE NAVIGATION Responsive
 |-----------|--------|-------|
 | Show collections | `SHOW IMAGE COLLECTION [IN Module];` | List all or filter by module |
 | Describe collection | `DESCRIBE IMAGE COLLECTION Module.Name;` | Full MDL output with embedded images |
-| Create collection | `CREATE IMAGE COLLECTION Module.Name [EXPORT LEVEL 'Hidden'\|'Public'] [COMMENT 'text'] [(IMAGE 'name' FROM FILE 'path', ...)];` | With or without images |
+| Create collection | `CREATE IMAGE COLLECTION Module.Name [EXPORT LEVEL 'Hidden'\|'Public'] [COMMENT 'text'] [(IMAGE Name FROM FILE 'path', ...)];` | With or without images |
 | Drop collection | `DROP IMAGE COLLECTION Module.Name;` | Removes collection and all embedded images |
 
 **Export levels:** `'Hidden'` (default, internal to module), `'Public'` (accessible from other modules).

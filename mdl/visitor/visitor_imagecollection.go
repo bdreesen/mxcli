@@ -34,8 +34,13 @@ func (b *Builder) ExitCreateImageCollectionStatement(ctx *parser.CreateImageColl
 		bodyCtx := body.(*parser.ImageCollectionBodyContext)
 		for _, item := range bodyCtx.AllImageCollectionItem() {
 			itemCtx := item.(*parser.ImageCollectionItemContext)
+			name := itemCtx.ImageName().GetText()
+			// Strip quotes from quoted identifiers ("Name" or `Name`)
+			if len(name) >= 2 && (name[0] == '"' || name[0] == '`') {
+				name = name[1 : len(name)-1]
+			}
 			stmt.Images = append(stmt.Images, ast.ImageItem{
-				Name:     unquoteString(itemCtx.GetName().GetText()),
+				Name:     name,
 				FilePath: unquoteString(itemCtx.GetPath().GetText()),
 			})
 		}

@@ -151,7 +151,7 @@ func (e *Executor) describeImageCollection(name ast.QualifiedName) error {
 		if i == len(ic.Images)-1 {
 			comma = ""
 		}
-		fmt.Fprintf(e.output, "    IMAGE '%s' FROM FILE '%s'%s\n", img.Name, filePath, comma)
+		fmt.Fprintf(e.output, "    IMAGE %s FROM FILE '%s'%s\n", img.Name, filePath, comma)
 	}
 
 	fmt.Fprintln(e.output, ");")
