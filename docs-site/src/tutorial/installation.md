@@ -1,6 +1,28 @@
 # Installation
 
-Pick whichever method suits your situation. If you're planning to use mxcli with an AI coding assistant, skip ahead to the [Dev Container](#dev-container-recommended) section -- it's the smoothest experience.
+Pick whichever method suits your situation. If you just want to try mxcli without installing anything, start with the [Playground](#playground-zero-install). If you're planning to use mxcli on your own project with an AI coding assistant, skip to the [Dev Container](#dev-container-recommended) section.
+
+## Playground (zero install)
+
+The fastest way to try mxcli. The [mxcli Playground](https://github.com/mendixlabs/mxcli-playground) is a GitHub repository with a pre-configured Mendix project, example scripts, and tutorials. Open it in a Codespace and start using mxcli immediately -- nothing to install on your machine.
+
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/mendixlabs/mxcli-playground)
+
+The Codespace comes with mxcli, a JDK, Docker-in-Docker, Claude Code, and a sample Mendix 11.x project ready to explore and modify. It includes:
+
+- **5 example scripts** -- explore, create entities, microflows, pages, and security
+- **Step-by-step tutorials** -- from first steps through linting and testing
+- **AI tool configs** -- pre-configured for Claude Code, Cursor, Windsurf, Continue.dev, and Aider
+
+Once the Codespace is running:
+
+```bash
+./mxcli -p App.mpr -c "SHOW STRUCTURE"          # Explore the project
+./mxcli exec scripts/01-explore.mdl -p App.mpr   # Run an example script
+./mxcli                                           # Start interactive REPL
+```
+
+When you're ready to work on your own Mendix project, use one of the installation methods below.
 
 ## Binary download
 

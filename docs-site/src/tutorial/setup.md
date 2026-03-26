@@ -10,11 +10,12 @@ This chapter walks you through all three.
 
 ## Installation methods
 
-There are three ways to get mxcli running:
+There are four ways to get started with mxcli:
 
-- **Binary download** -- grab a pre-built binary from GitHub Releases. Quickest path if you just want to try it out.
+- **[Playground](installation.md#playground-zero-install)** -- open the [mxcli Playground](https://github.com/mendixlabs/mxcli-playground) in a GitHub Codespace. Zero install, runs in your browser with a sample Mendix project, tutorials, and example scripts. Best way to try mxcli for the first time.
+- **Binary download** -- grab a pre-built binary from GitHub Releases. Quickest path if you want to use mxcli on your own project.
 - **Build from source** -- clone the repo and run `make build`. Useful if you want the latest unreleased changes or plan to contribute.
-- **Dev Container** (recommended) -- run `mxcli init` on your Mendix project, open it in VS Code, and reopen in the container. This gives you mxcli, a JDK, Docker-in-Docker, and Claude Code all pre-configured in a sandboxed environment. This is the recommended approach, especially when pairing with AI coding assistants.
+- **Dev Container** (recommended for your own projects) -- run `mxcli init` on your Mendix project, open it in VS Code, and reopen in the container. This gives you mxcli, a JDK, Docker-in-Docker, and Claude Code all pre-configured in a sandboxed environment. This is the recommended approach, especially when pairing with AI coding assistants.
 
 The next few pages cover each method, then walk you through opening a project and using the REPL.
 
