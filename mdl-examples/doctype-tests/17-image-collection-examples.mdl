@@ -73,8 +73,8 @@ CREATE IMAGE COLLECTION ImgTest.BrandAssets
  * Supported formats: PNG, SVG, GIF, JPEG, BMP, WebP
  */
 CREATE IMAGE COLLECTION ImgTest.NavigationIcons (
-  IMAGE 'cli-screenshot' FROM FILE '../../docs/images/mxcli-cli.png',
-  IMAGE 'repl-screenshot' FROM FILE '../../docs/images/mxcli-repl.png'
+  IMAGE 'cli_screenshot' FROM FILE '../../docs/images/mxcli-cli.png',
+  IMAGE 'repl_screenshot' FROM FILE '../../docs/images/mxcli-repl.png'
 );
 /
 
@@ -84,7 +84,7 @@ CREATE IMAGE COLLECTION ImgTest.NavigationIcons (
 CREATE IMAGE COLLECTION ImgTest.AppLogos
   EXPORT LEVEL 'Public'
   COMMENT 'Application logos for branding' (
-  IMAGE 'vscode-ext' FROM FILE '../../docs/images/mxcli-vscode-ext.png',
+  IMAGE 'vscode_ext' FROM FILE '../../docs/images/mxcli-vscode-ext.png',
   IMAGE 'catalog' FROM FILE '../../docs/images/mxcli-catalog.png'
 );
 /
