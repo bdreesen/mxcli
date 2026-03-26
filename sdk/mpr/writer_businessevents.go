@@ -154,10 +154,17 @@ func serializeBusinessEventAttribute(attr *model.BusinessEventAttribute) bson.M 
 	}
 
 	// Convert attribute type to BSON format: "Long" → {"$Type": "DomainModels$LongAttributeType", "$ID": ...}
-	attrDoc["AttributeType"] = bson.M{
+	attrTypeDoc := bson.M{
 		"$Type": attributeTypeToBsonType(attr.AttributeType),
 		"$ID":   idToBsonBinary(generateUUID()),
 	}
+	// Date and DateTime both use DateTimeAttributeType; distinguish via LocalizeDate
+	if attr.AttributeType == "DateTime" {
+		attrTypeDoc["LocalizeDate"] = true
+	} else if attr.AttributeType == "Date" {
+		attrTypeDoc["LocalizeDate"] = false
+	}
+	attrDoc["AttributeType"] = attrTypeDoc
 
 	return attrDoc
 }

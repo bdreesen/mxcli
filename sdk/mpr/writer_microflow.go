@@ -254,9 +254,10 @@ func serializeMicroflowDataType(dt microflows.DataType) bson.D {
 			{Key: "$Type", Value: "DataTypes$IntegerType"},
 		}
 	case *microflows.LongType:
+		// Mendix uses IntegerType for 64-bit integers (Long in Java)
 		return bson.D{
 			{Key: "$ID", Value: idToBsonBinary(generateUUID())},
-			{Key: "$Type", Value: "DataTypes$LongType"},
+			{Key: "$Type", Value: "DataTypes$IntegerType"},
 		}
 	case *microflows.DecimalType:
 		return bson.D{

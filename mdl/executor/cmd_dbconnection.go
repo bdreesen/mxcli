@@ -326,7 +326,7 @@ func astDataTypeToDBType(dt ast.DataType) string {
 	case ast.TypeInteger:
 		return "DataTypes$IntegerType"
 	case ast.TypeLong:
-		return "DataTypes$LongType"
+		return "DataTypes$IntegerType" // Long maps to IntegerType in DataTypes
 	case ast.TypeDecimal:
 		return "DataTypes$DecimalType"
 	case ast.TypeBoolean:

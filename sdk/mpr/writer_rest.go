@@ -269,7 +269,7 @@ func serializeRestDataType(typeName string) bson.M {
 	case "Integer":
 		bsonType = "DataTypes$IntegerType"
 	case "Long":
-		bsonType = "DataTypes$LongType"
+		bsonType = "DataTypes$IntegerType" // Long maps to IntegerType in DataTypes
 	case "Decimal":
 		bsonType = "DataTypes$DecimalType"
 	case "Boolean":

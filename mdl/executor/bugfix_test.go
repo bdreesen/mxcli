@@ -258,13 +258,13 @@ func TestExpressionToXPath_TokenQuoting(t *testing.T) {
 			name:     "Token_CurrentDateTime",
 			expr:     &ast.TokenExpr{Token: "CurrentDateTime"},
 			wantExpr: "[%CurrentDateTime%]",
-			wantXP:   "[%CurrentDateTime%]",
+			wantXP:   "'[%CurrentDateTime%]'",
 		},
 		{
 			name:     "Token_CurrentUser",
 			expr:     &ast.TokenExpr{Token: "CurrentUser"},
 			wantExpr: "[%CurrentUser%]",
-			wantXP:   "[%CurrentUser%]",
+			wantXP:   "'[%CurrentUser%]'",
 		},
 		{
 			name: "BinaryExpr_with_token",
@@ -274,7 +274,7 @@ func TestExpressionToXPath_TokenQuoting(t *testing.T) {
 				Right:    &ast.TokenExpr{Token: "CurrentDateTime"},
 			},
 			wantExpr: "DueDate < [%CurrentDateTime%]",
-			wantXP:   "DueDate < [%CurrentDateTime%]",
+			wantXP:   "DueDate < '[%CurrentDateTime%]'",
 		},
 		{
 			name:     "Variable_unchanged",
@@ -358,7 +358,7 @@ func TestExpressionToXPath_XPathPathExpr(t *testing.T) {
 				Operator: "=",
 				Right:    &ast.TokenExpr{Token: "CurrentUser"},
 			},
-			wantXP: "System.owner = [%CurrentUser%]",
+			wantXP: "System.owner = '[%CurrentUser%]'",
 		},
 		{
 			name: "not_with_path",

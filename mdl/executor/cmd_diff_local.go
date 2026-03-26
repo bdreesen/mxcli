@@ -374,7 +374,8 @@ func (e *Executor) attributeBsonToMDL(raw map[string]any) string {
 		case strings.Contains(attrType, "BooleanAttributeType"):
 			typeStr = "Boolean"
 		case strings.Contains(attrType, "DateTimeAttributeType"):
-			if localize, ok := raw["LocalizeDate"].(bool); ok && localize {
+			localize, ok := raw["LocalizeDate"].(bool)
+			if !ok || localize {
 				typeStr = "DateTime"
 			} else {
 				typeStr = "Date"
@@ -408,7 +409,8 @@ func (e *Executor) attributeBsonToMDL(raw map[string]any) string {
 			case strings.Contains(typeType, "BooleanAttributeType"):
 				typeStr = "Boolean"
 			case strings.Contains(typeType, "DateTimeAttributeType"):
-				if localize, ok := typeObj["LocalizeDate"].(bool); ok && localize {
+				localize, ok := typeObj["LocalizeDate"].(bool)
+				if !ok || localize {
 					typeStr = "DateTime"
 				} else {
 					typeStr = "Date"

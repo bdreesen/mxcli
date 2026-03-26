@@ -140,8 +140,8 @@ func expressionToString(expr ast.Expression) string {
 }
 
 // expressionToXPath converts an AST Expression to an XPath constraint string.
-// Mendix tokens like [%CurrentDateTime%] are written unquoted — they are
-// special XPath placeholders, not string literals.
+// Unlike expressionToString (for Mendix expressions), XPath requires Mendix
+// tokens like [%CurrentDateTime%] to be quoted: '[%CurrentDateTime%]'.
 func expressionToXPath(expr ast.Expression) string {
 	if expr == nil {
 		return ""
@@ -152,7 +152,7 @@ func expressionToXPath(expr ast.Expression) string {
 
 	switch e := expr.(type) {
 	case *ast.TokenExpr:
-		return "[%" + e.Token + "%]"
+		return "'[%" + e.Token + "%]'"
 	case *ast.BinaryExpr:
 		left := expressionToXPath(e.Left)
 		right := expressionToXPath(e.Right)
