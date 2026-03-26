@@ -155,19 +155,23 @@ func (r *WidgetRegistry) loadDefinitionsFromDir(dir string) error {
 			return err
 		}
 
-		r.byMDLName[strings.ToUpper(def.MDLName)] = &def
+		upperName := strings.ToUpper(def.MDLName)
+		if existing, ok := r.byMDLName[upperName]; ok {
+			log.Printf("info: user definition %q overrides built-in %s (widgetId: %s → %s)",
+				entry.Name(), def.MDLName, existing.WidgetID, def.WidgetID)
+		}
+		r.byMDLName[upperName] = &def
 		r.byWidgetID[def.WidgetID] = &def
 	}
 	return nil
 }
 
 // validateDefinitionOperations checks that all operation names in a definition
-// are recognized by the given OperationRegistry.
+// are recognized by the given OperationRegistry, and validates source/operation
+// compatibility and mapping order dependencies.
 func validateDefinitionOperations(def *WidgetDefinition, source string, opReg *OperationRegistry) error {
-	for _, m := range def.PropertyMappings {
-		if !opReg.Has(m.Operation) {
-			return fmt.Errorf("%s: unknown operation %q in propertyMappings for key %q", source, m.Operation, m.PropertyKey)
-		}
+	if err := validateMappings(def.PropertyMappings, source, "", opReg); err != nil {
+		return err
 	}
 	for _, s := range def.ChildSlots {
 		if !opReg.Has(s.Operation) {
@@ -175,15 +179,49 @@ func validateDefinitionOperations(def *WidgetDefinition, source string, opReg *O
 		}
 	}
 	for _, mode := range def.Modes {
-		for _, m := range mode.PropertyMappings {
-			if !opReg.Has(m.Operation) {
-				return fmt.Errorf("%s: unknown operation %q in mode %q propertyMappings for key %q", source, m.Operation, mode.Name, m.PropertyKey)
-			}
+		ctx := fmt.Sprintf("mode %q ", mode.Name)
+		if err := validateMappings(mode.PropertyMappings, source, ctx, opReg); err != nil {
+			return err
 		}
 		for _, s := range mode.ChildSlots {
 			if !opReg.Has(s.Operation) {
-				return fmt.Errorf("%s: unknown operation %q in mode %q childSlots for key %q", source, s.Operation, mode.Name, s.PropertyKey)
+				return fmt.Errorf("%s: unknown operation %q in %schildSlots for key %q", source, s.Operation, ctx, s.PropertyKey)
 			}
+		}
+	}
+	return nil
+}
+
+// sourceOperationCompatible checks that a mapping's Source and Operation are compatible.
+var incompatibleSourceOps = map[string]map[string]bool{
+	"Attribute":   {"association": true, "datasource": true},
+	"Association": {"attribute": true, "datasource": true},
+	"DataSource":  {"attribute": true, "association": true},
+}
+
+// validateMappings validates a slice of property mappings for operation existence,
+// source/operation compatibility, and mapping order (Association requires prior DataSource).
+func validateMappings(mappings []PropertyMapping, source, modeCtx string, opReg *OperationRegistry) error {
+	hasDataSource := false
+	for _, m := range mappings {
+		if !opReg.Has(m.Operation) {
+			return fmt.Errorf("%s: unknown operation %q in %spropertyMappings for key %q", source, m.Operation, modeCtx, m.PropertyKey)
+		}
+		// Check source/operation compatibility
+		if incompatible, ok := incompatibleSourceOps[m.Source]; ok {
+			if incompatible[m.Operation] {
+				return fmt.Errorf("%s: incompatible source %q with operation %q in %spropertyMappings for key %q",
+					source, m.Source, m.Operation, modeCtx, m.PropertyKey)
+			}
+		}
+		// Track DataSource ordering
+		if m.Source == "DataSource" {
+			hasDataSource = true
+		}
+		// Association depends on entityContext set by a prior DataSource mapping
+		if m.Source == "Association" && !hasDataSource {
+			return fmt.Errorf("%s: %spropertyMappings key %q uses source 'Association' before any 'DataSource' mapping — entityContext will be stale",
+				source, modeCtx, m.PropertyKey)
 		}
 	}
 	return nil

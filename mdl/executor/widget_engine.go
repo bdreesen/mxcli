@@ -4,6 +4,7 @@ package executor
 
 import (
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
@@ -336,6 +337,7 @@ func (e *PluggableWidgetEngine) evaluateCondition(condition string, w *ast.Widge
 		propName := strings.TrimPrefix(condition, "hasProp:")
 		return w.GetStringProp(propName) != ""
 	default:
+		log.Printf("warning: unknown widget condition %q — returning false", condition)
 		return false
 	}
 }

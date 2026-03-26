@@ -3,7 +3,10 @@
 package executor
 
 import (
+	"bytes"
 	"encoding/json"
+	"log"
+	"strings"
 	"testing"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
@@ -116,6 +119,21 @@ func TestWidgetDefinitionJSONOmitsEmptyOptionalFields(t *testing.T) {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
 
+	// Verify that empty optional fields are omitted from JSON
+	omittedFields := []string{"propertyMappings", "childSlots", "modes"}
+	for _, field := range omittedFields {
+		if _, exists := raw[field]; exists {
+			t.Errorf("expected field %q to be omitted when empty, but it was present", field)
+		}
+	}
+
+	// Verify required fields are present
+	requiredFields := []string{"widgetId", "mdlName", "templateFile", "defaultEditable"}
+	for _, field := range requiredFields {
+		if _, exists := raw[field]; !exists {
+			t.Errorf("expected required field %q to be present, but it was missing", field)
+		}
+	}
 }
 
 func TestOperationRegistryLookupFound(t *testing.T) {
@@ -229,6 +247,26 @@ func TestEvaluateCondition(t *testing.T) {
 				t.Errorf("evaluateCondition(%q) = %v, want %v", tc.condition, result, tc.expected)
 			}
 		})
+	}
+}
+
+func TestEvaluateConditionUnknownLogsWarning(t *testing.T) {
+	engine := &PluggableWidgetEngine{
+		operations: NewOperationRegistry(),
+	}
+
+	var buf bytes.Buffer
+	log.SetOutput(&buf)
+	defer log.SetOutput(nil)
+
+	w := &ast.WidgetV3{Properties: map[string]any{}}
+	result := engine.evaluateCondition("typoCondition", w)
+
+	if result != false {
+		t.Errorf("expected false for unknown condition, got %v", result)
+	}
+	if !strings.Contains(buf.String(), "typoCondition") {
+		t.Errorf("expected warning log mentioning 'typoCondition', got: %q", buf.String())
 	}
 }
 

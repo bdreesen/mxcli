@@ -11,7 +11,7 @@
       "propertyMappings": [
         {"propertyKey": "optionsSourceType", "value": "association", "operation": "primitive"},
         {"propertyKey": "optionsSourceAssociationDataSource", "source": "DataSource", "operation": "datasource"},
-        {"propertyKey": "attributeAssociation", "source": "Attribute", "operation": "association"},
+        {"propertyKey": "attributeAssociation", "source": "Association", "operation": "association"},
         {"propertyKey": "optionsSourceAssociationCaptionAttribute", "source": "CaptionAttribute", "operation": "attribute"}
       ]
     },

@@ -3,7 +3,9 @@
 package executor
 
 import (
+	"bytes"
 	"encoding/json"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -193,6 +195,141 @@ func TestRegistryLoadUserDefinitions(t *testing.T) {
 	}
 }
 
+func TestValidateDefinitionOperations_MappingOrderDependency(t *testing.T) {
+	opReg := NewOperationRegistry()
+
+	// Association before DataSource should fail validation
+	badDef := &WidgetDefinition{
+		WidgetID: "com.example.Bad",
+		MDLName:  "BAD",
+		PropertyMappings: []PropertyMapping{
+			{PropertyKey: "assocProp", Source: "Association", Operation: "association"},
+			{PropertyKey: "dsProp", Source: "DataSource", Operation: "datasource"},
+		},
+	}
+	if err := validateDefinitionOperations(badDef, "bad.def.json", opReg); err == nil {
+		t.Error("expected error for Association before DataSource, got nil")
+	}
+
+	// DataSource before Association should pass
+	goodDef := &WidgetDefinition{
+		WidgetID: "com.example.Good",
+		MDLName:  "GOOD",
+		PropertyMappings: []PropertyMapping{
+			{PropertyKey: "dsProp", Source: "DataSource", Operation: "datasource"},
+			{PropertyKey: "assocProp", Source: "Association", Operation: "association"},
+		},
+	}
+	if err := validateDefinitionOperations(goodDef, "good.def.json", opReg); err != nil {
+		t.Errorf("unexpected error for DataSource before Association: %v", err)
+	}
+
+	// Association in mode should also validate order
+	modeDef := &WidgetDefinition{
+		WidgetID: "com.example.Mode",
+		MDLName:  "MODE",
+		Modes: []WidgetMode{
+			{
+				Name: "bad",
+				PropertyMappings: []PropertyMapping{
+					{PropertyKey: "assocProp", Source: "Association", Operation: "association"},
+					{PropertyKey: "dsProp", Source: "DataSource", Operation: "datasource"},
+				},
+			},
+		},
+	}
+	if err := validateDefinitionOperations(modeDef, "mode.def.json", opReg); err == nil {
+		t.Error("expected error for Association before DataSource in mode, got nil")
+	}
+}
+
+func TestValidateDefinitionOperations_SourceOperationCompatibility(t *testing.T) {
+	opReg := NewOperationRegistry()
+
+	// Source "Attribute" with Operation "association" should fail
+	badDef := &WidgetDefinition{
+		WidgetID: "com.example.Bad",
+		MDLName:  "BAD",
+		PropertyMappings: []PropertyMapping{
+			{PropertyKey: "prop", Source: "Attribute", Operation: "association"},
+		},
+	}
+	if err := validateDefinitionOperations(badDef, "bad.def.json", opReg); err == nil {
+		t.Error("expected error for Source='Attribute' with Operation='association', got nil")
+	}
+
+	// Source "Association" with Operation "attribute" should fail
+	badDef2 := &WidgetDefinition{
+		WidgetID: "com.example.Bad2",
+		MDLName:  "BAD2",
+		PropertyMappings: []PropertyMapping{
+			{PropertyKey: "prop", Source: "Association", Operation: "attribute"},
+		},
+	}
+	if err := validateDefinitionOperations(badDef2, "bad2.def.json", opReg); err == nil {
+		t.Error("expected error for Source='Association' with Operation='attribute', got nil")
+	}
+}
+
+func TestEmbeddedDefinitionsValidateRequiredFields(t *testing.T) {
+	// All embedded definitions must have non-empty WidgetID and MDLName
+	reg, err := NewWidgetRegistry()
+	if err != nil {
+		t.Fatalf("NewWidgetRegistry() error: %v", err)
+	}
+
+	for _, def := range reg.All() {
+		if def.WidgetID == "" {
+			t.Errorf("embedded definition with MDLName=%q has empty WidgetID", def.MDLName)
+		}
+		if def.MDLName == "" {
+			t.Errorf("embedded definition with WidgetID=%q has empty MDLName", def.WidgetID)
+		}
+	}
+}
+
+func TestRegistryUserDefinitionOverrideLogsWarning(t *testing.T) {
+	reg, err := NewWidgetRegistry()
+	if err != nil {
+		t.Fatalf("NewWidgetRegistry() error: %v", err)
+	}
+
+	// Create a user definition that overrides the built-in COMBOBOX
+	tmpDir := t.TempDir()
+	widgetsDir := filepath.Join(tmpDir, ".mxcli", "widgets")
+	if err := os.MkdirAll(widgetsDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll error: %v", err)
+	}
+
+	overrideDef := `{
+		"widgetId": "com.mendix.widget.web.combobox.Combobox",
+		"mdlName": "COMBOBOX",
+		"templateFile": "combobox.json",
+		"defaultEditable": "Always",
+		"propertyMappings": [
+			{"propertyKey": "value", "source": "Attribute", "operation": "attribute"}
+		]
+	}`
+
+	defPath := filepath.Join(widgetsDir, "combobox-override.def.json")
+	if err := os.WriteFile(defPath, []byte(overrideDef), 0o644); err != nil {
+		t.Fatalf("WriteFile error: %v", err)
+	}
+
+	var buf bytes.Buffer
+	log.SetOutput(&buf)
+	defer log.SetOutput(nil)
+
+	projectPath := filepath.Join(tmpDir, "App.mpr")
+	if err := reg.LoadUserDefinitions(projectPath); err != nil {
+		t.Fatalf("LoadUserDefinitions error: %v", err)
+	}
+
+	if !strings.Contains(buf.String(), "COMBOBOX") {
+		t.Errorf("expected warning log about overriding COMBOBOX, got: %q", buf.String())
+	}
+}
+
 func TestRegistryComboboxModes(t *testing.T) {
 	reg, err := NewWidgetRegistry()
 	if err != nil {
@@ -265,11 +402,66 @@ func TestRegistryGalleryChildSlots(t *testing.T) {
 		t.Errorf("EMPTYPLACEHOLDER slot propertyKey = %q, want emptyPlaceholder", emptySlot.PropertyKey)
 	}
 
-	filterSlot, ok := slotsByContainer["FILTERSPLACEHOLDER"]
+	// FILTER must match what DESCRIBE outputs ("FILTER"), not the BSON property name
+	filterSlot, ok := slotsByContainer["FILTER"]
 	if !ok {
-		t.Fatal("FILTERSPLACEHOLDER slot not found")
+		t.Fatal("FILTER slot not found — mdlContainer must be 'FILTER' to match DESCRIBE output")
 	}
 	if filterSlot.PropertyKey != "filtersPlaceholder" {
-		t.Errorf("FILTERSPLACEHOLDER slot propertyKey = %q, want filtersPlaceholder", filterSlot.PropertyKey)
+		t.Errorf("FILTER slot propertyKey = %q, want filtersPlaceholder", filterSlot.PropertyKey)
 	}
+}
+
+func TestGallerySelectionDefaultIsSingle(t *testing.T) {
+	reg, err := NewWidgetRegistry()
+	if err != nil {
+		t.Fatalf("NewWidgetRegistry() error: %v", err)
+	}
+
+	def, ok := reg.Get("GALLERY")
+	if !ok {
+		t.Fatal("GALLERY not found")
+	}
+
+	// Find itemSelection mapping
+	for _, m := range def.PropertyMappings {
+		if m.PropertyKey == "itemSelection" {
+			if m.Default != "Single" {
+				t.Errorf("itemSelection default = %q, want %q", m.Default, "Single")
+			}
+			return
+		}
+	}
+	t.Fatal("itemSelection mapping not found in GALLERY definition")
+}
+
+func TestComboboxAssociationModeUsesAssociationSource(t *testing.T) {
+	reg, err := NewWidgetRegistry()
+	if err != nil {
+		t.Fatalf("NewWidgetRegistry() error: %v", err)
+	}
+
+	def, ok := reg.Get("COMBOBOX")
+	if !ok {
+		t.Fatal("COMBOBOX not found")
+	}
+
+	// Find association mode
+	for _, mode := range def.Modes {
+		if mode.Name != "association" {
+			continue
+		}
+		for _, m := range mode.PropertyMappings {
+			if m.PropertyKey == "attributeAssociation" {
+				if m.Source != "Association" {
+					t.Errorf("attributeAssociation source = %q, want %q — 'Attribute' source populates AttributePath but opAssociation reads AssocPath", m.Source, "Association")
+				}
+				if m.Operation != "association" {
+					t.Errorf("attributeAssociation operation = %q, want %q", m.Operation, "association")
+				}
+				return
+			}
+		}
+	}
+	t.Fatal("attributeAssociation mapping not found in COMBOBOX association mode")
 }
