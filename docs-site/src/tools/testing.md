@@ -57,9 +57,22 @@ CREATE ASSOCIATION MyFirstModule.Order_Customer
 -- @expect 0 errors
 ```
 
+## Playwright UI Testing
+
+For browser-based testing that verifies widgets render correctly in the DOM, see [Playwright Testing](playwright.md). While `mxcli test` validates that MDL scripts execute correctly and the project passes `mx check`, Playwright testing goes further by verifying the running application in a real browser -- checking that widgets are visible, forms accept input, and navigation works.
+
+```bash
+# MDL validation (this page)
+mxcli test tests/ -p app.mpr
+
+# Browser-based UI verification
+mxcli playwright verify tests/ -p app.mpr
+```
+
 ## Related Pages
 
 - [Test Formats](test-formats.md) -- `.test.mdl` and `.test.md` file formats
 - [Test Annotations](test-annotations.md) -- `@test` and `@expect` annotations
 - [Running Tests](running-tests.md) -- `mxcli test` command and Docker requirements
+- [Playwright Testing](playwright.md) -- Browser-based UI testing with playwright-cli
 - [Diff](diff.md) -- Comparing scripts against project state
