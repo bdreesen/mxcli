@@ -87,8 +87,24 @@ Example:
 		if session != nil {
 			m.SetPendingSession(session)
 		}
+
+		// Set agent auto-proceed BEFORE tea.NewProgram so the model copy has the value
+		agentSocket, _ := cmd.Flags().GetString("agent-socket")
+		agentAutoProceed, _ := cmd.Flags().GetBool("agent-auto-proceed")
+		if agentSocket != "" {
+			m.SetAgentAutoProceed(agentAutoProceed)
+		}
+
 		p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
 		m.StartWatcher(p)
+
+		if agentSocket != "" {
+			if err := m.StartAgentListener(p, agentSocket, agentAutoProceed); err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: agent listener failed: %v\n", err)
+			}
+			defer m.CloseAgentListener()
+		}
+
 		if _, err := p.Run(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
@@ -98,4 +114,6 @@ Example:
 
 func init() {
 	tuiCmd.Flags().BoolP("continue", "c", false, "Restore previous TUI session")
+	tuiCmd.Flags().String("agent-socket", "", "Unix socket path for agent communication (e.g. /tmp/mxcli-agent.sock)")
+	tuiCmd.Flags().Bool("agent-auto-proceed", false, "Skip human confirmation for agent operations")
 }

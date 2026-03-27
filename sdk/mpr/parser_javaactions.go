@@ -423,6 +423,10 @@ func parseCodeActionParameterType(raw map[string]any) javaactions.CodeActionPara
 		}
 		etpt.TypeParameterID = model.ID(id)
 		return etpt
+	case "JavaScriptActions$NanoflowJavaScriptActionParameterType":
+		return &javaactions.NanoflowType{
+			BaseElement: model.BaseElement{ID: model.ID(extractBsonID(raw["$ID"]))},
+		}
 	}
 
 	// Unknown type - return nil

@@ -151,6 +151,16 @@ func (b *Builder) ExitShowStatement(ctx *parser.ShowStatementContext) {
 			}
 		}
 		b.statements = append(b.statements, stmt)
+	} else if ctx.JAVASCRIPT() != nil && ctx.ACTIONS() != nil {
+		stmt := &ast.ShowStmt{ObjectType: ast.ShowJavaScriptActions}
+		if ctx.IN() != nil {
+			if qn := ctx.QualifiedName(); qn != nil {
+				stmt.InModule = getQualifiedNameText(qn)
+			} else if id := ctx.IDENTIFIER(); id != nil {
+				stmt.InModule = id.GetText()
+			}
+		}
+		b.statements = append(b.statements, stmt)
 	} else if ctx.VERSION() != nil {
 		b.statements = append(b.statements, &ast.ShowStmt{ObjectType: ast.ShowVersion})
 	} else if ctx.CATALOG() != nil {
@@ -698,6 +708,11 @@ func (b *Builder) ExitDescribeStatement(ctx *parser.DescribeStatementContext) {
 	} else if ctx.JAVA() != nil && ctx.ACTION() != nil {
 		b.statements = append(b.statements, &ast.DescribeStmt{
 			ObjectType: ast.DescribeJavaAction,
+			Name:       name,
+		})
+	} else if ctx.JAVASCRIPT() != nil && ctx.ACTION() != nil {
+		b.statements = append(b.statements, &ast.DescribeStmt{
+			ObjectType: ast.DescribeJavaScriptAction,
 			Name:       name,
 		})
 	} else if ctx.IMAGE() != nil && ctx.COLLECTION() != nil {

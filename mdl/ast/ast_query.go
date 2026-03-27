@@ -35,6 +35,7 @@ const (
 	ShowSnippets
 	ShowLayouts
 	ShowJavaActions
+	ShowJavaScriptActions
 	ShowVersion
 	ShowCatalogTables
 	ShowCatalogStatus
@@ -107,6 +108,8 @@ func (t ShowObjectType) String() string {
 		return "LAYOUTS"
 	case ShowJavaActions:
 		return "JAVA ACTIONS"
+	case ShowJavaScriptActions:
+		return "JAVASCRIPT ACTIONS"
 	case ShowVersion:
 		return "VERSION"
 	case ShowCatalogTables:
@@ -210,6 +213,7 @@ const (
 	DescribeLayout
 	DescribeConstant
 	DescribeJavaAction
+	DescribeJavaScriptAction     // DESCRIBE JAVASCRIPT ACTION Module.Name
 	DescribeModuleRole           // DESCRIBE MODULE ROLE Module.RoleName
 	DescribeUserRole             // DESCRIBE USER ROLE Name
 	DescribeDemoUser             // DESCRIBE DEMO USER 'name'
@@ -249,6 +253,8 @@ func (t DescribeObjectType) String() string {
 		return "CONSTANT"
 	case DescribeJavaAction:
 		return "JAVA ACTION"
+	case DescribeJavaScriptAction:
+		return "JAVASCRIPT ACTION"
 	case DescribeModuleRole:
 		return "MODULE ROLE"
 	case DescribeUserRole:

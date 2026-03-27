@@ -1,9 +1,11 @@
 package tui
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -55,6 +57,30 @@ type App struct {
 	checkRunning  bool
 
 	pendingSession *TUISession // session to restore after tree loads
+
+	agentListener    *AgentListener
+	agentAutoProceed bool           // skip human confirmation for agent ops (set before tea.NewProgram)
+	agentPending     *agentPendingOp // non-nil when waiting for user confirmation
+	agentCheckCh     chan<- AgentResponse // non-nil when agent check is in-flight
+	agentCheckReqID  int               // request ID for pending agent check
+	agentExecCtx     *agentExecContext   // non-nil when agent-initiated exec/delete/create is in progress
+}
+
+// agentPendingOp tracks an in-flight agent operation awaiting user confirmation.
+type agentPendingOp struct {
+	RequestID  int
+	Output     string
+	Success    bool
+	ResponseCh chan<- AgentResponse
+}
+
+// agentExecContext tracks an agent-initiated operation routed through UI views.
+// The agent's exec/delete/create_module actions push the same views a human
+// would use (ExecView/ConfirmView/InputView). This context links the UI flow
+// back to the agent response channel.
+type agentExecContext struct {
+	RequestID  int
+	ResponseCh chan<- AgentResponse
 }
 
 // NewApp creates the root App model.
@@ -102,6 +128,31 @@ func (a *App) StartWatcher(prog *tea.Program) {
 	}
 	a.watcher = w
 	Trace("app: watcher started for %s (contentsDir=%q)", mprPath, contentsDir)
+}
+
+// SetAgentAutoProceed configures whether agent operations skip human confirmation.
+// Must be called BEFORE tea.NewProgram so the value is captured in the model copy.
+func (a *App) SetAgentAutoProceed(autoProceed bool) {
+	a.agentAutoProceed = autoProceed
+}
+
+// StartAgentListener begins listening on a Unix socket for agent commands.
+// Call after tea.NewProgram is created, like StartWatcher.
+func (a *App) StartAgentListener(prog *tea.Program, socketPath string, autoProceed bool) error {
+	listener, err := NewAgentListener(socketPath, prog.Send, autoProceed)
+	if err != nil {
+		return err
+	}
+	a.agentListener = listener
+	Trace("app: agent listener started on %s (autoProceed=%v)", socketPath, autoProceed)
+	return nil
+}
+
+// CloseAgentListener stops the agent listener if running.
+func (a *App) CloseAgentListener() {
+	if a.agentListener != nil {
+		a.agentListener.Close()
+	}
 }
 
 func (a *App) activeTabPtr() *Tab {
@@ -173,6 +224,14 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a, nil
 	case PopViewMsg:
 		a.views.Pop()
+		// If human cancelled a view while an agent operation was pending, reject it
+		if ctx := a.agentExecCtx; ctx != nil {
+			ctx.ResponseCh <- AgentResponse{
+				ID: ctx.RequestID, OK: false,
+				Error: "cancelled by user",
+			}
+			a.agentExecCtx = nil
+		}
 		return a, nil
 
 	case PaletteExecMsg:
@@ -337,19 +396,183 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.views.Push(ov)
 		return a, nil
 
+	case discardDoneMsg:
+		// Clear preview cache so stale data isn't shown after discard
+		a.previewEngine.ClearCache()
+		return a, func() tea.Msg {
+			return execShowResultMsg{Content: msg.Output, Success: msg.Success}
+		}
+
 	case execShowResultMsg:
-		// Pop the ExecView
+		// Pop the ExecView (or ConfirmView)
 		a.views.Pop()
 		// Show result in overlay
 		content := DetectAndHighlight(msg.Content)
-		ov := NewOverlayView("Exec Result", content, a.width, a.height, OverlayViewOpts{})
+		title := "Exec Result"
+		if a.agentExecCtx != nil {
+			title = "Agent Exec Result"
+			if !msg.Success {
+				title = "Agent Exec Error"
+			}
+		}
+		ov := NewOverlayView(title, content, a.width, a.height, OverlayViewOpts{})
 		a.views.Push(ov)
 		// If execution succeeded, suppress watcher (self-modification) and refresh tree
 		if msg.Success {
 			if a.watcher != nil {
 				a.watcher.Suppress(2 * time.Second)
 			}
+		}
+		// Handle agent response if this was agent-initiated
+		if ctx := a.agentExecCtx; ctx != nil {
+			if a.agentAutoProceed {
+				resp := AgentResponse{
+					ID: ctx.RequestID, OK: msg.Success,
+					Result: msg.Content, Mode: "overlay:exec-result",
+				}
+				if changes := agentParseChanges(msg.Content); len(changes) > 0 {
+					resp.Changes, _ = json.Marshal(changes)
+				}
+				ctx.ResponseCh <- resp
+				a.agentExecCtx = nil
+				if msg.Success {
+					return a, a.Init()
+				}
+				return a, nil
+			}
+			// Store pending op for user confirmation (q/esc in overlay)
+			a.agentPending = &agentPendingOp{
+				RequestID: ctx.RequestID, Output: msg.Content,
+				Success: msg.Success, ResponseCh: ctx.ResponseCh,
+			}
+			a.agentExecCtx = nil
+			return a, nil
+		}
+		if msg.Success {
 			return a, a.Init()
+		}
+		return a, nil
+
+	case OpenExecWithContentMsg:
+		ev := NewExecViewWithContent(a.mxcliPath, a.activeTabProjectPath(), a.width, a.height, msg.Content)
+		a.views.Push(ev)
+		return a, nil
+
+	// --- Agent channel messages ---
+	case AgentExecMsg:
+		Trace("app: AgentExecMsg id=%d mdl=%q", msg.RequestID, msg.MDL)
+		// Route through ExecView — same UI path as human pressing 'x'
+		a.agentExecCtx = &agentExecContext{
+			RequestID:  msg.RequestID,
+			ResponseCh: msg.ResponseCh,
+		}
+		ev := NewExecViewWithContent(a.mxcliPath, a.activeTabProjectPath(), a.width, a.height, msg.MDL)
+		a.views.Push(ev)
+		if a.agentAutoProceed {
+			return a, func() tea.Msg { return AgentAutoExecMsg{} }
+		}
+		return a, nil
+
+	case AgentStateMsg:
+		Trace("app: AgentStateMsg id=%d", msg.RequestID)
+		stateInfo := agentBuildState(a)
+		stateJSON, _ := json.Marshal(stateInfo)
+		msg.ResponseCh <- AgentResponse{
+			ID: msg.RequestID, OK: true,
+			Result: string(stateJSON),
+			Mode:   "state",
+		}
+		return a, nil
+
+	case AgentCheckMsg:
+		Trace("app: AgentCheckMsg id=%d", msg.RequestID)
+		if a.agentCheckCh != nil {
+			msg.ResponseCh <- AgentResponse{
+				ID: msg.RequestID, OK: false,
+				Error: "check already in progress",
+			}
+			return a, nil
+		}
+		a.agentCheckCh = msg.ResponseCh
+		a.agentCheckReqID = msg.RequestID
+		projectPath := a.activeTabProjectPath()
+		return a, runMxCheck(projectPath)
+
+	case AgentNavigateMsg:
+		Trace("app: AgentNavigateMsg id=%d target=%q", msg.RequestID, msg.Target)
+		target := msg.Target
+		if bv, ok := a.views.Base().(BrowserView); ok {
+			qname := target
+			if idx := strings.Index(target, ":"); idx >= 0 {
+				qname = target[idx+1:]
+			}
+			cmd := bv.navigateToNode(qname)
+			a.views.SetBase(bv)
+			if tab := a.activeTabPtr(); tab != nil {
+				tab.Miller = bv.miller
+				tab.UpdateLabel()
+				a.syncTabBar()
+			}
+			msg.ResponseCh <- AgentResponse{
+				ID: msg.RequestID, OK: true,
+				Result: fmt.Sprintf("navigated to %s", qname), Mode: "browser",
+			}
+			return a, cmd
+		}
+		msg.ResponseCh <- AgentResponse{
+			ID: msg.RequestID, OK: false, Error: "not in browser mode",
+		}
+		return a, nil
+
+	case AgentDeleteMsg:
+		Trace("app: AgentDeleteMsg id=%d target=%q", msg.RequestID, msg.Target)
+		nodeType, qname := parseTarget(msg.Target)
+		dropCmd := buildDropCmd(nodeType, qname)
+		if dropCmd == "" {
+			msg.ResponseCh <- AgentResponse{
+				ID: msg.RequestID, OK: false,
+				Error: fmt.Sprintf("unsupported delete type: %q", nodeType),
+			}
+			return a, nil
+		}
+		// Route through ConfirmView — same UI path as human pressing 'D'
+		a.agentExecCtx = &agentExecContext{
+			RequestID:  msg.RequestID,
+			ResponseCh: msg.ResponseCh,
+		}
+		message := buildDeleteMessage(nodeType, qname)
+		cv := NewConfirmView("Delete", message, dropCmd, a.mxcliPath, a.activeTabProjectPath())
+		a.views.Push(cv)
+		if a.agentAutoProceed {
+			// Auto-confirm (like pressing 'y')
+			return a, func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("y")}
+			}
+		}
+		return a, nil
+
+	case AgentCreateModuleMsg:
+		Trace("app: AgentCreateModuleMsg id=%d name=%q", msg.RequestID, msg.Name)
+		// Route through InputView — same UI path as human pressing 'C'
+		a.agentExecCtx = &agentExecContext{
+			RequestID:  msg.RequestID,
+			ResponseCh: msg.ResponseCh,
+		}
+		mxcliPath := a.mxcliPath
+		projectPath := a.activeTabProjectPath()
+		iv := NewInputView("Create Module", "Module name: ", func(name string) tea.Cmd {
+			return func() tea.Msg {
+				out, err := runMxcli(mxcliPath, "-p", projectPath, "-c", "CREATE MODULE "+name)
+				return execShowResultMsg{Content: out, Success: err == nil}
+			}
+		})
+		iv.input.SetValue(msg.Name)
+		a.views.Push(iv)
+		if a.agentAutoProceed {
+			// Auto-submit (like pressing Enter)
+			return a, func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyEnter}
+			}
 		}
 		return a, nil
 
@@ -359,7 +582,28 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if a.watcher != nil {
 				a.watcher.Close()
 			}
+			a.CloseAgentListener()
 			return a, tea.Quit
+		}
+
+		// Agent confirmation: when overlay is dismissed while agent op is pending
+		if a.agentPending != nil && a.views.Active().Mode() == ModeOverlay &&
+			(msg.String() == "q" || msg.String() == "esc") {
+			pending := a.agentPending
+			a.agentPending = nil
+			a.views.Pop()
+			resp := AgentResponse{
+				ID: pending.RequestID, OK: pending.Success,
+				Result: pending.Output, Mode: "overlay:exec-result",
+			}
+			if changes := agentParseChanges(pending.Output); len(changes) > 0 {
+				resp.Changes, _ = json.Marshal(changes)
+			}
+			pending.ResponseCh <- resp
+			if pending.Success {
+				return a, a.Init()
+			}
+			return a, nil
 		}
 
 		// Picker modal (not a View — special case)
@@ -528,6 +772,23 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			a.checkErrors = msg.Errors
 			Trace("app: mx check done: %d diagnostics", len(msg.Errors))
+		}
+		// Respond to pending agent check request
+		if a.agentCheckCh != nil {
+			if msg.Err != nil {
+				a.agentCheckCh <- AgentResponse{
+					ID: a.agentCheckReqID, OK: false,
+					Result: msg.Err.Error(), Mode: "check",
+				}
+			} else {
+				result := renderCheckResultsPlain(msg.Errors)
+				a.agentCheckCh <- AgentResponse{
+					ID: a.agentCheckReqID, OK: true,
+					Result: result, Mode: "check",
+				}
+			}
+			a.agentCheckCh = nil
+			a.agentCheckReqID = 0
 		}
 		// Update check overlay content if it's currently visible
 		if ov, ok := a.views.Active().(OverlayView); ok && ov.refreshable {
@@ -719,6 +980,15 @@ func (a *App) handleBrowserAppKeys(msg tea.KeyMsg) tea.Cmd {
 	case "r":
 		return a.Init()
 
+	case "R":
+		projectPath := a.activeTabProjectPath()
+		if projectPath == "" {
+			return handledCmd
+		}
+		cv := NewDiscardConfirmView(projectPath, a.mxcliPath)
+		a.views.Push(cv)
+		return handledCmd
+
 	case " ":
 		if tab != nil {
 			items := flattenQualifiedNames(tab.AllNodes)
@@ -730,6 +1000,18 @@ func (a *App) handleBrowserAppKeys(msg tea.KeyMsg) tea.Cmd {
 	case "x":
 		ev := NewExecView(a.mxcliPath, a.activeTabProjectPath(), a.width, a.height)
 		a.views.Push(ev)
+		return handledCmd
+
+	case "C":
+		mxcliPath := a.mxcliPath
+		projectPath := a.activeTabProjectPath()
+		iv := NewInputView("Create Module", "Module name: ", func(name string) tea.Cmd {
+			return func() tea.Msg {
+				out, err := runMxcli(mxcliPath, "-p", projectPath, "-c", "CREATE MODULE "+name)
+				return execShowResultMsg{Content: out, Success: err == nil}
+			}
+		})
+		a.views.Push(iv)
 		return handledCmd
 
 	case "!", "\\!": // some terminals send "\\!" for shifted-1; accept both forms
@@ -971,6 +1253,12 @@ func (a App) View() string {
 	} else {
 		a.statusBar.SetCheckBadge(formatCheckBadge(a.checkErrors, a.checkRunning))
 	}
+	// Agent activity badge
+	if a.agentExecCtx != nil {
+		a.statusBar.SetAgentBadge(AgentBadgeStyle.Render("⚡agent"))
+	} else {
+		a.statusBar.SetAgentBadge("")
+	}
 	viewModeNames := a.collectViewModeNames()
 	a.statusBar.SetViewDepth(a.views.Depth(), viewModeNames)
 	statusLine := StatusBarStyle.Width(a.width).Render(a.statusBar.View(a.width))
@@ -1089,14 +1377,83 @@ func inferBsonType(nodeType string) string {
 	switch strings.ToLower(nodeType) {
 	case "page", "microflow", "nanoflow", "workflow",
 		"enumeration", "snippet", "layout", "entity", "association",
-		"imagecollection", "javaaction":
+		"imagecollection", "javaaction", "javascriptaction", "constant":
 		return strings.ToLower(nodeType)
 	default:
 		return ""
 	}
 }
 
-// loadBsonNDSL runs mxcli bson dump in NDSL format and returns a CompareLoadMsg.
+// agentStateInfo is the structured state returned by the "state" action.
+type agentStateInfo struct {
+	Mode         string         `json:"mode"`
+	Project      string         `json:"project"`
+	SelectedNode *agentNodeInfo `json:"selectedNode,omitempty"`
+	PreviewMode  string         `json:"previewMode,omitempty"`
+	CheckErrors  int            `json:"checkErrors"`
+	CheckRunning bool           `json:"checkRunning"`
+}
+
+// agentNodeInfo describes the currently selected tree node.
+type agentNodeInfo struct {
+	Type          string `json:"type"`
+	QualifiedName string `json:"qualifiedName"`
+}
+
+// agentBuildState extracts rich TUI state for the agent.
+func agentBuildState(a App) agentStateInfo {
+	info := agentStateInfo{
+		Mode:         a.views.Active().Mode().String(),
+		Project:      a.activeTabProjectPath(),
+		CheckErrors:  len(a.checkErrors),
+		CheckRunning: a.checkRunning,
+	}
+	if bv, ok := a.views.Base().(BrowserView); ok {
+		info.PreviewMode = "MDL"
+		if bv.miller.preview.mode == PreviewNDSL {
+			info.PreviewMode = "NDSL"
+		}
+		if node := bv.miller.SelectedNode(); node != nil {
+			qname := node.QualifiedName
+			if qname == "" {
+				qname = node.Label
+			}
+			info.SelectedNode = &agentNodeInfo{
+				Type:          node.Type,
+				QualifiedName: qname,
+			}
+		}
+	}
+	return info
+}
+
+// agentExecChanges is a structured summary of exec output changes.
+type agentExecChange struct {
+	Action string `json:"action"` // "created", "modified", "dropped"
+	Target string `json:"target"` // e.g. "entity Module.Entity"
+}
+
+// agentChangePattern matches exec output lines like "Created entity MyModule.Customer".
+// Requires a known Mendix type keyword after the verb to avoid matching log noise
+// such as "Removed trailing whitespace".
+var agentChangePattern = regexp.MustCompile(`(?im)^(Created|Modified|Dropped|Deleted|Added|Removed)\s+(entity|association|attribute|enumeration|microflow|nanoflow|page|layout|snippet|module|folder|constant|workflow|image collection|java action|user role|module role|demo user|business event service)\s+(.+)$`)
+
+// agentParseChanges extracts structured changes from exec output.
+func agentParseChanges(output string) []agentExecChange {
+	matches := agentChangePattern.FindAllStringSubmatch(output, -1)
+	if len(matches) == 0 {
+		return nil
+	}
+	changes := make([]agentExecChange, 0, len(matches))
+	for _, m := range matches {
+		changes = append(changes, agentExecChange{
+			Action: strings.ToLower(m[1]),
+			Target: strings.ToLower(m[2]) + " " + strings.TrimSpace(m[3]),
+		})
+	}
+	return changes
+}
+
 // Shared by BrowserView and CompareView to avoid duplicate implementations.
 func loadBsonNDSL(mxcliPath, projectPath, qname, nodeType string, side CompareFocus) tea.Cmd {
 	return func() tea.Msg {

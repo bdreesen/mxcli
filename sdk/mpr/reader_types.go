@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/mendixlabs/mxcli/model"
+	"github.com/mendixlabs/mxcli/sdk/javaactions"
 	"github.com/mendixlabs/mxcli/sdk/pages"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -53,10 +54,17 @@ func (r *Reader) ListJavaActions() ([]*JavaAction, error) {
 // JavaScriptAction represents a JavaScript action.
 type JavaScriptAction struct {
 	model.BaseElement
-	ContainerID   model.ID `json:"containerId"`
-	Name          string   `json:"name"`
-	Documentation string   `json:"documentation,omitempty"`
-	ReturnType    string   `json:"returnType,omitempty"`
+	ContainerID             model.ID                          `json:"containerId"`
+	Name                    string                            `json:"name"`
+	Documentation           string                            `json:"documentation,omitempty"`
+	Platform                string                            `json:"platform,omitempty"`
+	Excluded                bool                              `json:"excluded"`
+	ExportLevel             string                            `json:"exportLevel,omitempty"`
+	ActionDefaultReturnName string                            `json:"actionDefaultReturnName,omitempty"`
+	ReturnType              javaactions.CodeActionReturnType   `json:"returnType,omitempty"`
+	Parameters              []*javaactions.JavaActionParameter `json:"parameters,omitempty"`
+	TypeParameters          []*javaactions.TypeParameterDef    `json:"typeParameters,omitempty"`
+	MicroflowActionInfo     *javaactions.MicroflowActionInfo   `json:"microflowActionInfo,omitempty"`
 }
 
 // GetName returns the JavaScript action's name.
@@ -67,6 +75,16 @@ func (jsa *JavaScriptAction) GetName() string {
 // GetContainerID returns the container ID.
 func (jsa *JavaScriptAction) GetContainerID() model.ID {
 	return jsa.ContainerID
+}
+
+// FindTypeParameterName looks up a type parameter name by its ID.
+func (jsa *JavaScriptAction) FindTypeParameterName(id model.ID) string {
+	for _, tp := range jsa.TypeParameters {
+		if tp.ID == id {
+			return tp.Name
+		}
+	}
+	return ""
 }
 
 // ListJavaScriptActions returns all JavaScript actions in the project.

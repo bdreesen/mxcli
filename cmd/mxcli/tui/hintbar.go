@@ -33,6 +33,10 @@ var (
 		{Key: "h", Label: "back"},
 		{Key: "l", Label: "open"},
 		{Key: "/", Label: "filter"},
+		{Key: "C", Label: "create module"},
+		{Key: "D", Label: "delete"},
+		{Key: "e", Label: "edit mdl"},
+		{Key: "R", Label: "discard"},
 		{Key: "!", Label: "check"},
 		{Key: ":", Label: "commands"},
 		{Key: "?", Label: "help"},
@@ -45,6 +49,7 @@ var (
 		{Key: "j/k", Label: "scroll"},
 		{Key: "/", Label: "search"},
 		{Key: "y", Label: "copy"},
+		{Key: "e", Label: "edit mdl"},
 		{Key: "Tab", Label: "mdl/ndsl"},
 		{Key: "q", Label: "close"},
 	}
@@ -58,7 +63,9 @@ var (
 	}
 	ExecViewHints = []Hint{
 		{Key: "Ctrl+E", Label: "execute"},
+		{Key: "Ctrl+F", Label: "format"},
 		{Key: "Ctrl+O", Label: "open file"},
+		{Key: "Ctrl+P", Label: "preview"},
 		{Key: "Esc", Label: "close"},
 	}
 	DiffViewHints = []Hint{

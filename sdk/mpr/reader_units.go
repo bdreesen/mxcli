@@ -263,7 +263,7 @@ type RawUnitInfo struct {
 }
 
 // GetRawUnitByName returns the raw BSON contents for a unit by qualified name.
-// Supported types: page, entity, microflow, nanoflow, enumeration, association, snippet.
+// Supported types: page, entity, microflow, nanoflow, enumeration, association, snippet, constant.
 // Used for debugging BSON serialization issues.
 func (r *Reader) GetRawUnitByName(objectType, qualifiedName string) (*RawUnitInfo, error) {
 	var typePrefix string
@@ -284,12 +284,16 @@ func (r *Reader) GetRawUnitByName(objectType, qualifiedName string) (*RawUnitInf
 		typePrefix = "Forms$Snippet"
 	case "layout":
 		typePrefix = "Forms$Layout"
+	case "constant":
+		typePrefix = "Constants$Constant"
 	case "workflow":
 		typePrefix = "Workflows$Workflow"
 	case "imagecollection":
 		typePrefix = "Images$ImageCollection"
 	case "javaaction":
 		typePrefix = "JavaActions$JavaAction"
+	case "javascriptaction":
+		typePrefix = "JavaScriptActions$JavaScriptAction"
 	default:
 		return nil, fmt.Errorf("unsupported object type: %s", objectType)
 	}
