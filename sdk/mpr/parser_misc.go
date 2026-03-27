@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/model"
+	"github.com/mendixlabs/mxcli/sdk/javaactions"
 	"github.com/mendixlabs/mxcli/sdk/pages"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -152,14 +153,159 @@ func (r *Reader) parseJavaScriptAction(unitID, containerID string, contents []by
 	jsa.TypeName = "JavaScriptActions$JavaScriptAction"
 	jsa.ContainerID = model.ID(containerID)
 
-	if name, ok := raw["Name"].(string); ok {
-		jsa.Name = name
+	// Basic fields
+	jsa.Name = extractString(raw["Name"])
+	jsa.Documentation = extractString(raw["Documentation"])
+	jsa.Platform = extractString(raw["Platform"])
+	jsa.Excluded = extractBool(raw["Excluded"], false)
+	jsa.ExportLevel = extractString(raw["ExportLevel"])
+	jsa.ActionDefaultReturnName = extractString(raw["ActionDefaultReturnName"])
+
+	// Parse return type
+	switch rt := raw["JavaReturnType"].(type) {
+	case map[string]any:
+		jsa.ReturnType = parseCodeActionReturnType(rt)
+	case primitive.D:
+		jsa.ReturnType = parseCodeActionReturnType(primitiveToMap(rt))
 	}
-	if doc, ok := raw["Documentation"].(string); ok {
-		jsa.Documentation = doc
+
+	// Parse parameters
+	switch params := raw["Parameters"].(type) {
+	case []any:
+		for _, p := range params {
+			if pMap := toMap(p); pMap != nil {
+				if param := parseJavaActionParameter(pMap); param != nil {
+					jsa.Parameters = append(jsa.Parameters, param)
+				}
+			}
+		}
+	case primitive.A:
+		for _, p := range params {
+			if pMap := toMap(p); pMap != nil {
+				if param := parseJavaActionParameter(pMap); param != nil {
+					jsa.Parameters = append(jsa.Parameters, param)
+				}
+			}
+		}
+	}
+
+	// Parse type parameters
+	switch typeParams := raw["TypeParameters"].(type) {
+	case []any:
+		for _, tp := range typeParams {
+			if tpMap := toMap(tp); tpMap != nil {
+				if name := extractString(tpMap["Name"]); name != "" {
+					jsa.TypeParameters = append(jsa.TypeParameters, &javaactions.TypeParameterDef{
+						BaseElement: model.BaseElement{ID: model.ID(extractBsonID(tpMap["$ID"]))},
+						Name:        name,
+					})
+				}
+			}
+		}
+	case primitive.A:
+		for _, tp := range typeParams {
+			if tpMap := toMap(tp); tpMap != nil {
+				if name := extractString(tpMap["Name"]); name != "" {
+					jsa.TypeParameters = append(jsa.TypeParameters, &javaactions.TypeParameterDef{
+						BaseElement: model.BaseElement{ID: model.ID(extractBsonID(tpMap["$ID"]))},
+						Name:        name,
+					})
+				}
+			}
+		}
+	}
+
+	// Parse MicroflowActionInfo
+	if mai := toMap(raw["MicroflowActionInfo"]); mai != nil {
+		jsa.MicroflowActionInfo = &javaactions.MicroflowActionInfo{
+			BaseElement: model.BaseElement{ID: model.ID(extractBsonID(mai["$ID"]))},
+			Caption:     extractString(mai["Caption"]),
+			Category:    extractString(mai["Category"]),
+			Icon:        extractString(mai["Icon"]),
+			ImageData:   extractString(mai["ImageData"]),
+		}
+	}
+
+	// Resolve type parameter names for EntityTypeParameterType and TypeParameter
+	for _, param := range jsa.Parameters {
+		switch pt := param.ParameterType.(type) {
+		case *javaactions.EntityTypeParameterType:
+			pt.TypeParameterName = jsa.FindTypeParameterName(pt.TypeParameterID)
+		case *javaactions.TypeParameter:
+			if pt.TypeParameterID != "" && pt.TypeParameter == "" {
+				pt.TypeParameter = jsa.FindTypeParameterName(pt.TypeParameterID)
+			}
+		}
+	}
+
+	// Resolve type parameter name for return type
+	if tp, ok := jsa.ReturnType.(*javaactions.TypeParameter); ok {
+		if tp.TypeParameterID != "" && tp.TypeParameter == "" {
+			tp.TypeParameter = jsa.FindTypeParameterName(tp.TypeParameterID)
+		}
 	}
 
 	return jsa, nil
+}
+
+// ReadJavaScriptActionByName reads a JavaScript action by qualified name (Module.ActionName).
+func (r *Reader) ReadJavaScriptActionByName(qualifiedName string) (*JavaScriptAction, error) {
+	units, err := r.listUnitsByType("JavaScriptActions$JavaScriptAction")
+	if err != nil {
+		return nil, err
+	}
+
+	modules, err := r.ListModules()
+	if err != nil {
+		return nil, err
+	}
+	moduleNames := make(map[model.ID]string)
+	for _, m := range modules {
+		moduleNames[m.ID] = m.Name
+	}
+
+	folders, err := r.ListFolders()
+	if err != nil {
+		return nil, err
+	}
+	folderContainers := make(map[model.ID]model.ID)
+	for _, f := range folders {
+		folderContainers[f.ID] = f.ContainerID
+	}
+
+	for _, u := range units {
+		contents, err := r.resolveContents(u.ID, u.Contents)
+		if err != nil {
+			continue
+		}
+
+		var raw map[string]any
+		if err := bson.Unmarshal(contents, &raw); err != nil {
+			continue
+		}
+
+		name := extractString(raw["Name"])
+
+		modName := ""
+		containerID := model.ID(u.ContainerID)
+		for range 20 {
+			if mn, ok := moduleNames[containerID]; ok {
+				modName = mn
+				break
+			}
+			if parent, ok := folderContainers[containerID]; ok {
+				containerID = parent
+			} else {
+				break
+			}
+		}
+
+		if modName+"."+name == qualifiedName {
+			return r.parseJavaScriptAction(u.ID, u.ContainerID, contents)
+		}
+	}
+
+	return nil, fmt.Errorf("javascript action not found: %s", qualifiedName)
 }
 
 // parseBuildingBlock parses building block contents from BSON.

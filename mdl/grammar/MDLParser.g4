@@ -2439,6 +2439,7 @@ showStatement
     | SHOW LAYOUTS (IN (qualifiedName | IDENTIFIER))?
     | SHOW NOTEBOOKS (IN (qualifiedName | IDENTIFIER))?
     | SHOW JAVA ACTIONS (IN (qualifiedName | IDENTIFIER))?
+    | SHOW JAVASCRIPT ACTIONS (IN (qualifiedName | IDENTIFIER))?
     | SHOW IMAGE COLLECTION (IN (qualifiedName | IDENTIFIER))?   // SHOW IMAGE COLLECTION [IN Module]
     | SHOW ENTITY qualifiedName
     | SHOW ASSOCIATION qualifiedName
@@ -2544,6 +2545,7 @@ describeStatement
     | DESCRIBE ENUMERATION qualifiedName
     | DESCRIBE CONSTANT qualifiedName
     | DESCRIBE JAVA ACTION qualifiedName
+    | DESCRIBE JAVASCRIPT ACTION qualifiedName
     | DESCRIBE MODULE IDENTIFIER (WITH ALL)?  // DESCRIBE MODULE Name [WITH ALL] - optionally include all objects
     | DESCRIBE MODULE ROLE qualifiedName        // DESCRIBE MODULE ROLE Module.RoleName
     | DESCRIBE USER ROLE STRING_LITERAL          // DESCRIBE USER ROLE 'Administrator'

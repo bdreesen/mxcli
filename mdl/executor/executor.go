@@ -696,6 +696,8 @@ func (e *Executor) execShow(s *ast.ShowStmt) error {
 		return e.showLayouts(s.InModule)
 	case ast.ShowJavaActions:
 		return e.showJavaActions(s.InModule)
+	case ast.ShowJavaScriptActions:
+		return e.showJavaScriptActions(s.InModule)
 	case ast.ShowVersion:
 		return e.showVersion()
 	case ast.ShowCatalogTables:
@@ -793,6 +795,8 @@ func (e *Executor) execDescribe(s *ast.DescribeStmt) error {
 		return e.describeConstant(s.Name)
 	case ast.DescribeJavaAction:
 		return e.describeJavaAction(s.Name)
+	case ast.DescribeJavaScriptAction:
+		return e.describeJavaScriptAction(s.Name)
 	case ast.DescribeModuleRole:
 		return e.describeModuleRole(s.Name)
 	case ast.DescribeUserRole:

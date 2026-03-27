@@ -211,6 +211,14 @@ type MicroflowType struct {
 func (MicroflowType) isCodeActionParameterType() {}
 func (MicroflowType) TypeString() string         { return "Microflow" }
 
+// NanoflowType represents a nanoflow parameter type (JavaScript actions only).
+type NanoflowType struct {
+	model.BaseElement
+}
+
+func (NanoflowType) isCodeActionParameterType() {}
+func (NanoflowType) TypeString() string         { return "Nanoflow" }
+
 // TypeParameter represents a generic type parameter reference in a return type or parameter type.
 // For ParameterizedEntityType parameters, TypeParameterID holds the BY_ID reference to a TypeParameterDef,
 // and TypeParameter holds the resolved name (e.g., "pEntity").

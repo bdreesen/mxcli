@@ -22,6 +22,8 @@ func buildDescribeCmd(nodeType, qualifiedName string) string {
 		return ""
 	case "javaaction":
 		return "DESCRIBE JAVA ACTION " + qualifiedName
+	case "javascriptaction":
+		return "DESCRIBE JAVASCRIPT ACTION " + qualifiedName
 	case "imagecollection":
 		return "DESCRIBE IMAGE COLLECTION " + qualifiedName
 	case "modulerole":

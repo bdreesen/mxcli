@@ -125,6 +125,7 @@ var mdlGeneratedKeywords = []protocol.CompletionItem{
 	{Label: "LOG", Kind: protocol.CompletionItemKindKeyword, Detail: "Microflow keyword"},
 	{Label: "CALL", Kind: protocol.CompletionItemKindKeyword, Detail: "Microflow keyword"},
 	{Label: "JAVA", Kind: protocol.CompletionItemKindKeyword, Detail: "Microflow keyword"},
+	{Label: "JAVASCRIPT", Kind: protocol.CompletionItemKindKeyword, Detail: "Microflow keyword"},
 	{Label: "ACTION", Kind: protocol.CompletionItemKindKeyword, Detail: "Microflow keyword"},
 	{Label: "ACTIONS", Kind: protocol.CompletionItemKindKeyword, Detail: "Microflow keyword"},
 	{Label: "CLOSE", Kind: protocol.CompletionItemKindKeyword, Detail: "Microflow keyword"},

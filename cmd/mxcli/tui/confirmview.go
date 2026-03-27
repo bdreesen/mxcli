@@ -115,6 +115,8 @@ func buildDropCmd(nodeType, qname string) string {
 		return "DROP IMAGE COLLECTION " + qname
 	case "javaaction":
 		return "DROP JAVA ACTION " + qname
+	case "javascriptaction":
+		return "DROP JAVASCRIPT ACTION " + qname
 	default:
 		return ""
 	}
