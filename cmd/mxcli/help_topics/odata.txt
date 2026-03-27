@@ -10,6 +10,8 @@ SHOW COMMANDS
   SHOW ODATA SERVICES IN MyModule;   -- Filter by module
   SHOW EXTERNAL ENTITIES;             -- List all external entities
   SHOW EXTERNAL ENTITIES IN MyModule; -- Filter by module
+  SHOW EXTERNAL ACTIONS;              -- List external actions used in microflows
+  SHOW EXTERNAL ACTIONS IN MyModule;  -- Filter by module
 
 DESCRIBE COMMANDS
 -----------------

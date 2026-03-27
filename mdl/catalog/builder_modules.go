@@ -3,6 +3,7 @@
 package catalog
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/mendixlabs/mxcli/sdk/domainmodel"
@@ -512,6 +513,106 @@ func (b *Builder) buildBusinessEventServices() error {
 	}
 
 	b.report("Business Event Services", len(services))
+	return nil
+}
+
+// buildBusinessEvents populates the business_events detail table with individual messages.
+func (b *Builder) buildBusinessEvents() error {
+	services, err := b.cachedBusinessEventServices()
+	if err != nil {
+		return err
+	}
+
+	stmt, err := b.tx.Prepare(`
+		INSERT INTO business_events (Id, ServiceId, ServiceQualifiedName, ChannelName,
+			MessageName, CanPublish, CanSubscribe, AttributeCount,
+			Entity, PublishMicroflow, SubscribeMicroflow,
+			ModuleName, ProjectId, SnapshotId, SnapshotDate, SnapshotSource)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	projectID, _, snapshotID, snapshotDate, snapshotSource, _, _, _ := b.snapshotMeta()
+
+	count := 0
+	for _, svc := range services {
+		moduleID := b.hierarchy.findModuleID(svc.ContainerID)
+		moduleName := b.hierarchy.getModuleName(moduleID)
+		svcQN := moduleName + "." + svc.Name
+
+		if svc.Definition == nil {
+			continue
+		}
+
+		// Build operation lookup: messageName -> operation details
+		type opInfo struct {
+			entity    string
+			microflow string
+			operation string
+		}
+		opMap := make(map[string]*opInfo)
+		for _, op := range svc.OperationImplementations {
+			opMap[op.MessageName+"|"+op.Operation] = &opInfo{
+				entity:    op.Entity,
+				microflow: op.Microflow,
+				operation: op.Operation,
+			}
+		}
+
+		for _, ch := range svc.Definition.Channels {
+			for _, msg := range ch.Messages {
+				canPublish := 0
+				canSubscribe := 0
+				if msg.CanPublish {
+					canPublish = 1
+				}
+				if msg.CanSubscribe {
+					canSubscribe = 1
+				}
+
+				entity := ""
+				publishMF := ""
+				subscribeMF := ""
+				if pub, ok := opMap[msg.MessageName+"|publish"]; ok {
+					entity = pub.entity
+					publishMF = pub.microflow
+				}
+				if sub, ok := opMap[msg.MessageName+"|subscribe"]; ok {
+					if entity == "" {
+						entity = sub.entity
+					}
+					subscribeMF = sub.microflow
+				}
+
+				syntheticID := fmt.Sprintf("%s|%s|%s", svc.ID, ch.ChannelName, msg.MessageName)
+
+				_, err := stmt.Exec(
+					syntheticID,
+					string(svc.ID),
+					svcQN,
+					ch.ChannelName,
+					msg.MessageName,
+					canPublish,
+					canSubscribe,
+					len(msg.Attributes),
+					entity,
+					publishMF,
+					subscribeMF,
+					moduleName,
+					projectID, snapshotID, snapshotDate, snapshotSource,
+				)
+				if err != nil {
+					return err
+				}
+				count++
+			}
+		}
+	}
+
+	b.report("Business Events", count)
 	return nil
 }
 

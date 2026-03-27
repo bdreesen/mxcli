@@ -357,6 +357,14 @@ BEGIN
 END;
 /
 
+/**
+ * Level 9.2: Show external actions discovered from microflow usage
+ */
+SHOW EXTERNAL ACTIONS;
+/
+SHOW EXTERNAL ACTIONS IN OdTest;
+/
+
 -- ############################################################################
 -- LEVEL 8.8: DROP (cleanup)
 -- ############################################################################

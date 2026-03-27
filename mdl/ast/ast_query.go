@@ -61,6 +61,7 @@ const (
 	ShowODataClients     // SHOW ODATA CLIENTS [IN module]
 	ShowODataServices    // SHOW ODATA SERVICES [IN module]
 	ShowExternalEntities // SHOW EXTERNAL ENTITIES [IN module]
+	ShowExternalActions  // SHOW EXTERNAL ACTIONS [IN module]
 
 	// Navigation show types
 	ShowNavigation      // SHOW NAVIGATION
@@ -77,6 +78,7 @@ const (
 	ShowDatabaseConnections   // SHOW DATABASE CONNECTIONS [IN module]
 	ShowImageCollections      // SHOW IMAGE COLLECTIONS [IN module]
 	ShowRestClients           // SHOW REST CLIENTS [IN module]
+	ShowPublishedRestServices // SHOW PUBLISHED REST SERVICES [IN module]
 )
 
 // String returns the human-readable name of the show object type.
@@ -152,6 +154,8 @@ func (t ShowObjectType) String() string {
 		return "ODATA SERVICES"
 	case ShowExternalEntities:
 		return "EXTERNAL ENTITIES"
+	case ShowExternalActions:
+		return "EXTERNAL ACTIONS"
 	case ShowNavigation:
 		return "NAVIGATION"
 	case ShowNavigationMenu:
@@ -178,6 +182,8 @@ func (t ShowObjectType) String() string {
 		return "IMAGE COLLECTIONS"
 	case ShowRestClients:
 		return "REST CLIENTS"
+	case ShowPublishedRestServices:
+		return "PUBLISHED REST SERVICES"
 	default:
 		return "UNKNOWN"
 	}
@@ -228,6 +234,7 @@ const (
 	DescribeFragment             // DESCRIBE FRAGMENT Name
 	DescribeImageCollection      // DESCRIBE IMAGE COLLECTION Module.Name
 	DescribeRestClient           // DESCRIBE REST CLIENT Module.Name
+	DescribePublishedRestService // DESCRIBE PUBLISHED REST SERVICE Module.Name
 )
 
 // String returns the human-readable name of the describe object type.
@@ -283,6 +290,8 @@ func (t DescribeObjectType) String() string {
 		return "IMAGE COLLECTION"
 	case DescribeRestClient:
 		return "REST CLIENT"
+	case DescribePublishedRestService:
+		return "PUBLISHED REST SERVICE"
 	default:
 		return "UNKNOWN"
 	}

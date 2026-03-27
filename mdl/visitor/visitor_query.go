@@ -13,6 +13,17 @@ import (
 func (b *Builder) ExitShowStatement(ctx *parser.ShowStatementContext) {
 	if ctx.MODULES() != nil {
 		b.statements = append(b.statements, &ast.ShowStmt{ObjectType: ast.ShowModules})
+	} else if ctx.EXTERNAL() != nil && ctx.ACTIONS() != nil {
+		// SHOW EXTERNAL ACTIONS [IN module] - must come before ENTITIES/ACTIONS checks
+		stmt := &ast.ShowStmt{ObjectType: ast.ShowExternalActions}
+		if ctx.IN() != nil {
+			if qn := ctx.QualifiedName(); qn != nil {
+				stmt.InModule = getQualifiedNameText(qn)
+			} else if id := ctx.IDENTIFIER(); id != nil {
+				stmt.InModule = id.GetText()
+			}
+		}
+		b.statements = append(b.statements, stmt)
 	} else if ctx.EXTERNAL() != nil && ctx.ENTITIES() != nil {
 		// SHOW EXTERNAL ENTITIES [IN module] - must come before ENTITIES check
 		stmt := &ast.ShowStmt{ObjectType: ast.ShowExternalEntities}
@@ -414,6 +425,17 @@ func (b *Builder) ExitShowStatement(ctx *parser.ShowStatementContext) {
 			}
 		}
 		b.statements = append(b.statements, stmt)
+	} else if ctx.PUBLISHED() != nil && ctx.REST() != nil && ctx.SERVICES() != nil {
+		// SHOW PUBLISHED REST SERVICES [IN module] - must come before REST CLIENTS check
+		stmt := &ast.ShowStmt{ObjectType: ast.ShowPublishedRestServices}
+		if ctx.IN() != nil {
+			if qn := ctx.QualifiedName(); qn != nil {
+				stmt.InModule = getQualifiedNameText(qn)
+			} else if id := ctx.IDENTIFIER(); id != nil {
+				stmt.InModule = id.GetText()
+			}
+		}
+		b.statements = append(b.statements, stmt)
 	} else if ctx.REST() != nil && ctx.CLIENTS() != nil {
 		// SHOW REST CLIENTS [IN module]
 		stmt := &ast.ShowStmt{ObjectType: ast.ShowRestClients}
@@ -723,6 +745,11 @@ func (b *Builder) ExitDescribeStatement(ctx *parser.DescribeStatementContext) {
 	} else if ctx.REST() != nil && ctx.CLIENT() != nil {
 		b.statements = append(b.statements, &ast.DescribeStmt{
 			ObjectType: ast.DescribeRestClient,
+			Name:       name,
+		})
+	} else if ctx.PUBLISHED() != nil && ctx.REST() != nil && ctx.SERVICE() != nil {
+		b.statements = append(b.statements, &ast.DescribeStmt{
+			ObjectType: ast.DescribePublishedRestService,
 			Name:       name,
 		})
 	}

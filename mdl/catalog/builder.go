@@ -328,6 +328,26 @@ func (b *Builder) Build(progress ProgressFunc) error {
 		return fmt.Errorf("failed to build database connections: %w", err)
 	}
 
+	if err := b.buildRestClients(); err != nil {
+		return fmt.Errorf("failed to build REST clients: %w", err)
+	}
+
+	if err := b.buildPublishedRestServices(); err != nil {
+		return fmt.Errorf("failed to build published REST services: %w", err)
+	}
+
+	if err := b.buildExternalEntities(); err != nil {
+		return fmt.Errorf("failed to build external entities: %w", err)
+	}
+
+	if err := b.buildExternalActions(); err != nil {
+		return fmt.Errorf("failed to build external actions: %w", err)
+	}
+
+	if err := b.buildBusinessEvents(); err != nil {
+		return fmt.Errorf("failed to build business events: %w", err)
+	}
+
 	if err := b.buildNavigation(); err != nil {
 		return fmt.Errorf("failed to build navigation: %w", err)
 	}

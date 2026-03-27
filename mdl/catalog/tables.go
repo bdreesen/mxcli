@@ -250,6 +250,8 @@ func (c *Catalog) createTables() error {
 			Folder TEXT,
 			EntityRef TEXT,
 			ActionType TEXT,
+			ServiceRef TEXT,
+			ActionRef TEXT,
 			Description TEXT,
 			ProjectId TEXT,
 			ProjectName TEXT,
@@ -448,6 +450,144 @@ func (c *Catalog) createTables() error {
 			SnapshotId TEXT
 		)`,
 
+		// REST Clients table (consumed REST services)
+		`CREATE TABLE IF NOT EXISTS rest_clients (
+			Id TEXT PRIMARY KEY,
+			Name TEXT,
+			QualifiedName TEXT,
+			ModuleName TEXT,
+			Folder TEXT,
+			BaseUrl TEXT,
+			AuthScheme TEXT,
+			OperationCount INTEGER DEFAULT 0,
+			Documentation TEXT,
+			ProjectId TEXT,
+			ProjectName TEXT,
+			SnapshotId TEXT,
+			SnapshotDate TEXT,
+			SnapshotSource TEXT,
+			SourceId TEXT,
+			SourceBranch TEXT,
+			SourceRevision TEXT
+		)`,
+
+		// REST Operations table (detail table for consumed REST service operations)
+		`CREATE TABLE IF NOT EXISTS rest_operations (
+			Id TEXT PRIMARY KEY,
+			ServiceId TEXT,
+			ServiceQualifiedName TEXT,
+			Name TEXT,
+			HttpMethod TEXT,
+			Path TEXT,
+			ParameterCount INTEGER DEFAULT 0,
+			HasBody INTEGER DEFAULT 0,
+			ResponseType TEXT,
+			Timeout INTEGER DEFAULT 0,
+			ModuleName TEXT,
+			ProjectId TEXT,
+			SnapshotId TEXT,
+			SnapshotDate TEXT,
+			SnapshotSource TEXT
+		)`,
+
+		// Published REST Services table
+		`CREATE TABLE IF NOT EXISTS published_rest_services (
+			Id TEXT PRIMARY KEY,
+			Name TEXT,
+			QualifiedName TEXT,
+			ModuleName TEXT,
+			Folder TEXT,
+			Path TEXT,
+			Version TEXT,
+			ServiceName TEXT,
+			ResourceCount INTEGER DEFAULT 0,
+			OperationCount INTEGER DEFAULT 0,
+			Documentation TEXT,
+			ProjectId TEXT,
+			ProjectName TEXT,
+			SnapshotId TEXT,
+			SnapshotDate TEXT,
+			SnapshotSource TEXT,
+			SourceId TEXT,
+			SourceBranch TEXT,
+			SourceRevision TEXT
+		)`,
+
+		// Published REST Operations table (detail table)
+		`CREATE TABLE IF NOT EXISTS published_rest_operations (
+			Id TEXT PRIMARY KEY,
+			ServiceId TEXT,
+			ServiceQualifiedName TEXT,
+			ResourceName TEXT,
+			HttpMethod TEXT,
+			Path TEXT,
+			Summary TEXT,
+			Microflow TEXT,
+			Deprecated INTEGER DEFAULT 0,
+			ModuleName TEXT,
+			ProjectId TEXT,
+			SnapshotId TEXT,
+			SnapshotDate TEXT,
+			SnapshotSource TEXT
+		)`,
+
+		// External Entities table (OData remote entities)
+		`CREATE TABLE IF NOT EXISTS external_entities (
+			Id TEXT PRIMARY KEY,
+			Name TEXT,
+			QualifiedName TEXT,
+			ModuleName TEXT,
+			ServiceName TEXT,
+			EntitySet TEXT,
+			RemoteName TEXT,
+			Countable INTEGER DEFAULT 0,
+			Creatable INTEGER DEFAULT 0,
+			Deletable INTEGER DEFAULT 0,
+			Updatable INTEGER DEFAULT 0,
+			AttributeCount INTEGER DEFAULT 0,
+			ProjectId TEXT,
+			ProjectName TEXT,
+			SnapshotId TEXT,
+			SnapshotDate TEXT,
+			SnapshotSource TEXT
+		)`,
+
+		// External Actions table (OData actions discovered from microflow usage)
+		`CREATE TABLE IF NOT EXISTS external_actions (
+			Id TEXT PRIMARY KEY,
+			ServiceName TEXT,
+			ActionName TEXT,
+			ModuleName TEXT,
+			UsageCount INTEGER DEFAULT 0,
+			CallerNames TEXT,
+			ParameterNames TEXT,
+			ProjectId TEXT,
+			ProjectName TEXT,
+			SnapshotId TEXT,
+			SnapshotDate TEXT,
+			SnapshotSource TEXT
+		)`,
+
+		// Business Events detail table (individual messages)
+		`CREATE TABLE IF NOT EXISTS business_events (
+			Id TEXT PRIMARY KEY,
+			ServiceId TEXT,
+			ServiceQualifiedName TEXT,
+			ChannelName TEXT,
+			MessageName TEXT,
+			CanPublish INTEGER DEFAULT 0,
+			CanSubscribe INTEGER DEFAULT 0,
+			AttributeCount INTEGER DEFAULT 0,
+			Entity TEXT,
+			PublishMicroflow TEXT,
+			SubscribeMicroflow TEXT,
+			ModuleName TEXT,
+			ProjectId TEXT,
+			SnapshotId TEXT,
+			SnapshotDate TEXT,
+			SnapshotSource TEXT
+		)`,
+
 		`CREATE TABLE IF NOT EXISTS database_connections (
 			Id TEXT PRIMARY KEY,
 			Name TEXT,
@@ -562,7 +702,27 @@ func (c *Catalog) createTables() error {
 			UNION ALL
 			SELECT Id, 'DATABASE_CONNECTION' as ObjectType, Name, QualifiedName, ModuleName, Folder, '' as Description,
 				ProjectId, ProjectName, SnapshotId, SnapshotDate, SnapshotSource
-			FROM database_connections`,
+			FROM database_connections
+			UNION ALL
+			SELECT Id, 'REST_CLIENT' as ObjectType, Name, QualifiedName, ModuleName, Folder, Documentation as Description,
+				ProjectId, ProjectName, SnapshotId, SnapshotDate, SnapshotSource
+			FROM rest_clients
+			UNION ALL
+			SELECT Id, 'PUBLISHED_REST_SERVICE' as ObjectType, Name, QualifiedName, ModuleName, Folder, Documentation as Description,
+				ProjectId, ProjectName, SnapshotId, SnapshotDate, SnapshotSource
+			FROM published_rest_services
+			UNION ALL
+			SELECT Id, 'EXTERNAL_ENTITY' as ObjectType, Name, QualifiedName, ModuleName, '' as Folder, '' as Description,
+				ProjectId, ProjectName, SnapshotId, SnapshotDate, SnapshotSource
+			FROM external_entities
+			UNION ALL
+			SELECT Id, 'EXTERNAL_ACTION' as ObjectType, ActionName as Name, ServiceName || '.' || ActionName as QualifiedName, ModuleName, '' as Folder, '' as Description,
+				ProjectId, ProjectName, SnapshotId, SnapshotDate, SnapshotSource
+			FROM external_actions
+			UNION ALL
+			SELECT Id, 'BUSINESS_EVENT' as ObjectType, MessageName as Name, ServiceQualifiedName || '.' || MessageName as QualifiedName, ModuleName, '' as Folder, '' as Description,
+				ProjectId, SnapshotId || '' as ProjectName, SnapshotId, SnapshotDate, SnapshotSource
+			FROM business_events`,
 
 		// FTS5 virtual tables for full-text search
 		`CREATE VIRTUAL TABLE IF NOT EXISTS strings USING fts5(
@@ -622,6 +782,19 @@ func (c *Catalog) createTables() error {
 		`CREATE INDEX IF NOT EXISTS idx_nav_menu_items_target_mf ON navigation_menu_items(TargetMicroflow)`,
 		`CREATE INDEX IF NOT EXISTS idx_nav_role_homes_profile ON navigation_role_homes(ProfileName)`,
 		`CREATE INDEX IF NOT EXISTS idx_nav_role_homes_role ON navigation_role_homes(UserRole)`,
+		`CREATE INDEX IF NOT EXISTS idx_rest_clients_name ON rest_clients(Name)`,
+		`CREATE INDEX IF NOT EXISTS idx_rest_clients_module ON rest_clients(ModuleName)`,
+		`CREATE INDEX IF NOT EXISTS idx_rest_operations_service ON rest_operations(ServiceId)`,
+		`CREATE INDEX IF NOT EXISTS idx_rest_operations_method ON rest_operations(HttpMethod)`,
+		`CREATE INDEX IF NOT EXISTS idx_published_rest_name ON published_rest_services(Name)`,
+		`CREATE INDEX IF NOT EXISTS idx_published_rest_module ON published_rest_services(ModuleName)`,
+		`CREATE INDEX IF NOT EXISTS idx_published_rest_ops_service ON published_rest_operations(ServiceId)`,
+		`CREATE INDEX IF NOT EXISTS idx_external_entities_service ON external_entities(ServiceName)`,
+		`CREATE INDEX IF NOT EXISTS idx_external_entities_module ON external_entities(ModuleName)`,
+		`CREATE INDEX IF NOT EXISTS idx_external_actions_service ON external_actions(ServiceName)`,
+		`CREATE INDEX IF NOT EXISTS idx_external_actions_module ON external_actions(ModuleName)`,
+		`CREATE INDEX IF NOT EXISTS idx_business_events_service ON business_events(ServiceId)`,
+		`CREATE INDEX IF NOT EXISTS idx_business_events_module ON business_events(ModuleName)`,
 	}
 
 	for _, schema := range schemas {

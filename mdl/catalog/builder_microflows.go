@@ -38,10 +38,10 @@ func (b *Builder) buildMicroflows() error {
 	if b.fullMode {
 		actStmt, err = b.tx.Prepare(`
 			INSERT INTO activities (Id, Name, Caption, ActivityType, Sequence, MicroflowId, MicroflowQualifiedName,
-				ModuleName, Folder, EntityRef, ActionType, Description,
+				ModuleName, Folder, EntityRef, ActionType, ServiceRef, ActionRef, Description,
 				ProjectId, ProjectName, SnapshotId, SnapshotDate, SnapshotSource,
 				SourceId, SourceBranch, SourceRevision)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		`)
 		if err != nil {
 			return err
@@ -102,6 +102,8 @@ func (b *Builder) buildMicroflows() error {
 				caption := "Activity"
 				entityRef := ""
 				actionType := ""
+				serviceRef := ""
+				actionRef := ""
 
 				if act, ok := obj.(*microflows.ActionActivity); ok {
 					if act.Action != nil {
@@ -111,6 +113,9 @@ func (b *Builder) buildMicroflows() error {
 						switch a := act.Action.(type) {
 						case *microflows.CreateObjectAction:
 							entityRef = a.EntityQualifiedName
+						case *microflows.CallExternalAction:
+							serviceRef = a.ConsumedODataService
+							actionRef = a.Name
 						}
 					}
 				}
@@ -127,6 +132,8 @@ func (b *Builder) buildMicroflows() error {
 					moduleName,
 					entityRef,
 					actionType,
+					serviceRef,
+					actionRef,
 					"",
 					projectID, projectName, snapshotID, snapshotDate, snapshotSource,
 					sourceID, sourceBranch, sourceRevision,
@@ -185,6 +192,8 @@ func (b *Builder) buildMicroflows() error {
 				caption := "Activity"
 				entityRef := ""
 				actionType := ""
+				serviceRef := ""
+				actionRef := ""
 
 				if act, ok := obj.(*microflows.ActionActivity); ok {
 					if act.Action != nil {
@@ -194,6 +203,9 @@ func (b *Builder) buildMicroflows() error {
 						switch a := act.Action.(type) {
 						case *microflows.CreateObjectAction:
 							entityRef = a.EntityQualifiedName
+						case *microflows.CallExternalAction:
+							serviceRef = a.ConsumedODataService
+							actionRef = a.Name
 						}
 					}
 				}
@@ -210,6 +222,8 @@ func (b *Builder) buildMicroflows() error {
 					moduleName,
 					entityRef,
 					actionType,
+					serviceRef,
+					actionRef,
 					"",
 					projectID, projectName, snapshotID, snapshotDate, snapshotSource,
 					sourceID, sourceBranch, sourceRevision,
@@ -295,6 +309,8 @@ func getMicroflowActionType(action microflows.MicroflowAction) string {
 		return "ClosePageAction"
 	case *microflows.ShowPageAction:
 		return "ShowPageAction"
+	case *microflows.CallExternalAction:
+		return "CallExternalAction"
 	default:
 		return "MicroflowAction"
 	}

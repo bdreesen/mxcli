@@ -742,6 +742,8 @@ func (e *Executor) execShow(s *ast.ShowStmt) error {
 		return e.showODataServices(s.InModule)
 	case ast.ShowExternalEntities:
 		return e.showExternalEntities(s.InModule)
+	case ast.ShowExternalActions:
+		return e.showExternalActions(s.InModule)
 	case ast.ShowNavigation:
 		return e.showNavigation()
 	case ast.ShowNavigationMenu:
@@ -768,6 +770,8 @@ func (e *Executor) execShow(s *ast.ShowStmt) error {
 		return e.showImageCollections(s.InModule)
 	case ast.ShowRestClients:
 		return e.showRestClients(s.InModule)
+	case ast.ShowPublishedRestServices:
+		return e.showPublishedRestServices(s.InModule)
 	default:
 		return fmt.Errorf("unknown show object type")
 	}
@@ -829,6 +833,8 @@ func (e *Executor) execDescribe(s *ast.DescribeStmt) error {
 		return e.describeImageCollection(s.Name)
 	case ast.DescribeRestClient:
 		return e.describeRestClient(s.Name)
+	case ast.DescribePublishedRestService:
+		return e.describePublishedRestService(s.Name)
 	default:
 		return fmt.Errorf("unknown describe object type")
 	}

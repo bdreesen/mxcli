@@ -11,6 +11,7 @@ import (
 	"github.com/mendixlabs/mxcli/mdl/ast"
 	"github.com/mendixlabs/mxcli/model"
 	"github.com/mendixlabs/mxcli/sdk/domainmodel"
+	"github.com/mendixlabs/mxcli/sdk/microflows"
 	"github.com/mendixlabs/mxcli/sdk/mpr"
 )
 
@@ -589,6 +590,159 @@ func (e *Executor) showExternalEntities(moduleName string) error {
 			modWidth, r.module, qnWidth, r.qualifiedName, svcWidth, r.service, esWidth, r.entitySet, remWidth, r.remoteName, cntWidth, r.countable)
 	}
 	fmt.Fprintf(e.output, "\n(%d external entities)\n", len(rows))
+
+	return nil
+}
+
+// showExternalActions handles SHOW EXTERNAL ACTIONS [IN module] command.
+// It scans all microflows and nanoflows for CallExternalAction activities
+// and displays the unique actions grouped by consumed OData service.
+func (e *Executor) showExternalActions(moduleName string) error {
+	mfs, err := e.reader.ListMicroflows()
+	if err != nil {
+		return fmt.Errorf("failed to list microflows: %w", err)
+	}
+	nfs, err := e.reader.ListNanoflows()
+	if err != nil {
+		return fmt.Errorf("failed to list nanoflows: %w", err)
+	}
+
+	h, err := e.getHierarchy()
+	if err != nil {
+		return fmt.Errorf("failed to build hierarchy: %w", err)
+	}
+
+	// Collect unique actions: key = service + "." + action name
+	type actionInfo struct {
+		service    string // Consumed OData service qualified name
+		actionName string // External action name
+		params     []string
+		callers    []string // Microflow/nanoflow qualified names that call this action
+	}
+	actionMap := make(map[string]*actionInfo) // key = service.actionName
+
+	// Helper to extract actions from a microflow object collection
+	extractActions := func(oc *microflows.MicroflowObjectCollection, flowModule, flowName string) {
+		if oc == nil {
+			return
+		}
+		for _, obj := range oc.Objects {
+			act, ok := obj.(*microflows.ActionActivity)
+			if !ok || act.Action == nil {
+				continue
+			}
+			cea, ok := act.Action.(*microflows.CallExternalAction)
+			if !ok {
+				continue
+			}
+
+			key := cea.ConsumedODataService + "." + cea.Name
+			info, exists := actionMap[key]
+			if !exists {
+				var params []string
+				for _, pm := range cea.ParameterMappings {
+					params = append(params, pm.ParameterName)
+				}
+				info = &actionInfo{
+					service:    cea.ConsumedODataService,
+					actionName: cea.Name,
+					params:     params,
+				}
+				actionMap[key] = info
+			}
+			caller := flowModule + "." + flowName
+			// Avoid duplicate caller entries
+			found := false
+			for _, c := range info.callers {
+				if c == caller {
+					found = true
+					break
+				}
+			}
+			if !found {
+				info.callers = append(info.callers, caller)
+			}
+			// Merge parameter names from different call sites
+			if len(cea.ParameterMappings) > len(info.params) {
+				info.params = nil
+				for _, pm := range cea.ParameterMappings {
+					info.params = append(info.params, pm.ParameterName)
+				}
+			}
+		}
+	}
+
+	for _, mf := range mfs {
+		modID := h.FindModuleID(mf.ContainerID)
+		modName := h.GetModuleName(modID)
+		if moduleName != "" && !strings.EqualFold(modName, moduleName) {
+			continue
+		}
+		extractActions(mf.ObjectCollection, modName, mf.Name)
+	}
+	for _, nf := range nfs {
+		modID := h.FindModuleID(nf.ContainerID)
+		modName := h.GetModuleName(modID)
+		if moduleName != "" && !strings.EqualFold(modName, moduleName) {
+			continue
+		}
+		extractActions(nf.ObjectCollection, modName, nf.Name)
+	}
+
+	if len(actionMap) == 0 {
+		fmt.Fprintln(e.output, "No external actions found.")
+		return nil
+	}
+
+	// Collect and sort rows
+	type row struct {
+		service    string
+		actionName string
+		params     string
+		usedBy     string
+	}
+	var rows []row
+	svcWidth := len("Service")
+	actWidth := len("Action")
+	paramWidth := len("Parameters")
+	usedWidth := len("UsedBy")
+
+	for _, info := range actionMap {
+		params := strings.Join(info.params, ", ")
+		usedBy := strings.Join(info.callers, ", ")
+		rows = append(rows, row{info.service, info.actionName, params, usedBy})
+		if len(info.service) > svcWidth {
+			svcWidth = len(info.service)
+		}
+		if len(info.actionName) > actWidth {
+			actWidth = len(info.actionName)
+		}
+		if len(params) > paramWidth {
+			paramWidth = len(params)
+		}
+		if len(usedBy) > usedWidth {
+			usedWidth = len(usedBy)
+		}
+	}
+
+	// Sort by service, then action name
+	sort.Slice(rows, func(i, j int) bool {
+		if rows[i].service != rows[j].service {
+			return strings.ToLower(rows[i].service) < strings.ToLower(rows[j].service)
+		}
+		return strings.ToLower(rows[i].actionName) < strings.ToLower(rows[j].actionName)
+	})
+
+	fmt.Fprintf(e.output, "| %-*s | %-*s | %-*s | %-*s |\n",
+		svcWidth, "Service", actWidth, "Action", paramWidth, "Parameters", usedWidth, "UsedBy")
+	fmt.Fprintf(e.output, "|-%s-|-%s-|-%s-|-%s-|\n",
+		strings.Repeat("-", svcWidth), strings.Repeat("-", actWidth),
+		strings.Repeat("-", paramWidth), strings.Repeat("-", usedWidth))
+	for _, r := range rows {
+		fmt.Fprintf(e.output, "| %-*s | %-*s | %-*s | %-*s |\n",
+			svcWidth, r.service, actWidth, r.actionName, paramWidth, r.params, usedWidth, r.usedBy)
+	}
+	fmt.Fprintf(e.output, "\n(%d external actions)\n", len(rows))
 
 	return nil
 }

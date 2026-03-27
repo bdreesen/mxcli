@@ -1,0 +1,33 @@
+REST Services (Consumed and Published)
+=======================================
+
+SHOW COMMANDS
+-------------
+
+  SHOW REST CLIENTS;                              -- List consumed REST services
+  SHOW REST CLIENTS IN MyModule;                  -- Filter by module
+  SHOW PUBLISHED REST SERVICES;                   -- List published REST services
+  SHOW PUBLISHED REST SERVICES IN MyModule;       -- Filter by module
+
+DESCRIBE COMMANDS
+-----------------
+
+  DESCRIBE REST CLIENT MyModule.PetStoreAPI;      -- Full MDL definition
+  DESCRIBE PUBLISHED REST SERVICE MyModule.MyAPI; -- Full MDL definition
+
+CATALOG QUERIES
+---------------
+
+  SELECT * FROM CATALOG.REST_CLIENTS;
+  SELECT * FROM CATALOG.REST_OPERATIONS;
+  SELECT * FROM CATALOG.PUBLISHED_REST_SERVICES;
+  SELECT * FROM CATALOG.PUBLISHED_REST_OPERATIONS;
+
+  -- All REST operations with methods and paths
+  SELECT ServiceQualifiedName, HttpMethod, Path, Name
+  FROM CATALOG.REST_OPERATIONS
+  ORDER BY ServiceQualifiedName, Path;
+
+  -- Published API surface area
+  SELECT ServiceQualifiedName, ResourceName, HttpMethod, Path, Microflow
+  FROM CATALOG.PUBLISHED_REST_OPERATIONS;
