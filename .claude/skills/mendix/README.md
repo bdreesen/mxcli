@@ -54,6 +54,12 @@ Page-specific patterns:
 | [master-detail-pages.md](master-detail-pages.md) | Master-detail layouts | Building selection-based UIs |
 | [bulk-widget-updates.md](bulk-widget-updates.md) | Bulk widget property updates | Changing widget settings across pages |
 
+## Theme & Styling
+
+| Skill | Purpose | Use When |
+|-------|---------|----------|
+| [theme-styling.md](theme-styling.md) | Theme architecture, design properties, CSS | Styling widgets, browsing design properties, CSS hot-reload |
+
 ## Specialized Skills
 
 | Skill | Purpose | Use When |
@@ -83,6 +89,10 @@ Load skills based on the task:
 | "Change widgets in bulk" | `bulk-widget-updates.md` |
 | "Reuse widgets across pages" | `fragments.md` |
 | "Define a fragment" | `fragments.md` |
+| "Style a widget" | `theme-styling.md` |
+| "Add CSS class" | `theme-styling.md` |
+| "Design properties" | `theme-styling.md` |
+| "Theme / styling" | `theme-styling.md` |
 
 ### For Error Recovery
 
