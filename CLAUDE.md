@@ -253,11 +253,16 @@ New MDL commands or language features must be wired through the full pipeline:
 - [ ] No silent side effects on typos (e.g., auto-creating resources on misspelled names should be flagged)
 - [ ] Method receivers are correct (pointer vs value) for mutations
 
+### Scope & atomicity
+- [ ] Each commit does **one thing** — a feature, a bugfix, or a refactor, not a mix
+- [ ] Each PR is scoped to a **single feature or concern** — if the description needs "and" between unrelated items, split it
+- [ ] Independent features (e.g., a new command, a formatter, UX improvements) go in separate PRs even if developed together
+- [ ] Refactors that touch many files (e.g., renaming a helper across executors) are their own commit, not bundled with feature work
+
 ### Code quality
 - [ ] Refactors are applied consistently across all relevant files (grep for the old pattern)
 - [ ] Manually maintained lists (keyword lists, type mappings) are flagged as maintenance risks
 - [ ] Design docs match the actual implementation — remove or update stale plans
-- [ ] Large PRs are evaluated for splitting into focused, independently reviewable pieces
 
 ## Dependencies
 
