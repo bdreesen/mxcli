@@ -31,6 +31,7 @@ mxcli init --list-tools
 | **Continue.dev** | `--tool continue` | `.continue/config.json` |
 | **Windsurf** | `--tool windsurf` | `.windsurfrules` |
 | **Aider** | `--tool aider` | `.aider.conf.yml` |
+| **Mistral Vibe** | `--tool vibe` | `.vibe/config.toml`, `.vibe/prompts/`, `.vibe/skills/` |
 
 All tools also receive the universal files (`AGENTS.md`, `.ai-context/`).
 

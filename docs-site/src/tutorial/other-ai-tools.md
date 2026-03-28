@@ -1,6 +1,6 @@
 # Other AI tools
 
-Claude Code is the default integration, but mxcli also supports OpenCode, Cursor, Continue.dev, Windsurf, and Aider. Each tool gets its own configuration file that teaches the AI about MDL syntax and mxcli commands.
+Claude Code is the default integration, but mxcli also supports OpenCode, Cursor, Continue.dev, Windsurf, Aider, and Mistral Vibe. Each tool gets its own configuration file that teaches the AI about MDL syntax and mxcli commands.
 
 ## Initializing for a specific tool
 
@@ -21,6 +21,9 @@ mxcli init --tool windsurf /path/to/my-mendix-project
 
 # Aider
 mxcli init --tool aider /path/to/my-mendix-project
+
+# Mistral Vibe
+mxcli init --tool vibe /path/to/my-mendix-project
 ```
 
 ## Setting up multiple tools
@@ -69,6 +72,7 @@ On top of the universal files, each tool gets its own configuration:
 | **Continue.dev** | `.continue/config.json` | Custom commands and slash commands |
 | **Windsurf** | `.windsurfrules` | MDL rules for Codeium's AI |
 | **Aider** | `.aider.conf.yml` | YAML configuration for Aider |
+| **Mistral Vibe** | `.vibe/` | Config, system prompt, and SKILL.md skills |
 
 ## Tool details
 
@@ -149,6 +153,25 @@ Created files:
 - `AGENTS.md` and `.ai-context/skills/` -- universal files
 
 To use: run `aider` in the project directory from the terminal.
+
+### Mistral Vibe
+
+Mistral Vibe is a terminal-based AI coding agent by Mistral AI. It uses `.vibe/config.toml` for configuration, `.vibe/prompts/` for system prompts, and `.vibe/skills/` for SKILL.md-based skills.
+
+```bash
+mxcli init --tool vibe /path/to/project
+```
+
+Created files:
+- `.vibe/config.toml` -- project configuration with system prompt reference
+- `.vibe/prompts/mendix-mdl.md` -- system prompt with project context and mxcli commands
+- `.vibe/skills/write-microflows/SKILL.md` -- microflow syntax and rules
+- `.vibe/skills/create-page/SKILL.md` -- page/widget syntax
+- `.vibe/skills/check-syntax/SKILL.md` -- validation workflow
+- `.vibe/skills/explore-project/SKILL.md` -- project query commands
+- `AGENTS.md` and `.ai-context/skills/` -- universal files
+
+To use: run `vibe` in the project directory from the terminal. Vibe auto-discovers skills in `.vibe/skills/` and loads the system prompt from `.vibe/prompts/`.
 
 ## The universal format: AGENTS.md
 
