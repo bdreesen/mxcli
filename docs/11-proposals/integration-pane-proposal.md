@@ -106,7 +106,7 @@ SHOW EXTERNAL ACTIONS IN MyModule;        -- Filter by module
 
 Output columns: `Service`, `Action`, `Parameters`, `UsedBy` (microflow names)
 
-> **Note:** OData action definitions from `$metadata` are NOT stored in the MPR. We can only show actions that are actually *used* in microflows. Phase 2 would add `$metadata` fetching.
+> **Note:** Phase 1 discovers actions from microflow usage only. Phase 2 will parse the cached `$metadata` XML to list ALL available actions from the contract, including those not yet used. See also [mendixlabs/mxcli#44](https://github.com/mendixlabs/mxcli/issues/44).
 
 #### Published REST Services
 ```sql
@@ -360,7 +360,27 @@ DESCRIBE CONTRACT ENTITY MyModule.SalesforceAPI.PurchaseOrder;
 
 Catalog tables:
 - `contract_entities` — entity types from cached `$metadata` (name, properties, key, service ref)
-- `contract_actions` — function imports / actions from cached `$metadata`
+- `contract_actions` — function imports / actions from cached `$metadata` (name, parameters, return type)
+
+### Auto-Import from Contract ([mendixlabs/mxcli#44](https://github.com/mendixlabs/mxcli/issues/44))
+
+Once contracts are parsed, support importing assets into the project:
+
+```sql
+-- Import a specific entity from the OData contract as an external entity
+IMPORT EXTERNAL ENTITY MyModule.SalesforceAPI.PurchaseOrder;
+
+-- Import an action and its request/response NPEs (non-persistent entities)
+IMPORT EXTERNAL ACTION MyModule.SalesforceAPI.CreateOrder;
+```
+
+`IMPORT EXTERNAL ACTION` should:
+1. Parse the action's parameter and return types from the `$metadata`
+2. Create NPEs (non-persistent entities) for complex type parameters and return types
+3. Create the external action reference so `CALL EXTERNAL ACTION` can use it
+4. Map Edm types to Mendix attribute types (Edm.String → String, Edm.Int64 → Long, etc.)
+
+This addresses the core request in issue #44: users want to browse available actions and auto-import them with their payload entities, rather than manually creating the domain model.
 
 ### AsyncAPI Document Parsing
 
