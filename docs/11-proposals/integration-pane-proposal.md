@@ -17,10 +17,43 @@ Mendix Studio Pro has an **Integration Pane** that shows all connected services 
 | **SOAP Client** (consumed) | WSDL | Imported operations, parameters |
 | **SOAP Service** (published) | WSDL | Published operations, parameters, microflow handlers |
 
-### Two Levels of Discovery
+### Contract Storage in MPR (Key Finding)
 
-1. **MPR-stored assets** (Phase 1) — assets that are already imported/configured and persisted in the MPR file. This is what we can show without network access.
-2. **Contract-fetched assets** (Phase 2, future) — fetching `$metadata` or OpenAPI specs from remote URLs to show what's *available but not yet imported*. This requires network access and is out of scope for Phase 1.
+**Contracts ARE stored in the MPR file.** Studio Pro caches the full contract document in BSON fields so the Integration Pane can show available assets without network access. We were not parsing these fields.
+
+| Service Type | BSON Field | Format | Example |
+|---|---|---|---|
+| **OData Client** | `Metadata` | OData `$metadata` XML (EDMX/CSDL) | Full entity types, properties, associations, entity sets, actions |
+| **Business Event Client** | `Document` | AsyncAPI 2.2.0 YAML | Channels, messages, schemas, traits |
+
+#### OData `Metadata` Field
+
+The `Rest$ConsumedODataService` BSON contains a `Metadata` string field with the complete `$metadata` XML. Also stores:
+- `MetadataHash` — SHA-256 hash for change detection
+- `MetadataReferences` — array (entity/type references)
+- `ValidatedEntities` — array of validated entity references
+- `ApplicationId`, `EndpointId`, `CatalogUrl` — Mendix Catalog integration
+- `EnvironmentType` — "Production", etc.
+- `Icon` — base64-encoded PNG
+
+Verified in test projects:
+- `EnquiriesManagement/LatoIntegrations.SAP` — OData3, 9 entity types (PurchaseOrder, Product, Customer, Employee, etc.) with full property definitions
+- `EnquiriesManagement/LatoIntegrations.Product_Inventory` — OData4, 7,072 chars of metadata
+
+#### Business Events `Document` Field
+
+The `BusinessEvents$BusinessEventService` BSON uses two patterns:
+- **Publisher**: Uses structured `Definition` object (channels/messages/attributes) — `Document` is empty
+- **Consumer/Client**: Stores full **AsyncAPI YAML** in `Document` field — `Definition` is null
+
+Verified in `QueryDemoApp/ShopViewsClient.ShopEventsClient` — full AsyncAPI 2.2.0 contract with channels, messages, schemas, CloudEvents headers.
+
+### Implementation Approach
+
+Since contracts are stored locally, we can parse them without network access:
+
+1. **Phase 1** (current) — list MPR-stored configuration (service metadata, imported entities, operations)
+2. **Phase 2** — parse the cached `Metadata` XML and `Document` YAML to list ALL available entities, properties, actions, channels, messages from the contracts
 
 ---
 
@@ -305,25 +338,49 @@ UNION ALL SELECT Id, 'BusinessEvent' AS ObjectType, MessageName AS Name, ... FRO
 
 ---
 
-## Phase 2: Contract Fetching (Future)
+## Phase 2: Parse Cached Contracts
 
-Phase 2 would add the ability to fetch remote contracts and show *available but not yet imported* assets:
+Phase 2 parses the contract documents already stored in the MPR (no network access needed) to list all available assets from each service.
 
-### OData `$metadata` Fetching
+### OData `$metadata` Parsing
+
+Parse the `Metadata` XML field on `Rest$ConsumedODataService` to extract:
+- Entity types with properties (name, Edm type, nullable, max length)
+- Navigation properties (associations between entity types)
+- Entity sets (with entity type mapping)
+- Function imports / Actions (OData4)
+- Complex types and enum types
+
 ```sql
--- Fetch and parse the $metadata from the service URL
-REFRESH ODATA CLIENT MyModule.SalesforceAPI;
-
--- Show all available entities/actions from the contract (including not-yet-imported)
-SHOW AVAILABLE ENTITIES FROM MyModule.SalesforceAPI;
-SHOW AVAILABLE ACTIONS FROM MyModule.SalesforceAPI;
+-- Show all entities available in the OData contract (including not-yet-imported)
+SHOW CONTRACT ENTITIES FROM MyModule.SalesforceAPI;
+SHOW CONTRACT ACTIONS FROM MyModule.SalesforceAPI;
+DESCRIBE CONTRACT ENTITY MyModule.SalesforceAPI.PurchaseOrder;
 ```
 
-### OpenAPI Fetching
+Catalog tables:
+- `contract_entities` — entity types from cached `$metadata` (name, properties, key, service ref)
+- `contract_actions` — function imports / actions from cached `$metadata`
+
+### AsyncAPI Document Parsing
+
+Parse the `Document` YAML field on `BusinessEvents$BusinessEventService` (consumer pattern) to extract:
+- Channels with operation types (publish/subscribe)
+- Messages with payload schemas
+- Schema properties with types
+
 ```sql
--- If ConsumedRestService has an OpenApiFile, parse it
-SHOW AVAILABLE OPERATIONS FROM MyModule.ExternalAPI;
+-- Show all channels/messages from the AsyncAPI contract
+SHOW CONTRACT CHANNELS FROM MyModule.EventClient;
+SHOW CONTRACT MESSAGES FROM MyModule.EventClient;
 ```
+
+### OpenAPI / REST Contract Parsing
+
+The `Rest$ConsumedRestService` may contain an `OpenApiFile` field (not yet verified in test projects). If present, parse it for:
+- Paths and operations
+- Request/response schemas
+- Parameters
 
 ### Database Schema Discovery
 ```sql
@@ -331,8 +388,6 @@ SHOW AVAILABLE OPERATIONS FROM MyModule.ExternalAPI;
 SQL mydb SHOW TABLES;
 SQL mydb DESCRIBE TABLE orders;
 ```
-
-Phase 2 is out of scope for this PR.
 
 ---
 
