@@ -69,13 +69,13 @@ sync-lint-rules:
 	done; \
 	if [ $$changed -gt 0 ]; then echo "Synced $$changed lint rule file(s)"; fi
 
-# Sync VS Code extension (.vsix) for embedding
+# Sync VS Code extension (.vsix) for embedding — picks newest .vsix by mtime
 sync-vsix:
-	@if [ -f vscode-mdl/vscode-mdl-*.vsix ]; then \
-		src=$$(ls vscode-mdl/vscode-mdl-*.vsix | head -1); \
+	@src=$$(ls -t vscode-mdl/vscode-mdl-*.vsix 2>/dev/null | head -1); \
+	if [ -n "$$src" ]; then \
 		if [ ! -f cmd/mxcli/vscode-mdl.vsix ] || ! cmp -s "$$src" cmd/mxcli/vscode-mdl.vsix; then \
 			cp "$$src" cmd/mxcli/vscode-mdl.vsix; \
-			echo "Synced vscode-mdl.vsix"; \
+			echo "Synced vscode-mdl.vsix ($$src)"; \
 		fi; \
 	elif [ ! -f cmd/mxcli/vscode-mdl.vsix ]; then \
 		echo "Warning: No .vsix found. Creating empty placeholder."; \
@@ -181,6 +181,7 @@ grammar:
 # Clean build artifacts
 clean:
 	rm -rf $(BUILD_DIR)
+	rm -f vscode-mdl/vscode-mdl-*.vsix
 	go clean
 
 # Build VS Code extension (.vsix) with build-time version info
