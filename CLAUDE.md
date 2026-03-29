@@ -409,6 +409,7 @@ Full syntax tables for all MDL statements (microflows, pages, security, navigati
 - AsyncAPI contract browsing (SHOW/DESCRIBE CONTRACT CHANNELS/MESSAGES FROM cached AsyncAPI)
 - SHOW EXTERNAL ACTIONS, SHOW PUBLISHED REST SERVICES
 - Integration catalog tables (rest_clients, rest_operations, published_rest_services, external_entities, external_actions, business_events)
+- Contract catalog tables (contract_entities, contract_actions, contract_messages — parsed from cached $metadata and AsyncAPI)
 
 **Not Yet Implemented:**
 - 47 of 52 metamodel domains (REST, etc.)

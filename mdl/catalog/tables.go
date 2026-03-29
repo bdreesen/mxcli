@@ -588,6 +588,59 @@ func (c *Catalog) createTables() error {
 			SnapshotSource TEXT
 		)`,
 
+		// Contract entities — entity types parsed from cached $metadata on consumed OData services
+		`CREATE TABLE IF NOT EXISTS contract_entities (
+			Id TEXT PRIMARY KEY,
+			ServiceId TEXT,
+			ServiceQualifiedName TEXT,
+			EntityName TEXT,
+			EntitySetName TEXT,
+			KeyProperties TEXT,
+			PropertyCount INTEGER DEFAULT 0,
+			NavigationCount INTEGER DEFAULT 0,
+			Summary TEXT,
+			Description TEXT,
+			ModuleName TEXT,
+			ProjectId TEXT,
+			SnapshotId TEXT,
+			SnapshotDate TEXT,
+			SnapshotSource TEXT
+		)`,
+
+		// Contract actions — actions/functions parsed from cached $metadata on consumed OData services
+		`CREATE TABLE IF NOT EXISTS contract_actions (
+			Id TEXT PRIMARY KEY,
+			ServiceId TEXT,
+			ServiceQualifiedName TEXT,
+			ActionName TEXT,
+			IsBound INTEGER DEFAULT 0,
+			ParameterCount INTEGER DEFAULT 0,
+			ReturnType TEXT,
+			ModuleName TEXT,
+			ProjectId TEXT,
+			SnapshotId TEXT,
+			SnapshotDate TEXT,
+			SnapshotSource TEXT
+		)`,
+
+		// Contract messages — messages parsed from cached AsyncAPI on business event client services
+		`CREATE TABLE IF NOT EXISTS contract_messages (
+			Id TEXT PRIMARY KEY,
+			ServiceId TEXT,
+			ServiceQualifiedName TEXT,
+			ChannelName TEXT,
+			OperationType TEXT,
+			MessageName TEXT,
+			Title TEXT,
+			ContentType TEXT,
+			PropertyCount INTEGER DEFAULT 0,
+			ModuleName TEXT,
+			ProjectId TEXT,
+			SnapshotId TEXT,
+			SnapshotDate TEXT,
+			SnapshotSource TEXT
+		)`,
+
 		`CREATE TABLE IF NOT EXISTS database_connections (
 			Id TEXT PRIMARY KEY,
 			Name TEXT,
@@ -754,7 +807,19 @@ func (c *Catalog) createTables() error {
 			UNION ALL
 			SELECT Id, 'BUSINESS_EVENT' as ObjectType, MessageName as Name, ServiceQualifiedName || '.' || MessageName as QualifiedName, ModuleName, '' as Folder, '' as Description,
 				ProjectId, SnapshotId || '' as ProjectName, SnapshotId, SnapshotDate, SnapshotSource
-			FROM business_events`,
+			FROM business_events
+			UNION ALL
+			SELECT Id, 'CONTRACT_ENTITY' as ObjectType, EntityName as Name, ServiceQualifiedName || '.' || EntityName as QualifiedName, ModuleName, '' as Folder, Summary as Description,
+				ProjectId, '' as ProjectName, SnapshotId, SnapshotDate, SnapshotSource
+			FROM contract_entities
+			UNION ALL
+			SELECT Id, 'CONTRACT_ACTION' as ObjectType, ActionName as Name, ServiceQualifiedName || '.' || ActionName as QualifiedName, ModuleName, '' as Folder, '' as Description,
+				ProjectId, '' as ProjectName, SnapshotId, SnapshotDate, SnapshotSource
+			FROM contract_actions
+			UNION ALL
+			SELECT Id, 'CONTRACT_MESSAGE' as ObjectType, MessageName as Name, ServiceQualifiedName || '.' || MessageName as QualifiedName, ModuleName, '' as Folder, '' as Description,
+				ProjectId, '' as ProjectName, SnapshotId, SnapshotDate, SnapshotSource
+			FROM contract_messages`,
 
 		// FTS5 virtual tables for full-text search
 		`CREATE VIRTUAL TABLE IF NOT EXISTS strings USING fts5(
@@ -827,6 +892,12 @@ func (c *Catalog) createTables() error {
 		`CREATE INDEX IF NOT EXISTS idx_external_actions_module ON external_actions(ModuleName)`,
 		`CREATE INDEX IF NOT EXISTS idx_business_events_service ON business_events(ServiceId)`,
 		`CREATE INDEX IF NOT EXISTS idx_business_events_module ON business_events(ModuleName)`,
+		`CREATE INDEX IF NOT EXISTS idx_contract_entities_service ON contract_entities(ServiceId)`,
+		`CREATE INDEX IF NOT EXISTS idx_contract_entities_module ON contract_entities(ModuleName)`,
+		`CREATE INDEX IF NOT EXISTS idx_contract_actions_service ON contract_actions(ServiceId)`,
+		`CREATE INDEX IF NOT EXISTS idx_contract_actions_module ON contract_actions(ModuleName)`,
+		`CREATE INDEX IF NOT EXISTS idx_contract_messages_service ON contract_messages(ServiceId)`,
+		`CREATE INDEX IF NOT EXISTS idx_contract_messages_module ON contract_messages(ModuleName)`,
 		`CREATE INDEX IF NOT EXISTS idx_constants_name ON constants(Name)`,
 		`CREATE INDEX IF NOT EXISTS idx_constants_module ON constants(ModuleName)`,
 		`CREATE INDEX IF NOT EXISTS idx_constant_values_constant ON constant_values(ConstantName)`,

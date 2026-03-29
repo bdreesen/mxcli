@@ -356,6 +356,14 @@ func (b *Builder) Build(progress ProgressFunc) error {
 		return fmt.Errorf("failed to build business events: %w", err)
 	}
 
+	if err := b.buildContractEntities(); err != nil {
+		return fmt.Errorf("failed to build contract entities: %w", err)
+	}
+
+	if err := b.buildContractMessages(); err != nil {
+		return fmt.Errorf("failed to build contract messages: %w", err)
+	}
+
 	if err := b.buildNavigation(); err != nil {
 		return fmt.Errorf("failed to build navigation: %w", err)
 	}

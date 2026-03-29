@@ -105,6 +105,9 @@ CREATE CONSTANT MyModule.EnableLogging TYPE Boolean DEFAULT true;
 | Show contract channels | `SHOW CONTRACT CHANNELS FROM Module.Service;` | Browse cached AsyncAPI |
 | Show contract messages | `SHOW CONTRACT MESSAGES FROM Module.Service;` | Browse cached AsyncAPI |
 | Describe contract message | `DESCRIBE CONTRACT MESSAGE Module.Service.Message;` | Message payload properties |
+| Query contract entities | `SELECT * FROM CATALOG.CONTRACT_ENTITIES;` | Requires REFRESH CATALOG |
+| Query contract actions | `SELECT * FROM CATALOG.CONTRACT_ACTIONS;` | Requires REFRESH CATALOG |
+| Query contract messages | `SELECT * FROM CATALOG.CONTRACT_MESSAGES;` | Requires REFRESH CATALOG |
 
 **OData Client Example:**
 ```sql

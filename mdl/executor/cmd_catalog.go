@@ -585,6 +585,17 @@ func convertCatalogTableNames(query string) string {
 		"catalog.odata_clients":           "odata_clients",
 		"catalog.odata_services":          "odata_services",
 		"catalog.business_event_services": "business_event_services",
+		"catalog.rest_clients":            "rest_clients",
+		"catalog.rest_operations":         "rest_operations",
+		"catalog.published_rest_services": "published_rest_services",
+		"catalog.published_rest_operations": "published_rest_operations",
+		"catalog.external_entities":       "external_entities",
+		"catalog.external_actions":        "external_actions",
+		"catalog.business_events":         "business_events",
+		"catalog.database_connections":    "database_connections",
+		"catalog.contract_entities":       "contract_entities",
+		"catalog.contract_actions":        "contract_actions",
+		"catalog.contract_messages":       "contract_messages",
 	}
 
 	result := query

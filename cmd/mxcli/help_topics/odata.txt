@@ -128,5 +128,17 @@ CATALOG QUERIES
   SELECT * FROM CATALOG.ODATA_CLIENTS;
   SELECT * FROM CATALOG.ODATA_SERVICES;
   SELECT * FROM CATALOG.ENTITIES WHERE IsExternal = 1;
+  SELECT * FROM CATALOG.EXTERNAL_ENTITIES;
+  SELECT * FROM CATALOG.EXTERNAL_ACTIONS;
+
+  -- Contract entities/actions from cached $metadata (requires REFRESH CATALOG)
+  SELECT * FROM CATALOG.CONTRACT_ENTITIES;
+  SELECT * FROM CATALOG.CONTRACT_ACTIONS;
+  SELECT * FROM CATALOG.CONTRACT_MESSAGES;
+
+  -- Find all available entities from a specific service
+  SELECT EntityName, EntitySetName, KeyProperties, PropertyCount
+  FROM CATALOG.CONTRACT_ENTITIES
+  WHERE ServiceQualifiedName = 'MyModule.SalesforceAPI';
 
 CREATE OR MODIFY — all three types support idempotent upsert.
