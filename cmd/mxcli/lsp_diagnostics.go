@@ -60,19 +60,6 @@ func parseMDLDiagnostics(text string) []protocol.Diagnostic {
 
 // publishDiagnostics parses the document and sends diagnostics to the client.
 func (s *mdlServer) publishDiagnostics(ctx context.Context, docURI uri.URI, text string) {
-	// Skip diagnostics for virtual documents (mendix-mdl:// scheme).
-	// These are read-only DESCRIBE output (e.g. workflow pseudo-MDL) that
-	// may not conform to the MDL grammar.
-	uriStr := string(docURI)
-	if strings.HasPrefix(uriStr, "mendix-mdl://") {
-		// Clear any stale diagnostics
-		s.client.PublishDiagnostics(ctx, &protocol.PublishDiagnosticsParams{
-			URI:         protocol.DocumentURI(docURI),
-			Diagnostics: []protocol.Diagnostic{},
-		})
-		return
-	}
-
 	diags := parseMDLDiagnostics(text)
 	// If no parse errors, run semantic validation inline
 	if len(diags) == 0 {
@@ -137,11 +124,6 @@ func (s *mdlServer) DidClose(ctx context.Context, params *protocol.DidCloseTextD
 // DidSave handles textDocument/didSave notifications.
 func (s *mdlServer) DidSave(ctx context.Context, params *protocol.DidSaveTextDocumentParams) error {
 	docURI := uri.URI(params.TextDocument.URI)
-
-	// Skip semantic checks for virtual documents (read-only DESCRIBE output)
-	if strings.HasPrefix(string(docURI), "mendix-mdl://") {
-		return nil
-	}
 
 	s.mu.Lock()
 	text := s.docs[docURI]
