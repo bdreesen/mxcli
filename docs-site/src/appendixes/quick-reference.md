@@ -91,9 +91,14 @@ CREATE CONSTANT MyModule.EnableLogging TYPE Boolean DEFAULT true;
 | Alter OData service | `ALTER ODATA SERVICE Module.Name SET Key = Value;` | |
 | Drop OData service | `DROP ODATA SERVICE Module.Name;` | |
 | Show external entities | `SHOW EXTERNAL ENTITIES [IN Module];` | OData-backed entities |
+| Show external actions | `SHOW EXTERNAL ACTIONS [IN Module];` | Actions used in microflows |
 | Create external entity | `CREATE [OR MODIFY] EXTERNAL ENTITY Module.Name FROM ODATA CLIENT Module.Client (...) (attrs);` | |
 | Grant OData access | `GRANT ACCESS ON ODATA SERVICE Module.Name TO Module.Role, ...;` | |
 | Revoke OData access | `REVOKE ACCESS ON ODATA SERVICE Module.Name FROM Module.Role, ...;` | |
+| Show contract entities | `SHOW CONTRACT ENTITIES FROM Module.Client;` | Browse cached $metadata |
+| Show contract actions | `SHOW CONTRACT ACTIONS FROM Module.Client;` | Browse cached $metadata |
+| Describe contract entity | `DESCRIBE CONTRACT ENTITY Module.Client.Entity [FORMAT mdl];` | Properties, types, keys |
+| Describe contract action | `DESCRIBE CONTRACT ACTION Module.Client.Action [FORMAT mdl];` | Parameters, return type |
 
 **OData Client Example:**
 ```sql

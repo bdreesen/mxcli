@@ -49,6 +49,16 @@ func (r *Reader) parseConsumedODataService(unitID, containerID string, contents 
 	svc.ProxyUsername = extractString(raw["ProxyUsername"])
 	svc.ProxyPassword = extractString(raw["ProxyPassword"])
 
+	// Cached contract metadata
+	svc.Metadata = extractString(raw["Metadata"])
+	svc.MetadataHash = extractString(raw["MetadataHash"])
+
+	// Mendix Catalog integration
+	svc.ApplicationId = extractString(raw["ApplicationId"])
+	svc.EndpointId = extractString(raw["EndpointId"])
+	svc.CatalogUrl = extractString(raw["CatalogUrl"])
+	svc.EnvironmentType = extractString(raw["EnvironmentType"])
+
 	// Parse HTTP configuration (nested part)
 	if httpCfg, ok := raw["HttpConfiguration"].(map[string]any); ok {
 		svc.HttpConfiguration = parseODataHttpConfiguration(httpCfg)

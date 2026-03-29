@@ -778,6 +778,10 @@ func (e *Executor) execShow(s *ast.ShowStmt) error {
 		return e.showRestClients(s.InModule)
 	case ast.ShowPublishedRestServices:
 		return e.showPublishedRestServices(s.InModule)
+	case ast.ShowContractEntities:
+		return e.showContractEntities(s.Name)
+	case ast.ShowContractActions:
+		return e.showContractActions(s.Name)
 	default:
 		return fmt.Errorf("unknown show object type")
 	}
@@ -841,6 +845,10 @@ func (e *Executor) execDescribe(s *ast.DescribeStmt) error {
 		return e.describeRestClient(s.Name)
 	case ast.DescribePublishedRestService:
 		return e.describePublishedRestService(s.Name)
+	case ast.DescribeContractEntity:
+		return e.describeContractEntity(s.Name, s.Format)
+	case ast.DescribeContractAction:
+		return e.describeContractAction(s.Name, s.Format)
 	default:
 		return fmt.Errorf("unknown describe object type")
 	}

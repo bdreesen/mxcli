@@ -24,6 +24,22 @@ func (b *Builder) ExitShowStatement(ctx *parser.ShowStatementContext) {
 			}
 		}
 		b.statements = append(b.statements, stmt)
+	} else if ctx.CONTRACT() != nil && ctx.ENTITIES() != nil {
+		// SHOW CONTRACT ENTITIES FROM Module.Service - must come before ENTITIES check
+		stmt := &ast.ShowStmt{ObjectType: ast.ShowContractEntities}
+		if qn := ctx.QualifiedName(); qn != nil {
+			name := buildQualifiedName(qn)
+			stmt.Name = &name
+		}
+		b.statements = append(b.statements, stmt)
+	} else if ctx.CONTRACT() != nil && ctx.ACTIONS() != nil {
+		// SHOW CONTRACT ACTIONS FROM Module.Service
+		stmt := &ast.ShowStmt{ObjectType: ast.ShowContractActions}
+		if qn := ctx.QualifiedName(); qn != nil {
+			name := buildQualifiedName(qn)
+			stmt.Name = &name
+		}
+		b.statements = append(b.statements, stmt)
 	} else if ctx.EXTERNAL() != nil && ctx.ENTITIES() != nil {
 		// SHOW EXTERNAL ENTITIES [IN module] - must come before ENTITIES check
 		stmt := &ast.ShowStmt{ObjectType: ast.ShowExternalEntities}
@@ -692,7 +708,25 @@ func (b *Builder) ExitDescribeStatement(ctx *parser.DescribeStatementContext) {
 	}
 	name := buildQualifiedName(qn)
 
-	if ctx.ENTITY() != nil {
+	if ctx.CONTRACT() != nil && ctx.ENTITY() != nil {
+		stmt := &ast.DescribeStmt{
+			ObjectType: ast.DescribeContractEntity,
+			Name:       name,
+		}
+		if ctx.FORMAT() != nil && ctx.IDENTIFIER() != nil {
+			stmt.Format = ctx.IDENTIFIER().GetText()
+		}
+		b.statements = append(b.statements, stmt)
+	} else if ctx.CONTRACT() != nil && ctx.ACTION() != nil {
+		stmt := &ast.DescribeStmt{
+			ObjectType: ast.DescribeContractAction,
+			Name:       name,
+		}
+		if ctx.FORMAT() != nil && ctx.IDENTIFIER() != nil {
+			stmt.Format = ctx.IDENTIFIER().GetText()
+		}
+		b.statements = append(b.statements, stmt)
+	} else if ctx.ENTITY() != nil {
 		b.statements = append(b.statements, &ast.DescribeStmt{
 			ObjectType: ast.DescribeEntity,
 			Name:       name,

@@ -80,6 +80,8 @@ const (
 	ShowRestClients           // SHOW REST CLIENTS [IN module]
 	ShowPublishedRestServices // SHOW PUBLISHED REST SERVICES [IN module]
 	ShowConstantValues       // SHOW CONSTANT VALUES [IN module]
+	ShowContractEntities     // SHOW CONTRACT ENTITIES FROM Module.Service
+	ShowContractActions      // SHOW CONTRACT ACTIONS FROM Module.Service
 )
 
 // String returns the human-readable name of the show object type.
@@ -187,6 +189,10 @@ func (t ShowObjectType) String() string {
 		return "PUBLISHED REST SERVICES"
 	case ShowConstantValues:
 		return "CONSTANT VALUES"
+	case ShowContractEntities:
+		return "CONTRACT ENTITIES"
+	case ShowContractActions:
+		return "CONTRACT ACTIONS"
 	default:
 		return "UNKNOWN"
 	}
@@ -203,7 +209,8 @@ func (s *SelectStmt) isStatement() {}
 type DescribeStmt struct {
 	ObjectType DescribeObjectType
 	Name       QualifiedName
-	WithAll    bool // For DESCRIBE MODULE ... WITH ALL
+	WithAll    bool   // For DESCRIBE MODULE ... WITH ALL
+	Format     string // For DESCRIBE CONTRACT ... FORMAT mdl
 }
 
 func (s *DescribeStmt) isStatement() {}
@@ -238,6 +245,8 @@ const (
 	DescribeImageCollection      // DESCRIBE IMAGE COLLECTION Module.Name
 	DescribeRestClient           // DESCRIBE REST CLIENT Module.Name
 	DescribePublishedRestService // DESCRIBE PUBLISHED REST SERVICE Module.Name
+	DescribeContractEntity       // DESCRIBE CONTRACT ENTITY Service.EntityName [FORMAT mdl]
+	DescribeContractAction       // DESCRIBE CONTRACT ACTION Service.ActionName [FORMAT mdl]
 )
 
 // String returns the human-readable name of the describe object type.
@@ -295,6 +304,10 @@ func (t DescribeObjectType) String() string {
 		return "REST CLIENT"
 	case DescribePublishedRestService:
 		return "PUBLISHED REST SERVICE"
+	case DescribeContractEntity:
+		return "CONTRACT ENTITY"
+	case DescribeContractAction:
+		return "CONTRACT ACTION"
 	default:
 		return "UNKNOWN"
 	}

@@ -405,6 +405,9 @@ Full syntax tables for all MDL statements (microflows, pages, security, navigati
 - CREATE/DROP WORKFLOW with user tasks, decisions, parallel splits, and other activity types
 - CALCULATED BY microflow syntax for calculated attributes
 - Image collections (SHOW/DESCRIBE/CREATE/DROP)
+- OData contract browsing (SHOW/DESCRIBE CONTRACT ENTITIES/ACTIONS FROM cached $metadata)
+- SHOW EXTERNAL ACTIONS, SHOW PUBLISHED REST SERVICES
+- Integration catalog tables (rest_clients, rest_operations, published_rest_services, external_entities, external_actions, business_events)
 
 **Not Yet Implemented:**
 - 47 of 52 metamodel domains (REST, etc.)

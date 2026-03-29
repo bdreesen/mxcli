@@ -366,6 +366,40 @@ SHOW EXTERNAL ACTIONS IN OdTest;
 /
 
 -- ############################################################################
+-- LEVEL 10: CONTRACT BROWSING (cached $metadata)
+-- ############################################################################
+
+/**
+ * Level 10.1: Browse entity types from a consumed OData service's cached $metadata
+ */
+SHOW CONTRACT ENTITIES FROM OdTest.SalesforceAPI;
+/
+
+/**
+ * Level 10.2: Browse actions/functions from the contract
+ */
+SHOW CONTRACT ACTIONS FROM OdTest.SalesforceAPI;
+/
+
+/**
+ * Level 10.3: Describe a specific entity type from the contract
+ */
+DESCRIBE CONTRACT ENTITY OdTest.SalesforceAPI.Account;
+/
+
+/**
+ * Level 10.4: Generate CREATE EXTERNAL ENTITY from the contract
+ */
+DESCRIBE CONTRACT ENTITY OdTest.SalesforceAPI.Account FORMAT mdl;
+/
+
+/**
+ * Level 10.5: Describe a specific action from the contract
+ */
+DESCRIBE CONTRACT ACTION OdTest.SalesforceAPI.CreateOrder;
+/
+
+-- ############################################################################
 -- LEVEL 8.8: DROP (cleanup)
 -- ############################################################################
 

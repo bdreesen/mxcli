@@ -325,6 +325,16 @@ type ConsumedODataService struct {
 	ProxyPort     string `json:"proxyPort,omitempty"`
 	ProxyUsername string `json:"proxyUsername,omitempty"`
 	ProxyPassword string `json:"proxyPassword,omitempty"`
+
+	// Cached contract metadata (from $metadata endpoint)
+	Metadata     string `json:"metadata,omitempty"`     // Full $metadata XML (EDMX/CSDL)
+	MetadataHash string `json:"metadataHash,omitempty"` // SHA-256 hash of metadata for change detection
+
+	// Mendix Catalog integration
+	ApplicationId   string `json:"applicationId,omitempty"`
+	EndpointId      string `json:"endpointId,omitempty"`
+	CatalogUrl      string `json:"catalogUrl,omitempty"`
+	EnvironmentType string `json:"environmentType,omitempty"`
 }
 
 // HttpConfiguration represents the HTTP transport configuration (Microflows$HttpConfiguration).

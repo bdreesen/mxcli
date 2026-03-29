@@ -511,8 +511,14 @@ DESCRIBE ODATA CLIENT ShopViewsClient.ShopViewsApiClient;
 
 -- See external entities and view entities
 SHOW ENTITIES IN ShopViewsClient;
-DESCRIBE ENTITY ShopViewsClient.ProductWithActivePricesEE;
-DESCRIBE ENTITY ShopViews.ProductWithActivePriceVE;
+SHOW EXTERNAL ENTITIES;
+SHOW EXTERNAL ACTIONS;
+
+-- Browse available assets from cached $metadata contract
+SHOW CONTRACT ENTITIES FROM ShopViewsClient.ShopViewsApiClient;
+SHOW CONTRACT ACTIONS FROM ShopViewsClient.ShopViewsApiClient;
+DESCRIBE CONTRACT ENTITY ShopViewsClient.ShopViewsApiClient.Product;
+DESCRIBE CONTRACT ENTITY ShopViewsClient.ShopViewsApiClient.Product FORMAT mdl;
 
 -- Check security setup
 SHOW ACCESS ON ODATA SERVICE ShopViews.ShopViewsApi;
