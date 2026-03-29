@@ -166,6 +166,8 @@ Available topics:
   move        - Show MOVE command syntax for relocating documents
   security    - Show security management syntax (roles, access, GRANT/REVOKE)
   odata       - Show OData client/service/external entity syntax
+  rest        - Show consumed and published REST service syntax
+  integration - Show all integration services, contract browsing, catalog tables
   workflow    - Show workflow commands syntax
   navigation  - Show navigation profile management syntax
   structure   - Show SHOW STRUCTURE command syntax
@@ -220,6 +222,12 @@ Example:
 			showTopicHelp("security")
 		case "odata":
 			showTopicHelp("odata")
+		case "rest", "rest-client", "rest-clients":
+			showTopicHelp("rest")
+		case "integration", "integrations", "services":
+			showTopicHelp("integration")
+		case "contract", "contracts":
+			showTopicHelp("integration")
 		case "workflow", "workflows":
 			showTopicHelp("workflow")
 		case "navigation", "nav":

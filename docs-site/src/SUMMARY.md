@@ -249,6 +249,7 @@
 - [Workflow Statements](reference/workflow/README.md)
   - [CREATE WORKFLOW](reference/workflow/create-workflow.md)
   - [DROP WORKFLOW](reference/workflow/drop-workflow.md)
+- [OData and Integration Statements](reference/odata/README.md)
 - [Business Event Statements](reference/business-event/README.md)
   - [CREATE BUSINESS EVENT SERVICE](reference/business-event/create-business-event-service.md)
   - [DROP BUSINESS EVENT SERVICE](reference/business-event/drop-business-event-service.md)
