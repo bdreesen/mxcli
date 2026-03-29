@@ -16,14 +16,22 @@ import (
 
 // addCreateVariableAction creates a DECLARE statement as a CreateVariableAction.
 func (fb *flowBuilder) addCreateVariableAction(s *ast.DeclareStmt) model.ID {
+	// Resolve TypeEnumeration → TypeEntity ambiguity using the domain model
+	declType := s.Type
+	if declType.Kind == ast.TypeEnumeration && declType.EnumRef != nil && fb.reader != nil {
+		if fb.isEntity(declType.EnumRef.Module, declType.EnumRef.Name) {
+			declType = ast.DataType{Kind: ast.TypeEntity, EntityRef: declType.EnumRef}
+		}
+	}
+
 	// Register the variable as declared
-	typeName := s.Type.Kind.String()
+	typeName := declType.Kind.String()
 	fb.declaredVars[s.Variable] = typeName
 
 	action := &microflows.CreateVariableAction{
 		BaseElement:  model.BaseElement{ID: model.ID(mpr.GenerateID())},
 		VariableName: s.Variable,
-		DataType:     convertASTToMicroflowDataType(s.Type, nil), // nil resolver - DECLARE uses primitive types
+		DataType:     convertASTToMicroflowDataType(declType, nil),
 		InitialValue: expressionToString(s.InitialValue),
 	}
 
@@ -102,14 +110,7 @@ func (fb *flowBuilder) addCreateObjectAction(s *ast.CreateObjectStmt) model.ID {
 			Type:        microflows.MemberChangeTypeSet,
 			Value:       expressionToString(change.Value),
 		}
-		// Check if this is an association (already qualified name with .) or an attribute
-		if strings.Contains(change.Attribute, ".") {
-			// Association: Module.AssociationName (already fully qualified)
-			memberChange.AssociationQualifiedName = change.Attribute
-		} else if entityQN != "" {
-			// Attribute: Build qualified name as Module.Entity.Attribute
-			memberChange.AttributeQualifiedName = entityQN + "." + change.Attribute
-		}
+		fb.resolveMemberChange(memberChange, change.Attribute, entityQN)
 		action.InitialMembers = append(action.InitialMembers, memberChange)
 	}
 
@@ -258,14 +259,7 @@ func (fb *flowBuilder) addChangeObjectAction(s *ast.ChangeObjectStmt) model.ID {
 			Type:        microflows.MemberChangeTypeSet,
 			Value:       expressionToString(change.Value),
 		}
-		// Check if this is an association (already qualified name with .) or an attribute
-		if strings.Contains(change.Attribute, ".") {
-			// Association: Module.AssociationName (already fully qualified)
-			memberChange.AssociationQualifiedName = change.Attribute
-		} else if entityQN != "" {
-			// Attribute: Build qualified name as Module.Entity.Attribute
-			memberChange.AttributeQualifiedName = entityQN + "." + change.Attribute
-		}
+		fb.resolveMemberChange(memberChange, change.Attribute, entityQN)
 		action.Changes = append(action.Changes, memberChange)
 	}
 
@@ -724,6 +718,76 @@ func (fb *flowBuilder) addRemoveFromListAction(s *ast.RemoveFromListStmt) model.
 	fb.objects = append(fb.objects, activity)
 	fb.posX += fb.spacing
 	return activity.ID
+}
+
+// isEntity checks whether a qualified name refers to an entity in the domain model.
+func (fb *flowBuilder) isEntity(moduleName, entityName string) bool {
+	if fb.reader == nil {
+		return false
+	}
+	mod, err := fb.reader.GetModuleByName(moduleName)
+	if err != nil || mod == nil {
+		return false
+	}
+	dm, err := fb.reader.GetDomainModel(mod.ID)
+	if err != nil || dm == nil {
+		return false
+	}
+	for _, e := range dm.Entities {
+		if e.Name == entityName {
+			return true
+		}
+	}
+	return false
+}
+
+// resolveMemberChange determines whether a member name is an association or attribute
+// and sets the appropriate field on the MemberChange. It queries the domain model
+// to check if the name matches an association on the entity; if no reader is available,
+// it falls back to the dot-contains heuristic.
+func (fb *flowBuilder) resolveMemberChange(mc *microflows.MemberChange, memberName string, entityQN string) {
+	if entityQN == "" {
+		return
+	}
+
+	// Split entity qualified name into module and entity
+	parts := strings.SplitN(entityQN, ".", 2)
+	if len(parts) != 2 {
+		mc.AttributeQualifiedName = entityQN + "." + memberName
+		return
+	}
+	moduleName := parts[0]
+
+	// Query domain model to check if this member is an association
+	if fb.reader != nil {
+		if mod, err := fb.reader.GetModuleByName(moduleName); err == nil && mod != nil {
+			if dm, err := fb.reader.GetDomainModel(mod.ID); err == nil && dm != nil {
+				for _, a := range dm.Associations {
+					if a.Name == memberName {
+						mc.AssociationQualifiedName = moduleName + "." + memberName
+						return
+					}
+				}
+				// Also check cross-associations
+				for _, a := range dm.CrossAssociations {
+					if a.Name == memberName {
+						mc.AssociationQualifiedName = moduleName + "." + memberName
+						return
+					}
+				}
+				// Not an association — it's an attribute
+				mc.AttributeQualifiedName = entityQN + "." + memberName
+				return
+			}
+		}
+	}
+
+	// Fallback: if already qualified (contains dot), treat as association
+	if strings.Contains(memberName, ".") {
+		mc.AssociationQualifiedName = memberName
+	} else {
+		mc.AttributeQualifiedName = entityQN + "." + memberName
+	}
 }
 
 // assocLookupResult holds resolved association metadata.
