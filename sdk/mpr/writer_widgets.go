@@ -123,6 +123,9 @@ func patchConditionalSettings(doc bson.D, w pages.Widget) bson.D {
 		if elem.Key == "ConditionalEditabilitySettings" && bw.ConditionalEditability != nil {
 			doc[i].Value = serializeConditionalEditability(bw.ConditionalEditability)
 		}
+		if elem.Key == "Editable" && bw.ConditionalEditability != nil {
+			doc[i].Value = "Conditional"
+		}
 	}
 	return doc
 }
