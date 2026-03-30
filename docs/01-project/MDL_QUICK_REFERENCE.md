@@ -423,6 +423,16 @@ CREATE PAGE MyModule.Customer_Edit
 }
 ```
 
+**Widget Properties:**
+
+| Property | Syntax | Notes |
+|----------|--------|-------|
+| DesktopWidth | `COLUMN col (DesktopWidth: 8)` | 1-12 or AutoFill |
+| TabletWidth | `COLUMN col (TabletWidth: 6)` | 1-12 or AutoFill (default: auto) |
+| PhoneWidth | `COLUMN col (PhoneWidth: 12)` | 1-12 or AutoFill (default: auto) |
+| VISIBLE IF | `TEXTBOX txt (VISIBLE IF '$obj/IsActive')` | Conditional visibility expression |
+| EDITABLE IF | `TEXTBOX txt (EDITABLE IF '$obj/Status != ''Closed''')` | Conditional editability expression |
+
 **Supported Widgets:**
 - Layout: `LAYOUTGRID`, `ROW`, `COLUMN`, `CONTAINER`, `CUSTOMCONTAINER`
 - Input: `TEXTBOX`, `TEXTAREA`, `CHECKBOX`, `RADIOBUTTONS`, `DATEPICKER`, `COMBOBOX`

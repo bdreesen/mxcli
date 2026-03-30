@@ -76,6 +76,34 @@ CREATE PAGE MyModule.Customer_Edit
 | `Folder` | Organizational folder within the module | `Folder: 'Pages/Customers'` |
 | `Variables` | Page-level variables for conditional logic | `Variables: { $show: Boolean = 'true' }` |
 
+## Widget Properties
+
+### Responsive Column Widths
+
+Layout grid columns support responsive widths for desktop, tablet, and phone:
+
+```sql
+COLUMN col1 (DesktopWidth: 8, TabletWidth: 6, PhoneWidth: 12) { ... }
+```
+
+Values are 1-12 (grid units) or `AutoFill`. TabletWidth and PhoneWidth default to auto when omitted.
+
+### Conditional Visibility
+
+Any widget can be conditionally visible using a Mendix expression:
+
+```sql
+TEXTBOX txtName (Label: 'Name', Attribute: Name, VISIBLE IF '$currentObject/IsActive')
+```
+
+### Conditional Editability
+
+Input widgets can be conditionally editable:
+
+```sql
+TEXTBOX txtStatus (Label: 'Status', Attribute: Status, EDITABLE IF '$currentObject/Status != ''Closed''')
+```
+
 ## Layouts
 
 Layouts are referenced by their qualified name (`Module.LayoutName`). Common Atlas layouts include:
