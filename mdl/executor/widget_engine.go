@@ -236,7 +236,7 @@ func setTextTemplateValue(val bson.D, text string) bson.D {
 						{Key: "$Type", Value: "Texts$Text"},
 						{Key: "Items", Value: bson.A{int32(3)}},
 					}},
-					{Key: "Parameters", Value: bson.A{int32(3)}},
+					{Key: "Parameters", Value: bson.A{int32(2)}},
 					{Key: "Template", Value: bson.D{
 						{Key: "$ID", Value: mpr.IDToBsonBinary(mpr.GenerateID())},
 						{Key: "$Type", Value: "Texts$Text"},

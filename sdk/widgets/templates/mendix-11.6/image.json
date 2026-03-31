@@ -60,7 +60,7 @@
           "Expression": "",
           "Form": "",
           "Icon": null,
-          "Image": "Atlas_Web_Content.Content.user",
+          "Image": "",
           "Microflow": "",
           "Nanoflow": "",
           "Objects": [
@@ -1337,7 +1337,7 @@
         {
           "$ID": "6f547135d200034bb5d167f9958536a7",
           "$Type": "CustomWidgets$WidgetPropertyType",
-          "Caption": "\u003csystem:Name\u003e",
+          "Caption": "<system:Name>",
           "Category": "General::Conditional Visibility",
           "Description": "",
           "IsDefault": false,
@@ -1388,7 +1388,7 @@
         {
           "$ID": "7c043cb9ab7b7f4da53e330b429963f0",
           "$Type": "CustomWidgets$WidgetPropertyType",
-          "Caption": "\u003csystem:Visibility\u003e",
+          "Caption": "<system:Visibility>",
           "Category": "General::Conditional Visibility",
           "Description": "",
           "IsDefault": false,
@@ -2102,8 +2102,8 @@
       ]
     },
     "OfflineCapable": true,
-    "StudioCategory": "Images, Videos \u0026 Files",
-    "StudioProCategory": "Images, videos \u0026 files",
+    "StudioCategory": "Images, Videos & Files",
+    "StudioProCategory": "Images, videos & files",
     "SupportedPlatform": "Web",
     "WidgetDescription": "Display an image and enlarge it on click.",
     "WidgetId": "com.mendix.widget.web.image.Image",
