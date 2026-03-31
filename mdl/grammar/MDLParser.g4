@@ -1022,6 +1022,7 @@ microflowStatement
     | annotation* removeFromListStatement SEMICOLON?
     | annotation* validationFeedbackStatement SEMICOLON?
     | annotation* restCallStatement SEMICOLON?
+    | annotation* sendRestRequestStatement SEMICOLON?
     ;
 
 declareStatement
@@ -1320,6 +1321,36 @@ restCallReturnsClause
     | RETURNS MAPPING qualifiedName AS qualifiedName         // Import mapping with result entity
     | RETURNS NONE                                           // Ignore response
     | RETURNS NOTHING                                        // Ignore response (alias)
+    ;
+
+/**
+ * SEND REST REQUEST — calls a consumed REST service operation defined via CREATE REST CLIENT.
+ *
+ * @example Simple call (no response)
+ * ```mdl
+ * SEND REST REQUEST RestTest.RC001_SimpleAPI.GetStatus;
+ * ```
+ *
+ * @example Call with output variable
+ * ```mdl
+ * $RootResult = SEND REST REQUEST RestTest.RC008_HeaderAPI.GetData;
+ * ```
+ *
+ * @example Call with body and error handling
+ * ```mdl
+ * $Result = SEND REST REQUEST Module.Service.CreateItem
+ *     BODY $NewItem
+ *     ON ERROR CONTINUE;
+ * ```
+ */
+sendRestRequestStatement
+    : (VARIABLE EQUALS)? SEND REST REQUEST qualifiedName
+      sendRestRequestBodyClause?
+      onErrorClause?
+    ;
+
+sendRestRequestBodyClause
+    : BODY VARIABLE
     ;
 
 // =============================================================================
@@ -3228,4 +3259,5 @@ keyword
     | GENERATE | CONNECTOR | EXEC | TABLES | VIEWS              // SQL generate keywords
     | COLLECTION                                               // Image collection keyword
     | FILE_KW                                                    // REST client file keyword
+    | SEND | REQUEST                                               // REST operation call keywords
     ;
