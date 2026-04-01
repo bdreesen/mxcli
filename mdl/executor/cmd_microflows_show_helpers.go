@@ -348,6 +348,27 @@ func (e *Executor) traverseFlowUntilMerge(
 		return
 	}
 
+	// Handle LoopedActivity inside a branch
+	if loop, isLoop := obj.(*microflows.LoopedActivity); isLoop {
+		startLine := len(*lines) + headerLineCount
+		if stmt != "" {
+			emitObjectAnnotations(obj, lines, indentStr, annotationsByTarget)
+			*lines = append(*lines, indentStr+stmt)
+		}
+
+		e.emitLoopBody(loop, flowsByOrigin, entityNames, microflowNames, lines, indent, sourceMap, headerLineCount, annotationsByTarget)
+
+		*lines = append(*lines, indentStr+loopEndKeyword(loop)+";")
+		recordSourceMap(sourceMap, currentID, startLine, len(*lines)+headerLineCount-1)
+
+		// Continue after the loop within the branch
+		flows := flowsByOrigin[currentID]
+		for _, flow := range flows {
+			e.traverseFlowUntilMerge(flow.DestinationID, mergeID, activityMap, flowsByOrigin, splitMergeMap, visited, entityNames, microflowNames, lines, indent, sourceMap, headerLineCount, annotationsByTarget)
+		}
+		return
+	}
+
 	// Regular activity
 	startLine := len(*lines) + headerLineCount
 	normalFlows := findNormalFlows(flowsByOrigin[currentID])

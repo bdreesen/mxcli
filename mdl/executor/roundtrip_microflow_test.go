@@ -435,6 +435,36 @@ END;`
 	)
 }
 
+// TestRoundtripMicroflow_LoopInsideBranch tests that a LOOP inside an IF branch
+// correctly emits loop body activities and END LOOP. Regression test for #65.
+func TestRoundtripMicroflow_LoopInsideBranch(t *testing.T) {
+	env := setupTestEnv(t)
+	defer env.teardown()
+
+	if err := env.executeMDL(`CREATE OR MODIFY PERSISTENT ENTITY RoundtripTest.MfTestItem (Name: String(100));`); err != nil {
+		t.Fatalf("Failed to create entity: %v", err)
+	}
+
+	mfName := testModule + ".RT_LoopInBranch"
+	createMDL := `CREATE MICROFLOW ` + mfName + ` ($Flag: Boolean) RETURNS Boolean
+BEGIN
+  IF $Flag THEN
+    RETRIEVE $Items FROM RoundtripTest.MfTestItem;
+    LOOP $Item IN $Items BEGIN
+      LOG INFO NODE 'Test' 'In loop';
+    END LOOP;
+  ELSE
+    LOG INFO NODE 'Test' 'No items';
+  END IF;
+  RETURN true;
+END;`
+
+	assertMicroflowContains(t, env, mfName, createMDL,
+		[]string{"IF", "RETRIEVE", "LOOP", "LOG INFO", "In loop", "END LOOP", "ELSE", "No items", "END IF", "RETURN"},
+		nil,
+	)
+}
+
 // TestRoundtripMicroflow_ValidationFeedback tests VALIDATION FEEDBACK statement
 // which triggered a crash bug with nil settings.
 func TestRoundtripMicroflow_ValidationFeedback(t *testing.T) {
