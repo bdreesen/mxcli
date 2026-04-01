@@ -2916,10 +2916,11 @@ debugStatement
  */
 sqlStatement
     : SQL CONNECT IDENTIFIER STRING_LITERAL AS IDENTIFIER          # sqlConnect
+    | SQL CONNECT IDENTIFIER                                        # sqlConnectAlias
     | SQL DISCONNECT IDENTIFIER                                     # sqlDisconnect
     | SQL CONNECTIONS                                               # sqlConnections
     | SQL IDENTIFIER SHOW identifierOrKeyword                        # sqlShowTables
-    | SQL IDENTIFIER DESCRIBE identifierOrKeyword                   # sqlDescribeTable
+    | SQL IDENTIFIER DESCRIBE qualifiedName                          # sqlDescribeTable
     | SQL IDENTIFIER GENERATE CONNECTOR INTO identifierOrKeyword
       (TABLES LPAREN identifierOrKeyword (COMMA identifierOrKeyword)* RPAREN)?
       (VIEWS LPAREN identifierOrKeyword (COMMA identifierOrKeyword)* RPAREN)?

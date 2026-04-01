@@ -31,6 +31,15 @@ func (b *Builder) ExitSqlConnect(ctx *parser.SqlConnectContext) {
 	})
 }
 
+// ExitSqlConnectAlias handles SQL CONNECT <alias> (resolve from connections.yaml)
+func (b *Builder) ExitSqlConnectAlias(ctx *parser.SqlConnectAliasContext) {
+	alias := ctx.IDENTIFIER().GetText()
+	b.statements = append(b.statements, &ast.SQLConnectStmt{
+		Alias: alias,
+		// Driver and DSN empty — executor resolves from config
+	})
+}
+
 // ExitSqlDisconnect handles SQL DISCONNECT <alias>
 func (b *Builder) ExitSqlDisconnect(ctx *parser.SqlDisconnectContext) {
 	alias := ctx.IDENTIFIER().GetText()
@@ -67,11 +76,11 @@ func (b *Builder) ExitSqlShowTables(ctx *parser.SqlShowTablesContext) {
 // ExitSqlDescribeTable handles SQL <alias> DESCRIBE <table>
 func (b *Builder) ExitSqlDescribeTable(ctx *parser.SqlDescribeTableContext) {
 	alias := ctx.IDENTIFIER().GetText()
-	iok := ctx.IdentifierOrKeyword()
-	if iok == nil {
+	qn := ctx.QualifiedName()
+	if qn == nil {
 		return
 	}
-	table := iok.GetText()
+	table := buildQualifiedName(qn).String()
 	b.statements = append(b.statements, &ast.SQLDescribeTableStmt{
 		Alias: alias,
 		Table: table,

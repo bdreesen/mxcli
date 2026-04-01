@@ -991,6 +991,9 @@ type MDLParserListener interface {
 	// EnterSqlConnect is called when entering the sqlConnect production.
 	EnterSqlConnect(c *SqlConnectContext)
 
+	// EnterSqlConnectAlias is called when entering the sqlConnectAlias production.
+	EnterSqlConnectAlias(c *SqlConnectAliasContext)
+
 	// EnterSqlDisconnect is called when entering the sqlDisconnect production.
 	EnterSqlDisconnect(c *SqlDisconnectContext)
 
@@ -2112,6 +2115,9 @@ type MDLParserListener interface {
 
 	// ExitSqlConnect is called when exiting the sqlConnect production.
 	ExitSqlConnect(c *SqlConnectContext)
+
+	// ExitSqlConnectAlias is called when exiting the sqlConnectAlias production.
+	ExitSqlConnectAlias(c *SqlConnectAliasContext)
 
 	// ExitSqlDisconnect is called when exiting the sqlDisconnect production.
 	ExitSqlDisconnect(c *SqlDisconnectContext)

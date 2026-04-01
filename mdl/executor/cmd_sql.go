@@ -21,8 +21,29 @@ func (e *Executor) ensureSQLManager() *sqllib.Manager {
 	return e.sqlMgr
 }
 
+// getOrAutoConnect returns an existing connection or auto-connects using connections.yaml.
+func (e *Executor) getOrAutoConnect(alias string) (*sqllib.Connection, error) {
+	mgr := e.ensureSQLManager()
+	conn, err := mgr.Get(alias)
+	if err == nil {
+		return conn, nil
+	}
+
+	// Not connected yet — try auto-connect from config
+	if acErr := e.autoConnect(alias); acErr != nil {
+		return nil, fmt.Errorf("no connection '%s' (and auto-connect failed: %v)", alias, acErr)
+	}
+	return mgr.Get(alias)
+}
+
 // execSQLConnect handles SQL CONNECT <driver> '<dsn>' AS <alias>
+// and SQL CONNECT <alias> (resolve from connections.yaml).
 func (e *Executor) execSQLConnect(s *ast.SQLConnectStmt) error {
+	if s.DSN == "" && s.Driver == "" {
+		// Short form: SQL CONNECT <alias> — resolve from config
+		return e.autoConnect(s.Alias)
+	}
+
 	driver, err := sqllib.ParseDriver(s.Driver)
 	if err != nil {
 		return err
@@ -34,6 +55,23 @@ func (e *Executor) execSQLConnect(s *ast.SQLConnectStmt) error {
 	}
 
 	fmt.Fprintf(e.output, "Connected to %s database as '%s'\n", driver, s.Alias)
+	return nil
+}
+
+// autoConnect resolves a connection alias from env vars or .mxcli/connections.yaml
+// and connects automatically.
+func (e *Executor) autoConnect(alias string) error {
+	rc, err := sqllib.ResolveConnection(sqllib.ResolveOptions{Alias: alias})
+	if err != nil {
+		return fmt.Errorf("cannot resolve connection '%s': %w\nAdd it to .mxcli/connections.yaml or use: SQL CONNECT <driver> '<dsn>' AS %s", alias, err, alias)
+	}
+
+	mgr := e.ensureSQLManager()
+	if err := mgr.Connect(rc.Driver, rc.DSN, alias); err != nil {
+		return err
+	}
+
+	fmt.Fprintf(e.output, "Connected to %s database as '%s' (from config)\n", rc.Driver, alias)
 	return nil
 }
 
@@ -75,8 +113,7 @@ func (e *Executor) execSQLConnections() error {
 
 // execSQLQuery handles SQL <alias> <raw-sql>
 func (e *Executor) execSQLQuery(s *ast.SQLQueryStmt) error {
-	mgr := e.ensureSQLManager()
-	conn, err := mgr.Get(s.Alias)
+	conn, err := e.getOrAutoConnect(s.Alias)
 	if err != nil {
 		return err
 	}
@@ -96,8 +133,7 @@ func (e *Executor) execSQLQuery(s *ast.SQLQueryStmt) error {
 
 // execSQLShowTables handles SQL <alias> SHOW TABLES
 func (e *Executor) execSQLShowTables(s *ast.SQLShowTablesStmt) error {
-	mgr := e.ensureSQLManager()
-	conn, err := mgr.Get(s.Alias)
+	conn, err := e.getOrAutoConnect(s.Alias)
 	if err != nil {
 		return err
 	}
@@ -117,8 +153,7 @@ func (e *Executor) execSQLShowTables(s *ast.SQLShowTablesStmt) error {
 
 // execSQLShowViews handles SQL <alias> SHOW VIEWS
 func (e *Executor) execSQLShowViews(s *ast.SQLShowViewsStmt) error {
-	mgr := e.ensureSQLManager()
-	conn, err := mgr.Get(s.Alias)
+	conn, err := e.getOrAutoConnect(s.Alias)
 	if err != nil {
 		return err
 	}
@@ -138,8 +173,7 @@ func (e *Executor) execSQLShowViews(s *ast.SQLShowViewsStmt) error {
 
 // execSQLShowFunctions handles SQL <alias> SHOW FUNCTIONS
 func (e *Executor) execSQLShowFunctions(s *ast.SQLShowFunctionsStmt) error {
-	mgr := e.ensureSQLManager()
-	conn, err := mgr.Get(s.Alias)
+	conn, err := e.getOrAutoConnect(s.Alias)
 	if err != nil {
 		return err
 	}
@@ -159,8 +193,7 @@ func (e *Executor) execSQLShowFunctions(s *ast.SQLShowFunctionsStmt) error {
 
 // execSQLGenerateConnector handles SQL <alias> GENERATE CONNECTOR INTO <module> [TABLES (...)] [VIEWS (...)] [EXEC]
 func (e *Executor) execSQLGenerateConnector(s *ast.SQLGenerateConnectorStmt) error {
-	mgr := e.ensureSQLManager()
-	conn, err := mgr.Get(s.Alias)
+	conn, err := e.getOrAutoConnect(s.Alias)
 	if err != nil {
 		return err
 	}
@@ -216,8 +249,7 @@ func (e *Executor) executeGeneratedMDL(mdl string) error {
 
 // execSQLDescribeTable handles SQL <alias> DESCRIBE <table>
 func (e *Executor) execSQLDescribeTable(s *ast.SQLDescribeTableStmt) error {
-	mgr := e.ensureSQLManager()
-	conn, err := mgr.Get(s.Alias)
+	conn, err := e.getOrAutoConnect(s.Alias)
 	if err != nil {
 		return err
 	}

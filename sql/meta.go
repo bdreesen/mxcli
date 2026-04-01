@@ -5,6 +5,7 @@ package sql
 import (
 	"context"
 	"fmt"
+	"strings"
 )
 
 // tableQuery maps driver to the query that lists user tables.
@@ -32,11 +33,9 @@ var describeQuery = map[DriverName]string{
 FROM information_schema.columns
 WHERE table_name = '%s'
 ORDER BY ordinal_position`,
-	DriverOracle: `SELECT column_name, data_type,
-  nullable,
-  data_default AS column_default
+	DriverOracle: `SELECT column_name, data_type, data_length, nullable
 FROM all_tab_columns
-WHERE table_name = UPPER('%s')
+WHERE %s
 ORDER BY column_id`,
 	DriverSQLServer: `SELECT COLUMN_NAME AS column_name, DATA_TYPE AS data_type,
   IS_NULLABLE AS nullable,
@@ -103,9 +102,26 @@ func DescribeTable(ctx context.Context, conn *Connection, table string) (*QueryR
 	if !ok {
 		return nil, fmt.Errorf("DESCRIBE TABLE not supported for driver %s", conn.Driver)
 	}
-	// Simple format — table name is controlled by the user, not external input.
-	query := fmt.Sprintf(tmpl, table)
+
+	var query string
+	if conn.Driver == DriverOracle {
+		// Oracle: split SCHEMA.TABLE into owner + table_name filter
+		query = fmt.Sprintf(tmpl, oracleTableFilter(table))
+	} else {
+		query = fmt.Sprintf(tmpl, table)
+	}
 	return Execute(ctx, conn, query)
+}
+
+// oracleTableFilter builds a WHERE clause for Oracle's all_tab_columns.
+// Supports both "TABLE" and "SCHEMA.TABLE" formats.
+func oracleTableFilter(table string) string {
+	if i := strings.IndexByte(table, '.'); i >= 0 {
+		owner := strings.ToUpper(table[:i])
+		name := strings.ToUpper(table[i+1:])
+		return fmt.Sprintf("owner = '%s' AND table_name = '%s'", owner, name)
+	}
+	return fmt.Sprintf("table_name = UPPER('%s')", table)
 }
 
 // ShowViews returns a list of views for the given connection.

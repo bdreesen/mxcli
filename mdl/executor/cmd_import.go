@@ -25,9 +25,8 @@ func (e *Executor) execImport(s *ast.ImportStmt) error {
 		return err
 	}
 
-	// Get source connection
-	mgr := e.ensureSQLManager()
-	sourceConn, err := mgr.Get(s.SourceAlias)
+	// Get source connection (auto-connects from config if needed)
+	sourceConn, err := e.getOrAutoConnect(s.SourceAlias)
 	if err != nil {
 		return fmt.Errorf("source connection: %w", err)
 	}
