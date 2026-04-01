@@ -230,6 +230,16 @@ When reviewing pull requests or validating work before commit, verify these item
 - [ ] Check `mdl-examples/doctype-tests/` for existing test coverage of the feature area
 - [ ] Verify the PR doesn't re-document already-shipped features as new
 
+### Syntax design for MDL features
+New or modified MDL syntax must follow the design guidelines:
+- [ ] **Design skill consulted** — read `.claude/skills/design-mdl-syntax.md` before designing syntax
+- [ ] **Follows standard patterns** — uses `CREATE`/`ALTER`/`DROP`/`SHOW`/`DESCRIBE`, not custom verbs
+- [ ] **Reads as English** — a business analyst understands the statement on first reading
+- [ ] **Qualified names** — uses `Module.Element` everywhere, no implicit module context
+- [ ] **Property format** — uses `( Key: value, ... )` with colon separators, one per line
+- [ ] **LLM-friendly** — one example is sufficient for an LLM to generate correct variants
+- [ ] **Diff-friendly** — adding one property is a one-line diff
+
 ### Full-stack consistency for MDL features
 New MDL commands or language features must be wired through the full pipeline:
 - [ ] **Grammar** — rule added to `MDLParser.g4` (and `MDLLexer.g4` if new tokens)
@@ -343,6 +353,7 @@ Regenerate after modifying `MDLLexer.g4` or `MDLParser.g4`: `make grammar`. See 
 ## IMPORTANT: Before Writing MDL Scripts or Working with Data
 
 **Read the relevant skill files FIRST before writing any MDL, seeding data, or doing database/import work:**
+- `.claude/skills/design-mdl-syntax.md` - **READ before designing new MDL syntax** - Design principles, decision framework, anti-patterns, checklist
 - `.claude/skills/write-microflows.md` - Microflow syntax, common mistakes, validation checklist
 - `.claude/skills/create-page.md` - Page/widget syntax reference
 - `.claude/skills/alter-page.md` - ALTER PAGE/SNIPPET in-place modifications (SET, INSERT, DROP, REPLACE, SET Layout)

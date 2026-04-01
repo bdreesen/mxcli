@@ -102,6 +102,17 @@ jobs:
           - Check doctype test files above for existing test coverage of the feature area
           - Flag if the PR re-documents already-shipped features as new
 
+          ## MDL syntax design (for new or modified MDL syntax)
+          If the diff adds or modifies MDL syntax (grammar rules, keywords, statement types), check:
+          - Follows standard CREATE/ALTER/DROP/SHOW/DESCRIBE pattern — no custom verbs for CRUD operations
+          - Uses Module.Element qualified names everywhere — no bare names, no implicit module context
+          - Property lists use ( Key: value, ... ) format with colon separators, one per line
+          - Keywords are full English words — no abbreviations, no symbols for domain operations
+          - Statement reads as English — a business analyst can understand the intent
+          - No keyword overloading — each keyword has one consistent meaning
+          - Diff-friendly — adding one property produces a one-line diff
+          - Consistent with existing MDL patterns (check docs/01-project/MDL_QUICK_REFERENCE.md)
+
           ## Full-stack consistency (for MDL features)
           New MDL commands or language features must be wired through the full pipeline. If the diff adds any MDL feature, check:
           - Grammar rule added to MDLParser.g4 (and MDLLexer.g4 if new tokens)
@@ -153,7 +164,7 @@ jobs:
             messages: [
               {
                 role: "system",
-                content: "You are a code reviewer for a Go CLI project (mxcli) that reads/modifies Mendix application projects. Key patterns: ANTLR4 grammar → AST → visitor → executor → BSON writer. New MDL features MUST be wired through the full pipeline (grammar → AST → visitor → executor → LSP → DESCRIBE roundtrip). Generated ANTLR parser files (mdl/grammar/parser/) are noise — note but skip. The project context includes the full CLAUDE.md with architecture details and the review checklist. Review against the checklist thoroughly but concisely."
+                content: "You are a code reviewer for a Go CLI project (mxcli) that reads/modifies Mendix application projects. Key patterns: ANTLR4 grammar → AST → visitor → executor → BSON writer. New MDL features MUST be wired through the full pipeline (grammar → AST → visitor → executor → LSP → DESCRIBE roundtrip). New MDL syntax must follow design guidelines: reads as English (target audience is citizen developers), uses standard CRUD verbs (CREATE/ALTER/DROP/SHOW/DESCRIBE), consistent property format (Key: value), qualified names (Module.Element), no keyword overloading, no symbolic syntax. Generated ANTLR parser files (mdl/grammar/parser/) are noise — note but skip. The project context includes the full CLAUDE.md with architecture details and the review checklist. Review against the checklist thoroughly but concisely."
               },
               {
                 role: "user",
