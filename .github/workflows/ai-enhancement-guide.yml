@@ -4,14 +4,21 @@ on:
   issues:
     types: [opened, labeled]
 
+concurrency:
+  group: enhancement-guide-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
 permissions:
   issues: write
   contents: read
 
 jobs:
   guide:
-    # Only run for issues with 'enhancement' label
-    if: contains(github.event.issue.labels.*.name, 'enhancement')
+    # On 'opened': run if issue has 'enhancement' label
+    # On 'labeled': run only if the label just added is 'enhancement'
+    if: >-
+      (github.event.action == 'opened' && contains(github.event.issue.labels.*.name, 'enhancement'))
+      || (github.event.action == 'labeled' && github.event.label.name == 'enhancement')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
