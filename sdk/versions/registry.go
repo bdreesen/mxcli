@@ -231,7 +231,7 @@ func (r *Registry) IsAvailable(area, name string, projectVersion SemVer) bool {
 }
 
 // FeaturesForVersion returns all features and their availability status for a
-// given project version. Results are sorted by area, then name.
+// given project version. Results are sorted alphabetically by display name.
 func (r *Registry) FeaturesForVersion(projectVersion SemVer) []FeatureStatus {
 	var result []FeatureStatus
 	seen := make(map[string]bool)
@@ -262,10 +262,7 @@ func (r *Registry) FeaturesForVersion(projectVersion SemVer) []FeatureStatus {
 	}
 
 	sort.Slice(result, func(i, j int) bool {
-		if result[i].Area != result[j].Area {
-			return result[i].Area < result[j].Area
-		}
-		return result[i].Name < result[j].Name
+		return result[i].DisplayName() < result[j].DisplayName()
 	})
 
 	return result
@@ -296,13 +293,7 @@ func (r *Registry) FeaturesAddedSince(sinceVersion SemVer) []FeatureEntry {
 	}
 
 	sort.Slice(result, func(i, j int) bool {
-		if result[i].MinVersion.String() != result[j].MinVersion.String() {
-			return result[j].MinVersion.AtLeast(result[i].MinVersion)
-		}
-		if result[i].Area != result[j].Area {
-			return result[i].Area < result[j].Area
-		}
-		return result[i].Name < result[j].Name
+		return result[i].DisplayName() < result[j].DisplayName()
 	})
 
 	return result
@@ -341,7 +332,7 @@ func (r *Registry) FeaturesInArea(area string, projectVersion SemVer) []FeatureS
 	}
 
 	sort.Slice(result, func(i, j int) bool {
-		return result[i].Name < result[j].Name
+		return result[i].DisplayName() < result[j].DisplayName()
 	})
 
 	return result
