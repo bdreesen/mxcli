@@ -30,6 +30,14 @@ There is no way for an agent or user to **query** what's available, no **pre-fli
 5. **Incremental updates** -- Adding a new version's capabilities should be a data change, not a code change.
 6. **Reuse existing infrastructure** -- Linter rules, skills, executor commands follow established patterns.
 
+## Prior Art: Mendix Content API
+
+The Mendix Content API (Marketplace) already solves a similar version-availability problem for add-on modules. Each Marketplace component release carries a minimum (and sometimes maximum) Studio Pro version, and Studio Pro resolves the highest compatible release at download time. The conceptual model is the same — mapping capabilities to version ranges — just applied to external packages rather than internal platform features.
+
+This proposal adopts the same **`min_version` / `max_version`** bound format used by the Content API. A single version-comparison implementation can then handle both "is this platform feature available?" and "is this Marketplace module compatible?" — which matters for agents that reason about both in the same session (e.g., creating entities *and* importing a module).
+
+The proposal diverges from the Content API in scope: we use a per-feature YAML registry rather than the Marketplace's full component → releases → packages data model. The alignment is specifically about version bound format and comparison semantics.
+
 ## Architecture
 
 ```
@@ -57,12 +65,12 @@ sdk/versions/
   mendix-11.yaml
 ```
 
-Each file defines features, their introduction version, syntax, deprecations, and upgrade hints:
+Each file defines features with consistent `min_version` / `max_version` bounds (aligned with Mendix Content API conventions), syntax examples, deprecations, and upgrade hints:
 
 ```yaml
 # sdk/versions/mendix-10.yaml
 major: 10
-supported_range: "10.0..10.24"
+supported_range: "10.0.0..10.24.99"
 lts_versions: ["10.24"]
 mts_versions: ["10.6", "10.12", "10.18"]
 
@@ -70,153 +78,150 @@ features:
   # --- Domain Model ---
   domain_model:
     entities:
-      introduced: "10.0"
+      min_version: "10.0.0"
       mdl: "CREATE PERSISTENT ENTITY Module.Name (...)"
     non_persistent_entities:
-      introduced: "10.0"
+      min_version: "10.0.0"
       mdl: "CREATE NON-PERSISTENT ENTITY Module.Name (...)"
     view_entities:
-      introduced: "10.18"
+      min_version: "10.18.0"
       mdl: "CREATE VIEW ENTITY Module.Name (...) AS SELECT ..."
-      bson_notes: "10.x: OQL stored inline on OqlViewEntitySource; 11.0+: removed"
+      notes: "OQL stored inline on OqlViewEntitySource in 10.x"
     calculated_attributes:
-      introduced: "10.0"
+      min_version: "10.0.0"
       mdl: "CALCULATED BY Module.Microflow"
     entity_generalization:
-      introduced: "10.0"
+      min_version: "10.0.0"
       mdl: "EXTENDS Module.ParentEntity"
     alter_entity:
-      introduced: "10.0"
+      min_version: "10.0.0"
       mdl: "ALTER ENTITY Module.Name ADD ATTRIBUTE ..."
 
   # --- OQL Functions (used in VIEW ENTITY queries) ---
   oql_functions:
     basic_select:
-      introduced: "10.18"
+      min_version: "10.18.0"
       mdl: "SELECT, FROM, WHERE, AS, AND, OR, NOT"
     aggregate_functions:
-      introduced: "10.18"
+      min_version: "10.18.0"
       mdl: "COUNT, SUM, AVG, MIN, MAX, GROUP BY"
     subqueries:
-      introduced: "10.18"
+      min_version: "10.18.0"
       mdl: "Inline subqueries in SELECT and WHERE"
     join_types:
-      introduced: "10.18"
+      min_version: "10.18.0"
       mdl: "INNER JOIN, LEFT JOIN, RIGHT JOIN, FULL JOIN"
     # New OQL functions added per minor release:
-    # string_length: { introduced: "10.20" }
-    # date_diff: { introduced: "10.21" }
+    # string_length: { min_version: "10.20.0" }
+    # date_diff: { min_version: "10.21.0" }
     # (to be populated from release notes)
 
   # --- Microflows ---
   microflows:
     basic:
-      introduced: "10.0"
+      min_version: "10.0.0"
       mdl: "CREATE MICROFLOW Module.Name (...) BEGIN ... END"
     show_page_with_params:
-      introduced: null
-      available_in: "11.0+"
-      workaround: "Pass data via a non-persistent entity or microflow parameter"
+      min_version: "11.0.0"
+      workaround:
+        description: "Pass data via a non-persistent entity or microflow parameter"
+        max_version: "10.99.99"
     send_rest_request:
-      introduced: "10.1"
+      min_version: "10.1.0"
       mdl: "SEND REST REQUEST ..."
     send_rest_query_params:
-      introduced: null
-      available_in: "11.0+"
+      min_version: "11.0.0"
       notes: "Query parameters in REST requests"
     execute_database_query:
-      introduced: "10.6"
+      min_version: "10.6.0"
       mdl: "EXECUTE DATABASE QUERY ..."
     execute_database_query_runtime_connection:
-      introduced: null
-      available_in: "11.0+"
+      min_version: "11.0.0"
       notes: "Runtime connection override for database queries"
     loop_in_branch:
-      introduced: "10.0"
+      min_version: "10.0.0"
       notes: "LOOP inside IF/ELSE branches"
 
   # --- Pages ---
   pages:
     basic:
-      introduced: "10.0"
+      min_version: "10.0.0"
       mdl: "CREATE PAGE Module.Name (...) { ... }"
     page_parameters:
-      introduced: null
-      available_in: "11.0+"
-      workaround: "Use non-persistent entity or microflow parameter"
+      min_version: "11.0.0"
+      workaround:
+        description: "Use non-persistent entity or microflow parameter"
+        max_version: "10.99.99"
     page_variables:
-      introduced: null
-      available_in: "11.0+"
+      min_version: "11.0.0"
     pluggable_widgets:
-      introduced: "10.0"
+      min_version: "10.0.0"
       widgets: [ComboBox, DataGrid2, Gallery, Image, TextFilter, NumberFilter, DateFilter, DropdownFilter]
       notes: "Widget templates are version-specific; MPK augmentation handles drift"
     design_properties_v3:
-      introduced: null
-      available_in: "11.0+"
+      min_version: "11.0.0"
       notes: "Atlas v3 design properties (Card style, Disable row wrap)"
     alter_page:
-      introduced: "10.0"
+      min_version: "10.0.0"
       mdl: "ALTER PAGE Module.Name SET/INSERT/DROP/REPLACE ..."
 
   # --- Security ---
   security:
     module_roles:
-      introduced: "10.0"
+      min_version: "10.0.0"
     user_roles:
-      introduced: "10.0"
+      min_version: "10.0.0"
     entity_access:
-      introduced: "10.0"
+      min_version: "10.0.0"
     demo_users:
-      introduced: "10.0"
+      min_version: "10.0.0"
 
   # --- Integration ---
   integration:
     rest_client_basic:
-      introduced: "10.1"
+      min_version: "10.1.0"
       mdl: "CREATE REST CLIENT Module.Name ..."
     rest_client_query_params:
-      introduced: null
-      available_in: "11.0+"
+      min_version: "11.0.0"
     rest_client_headers:
-      introduced: "10.4"
+      min_version: "10.4.0"
     database_connector_basic:
-      introduced: "10.6"
+      min_version: "10.6.0"
       mdl: "CREATE DATABASE CONNECTION Module.Name ..."
     database_connector_execute:
-      introduced: "10.6"
+      min_version: "10.6.0"
       mdl: "EXECUTE DATABASE QUERY in microflows"
-      bson_notes: "Full BSON format requires 11.0+"
+      notes: "Full BSON format requires 11.0+"
     business_events:
-      introduced: "10.0"
+      min_version: "10.0.0"
       mdl: "CREATE BUSINESS EVENT SERVICE Module.Name ..."
     odata_client:
-      introduced: "10.0"
+      min_version: "10.0.0"
 
   # --- Workflows ---
   workflows:
     basic:
-      introduced: "9.0"
+      min_version: "9.0.0"
       mdl: "CREATE WORKFLOW Module.Name ..."
     parallel_split:
-      introduced: "9.0"
+      min_version: "9.0.0"
     user_task:
-      introduced: "9.0"
+      min_version: "9.0.0"
 
   # --- Navigation ---
   navigation:
     profiles:
-      introduced: "10.0"
+      min_version: "10.0.0"
     menu_items:
-      introduced: "10.0"
+      min_version: "10.0.0"
     home_pages:
-      introduced: "10.0"
+      min_version: "10.0.0"
 
 deprecated:
   - id: "DEP001"
     pattern: "Persistable: false on view entities"
     replaced_by: "Persistable: true (auto-set)"
-    since: "10.18"
+    since: "10.18.0"
     severity: "info"
 
 upgrade_opportunities:
@@ -489,23 +494,27 @@ BSON Layer           Schema Registry      "How do I serialize this?"
 
 ## Design Decisions
 
-1. **YAML as source of truth.** Human-readable, easy to edit, reviewed in PRs. Compiled to embedded Go structs at build time via `go:embed` + YAML parser.
+1. **YAML as source of truth.** Human-readable, easy to edit, reviewed in PRs. Compiled to embedded Go structs at build time via `go:embed` + YAML parser. Version bounds use `min_version` / `max_version` semver notation consistent with the Mendix Content API (see Prior Art section).
 
-2. **Fine-grained features.** Mendix adds capabilities per minor release across all areas (new OQL functions, database connector features, REST enhancements, page properties). The registry must track at the **per-capability** level, not just per-concept. Example: `oql_functions.string_length` introduced in 10.8, `oql_functions.date_diff` in 10.12, `rest_client.query_parameters` in 11.0. Grouping by area with individual capability entries:
+2. **Consistent version bound format.** The registry uses `min_version` / `max_version` fields with semver-style notation (e.g., `"10.18.0"`), aligned with the Mendix Content API's versioning conventions. This replaces an earlier draft that mixed `introduced`, `available_in`, and `null` — which was ad-hoc and required special-case handling. With consistent bounds, a single `IsInRange(projectVersion, min, max)` comparison handles all checks. The `max_version` field is optional and defaults to unbounded (feature available in all later versions). This format also enables future unification: the same version-comparison logic can evaluate both platform feature availability and Marketplace module compatibility.
+
+3. **Fine-grained features with feature-level bounds and optional property overrides.** Mendix adds capabilities per minor release across all areas. The registry tracks at the **per-capability** level, not just per-concept. Each capability has its own `min_version`. Where a capability gains sub-features in later releases, property-level overrides can be added without changing the parent entry:
 
     ```yaml
     oql_functions:
-      string_length: { introduced: "10.8" }
-      date_diff: { introduced: "10.12" }
-      coalesce: { introduced: "10.14" }
+      string_length: { min_version: "10.20.0" }
+      date_diff: { min_version: "10.21.0" }
+      coalesce: { min_version: "10.14.0" }
     database_connector:
-      basic_query: { introduced: "10.6" }
-      parameterized_query: { introduced: "10.12" }
-      runtime_connection: { introduced: "11.0" }
+      basic_query: { min_version: "10.6.0" }
+      parameterized_query: { min_version: "10.12.0" }
+      runtime_connection: { min_version: "11.0.0" }
     ```
 
-3. **SHOW FEATURES works without a project.** `SHOW FEATURES FOR VERSION 10.24` queries the registry directly without an MPR connection. When connected, it defaults to the project's version. Useful for upgrade planning: `SHOW FEATURES ADDED SINCE 10.24` shows what upgrading to the latest would gain; `SHOW FEATURES FOR VERSION 11.6` shows the full capability set of a target version. When connected, also supports: `SHOW UPGRADE OPPORTUNITIES` to identify patterns in the current project that could benefit from the project's own version capabilities (e.g., detecting workarounds that are no longer needed).
+    This mirrors how the Marketplace handles it — a module has one compatibility range, but release notes call out property-level changes.
 
-4. **Minor version granularity by default.** Metamodel changes happen at the minor release level. Patch-level overrides supported where needed but expected to be rare.
+4. **SHOW FEATURES works without a project.** `SHOW FEATURES FOR VERSION 10.24` queries the registry directly without an MPR connection. When connected, it defaults to the project's version. Useful for upgrade planning: `SHOW FEATURES ADDED SINCE 10.24` shows what upgrading to the latest would gain; `SHOW FEATURES FOR VERSION 11.6` shows the full capability set of a target version. When connected, also supports: `SHOW UPGRADE OPPORTUNITIES` to identify patterns in the current project that could benefit from the project's own version capabilities (e.g., detecting workarounds that are no longer needed).
 
-5. **Non-interactive upgrade advisor for now.** `mxcli lint --upgrade-hints --target-version 11.6` outputs a report. Interactive `mxcli upgrade` can be added later as the tooling matures.
+5. **Minor version granularity by default.** Metamodel changes happen at the minor release level. Patch-level overrides supported where needed but expected to be rare. All `min_version` values use three-part semver (`major.minor.patch`) for consistency, with `.0` patch for minor-release features.
+
+6. **Non-interactive upgrade advisor for now.** `mxcli lint --upgrade-hints --target-version 11.6` outputs a report. Interactive `mxcli upgrade` can be added later as the tooling matures.
