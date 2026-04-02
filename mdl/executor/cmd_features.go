@@ -10,6 +10,40 @@ import (
 	"github.com/mendixlabs/mxcli/sdk/versions"
 )
 
+// checkFeature verifies that a feature is available in the connected project's
+// version. Returns nil if available, or an actionable error with the version
+// requirement and a hint. Safe to call when e.reader is nil (returns nil).
+func (e *Executor) checkFeature(area, name, statement, hint string) error {
+	if e.reader == nil {
+		return nil // No project connected; skip check
+	}
+	reg, err := versions.Load()
+	if err != nil {
+		return nil // Registry unavailable; don't block execution
+	}
+	rpv := e.reader.ProjectVersion()
+	pv := versions.SemVer{Major: rpv.MajorVersion, Minor: rpv.MinorVersion, Patch: rpv.PatchVersion}
+	if reg.IsAvailable(area, name, pv) {
+		return nil
+	}
+
+	// Find the min_version for the error message.
+	features := reg.FeaturesForVersion(versions.SemVer{Major: 99, Minor: 0, Patch: 0})
+	minV := "a newer version"
+	for _, f := range features {
+		if f.Area == area && f.Name == name {
+			minV = "Mendix " + f.MinVersion.String() + "+"
+			break
+		}
+	}
+
+	msg := fmt.Sprintf("%s requires %s (project is %s)", statement, minV, rpv.ProductVersion)
+	if hint != "" {
+		msg += "\n  hint: " + hint
+	}
+	return fmt.Errorf("%s", msg)
+}
+
 // execShowFeatures handles SHOW FEATURES, SHOW FEATURES FOR VERSION, and
 // SHOW FEATURES ADDED SINCE commands.
 func (e *Executor) execShowFeatures(s *ast.ShowFeaturesStmt) error {

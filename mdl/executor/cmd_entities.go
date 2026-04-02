@@ -237,6 +237,13 @@ func (e *Executor) execCreateViewEntity(s *ast.CreateViewEntityStmt) error {
 		return fmt.Errorf("not connected to a project")
 	}
 
+	// Version pre-check
+	if err := e.checkFeature("domain_model", "view_entities",
+		"CREATE VIEW ENTITY",
+		"upgrade your project to 10.18+ or use a regular entity with a microflow data source"); err != nil {
+		return err
+	}
+
 	// Validate OQL syntax before creating the view entity
 	// This prevents creating view entities that will crash Studio Pro
 	if s.Query.RawQuery != "" {

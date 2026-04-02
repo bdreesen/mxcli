@@ -19,6 +19,15 @@ func (e *Executor) execCreatePageV3(s *ast.CreatePageStmtV3) error {
 		return fmt.Errorf("not connected to a project")
 	}
 
+	// Version pre-check: page parameters require 11.0+
+	if len(s.Parameters) > 0 {
+		if err := e.checkFeature("pages", "page_parameters",
+			"CREATE PAGE with parameters",
+			"pass data via a non-persistent entity or microflow parameter instead"); err != nil {
+			return err
+		}
+	}
+
 	// Find or auto-create module
 	module, err := e.findOrCreateModule(s.Name.Module)
 	if err != nil {

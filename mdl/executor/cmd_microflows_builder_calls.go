@@ -798,6 +798,18 @@ func (fb *flowBuilder) addSendRestRequestAction(s *ast.SendRestRequestStmt) mode
 
 // addExecuteDatabaseQueryAction creates an EXECUTE DATABASE QUERY statement.
 func (fb *flowBuilder) addExecuteDatabaseQueryAction(s *ast.ExecuteDatabaseQueryStmt) model.ID {
+	// Version pre-check: database connector requires 10.6+
+	if fb.reader != nil {
+		pv := fb.reader.ProjectVersion()
+		if !pv.IsAtLeast(10, 6) {
+			fb.addError("EXECUTE DATABASE QUERY requires Mendix 10.6+ (project is %s)\n  hint: upgrade your project to 10.6+", pv.ProductVersion)
+		}
+		// Runtime connection override requires 11.0+
+		if len(s.ConnectionArguments) > 0 && !pv.IsAtLeast(11, 0) {
+			fb.addError("EXECUTE DATABASE QUERY with runtime connection override requires Mendix 11.0+ (project is %s)", pv.ProductVersion)
+		}
+	}
+
 	// DynamicQuery is a Mendix expression — string literals need single quotes
 	dynamicQuery := s.DynamicQuery
 	if dynamicQuery != "" && !strings.HasPrefix(dynamicQuery, "'") {

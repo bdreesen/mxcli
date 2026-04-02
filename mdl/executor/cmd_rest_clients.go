@@ -216,6 +216,13 @@ func (e *Executor) createRestClient(stmt *ast.CreateRestClientStmt) error {
 		return fmt.Errorf("not connected to a project (read-only mode)")
 	}
 
+	// Version pre-check: REST clients require 10.1+
+	if err := e.checkFeature("integration", "rest_client_basic",
+		"CREATE REST CLIENT",
+		"upgrade your project to 10.1+"); err != nil {
+		return err
+	}
+
 	moduleName := stmt.Name.Module
 	module, err := e.findModule(moduleName)
 	if err != nil {
