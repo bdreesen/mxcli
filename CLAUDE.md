@@ -240,6 +240,13 @@ New or modified MDL syntax must follow the design guidelines:
 - [ ] **LLM-friendly** — one example is sufficient for an LLM to generate correct variants
 - [ ] **Diff-friendly** — adding one property is a one-line diff
 
+### Version compatibility
+New features that depend on a specific Mendix version must be version-gated:
+- [ ] **Registry entry** — feature added to `sdk/versions/mendix-{9,10,11}.yaml` with correct `min_version`
+- [ ] **Executor pre-check** — `checkFeature()` called before BSON writes, with actionable error and hint
+- [ ] **Test coverage** — version-gated tests use `-- @version:` directives or `requireMinVersion()`
+- [ ] **Skill updated** — `.claude/skills/version-awareness.md` updated if the feature has a workaround for older versions
+
 ### Full-stack consistency for MDL features
 New MDL commands or language features must be wired through the full pipeline:
 - [ ] **Grammar** — rule added to `MDLParser.g4` (and `MDLLexer.g4` if new tokens)
@@ -353,6 +360,7 @@ Regenerate after modifying `MDLLexer.g4` or `MDLParser.g4`: `make grammar`. See 
 ## IMPORTANT: Before Writing MDL Scripts or Working with Data
 
 **Read the relevant skill files FIRST before writing any MDL, seeding data, or doing database/import work:**
+- `.claude/skills/version-awareness.md` - **CHECK project version first** - Run `SHOW FEATURES` before using version-gated syntax
 - `.claude/skills/design-mdl-syntax.md` - **READ before designing new MDL syntax** - Design principles, decision framework, anti-patterns, checklist
 - `.claude/skills/write-microflows.md` - Microflow syntax, common mistakes, validation checklist
 - `.claude/skills/create-page.md` - Page/widget syntax reference
