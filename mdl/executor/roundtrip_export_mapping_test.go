@@ -16,10 +16,10 @@ func TestRoundtripExportMapping_NoSchema(t *testing.T) {
 	defer env.teardown()
 
 	// First create the entity that will be exported
-	if err := env.executeMDL(`CREATE ENTITY ` + testModule + `.EMPet {
-  Id: Integer;
-  Name: String(200);
-};`); err != nil {
+	if err := env.executeMDL(`CREATE ENTITY ` + testModule + `.EMPet (
+  Id: Integer,
+  Name: String(200)
+);`); err != nil {
 		t.Fatalf("CREATE ENTITY failed: %v", err)
 	}
 
@@ -42,10 +42,10 @@ func TestRoundtripExportMapping_WithJsonStructureRef(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.teardown()
 
-	if err := env.executeMDL(`CREATE ENTITY ` + testModule + `.EMOrder {
-  OrderId: Integer;
-  Total: Decimal(10,2);
-};`); err != nil {
+	if err := env.executeMDL(`CREATE ENTITY ` + testModule + `.EMOrder (
+  OrderId: Integer,
+  Total: Decimal(10,2)
+);`); err != nil {
 		t.Fatalf("CREATE ENTITY failed: %v", err)
 	}
 
@@ -77,9 +77,9 @@ func TestRoundtripExportMapping_NullValueOption(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.teardown()
 
-	if err := env.executeMDL(`CREATE ENTITY ` + testModule + `.EMNullPet {
-  Id: Integer;
-};`); err != nil {
+	if err := env.executeMDL(`CREATE ENTITY ` + testModule + `.EMNullPet (
+  Id: Integer
+);`); err != nil {
 		t.Fatalf("CREATE ENTITY failed: %v", err)
 	}
 
@@ -107,9 +107,9 @@ func TestRoundtripExportMapping_Drop(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.teardown()
 
-	if err := env.executeMDL(`CREATE ENTITY ` + testModule + `.EMDropPet {
-  Id: Integer;
-};`); err != nil {
+	if err := env.executeMDL(`CREATE ENTITY ` + testModule + `.EMDropPet (
+  Id: Integer
+);`); err != nil {
 		t.Fatalf("CREATE ENTITY failed: %v", err)
 	}
 
@@ -138,9 +138,9 @@ func TestRoundtripExportMapping_ShowAppearsInList(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.teardown()
 
-	if err := env.executeMDL(`CREATE ENTITY ` + testModule + `.EMListPet {
-  Id: Integer;
-};`); err != nil {
+	if err := env.executeMDL(`CREATE ENTITY ` + testModule + `.EMListPet (
+  Id: Integer
+);`); err != nil {
 		t.Fatalf("CREATE ENTITY failed: %v", err)
 	}
 
@@ -172,10 +172,10 @@ func TestMxCheck_ExportMapping_Basic(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.teardown()
 
-	if err := env.executeMDL(`CREATE ENTITY ` + testModule + `.MxCheckEMPet {
-  Id: Integer;
-  Name: String(200);
-};`); err != nil {
+	if err := env.executeMDL(`CREATE ENTITY ` + testModule + `.MxCheckEMPet (
+  Id: Integer,
+  Name: String(200)
+);`); err != nil {
 		t.Fatalf("CREATE ENTITY failed: %v", err)
 	}
 
