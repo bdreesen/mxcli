@@ -17,7 +17,7 @@ func TestRoundtripExportMapping_NoSchema(t *testing.T) {
 
 	// First create the entity that will be exported
 	if err := env.executeMDL(`CREATE ENTITY ` + testModule + `.EMPet (
-  Id: Integer,
+  PetId: Integer,
   Name: String(200)
 );`); err != nil {
 		t.Fatalf("CREATE ENTITY failed: %v", err)
@@ -25,7 +25,7 @@ func TestRoundtripExportMapping_NoSchema(t *testing.T) {
 
 	createMDL := `CREATE EXPORT MAPPING ` + testModule + `.ExportPetBasic {
   ` + testModule + `.EMPet AS Root {
-    Id AS id (Integer),
+    PetId AS id (Integer),
     Name AS name (String)
   }
 };`
@@ -44,7 +44,7 @@ func TestRoundtripExportMapping_WithJsonStructureRef(t *testing.T) {
 
 	if err := env.executeMDL(`CREATE ENTITY ` + testModule + `.EMOrder (
   OrderId: Integer,
-  Total: Decimal(10,2)
+  Total: Decimal
 );`); err != nil {
 		t.Fatalf("CREATE ENTITY failed: %v", err)
 	}
@@ -78,7 +78,7 @@ func TestRoundtripExportMapping_NullValueOption(t *testing.T) {
 	defer env.teardown()
 
 	if err := env.executeMDL(`CREATE ENTITY ` + testModule + `.EMNullPet (
-  Id: Integer
+  PetId: Integer
 );`); err != nil {
 		t.Fatalf("CREATE ENTITY failed: %v", err)
 	}
@@ -87,7 +87,7 @@ func TestRoundtripExportMapping_NullValueOption(t *testing.T) {
   NULL VALUES SendAsNil
 {
   ` + testModule + `.EMNullPet AS Root {
-    Id AS id (Integer)
+    PetId AS id (Integer)
   }
 };`); err != nil {
 		t.Fatalf("CREATE EXPORT MAPPING failed: %v", err)
@@ -108,14 +108,14 @@ func TestRoundtripExportMapping_Drop(t *testing.T) {
 	defer env.teardown()
 
 	if err := env.executeMDL(`CREATE ENTITY ` + testModule + `.EMDropPet (
-  Id: Integer
+  PetId: Integer
 );`); err != nil {
 		t.Fatalf("CREATE ENTITY failed: %v", err)
 	}
 
 	if err := env.executeMDL(`CREATE EXPORT MAPPING ` + testModule + `.ToDropEM {
   ` + testModule + `.EMDropPet AS Root {
-    Id AS id (Integer)
+    PetId AS id (Integer)
   }
 };`); err != nil {
 		t.Fatalf("CREATE EXPORT MAPPING failed: %v", err)
@@ -139,14 +139,14 @@ func TestRoundtripExportMapping_ShowAppearsInList(t *testing.T) {
 	defer env.teardown()
 
 	if err := env.executeMDL(`CREATE ENTITY ` + testModule + `.EMListPet (
-  Id: Integer
+  PetId: Integer
 );`); err != nil {
 		t.Fatalf("CREATE ENTITY failed: %v", err)
 	}
 
 	if err := env.executeMDL(`CREATE EXPORT MAPPING ` + testModule + `.ListableEM {
   ` + testModule + `.EMListPet AS Root {
-    Id AS id (Integer)
+    PetId AS id (Integer)
   }
 };`); err != nil {
 		t.Fatalf("CREATE EXPORT MAPPING failed: %v", err)
@@ -173,15 +173,22 @@ func TestMxCheck_ExportMapping_Basic(t *testing.T) {
 	defer env.teardown()
 
 	if err := env.executeMDL(`CREATE ENTITY ` + testModule + `.MxCheckEMPet (
-  Id: Integer,
+  PetId: Integer,
   Name: String(200)
 );`); err != nil {
 		t.Fatalf("CREATE ENTITY failed: %v", err)
 	}
 
-	if err := env.executeMDL(`CREATE EXPORT MAPPING ` + testModule + `.MxCheckExportPet {
+	if err := env.executeMDL(`CREATE JSON STRUCTURE ` + testModule + `.MxCheckEMJS
+SNIPPET '{"id": 1, "name": "Fido"}';`); err != nil {
+		t.Fatalf("CREATE JSON STRUCTURE failed: %v", err)
+	}
+
+	if err := env.executeMDL(`CREATE EXPORT MAPPING ` + testModule + `.MxCheckExportPet
+  TO JSON STRUCTURE ` + testModule + `.MxCheckEMJS
+{
   ` + testModule + `.MxCheckEMPet AS Root {
-    Id AS id (Integer),
+    PetId AS id (Integer),
     Name AS name (String)
   }
 };`); err != nil {
