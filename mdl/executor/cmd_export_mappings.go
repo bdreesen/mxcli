@@ -215,7 +215,7 @@ func (e *Executor) execCreateExportMapping(s *ast.CreateExportMappingStmt) error
 
 	// Build element tree from the AST definition
 	if s.RootElement != nil {
-		root := buildExportMappingElementModel(s.Name.Module, s.RootElement, "", "(Object)", jsPathTypes)
+		root := buildExportMappingElementModel(s.Name.Module, s.RootElement, "", "(Object)", jsPathTypes, e.reader)
 		em.Elements = append(em.Elements, root)
 	}
 
@@ -245,7 +245,7 @@ func buildJsonPathTypeMap(elems []*mpr.JsonElement, m map[string]string) {
 // parentEntity is the fully-qualified entity name of the enclosing object element (for
 // qualifying attribute names). parentPath is the JSON path of the parent element.
 // jsPathTypes maps JSON structure paths to their ElementType ("Array"/"Object"/"Value").
-func buildExportMappingElementModel(moduleName string, def *ast.ExportMappingElementDef, parentEntity, parentPath string, jsPathTypes map[string]string) *model.ExportMappingElement {
+func buildExportMappingElementModel(moduleName string, def *ast.ExportMappingElementDef, parentEntity, parentPath string, jsPathTypes map[string]string, reader *mpr.Reader) *model.ExportMappingElement {
 	elem := &model.ExportMappingElement{
 		BaseElement: model.BaseElement{
 			ID:       model.ID(mpr.GenerateID()),
@@ -288,13 +288,13 @@ func buildExportMappingElementModel(moduleName string, def *ast.ExportMappingEle
 		elem.JsonPath = jsonPath
 
 		for _, child := range def.Children {
-			elem.Children = append(elem.Children, buildExportMappingElementModel(moduleName, child, entity, jsonPath, jsPathTypes))
+			elem.Children = append(elem.Children, buildExportMappingElementModel(moduleName, child, entity, jsonPath, jsPathTypes, reader))
 		}
 	} else {
 		// Value mapping — qualify attribute name as Module.Entity.Attribute
 		elem.Kind = "Value"
 		elem.TypeName = "ExportMappings$ValueMappingElement"
-		elem.DataType = "String" // default; entity already defines the real type
+		elem.DataType = resolveAttributeType(parentEntity, def.Attribute, reader)
 		attr := def.Attribute
 		if parentEntity != "" && !strings.Contains(attr, ".") {
 			attr = parentEntity + "." + attr

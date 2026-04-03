@@ -215,7 +215,7 @@ func (e *Executor) execCreateImportMapping(s *ast.CreateImportMappingStmt) error
 
 	// Build element tree from the AST definition
 	if s.RootElement != nil {
-		root := buildImportMappingElementModel(s.Name.Module, s.RootElement, "")
+		root := buildImportMappingElementModel(s.Name.Module, s.RootElement, "", e.reader)
 		im.Elements = append(im.Elements, root)
 	}
 
@@ -230,10 +230,10 @@ func (e *Executor) execCreateImportMapping(s *ast.CreateImportMappingStmt) error
 }
 
 // buildImportMappingElementModel converts an AST element definition to a model element,
-// resolving attribute qualified names using the module context.
+// resolving attribute qualified names and data types using the module context.
 // parentEntity is the fully-qualified entity name of the enclosing object element (used to
 // qualify attribute names for value elements).
-func buildImportMappingElementModel(moduleName string, def *ast.ImportMappingElementDef, parentEntity string) *model.ImportMappingElement {
+func buildImportMappingElementModel(moduleName string, def *ast.ImportMappingElementDef, parentEntity string, reader *mpr.Reader) *model.ImportMappingElement {
 	elem := &model.ImportMappingElement{
 		BaseElement: model.BaseElement{
 			ID:       model.ID(mpr.GenerateID()),
@@ -247,7 +247,6 @@ func buildImportMappingElementModel(moduleName string, def *ast.ImportMappingEle
 		// Object mapping
 		elem.Kind = "Object"
 		entity := def.Entity
-		// If entity has no module prefix, add the current module
 		if !strings.Contains(entity, ".") {
 			entity = moduleName + "." + entity
 		}
@@ -264,13 +263,13 @@ func buildImportMappingElementModel(moduleName string, def *ast.ImportMappingEle
 			elem.Association = assoc
 		}
 		for _, child := range def.Children {
-			elem.Children = append(elem.Children, buildImportMappingElementModel(moduleName, child, entity))
+			elem.Children = append(elem.Children, buildImportMappingElementModel(moduleName, child, entity, reader))
 		}
 	} else {
 		// Value mapping — qualify attribute name as Module.Entity.Attribute
 		elem.Kind = "Value"
 		elem.TypeName = "ImportMappings$ValueMappingElement"
-		elem.DataType = "String" // default; entity already defines the real type
+		elem.DataType = resolveAttributeType(parentEntity, def.Attribute, reader)
 		elem.IsKey = def.IsKey
 		attr := def.Attribute
 		if parentEntity != "" && !strings.Contains(attr, ".") {
@@ -280,6 +279,34 @@ func buildImportMappingElementModel(moduleName string, def *ast.ImportMappingEle
 	}
 
 	return elem
+}
+
+// resolveAttributeType looks up the data type of an entity attribute from the project.
+// Returns "String" as default if the attribute cannot be found.
+func resolveAttributeType(entityQN, attrName string, reader *mpr.Reader) string {
+	if reader == nil || entityQN == "" {
+		return "String"
+	}
+	parts := strings.SplitN(entityQN, ".", 2)
+	if len(parts) != 2 {
+		return "String"
+	}
+	dms, err := reader.ListDomainModels()
+	if err != nil {
+		return "String"
+	}
+	for _, dm := range dms {
+		for _, e := range dm.Entities {
+			if e.Name == parts[1] {
+				for _, a := range e.Attributes {
+					if a.Name == attrName && a.Type != nil {
+						return a.Type.GetTypeName()
+					}
+				}
+			}
+		}
+	}
+	return "String"
 }
 
 // execDropImportMapping deletes an import mapping.
