@@ -25,10 +25,14 @@ func (e *Executor) showJsonStructures(moduleName string) error {
 		return err
 	}
 
-	fmt.Fprintf(e.output, "| %-40s | %-8s | %-12s |\n", "JSON Structure", "Elements", "Source")
-	fmt.Fprintf(e.output, "|%-42s|%-10s|%-14s|\n", strings.Repeat("-", 42), strings.Repeat("-", 10), strings.Repeat("-", 14))
+	type row struct {
+		qualifiedName string
+		elemCount     int
+		source        string
+	}
+	var rows []row
+	qnWidth := len("JSON Structure")
 
-	count := 0
 	for _, js := range structures {
 		modID := h.FindModuleID(js.ContainerID)
 		modName := h.GetModuleName(modID)
@@ -38,11 +42,9 @@ func (e *Executor) showJsonStructures(moduleName string) error {
 
 		qualifiedName := fmt.Sprintf("%s.%s", modName, js.Name)
 
-		// Count top-level elements (children of root, or all elements if no root)
 		elemCount := 0
 		if len(js.Elements) > 0 {
-			root := js.Elements[0]
-			elemCount = len(root.Children)
+			elemCount = len(js.Elements[0].Children)
 		}
 
 		source := "Manual"
@@ -50,11 +52,22 @@ func (e *Executor) showJsonStructures(moduleName string) error {
 			source = "JSON Snippet"
 		}
 
-		fmt.Fprintf(e.output, "| %-40s | %8d | %-12s |\n", qualifiedName, elemCount, source)
-		count++
+		if len(qualifiedName) > qnWidth {
+			qnWidth = len(qualifiedName)
+		}
+		rows = append(rows, row{qualifiedName: qualifiedName, elemCount: elemCount, source: source})
 	}
 
-	fmt.Fprintf(e.output, "\n(%d JSON structure(s))\n", count)
+	// Sort alphabetically
+	sort.Slice(rows, func(i, j int) bool { return rows[i].qualifiedName < rows[j].qualifiedName })
+
+	fmt.Fprintf(e.output, "| %-*s | %-8s | %-12s |\n", qnWidth, "JSON Structure", "Elements", "Source")
+	fmt.Fprintf(e.output, "|-%s-|----------|%-14s|\n", strings.Repeat("-", qnWidth), strings.Repeat("-", 14))
+	for _, r := range rows {
+		fmt.Fprintf(e.output, "| %-*s | %8d | %-12s |\n", qnWidth, r.qualifiedName, r.elemCount, r.source)
+	}
+
+	fmt.Fprintf(e.output, "\n(%d JSON structure(s))\n", len(rows))
 	return nil
 }
 

@@ -4,6 +4,7 @@ package executor
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
@@ -28,11 +29,11 @@ func (e *Executor) showExportMappings(inModule string) error {
 	}
 
 	type row struct {
-		module, qualifiedName, name, schemaSource string
-		elementCount                              int
+		qualifiedName, name, schemaSource string
+		elementCount                      int
 	}
 	var rows []row
-	modWidth, qnWidth, nameWidth, srcWidth := len("Module"), len("QualifiedName"), len("Name"), len("Schema Source")
+	qnWidth, nameWidth, srcWidth := len("Export Mapping"), len("Name"), len("Schema Source")
 
 	for _, em := range all {
 		modID := h.FindModuleID(em.ContainerID)
@@ -51,16 +52,7 @@ func (e *Executor) showExportMappings(inModule string) error {
 		if src == "" {
 			src = "(none)"
 		}
-		r := row{
-			module:        moduleName,
-			qualifiedName: qn,
-			name:          em.Name,
-			schemaSource:  src,
-			elementCount:  len(em.Elements),
-		}
-		if len(moduleName) > modWidth {
-			modWidth = len(moduleName)
-		}
+		r := row{qualifiedName: qn, name: em.Name, schemaSource: src, elementCount: len(em.Elements)}
 		if len(qn) > qnWidth {
 			qnWidth = len(qn)
 		}
@@ -82,14 +74,16 @@ func (e *Executor) showExportMappings(inModule string) error {
 		return nil
 	}
 
-	fmt.Fprintf(e.output, "%-*s  %-*s  %-*s  %-*s  %s\n",
-		modWidth, "Module", qnWidth, "QualifiedName", nameWidth, "Name", srcWidth, "Schema Source", "Elements")
-	fmt.Fprintf(e.output, "%s  %s  %s  %s  %s\n",
-		strings.Repeat("-", modWidth), strings.Repeat("-", qnWidth), strings.Repeat("-", nameWidth),
-		strings.Repeat("-", srcWidth), strings.Repeat("-", 8))
+	// Sort alphabetically by qualified name
+	sort.Slice(rows, func(i, j int) bool { return rows[i].qualifiedName < rows[j].qualifiedName })
+
+	fmt.Fprintf(e.output, "| %-*s | %-*s | %-*s | %s |\n",
+		qnWidth, "Export Mapping", nameWidth, "Name", srcWidth, "Schema Source", "Elements")
+	fmt.Fprintf(e.output, "|-%s-|-%s-|-%s-|----------|\n",
+		strings.Repeat("-", qnWidth), strings.Repeat("-", nameWidth), strings.Repeat("-", srcWidth))
 	for _, r := range rows {
-		fmt.Fprintf(e.output, "%-*s  %-*s  %-*s  %-*s  %d\n",
-			modWidth, r.module, qnWidth, r.qualifiedName, nameWidth, r.name, srcWidth, r.schemaSource, r.elementCount)
+		fmt.Fprintf(e.output, "| %-*s | %-*s | %-*s | %8d |\n",
+			qnWidth, r.qualifiedName, nameWidth, r.name, srcWidth, r.schemaSource, r.elementCount)
 	}
 	return nil
 }
