@@ -1323,25 +1323,66 @@ CREATE EXPORT MAPPING RestTest.EMM_Pet
 };
 
 -- ============================================================================
--- Level 14.2: Export Mapping with Null Value Handling
+-- Level 14.2: Export Mapping with Nested Objects and Arrays
 -- ============================================================================
 --
--- Demonstrates configurable null value handling (LeaveOutElement vs SendAsNil).
+-- Export mappings need a domain model that mirrors the JSON structure.
+-- Arrays require a container entity + item entity (two levels).
+-- This is different from import mappings which map arrays directly.
+
+CREATE NON-PERSISTENT ENTITY RestTest.ExRoot (
+  OrderId: Integer
+);
+/
+
+CREATE NON-PERSISTENT ENTITY RestTest.ExCustomer (
+  Name: String,
+  Email: String
+);
+/
+
+CREATE NON-PERSISTENT ENTITY RestTest.ExItems;
+/
+
+CREATE NON-PERSISTENT ENTITY RestTest.ExItemsItem (
+  Sku: String,
+  Quantity: Integer,
+  Price: Decimal
+);
+/
+
+CREATE ASSOCIATION RestTest.ExCustomer_ExRoot
+  FROM RestTest.ExCustomer
+  TO RestTest.ExRoot
+  OWNER Both;
+/
+
+CREATE ASSOCIATION RestTest.ExItems_ExRoot
+  FROM RestTest.ExItems
+  TO RestTest.ExRoot;
+/
+
+CREATE ASSOCIATION RestTest.ExItemsItem_ExItems
+  FROM RestTest.ExItemsItem
+  TO RestTest.ExItems;
+/
 
 CREATE EXPORT MAPPING RestTest.EMM_Order
   WITH JSON STRUCTURE RestTest.JSON_Order
   NULL VALUES LeaveOutElement
 {
-  RestTest.OrderResponse {
+  RestTest.ExRoot {
     orderId = OrderId,
-    RestTest.CustomerInfo_OrderResponse/RestTest.CustomerInfo AS customer {
+    RestTest.ExCustomer_ExRoot/RestTest.ExCustomer AS customer {
       email = Email,
       name = Name
     },
-    RestTest.OrderItem_OrderResponse/RestTest.OrderItem AS items {
-      price = Price,
-      quantity = Quantity,
-      sku = Sku
+    RestTest.ExItems_ExRoot/RestTest.ExItems AS items {
+      RestTest.ExItemsItem_ExItems/RestTest.ExItemsItem AS ItemsItem {
+        sku = Sku,
+        quantity = Quantity,
+        price = Price
+      }
     }
   }
 };
