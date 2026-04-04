@@ -289,32 +289,62 @@ func buildImportMappingElementModel(moduleName string, def *ast.ImportMappingEle
 		elem.Kind = "Object"
 		elem.TypeName = "ImportMappings$ObjectMappingElement"
 
-		// Check if this is an array element in the JSON structure
-		childPath := lookupPath
-		if jsElem, ok := jsElems[lookupPath]; ok && jsElem.ElementType == "Array" {
-			elem.Kind = "Array"
-			childPath = lookupPath + "|(Object)"
-		}
-
 		entity := def.Entity
 		if !strings.Contains(entity, ".") {
 			entity = moduleName + "." + entity
 		}
-		elem.Entity = entity
-		elem.ObjectHandling = def.ObjectHandling
-		if elem.ObjectHandling == "" {
-			elem.ObjectHandling = "Create"
-		}
-		if def.Association != "" {
-			assoc := def.Association
-			if !strings.Contains(assoc, ".") {
-				assoc = moduleName + "." + assoc
-			}
-			elem.Association = assoc
+
+		assoc := def.Association
+		if assoc != "" && !strings.Contains(assoc, ".") {
+			assoc = moduleName + "." + assoc
 		}
 
-		for _, child := range def.Children {
-			elem.Children = append(elem.Children, buildImportMappingElementModel(moduleName, child, entity, childPath, reader, jsElems, false))
+		handling := def.ObjectHandling
+		if handling == "" {
+			handling = "Create"
+		}
+
+		// Check if this is an array element in the JSON structure
+		if jsElem, ok := jsElems[lookupPath]; ok && jsElem.ElementType == "Array" {
+			// Array: the container element has no entity binding.
+			// Create an intermediate Object element for the array item with the entity binding.
+			elem.Kind = "Array"
+			elem.Entity = ""
+			elem.Association = assoc
+			elem.ObjectHandling = handling
+
+			itemPath := lookupPath + "|(Object)"
+			itemElem := &model.ImportMappingElement{
+				BaseElement: model.BaseElement{
+					ID:       model.ID(mpr.GenerateID()),
+					TypeName: "ImportMappings$ObjectMappingElement",
+				},
+				Kind:           "Object",
+				Entity:         entity,
+				ObjectHandling: handling,
+				ExposedName:    "ItemsItem", // default
+				JsonPath:       itemPath,
+				Nillable:       true,
+			}
+			// Clone from JSON structure item element if available
+			if jsItem, ok2 := jsElems[itemPath]; ok2 {
+				itemElem.ExposedName = jsItem.ExposedName
+				itemElem.MinOccurs = jsItem.MinOccurs
+				itemElem.MaxOccurs = jsItem.MaxOccurs
+				itemElem.Nillable = jsItem.Nillable
+			}
+			for _, child := range def.Children {
+				itemElem.Children = append(itemElem.Children, buildImportMappingElementModel(moduleName, child, entity, itemPath, reader, jsElems, false))
+			}
+			elem.Children = append(elem.Children, itemElem)
+		} else {
+			// Regular object element
+			elem.Entity = entity
+			elem.Association = assoc
+			elem.ObjectHandling = handling
+			for _, child := range def.Children {
+				elem.Children = append(elem.Children, buildImportMappingElementModel(moduleName, child, entity, lookupPath, reader, jsElems, false))
+			}
 		}
 	} else {
 		// Value mapping — bind to attribute

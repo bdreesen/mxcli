@@ -270,33 +270,57 @@ func buildExportMappingElementModel(moduleName string, def *ast.ExportMappingEle
 		elem.Kind = "Object"
 		elem.TypeName = "ExportMappings$ObjectMappingElement"
 
-		childPath := lookupPath
-		if jsElem, ok := jsElems[lookupPath]; ok && jsElem.ElementType == "Array" {
-			elem.Kind = "Array"
-			childPath = lookupPath + "|(Object)"
-		}
-
 		entity := def.Entity
 		if !strings.Contains(entity, ".") {
 			entity = moduleName + "." + entity
 		}
-		elem.Entity = entity
-		if def.Association != "" {
-			assoc := def.Association
-			if !strings.Contains(assoc, ".") {
-				assoc = moduleName + "." + assoc
-			}
+
+		assoc := def.Association
+		if assoc != "" && !strings.Contains(assoc, ".") {
+			assoc = moduleName + "." + assoc
+		}
+
+		handling := "Parameter"
+		if !isRoot {
+			handling = "Find"
+		}
+
+		// Check if this is an array element in the JSON structure
+		if jsElem, ok := jsElems[lookupPath]; ok && jsElem.ElementType == "Array" {
+			// Array: container has no entity binding; create intermediate item element
+			elem.Kind = "Array"
+			elem.Entity = ""
 			elem.Association = assoc
-		}
+			elem.ObjectHandling = handling
 
-		if isRoot {
-			elem.ObjectHandling = "Parameter"
+			itemPath := lookupPath + "|(Object)"
+			itemElem := &model.ExportMappingElement{
+				BaseElement: model.BaseElement{
+					ID:       model.ID(mpr.GenerateID()),
+					TypeName: "ExportMappings$ObjectMappingElement",
+				},
+				Kind:           "Object",
+				Entity:         entity,
+				ObjectHandling: "Find",
+				ExposedName:    "ItemsItem",
+				JsonPath:       itemPath,
+			}
+			if jsItem, ok2 := jsElems[itemPath]; ok2 {
+				itemElem.ExposedName = jsItem.ExposedName
+				itemElem.MaxOccurs = jsItem.MaxOccurs
+			}
+			for _, child := range def.Children {
+				itemElem.Children = append(itemElem.Children, buildExportMappingElementModel(moduleName, child, entity, itemPath, jsElems, reader, false))
+			}
+			elem.Children = append(elem.Children, itemElem)
 		} else {
-			elem.ObjectHandling = "Find"
-		}
-
-		for _, child := range def.Children {
-			elem.Children = append(elem.Children, buildExportMappingElementModel(moduleName, child, entity, childPath, jsElems, reader, false))
+			// Regular object element
+			elem.Entity = entity
+			elem.Association = assoc
+			elem.ObjectHandling = handling
+			for _, child := range def.Children {
+				elem.Children = append(elem.Children, buildExportMappingElementModel(moduleName, child, entity, lookupPath, jsElems, reader, false))
+			}
 		}
 	} else {
 		// Value mapping — bind to attribute
@@ -308,7 +332,7 @@ func buildExportMappingElementModel(moduleName string, def *ast.ExportMappingEle
 			attr = parentEntity + "." + attr
 		}
 		elem.Attribute = attr
-		elem.JsonPath = parentPath + "|" + def.JsonName
+		// JsonPath already set from JSON structure clone above
 	}
 
 	return elem
