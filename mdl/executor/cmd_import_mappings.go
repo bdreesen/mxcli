@@ -278,13 +278,10 @@ func buildImportMappingElementModel(moduleName string, def *ast.ImportMappingEle
 			elem.Association = assoc
 		}
 
-		// Align with JSON structure: set ExposedName and JsonPath from schema
+		// Root element: empty ExposedName, JsonPath = "(Object)"
 		if isRoot {
 			elem.JsonPath = "(Object)"
 			elem.ExposedName = ""
-			if info, ok := jsElements["(Object)"]; ok {
-				elem.ExposedName = info.ExposedName
-			}
 		}
 
 		for _, child := range def.Children {
