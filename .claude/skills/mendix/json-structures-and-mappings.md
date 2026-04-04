@@ -306,6 +306,203 @@ DROP EXPORT MAPPING Module.Name;
 
 ---
 
+## Export Workflow: PE → NPE → JSON
+
+Export mappings work on non-persistent entity (NPE) structures that mirror the target JSON. When the source data is in persistent entities (PE) in the database, the typical workflow is:
+
+1. **Retrieve** persistent data from the database
+2. **Build NPE tree** in a microflow: create NPE objects, set attributes, link via associations to match the JSON structure
+3. **Export to mapping** to serialize the NPE tree to JSON
+
+```sql
+-- Example: build NPE tree from persistent Order data, then export
+CREATE MICROFLOW Module.ExportOrder ($Order: Module.Order)
+RETURNS String AS $Json
+BEGIN
+  -- Build the NPE tree matching the JSON structure
+  $Root = CREATE Module.ExRoot (OrderId = $Order/OrderId);
+
+  RETRIEVE $Customer FROM $Order/Module.Order_Customer;
+  $ExCust = CREATE Module.ExCustomer (Name = $Customer/Name, Email = $Customer/Email);
+  -- Link customer to root...
+
+  -- Export
+  $Json = EXPORT TO MAPPING Module.EMM_Order($Root);
+  RETURN $Json;
+END;
+/
+```
+
+### Shortcut with View Entities
+
+View Entities (OQL-backed) can retrieve data directly into the export-ready structure, skipping the manual NPE assembly:
+
+```sql
+CREATE VIEW ENTITY Module.ExOrderView (
+  OrderId: Integer,
+  CustomerName: String,
+  CustomerEmail: String
+) AS SELECT o.OrderId, c.Name, c.Email
+   FROM Module.Order o
+   JOIN Module.Order_Customer/Module.Customer c;
+```
+
+This can reduce the microflow to a single retrieve + export step.
+
+---
+
+## Realistic Example: Countries REST API
+
+A complete example consuming a Countries REST API, importing the response, and
+exporting country data back to JSON.
+
+### Step 1: JSON Structures
+
+```sql
+-- Single country (flat object)
+CREATE JSON STRUCTURE Integration.JSON_Country
+  SNIPPET '{"name": "Netherlands", "officialName": "Kingdom of the Netherlands", "capital": "Amsterdam", "region": "Europe", "population": 18100436, "flagUrl": "https://flagcdn.com/w320/nl.png"}';
+
+-- List of countries (array of objects)
+CREATE JSON STRUCTURE Integration.JSON_CountryList
+  SNIPPET '[{"name": "Netherlands", "capital": "Amsterdam", "region": "Europe", "population": 18100436}]';
+```
+
+### Step 2: Import — Single Country
+
+```sql
+CREATE NON-PERSISTENT ENTITY Integration.Country (
+  Name: String,
+  OfficialName: String,
+  Capital: String,
+  Region: String,
+  Population: Integer,
+  FlagUrl: String
+);
+/
+
+CREATE IMPORT MAPPING Integration.IMM_Country
+  WITH JSON STRUCTURE Integration.JSON_Country
+{
+  CREATE Integration.Country {
+    Name = name,
+    OfficialName = officialName,
+    Capital = capital,
+    Region = region,
+    Population = population,
+    FlagUrl = flagUrl
+  }
+};
+```
+
+### Step 3: Import — List of Countries
+
+For a list response, the import mapping maps the array item directly (no container):
+
+```sql
+CREATE NON-PERSISTENT ENTITY Integration.CountryListItem (
+  Name: String,
+  Capital: String,
+  Region: String,
+  Population: Integer
+);
+/
+
+CREATE IMPORT MAPPING Integration.IMM_CountryList
+  WITH JSON STRUCTURE Integration.JSON_CountryList
+{
+  CREATE Integration.CountryListItem {
+    Name = name,
+    Capital = capital,
+    Region = region,
+    Population = population
+  }
+};
+```
+
+### Step 4: Export — Serialize Country to JSON
+
+For the flat country, the same entity works for both import and export:
+
+```sql
+CREATE EXPORT MAPPING Integration.EMM_Country
+  WITH JSON STRUCTURE Integration.JSON_Country
+{
+  Integration.Country {
+    name = Name,
+    officialName = OfficialName,
+    capital = Capital,
+    region = Region,
+    population = Population,
+    flagUrl = FlagUrl
+  }
+};
+```
+
+### Step 5: Export — List of Countries
+
+For exporting a list, the export domain model needs a root container + item entities:
+
+```sql
+-- Container entity wrapping the array
+CREATE NON-PERSISTENT ENTITY Integration.ExCountryList;
+/
+
+-- Item entity for each country in the array
+CREATE NON-PERSISTENT ENTITY Integration.ExCountryItem (
+  Name: String,
+  Capital: String,
+  Region: String,
+  Population: Integer
+);
+/
+
+CREATE ASSOCIATION Integration.ExCountryItem_ExCountryList
+  FROM Integration.ExCountryItem
+  TO Integration.ExCountryList;
+/
+
+CREATE EXPORT MAPPING Integration.EMM_CountryList
+  WITH JSON STRUCTURE Integration.JSON_CountryList
+{
+  Integration.ExCountryList {
+    Integration.ExCountryItem_ExCountryList/Integration.ExCountryItem AS Root {
+      name = Name,
+      capital = Capital,
+      region = Region,
+      population = Population
+    }
+  }
+};
+```
+
+### Step 6: Microflow — Fetch, Import, Process, Export
+
+```sql
+CREATE MICROFLOW Integration.GetCountryInfo ()
+RETURNS String AS $Json
+BEGIN
+  -- Fetch country data from REST API
+  $Response = REST CALL GET 'https://restcountries.com/v3.1/name/netherlands'
+    HEADER Accept = 'application/json'
+    TIMEOUT 30
+    RETURNS String
+    ON ERROR CONTINUE;
+
+  -- Import JSON into entity
+  $Country = IMPORT FROM MAPPING Integration.IMM_Country($Response);
+
+  -- Export back to our own JSON format
+  $Json = EXPORT TO MAPPING Integration.EMM_Country($Country);
+  LOG INFO NODE 'Integration' 'Country: ' + $Json;
+
+  RETURN $Json;
+END;
+/
+```
+
+---
+
 ## Common Mistakes
 
 | Mistake | Fix |
