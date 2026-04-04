@@ -222,17 +222,17 @@ func (e *Executor) execCreateImportMapping(s *ast.CreateImportMappingStmt) error
 		im.XmlSchema = s.SchemaRef.String()
 	}
 
-	// Build path→element info map from JSON structure for schema alignment
-	jsElements := map[string]*jsonElementInfo{}
+	// Build path→JsonElement map from JSON structure — mapping elements clone from this
+	jsElementsByPath := map[string]*mpr.JsonElement{}
 	if s.SchemaKind == "JSON_STRUCTURE" && s.SchemaRef.Module != "" {
 		if js, err2 := e.reader.GetJsonStructureByQualifiedName(s.SchemaRef.Module, s.SchemaRef.Name); err2 == nil {
-			buildJsonPathElementMap(js.Elements, jsElements)
+			buildJsonElementPathMap(js.Elements, jsElementsByPath)
 		}
 	}
 
-	// Build element tree from the AST definition
+	// Build element tree from the AST definition, cloning JSON structure properties
 	if s.RootElement != nil {
-		root := buildImportMappingElementModel(s.Name.Module, s.RootElement, "", "(Object)", e.reader, jsElements, true)
+		root := buildImportMappingElementModel(s.Name.Module, s.RootElement, "", "(Object)", e.reader, jsElementsByPath, true)
 		im.Elements = append(im.Elements, root)
 	}
 
@@ -246,20 +246,56 @@ func (e *Executor) execCreateImportMapping(s *ast.CreateImportMappingStmt) error
 	return nil
 }
 
-// buildImportMappingElementModel converts an AST element definition to a model element,
-// resolving attribute qualified names, data types, and JSON structure alignment.
-func buildImportMappingElementModel(moduleName string, def *ast.ImportMappingElementDef, parentEntity, parentPath string, reader *mpr.Reader, jsElements map[string]*jsonElementInfo, isRoot bool) *model.ImportMappingElement {
+// buildImportMappingElementModel converts an AST element definition to a model element.
+// It clones properties from the matching JSON structure element (ExposedName, JsonPath,
+// MaxOccurs, ElementType, etc.) and adds mapping-specific bindings (Entity, Attribute,
+// Association, ObjectHandling).
+func buildImportMappingElementModel(moduleName string, def *ast.ImportMappingElementDef, parentEntity, parentPath string, reader *mpr.Reader, jsElems map[string]*mpr.JsonElement, isRoot bool) *model.ImportMappingElement {
 	elem := &model.ImportMappingElement{
 		BaseElement: model.BaseElement{
-			ID:       model.ID(mpr.GenerateID()),
-			TypeName: "ImportMappings$ObjectMappingElement",
+			ID: model.ID(mpr.GenerateID()),
 		},
-		ExposedName: def.JsonName,
+	}
+
+	// Determine lookup path in JSON structure
+	var lookupPath string
+	if isRoot {
+		lookupPath = "(Object)"
+	} else {
+		lookupPath = parentPath + "|" + def.JsonName
+	}
+
+	// Clone properties from the matching JSON structure element
+	if jsElem, ok := jsElems[lookupPath]; ok {
+		elem.ExposedName = jsElem.ExposedName
+		elem.JsonPath = jsElem.Path
+		elem.MinOccurs = jsElem.MinOccurs
+		elem.MaxOccurs = jsElem.MaxOccurs
+		elem.Nillable = jsElem.Nillable
+		elem.OriginalValue = jsElem.OriginalValue
+		elem.FractionDigits = jsElem.FractionDigits
+		elem.TotalDigits = jsElem.TotalDigits
+		elem.MaxLength = jsElem.MaxLength
+	} else {
+		elem.ExposedName = def.JsonName
+		elem.JsonPath = lookupPath
+		elem.Nillable = true
+		elem.FractionDigits = -1
+		elem.TotalDigits = -1
 	}
 
 	if def.Entity != "" {
-		// Object mapping
+		// Object/Array mapping — bind to entity
 		elem.Kind = "Object"
+		elem.TypeName = "ImportMappings$ObjectMappingElement"
+
+		// Check if this is an array element in the JSON structure
+		childPath := lookupPath
+		if jsElem, ok := jsElems[lookupPath]; ok && jsElem.ElementType == "Array" {
+			elem.Kind = "Array"
+			childPath = lookupPath + "|(Object)"
+		}
+
 		entity := def.Entity
 		if !strings.Contains(entity, ".") {
 			entity = moduleName + "." + entity
@@ -277,37 +313,11 @@ func buildImportMappingElementModel(moduleName string, def *ast.ImportMappingEle
 			elem.Association = assoc
 		}
 
-		// Compute JsonPath and align ExposedName/ElementType with JSON structure
-		var jsonPath string
-		if isRoot {
-			jsonPath = "(Object)"
-			elem.ExposedName = "Root" // default; overridden from JSON structure below
-			if info, ok := jsElements["(Object)"]; ok {
-				elem.ExposedName = info.ExposedName
-			}
-			elem.JsonPath = jsonPath
-		} else {
-			// Look up by original JSON key — JsonPath always uses original key
-			lookupPath := parentPath + "|" + def.JsonName
-			jsonPath = lookupPath
-			if info, ok := jsElements[lookupPath]; ok {
-				elem.ExposedName = info.ExposedName
-				if info.ElementType == "Array" {
-					elem.Kind = "Array"
-				}
-			}
-			elem.JsonPath = jsonPath
-			// Array children use the item path for recursion
-			if elem.Kind == "Array" {
-				jsonPath = jsonPath + "|(Object)"
-			}
-		}
-
 		for _, child := range def.Children {
-			elem.Children = append(elem.Children, buildImportMappingElementModel(moduleName, child, entity, jsonPath, reader, jsElements, false))
+			elem.Children = append(elem.Children, buildImportMappingElementModel(moduleName, child, entity, childPath, reader, jsElems, false))
 		}
 	} else {
-		// Value mapping — qualify attribute name as Module.Entity.Attribute
+		// Value mapping — bind to attribute
 		elem.Kind = "Value"
 		elem.TypeName = "ImportMappings$ValueMappingElement"
 		elem.DataType = resolveAttributeType(parentEntity, def.Attribute, reader)
@@ -317,18 +327,20 @@ func buildImportMappingElementModel(moduleName string, def *ast.ImportMappingEle
 			attr = parentEntity + "." + attr
 		}
 		elem.Attribute = attr
-
-		// Compute JsonPath (always original key) and align ExposedName with JSON structure
-		lookupPath := parentPath + "|" + def.JsonName
-		if info, ok := jsElements[lookupPath]; ok {
-			elem.ExposedName = info.ExposedName
-			elem.JsonPath = lookupPath
-		} else {
-			elem.JsonPath = lookupPath
-		}
 	}
 
 	return elem
+}
+
+// buildJsonElementPathMap recursively builds a map from JSON path → JsonElement.
+func buildJsonElementPathMap(elems []*mpr.JsonElement, m map[string]*mpr.JsonElement) {
+	for _, e := range elems {
+		if e == nil {
+			continue
+		}
+		m[e.Path] = e
+		buildJsonElementPathMap(e.Children, m)
+	}
 }
 
 // resolveAttributeType looks up the data type of an entity attribute from the project.
