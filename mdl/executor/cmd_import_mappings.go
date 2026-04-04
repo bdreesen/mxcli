@@ -286,9 +286,16 @@ func buildImportMappingElementModel(moduleName string, def *ast.ImportMappingEle
 		}
 		elem.JsonPath = jsonPath
 
+		// Root must have empty ExposedName; children align with JSON structure
+		if isRoot {
+			elem.ExposedName = ""
+		}
+
 		// Look up JSON structure element to align ExposedName and ElementType
 		if info, ok := jsElements[jsonPath]; ok {
-			elem.ExposedName = info.ExposedName
+			if !isRoot {
+				elem.ExposedName = info.ExposedName
+			}
 			if info.ElementType == "Array" {
 				elem.Kind = "Array"
 				// Children of array containers use the array item path
