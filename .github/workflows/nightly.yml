@@ -49,6 +49,8 @@ jobs:
         with:
           go-version: '1.26'
 
+      - uses: oven-sh/setup-bun@v2
+
       - name: Check for new commits since last nightly
         id: check
         run: |
