@@ -425,10 +425,7 @@ CREATE OR REPLACE PAGE WidgetDemo.WidgetDemo_Showcase (
     -- 8f: Language + Accessibility
     ROW rowS8f {
       COLUMN cS8f1 (DesktopWidth: 6) {
-        PLUGGABLEWIDGET 'com.mendix.widget.web.languageselector.LanguageSelector' langSel1 (
-          DataSource: DATABASE FROM WidgetDemo.DemoItem,
-          languageCaption: '''en_US'''
-        )
+        PLUGGABLEWIDGET 'com.mendix.widget.web.languageselector.LanguageSelector' langSel1
       }
       COLUMN cS8f2 (DesktopWidth: 6) {
         PLUGGABLEWIDGET 'com.mendix.widget.web.accessibilityhelper.AccessibilityHelper' accHelper1 (targetSelector: '.mx-name-accHelper1') {

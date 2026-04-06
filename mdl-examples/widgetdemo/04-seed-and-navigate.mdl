@@ -1,5 +1,5 @@
 -- WidgetDemo: seed data microflow + navigation
--- This script is part of the WidgetDemo module bootstrap (run after 01 and 02)
+-- This script is part of the WidgetDemo module bootstrap (run after 01, 02 and 03)
 
 /**
  * Seeds DemoItem data and opens the showcase page.
