@@ -88,11 +88,23 @@ Examples:
 			os.Exit(1)
 		}
 
-		// Verify .mpr was created
-		mprPath := filepath.Join(absDir, "App.mpr")
+		// Verify .mpr was created — mx create-project names the file after --app-name
+		mprPath := filepath.Join(absDir, appName+".mpr")
 		if _, err := os.Stat(mprPath); os.IsNotExist(err) {
-			fmt.Fprintf(os.Stderr, "Error: mx create-project did not produce App.mpr in %s\n", absDir)
-			os.Exit(1)
+			// Fallback: check for App.mpr (default when --app-name is not used)
+			fallback := filepath.Join(absDir, "App.mpr")
+			if _, err := os.Stat(fallback); err == nil {
+				mprPath = fallback
+			} else {
+				// Last resort: find any .mpr file
+				matches, _ := filepath.Glob(filepath.Join(absDir, "*.mpr"))
+				if len(matches) > 0 {
+					mprPath = matches[0]
+				} else {
+					fmt.Fprintf(os.Stderr, "Error: mx create-project did not produce an .mpr file in %s\n", absDir)
+					os.Exit(1)
+				}
+			}
 		}
 		fmt.Printf("  Created %s\n", mprPath)
 
@@ -137,7 +149,7 @@ Examples:
 		fmt.Println("\nNext steps:")
 		fmt.Println("  1. Open the project folder in VS Code")
 		fmt.Println("  2. Reopen in Dev Container when prompted")
-		fmt.Printf("  3. Run './mxcli -p App.mpr' to start working\n")
+		fmt.Printf("  3. Run './mxcli -p %s' to start working\n", filepath.Base(mprPath))
 	},
 }
 
