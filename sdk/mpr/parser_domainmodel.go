@@ -106,6 +106,10 @@ func parseEntity(raw map[string]any) *domainmodel.Entity {
 		if sourceType, ok := source["$Type"].(string); ok {
 			entity.Source = sourceType
 		}
+		// Preserve the Source object's $ID to avoid CE-6770 on updates
+		if sourceID := extractID(source["$ID"]); sourceID != "" {
+			entity.SourceObjectID = model.ID(sourceID)
+		}
 		// For view entities, extract the OQL query directly
 		if oqlQuery, ok := source["OqlQuery"].(string); ok {
 			entity.OqlQuery = oqlQuery

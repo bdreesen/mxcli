@@ -327,7 +327,7 @@ func (e *Executor) describeMicroflow(name ast.QualifiedName) error {
 	// CREATE MICROFLOW header
 	qualifiedName := name.Module + "." + name.Name
 	if len(targetMf.Parameters) > 0 {
-		lines = append(lines, fmt.Sprintf("CREATE OR REPLACE MICROFLOW %s (", qualifiedName))
+		lines = append(lines, fmt.Sprintf("CREATE OR MODIFY MICROFLOW %s (", qualifiedName))
 		for i, param := range targetMf.Parameters {
 			paramType := "Object"
 			if param.Type != nil {
@@ -341,7 +341,7 @@ func (e *Executor) describeMicroflow(name ast.QualifiedName) error {
 		}
 		lines = append(lines, ")")
 	} else {
-		lines = append(lines, fmt.Sprintf("CREATE OR REPLACE MICROFLOW %s ()", qualifiedName))
+		lines = append(lines, fmt.Sprintf("CREATE OR MODIFY MICROFLOW %s ()", qualifiedName))
 	}
 
 	// Return type
@@ -395,7 +395,7 @@ func (e *Executor) describeMicroflow(name ast.QualifiedName) error {
 	return nil
 }
 
-// describeNanoflow generates re-executable CREATE OR REPLACE NANOFLOW MDL output
+// describeNanoflow generates re-executable CREATE OR MODIFY NANOFLOW MDL output
 // with activities and control flows listed as comments.
 func (e *Executor) describeNanoflow(name ast.QualifiedName) error {
 	h, err := e.getHierarchy()
@@ -458,7 +458,7 @@ func (e *Executor) describeNanoflow(name ast.QualifiedName) error {
 	// CREATE NANOFLOW header
 	qualifiedName := name.Module + "." + name.Name
 	if len(targetNf.Parameters) > 0 {
-		lines = append(lines, fmt.Sprintf("CREATE OR REPLACE NANOFLOW %s (", qualifiedName))
+		lines = append(lines, fmt.Sprintf("CREATE OR MODIFY NANOFLOW %s (", qualifiedName))
 		for i, param := range targetNf.Parameters {
 			paramType := "Object"
 			if param.Type != nil {
@@ -472,7 +472,7 @@ func (e *Executor) describeNanoflow(name ast.QualifiedName) error {
 		}
 		lines = append(lines, ")")
 	} else {
-		lines = append(lines, fmt.Sprintf("CREATE OR REPLACE NANOFLOW %s ()", qualifiedName))
+		lines = append(lines, fmt.Sprintf("CREATE OR MODIFY NANOFLOW %s ()", qualifiedName))
 	}
 
 	// Return type
@@ -563,7 +563,7 @@ func (e *Executor) describeMicroflowToString(name ast.QualifiedName) (string, ma
 
 	qualifiedName := name.Module + "." + name.Name
 	if len(targetMf.Parameters) > 0 {
-		lines = append(lines, fmt.Sprintf("CREATE OR REPLACE MICROFLOW %s (", qualifiedName))
+		lines = append(lines, fmt.Sprintf("CREATE OR MODIFY MICROFLOW %s (", qualifiedName))
 		for i, param := range targetMf.Parameters {
 			paramType := "Object"
 			if param.Type != nil {
@@ -577,7 +577,7 @@ func (e *Executor) describeMicroflowToString(name ast.QualifiedName) (string, ma
 		}
 		lines = append(lines, ")")
 	} else {
-		lines = append(lines, fmt.Sprintf("CREATE OR REPLACE MICROFLOW %s ()", qualifiedName))
+		lines = append(lines, fmt.Sprintf("CREATE OR MODIFY MICROFLOW %s ()", qualifiedName))
 	}
 
 	if targetMf.ReturnType != nil {

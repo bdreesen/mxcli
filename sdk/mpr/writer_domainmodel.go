@@ -664,7 +664,7 @@ func serializeEntity(e *domainmodel.Entity, moduleName string, pv *version.Proje
 
 	// Add Source for view entities (references a ViewEntitySourceDocument)
 	if e.Source == "DomainModels$OqlViewEntitySource" && e.SourceDocumentRef != "" {
-		doc = append(doc, bson.E{Key: "Source", Value: serializeOqlViewEntitySource(e.SourceDocumentRef, e.OqlQuery, pv)})
+		doc = append(doc, bson.E{Key: "Source", Value: serializeOqlViewEntitySource(e.SourceObjectID, e.SourceDocumentRef, e.OqlQuery, pv)})
 	}
 
 	// Add Source for external entities (OData remote entity source)
@@ -770,9 +770,13 @@ func serializeGeneralization(parentRef string) bson.D {
 	}
 }
 
-func serializeOqlViewEntitySource(sourceDocumentRef, oqlQuery string, pv *version.ProjectVersion) bson.D {
+func serializeOqlViewEntitySource(sourceObjectID model.ID, sourceDocumentRef, oqlQuery string, pv *version.ProjectVersion) bson.D {
+	id := string(sourceObjectID)
+	if id == "" {
+		id = generateUUID()
+	}
 	doc := bson.D{
-		{Key: "$ID", Value: idToBsonBinary(generateUUID())},
+		{Key: "$ID", Value: idToBsonBinary(id)},
 		{Key: "$Type", Value: "DomainModels$OqlViewEntitySource"},
 	}
 	// Mendix 10.x stores the OQL query inline on the source object (reflection data: 10.21 has "Oql" property).
