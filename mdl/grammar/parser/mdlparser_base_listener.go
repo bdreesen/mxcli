@@ -1,4 +1,4 @@
-// Code generated from MDLParser.g4 by ANTLR 4.13.1. DO NOT EDIT.
+// Code generated from MDLParser.g4 by ANTLR 4.13.2. DO NOT EDIT.
 
 package parser // MDLParser
 import "github.com/antlr4-go/antlr/v4"
@@ -1891,6 +1891,12 @@ func (s *BaseMDLParserListener) EnterDqlStatement(ctx *DqlStatementContext) {}
 
 // ExitDqlStatement is called when production dqlStatement is exited.
 func (s *BaseMDLParserListener) ExitDqlStatement(ctx *DqlStatementContext) {}
+
+// EnterShowOrList is called when production showOrList is entered.
+func (s *BaseMDLParserListener) EnterShowOrList(ctx *ShowOrListContext) {}
+
+// ExitShowOrList is called when production showOrList is exited.
+func (s *BaseMDLParserListener) ExitShowOrList(ctx *ShowOrListContext) {}
 
 // EnterShowStatement is called when production showStatement is entered.
 func (s *BaseMDLParserListener) EnterShowStatement(ctx *ShowStatementContext) {}
