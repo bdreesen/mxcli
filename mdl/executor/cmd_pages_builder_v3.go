@@ -8,6 +8,7 @@ import (
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
 	"github.com/mendixlabs/mxcli/model"
+	"github.com/mendixlabs/mxcli/sdk/domainmodel"
 	"github.com/mendixlabs/mxcli/sdk/microflows"
 	"github.com/mendixlabs/mxcli/sdk/mpr"
 	"github.com/mendixlabs/mxcli/sdk/pages"
@@ -1143,6 +1144,10 @@ func (pb *pageBuilder) resolveTemplateAttributePath(attrRef string) string {
 //
 // When attrRef is $paramName.Attribute (where paramName is a page/snippet parameter),
 // it sets SourceVariable to paramName and AttributeRef to the resolved entity path.
+//
+// For non-String attributes (Integer, Decimal, DateTime, Boolean, etc.), the binding
+// is automatically converted to a toString() expression since DYNAMICTEXT template
+// parameters require String values.
 func (pb *pageBuilder) resolveTemplateAttributePathFull(attrRef string, param *pages.ClientTemplateParameter) {
 	if attrRef == "" {
 		return
@@ -1158,22 +1163,48 @@ func (pb *pageBuilder) resolveTemplateAttributePathFull(attrRef string, param *p
 
 			// Check if this is a page/snippet parameter (not a widget reference)
 			if entityName, ok := pb.paramEntityNames[paramName]; ok {
-				// This is a page parameter reference
+				fullPath := entityName + "." + attrName
+				if pb.isNonStringAttribute(fullPath) {
+					param.Expression = "toString($" + paramName + "/" + attrName + ")"
+					return
+				}
 				param.SourceVariable = paramName
-				param.AttributeRef = entityName + "." + attrName
+				param.AttributeRef = fullPath
 				return
 			}
 			// Try with $ prefix (for snippet parameters)
 			if entityName, ok := pb.paramEntityNames["$"+paramName]; ok {
+				fullPath := entityName + "." + attrName
+				if pb.isNonStringAttribute(fullPath) {
+					param.Expression = "toString($" + paramName + "/" + attrName + ")"
+					return
+				}
 				param.SourceVariable = paramName
-				param.AttributeRef = entityName + "." + attrName
+				param.AttributeRef = fullPath
 				return
 			}
 		}
 	}
 
-	// For other patterns, just set AttributeRef
-	param.AttributeRef = pb.resolveTemplateAttributePath(attrRef)
+	// For other patterns, resolve and check type
+	resolved := pb.resolveTemplateAttributePath(attrRef)
+	if pb.isNonStringAttribute(resolved) {
+		// Convert to toString() expression for non-String attributes
+		param.Expression = "toString($currentObject/" + attrRef + ")"
+		return
+	}
+	param.AttributeRef = resolved
+}
+
+// isNonStringAttribute checks if an attribute path refers to a non-String type.
+// Returns false if the type can't be determined (fail-open to preserve existing behavior).
+func (pb *pageBuilder) isNonStringAttribute(attrPath string) bool {
+	attrType := pb.findAttributeType(attrPath)
+	if attrType == nil {
+		return false // can't determine type, assume String
+	}
+	_, isString := attrType.(*domainmodel.StringAttributeType)
+	return !isString
 }
 
 // ============================================================================
