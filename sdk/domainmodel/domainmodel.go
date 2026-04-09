@@ -76,6 +76,10 @@ type Entity struct {
 	// Possible values: "", "OqlViewEntitySource", "ODataRemoteEntitySource", etc.
 	Source string `json:"source,omitempty"`
 
+	// SourceObjectID is the $ID of the embedded Source object in BSON.
+	// Must be preserved across updates to avoid CE-6770 "View Entity is out of sync".
+	SourceObjectID model.ID `json:"sourceObjectId,omitempty"`
+
 	// SourceDocumentRef is the qualified name reference to the source document (for view entities)
 	// e.g., "MyFirstModule.SubUsersVe"
 	SourceDocumentRef string `json:"sourceDocumentRef,omitempty"`

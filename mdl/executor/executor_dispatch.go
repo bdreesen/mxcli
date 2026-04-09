@@ -86,6 +86,8 @@ func (e *Executor) executeInner(stmt ast.Statement) error {
 		return e.execMoveFolder(s)
 	case *ast.MoveStmt:
 		return e.execMove(s)
+	case *ast.RenameStmt:
+		return e.execRename(s)
 
 	// Security statements
 	case *ast.CreateModuleRoleStmt:

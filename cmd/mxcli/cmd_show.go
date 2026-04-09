@@ -11,9 +11,10 @@ import (
 )
 
 var showCmd = &cobra.Command{
-	Use:   "show <type> [name]",
-	Short: "Show project elements",
-	Long: `Show elements from a Mendix project.
+	Use:     "show <type> [name]",
+	Aliases: []string{"list"},
+	Short:   "List project elements",
+	Long: `List elements from a Mendix project. (Also available as "mxcli list")
 
 Types:
   modules              List all modules

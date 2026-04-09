@@ -718,6 +718,61 @@ func (b *Builder) ExitDropStatement(ctx *parser.DropStatementContext) {
 	}
 }
 
+// ExitRenameStatement handles RENAME ENTITY/MICROFLOW/NANOFLOW/PAGE/ENUMERATION/ASSOCIATION/CONSTANT/MODULE ... TO ...
+func (b *Builder) ExitRenameStatement(ctx *parser.RenameStatementContext) {
+	ioks := ctx.AllIdentifierOrKeyword()
+	dryRun := ctx.DRY() != nil
+
+	if ctx.MODULE() != nil {
+		// RENAME MODULE oldName TO newName — both are identifierOrKeyword
+		if len(ioks) >= 2 {
+			oldName := identifierOrKeywordText(ioks[0])
+			newName := identifierOrKeywordText(ioks[1])
+			b.statements = append(b.statements, &ast.RenameStmt{
+				ObjectType: "MODULE",
+				Name:       ast.QualifiedName{Module: oldName, Name: oldName},
+				NewName:    newName,
+				DryRun:     dryRun,
+			})
+		}
+		return
+	}
+
+	// All other types use qualifiedName TO identifierOrKeyword
+	qn := buildQualifiedName(ctx.QualifiedName())
+	if len(ioks) < 1 {
+		return
+	}
+	newName := identifierOrKeywordText(ioks[0])
+
+	var objectType string
+	switch {
+	case ctx.ENTITY() != nil:
+		objectType = "ENTITY"
+	case ctx.MICROFLOW() != nil:
+		objectType = "MICROFLOW"
+	case ctx.NANOFLOW() != nil:
+		objectType = "NANOFLOW"
+	case ctx.PAGE() != nil:
+		objectType = "PAGE"
+	case ctx.ENUMERATION() != nil:
+		objectType = "ENUMERATION"
+	case ctx.ASSOCIATION() != nil:
+		objectType = "ASSOCIATION"
+	case ctx.CONSTANT() != nil:
+		objectType = "CONSTANT"
+	default:
+		return
+	}
+
+	b.statements = append(b.statements, &ast.RenameStmt{
+		ObjectType: objectType,
+		Name:       qn,
+		NewName:    newName,
+		DryRun:     dryRun,
+	})
+}
+
 // ExitMoveStatement handles MOVE PAGE/MICROFLOW/SNIPPET/NANOFLOW/ENTITY/ENUMERATION to folder/module
 func (b *Builder) ExitMoveStatement(ctx *parser.MoveStatementContext) {
 	names := ctx.AllQualifiedName()

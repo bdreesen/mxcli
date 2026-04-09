@@ -1,4 +1,4 @@
-// Code generated from MDLParser.g4 by ANTLR 4.13.1. DO NOT EDIT.
+// Code generated from MDLParser.g4 by ANTLR 4.13.2. DO NOT EDIT.
 
 package parser // MDLParser
 import "github.com/antlr4-go/antlr/v4"
@@ -903,6 +903,9 @@ type MDLParserListener interface {
 
 	// EnterDqlStatement is called when entering the dqlStatement production.
 	EnterDqlStatement(c *DqlStatementContext)
+
+	// EnterShowOrList is called when entering the showOrList production.
+	EnterShowOrList(c *ShowOrListContext)
 
 	// EnterShowStatement is called when entering the showStatement production.
 	EnterShowStatement(c *ShowStatementContext)
@@ -2079,6 +2082,9 @@ type MDLParserListener interface {
 
 	// ExitDqlStatement is called when exiting the dqlStatement production.
 	ExitDqlStatement(c *DqlStatementContext)
+
+	// ExitShowOrList is called when exiting the showOrList production.
+	ExitShowOrList(c *ShowOrListContext)
 
 	// ExitShowStatement is called when exiting the showStatement production.
 	ExitShowStatement(c *ShowStatementContext)

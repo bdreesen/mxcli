@@ -270,8 +270,14 @@ dropStatement
     ;
 
 renameStatement
-    : RENAME ENTITY qualifiedName TO IDENTIFIER
-    | RENAME MODULE IDENTIFIER TO IDENTIFIER
+    : RENAME ENTITY qualifiedName TO identifierOrKeyword (DRY RUN)?
+    | RENAME MICROFLOW qualifiedName TO identifierOrKeyword (DRY RUN)?
+    | RENAME NANOFLOW qualifiedName TO identifierOrKeyword (DRY RUN)?
+    | RENAME PAGE qualifiedName TO identifierOrKeyword (DRY RUN)?
+    | RENAME ENUMERATION qualifiedName TO identifierOrKeyword (DRY RUN)?
+    | RENAME ASSOCIATION qualifiedName TO identifierOrKeyword (DRY RUN)?
+    | RENAME CONSTANT qualifiedName TO identifierOrKeyword (DRY RUN)?
+    | RENAME MODULE identifierOrKeyword TO identifierOrKeyword (DRY RUN)?
     ;
 
 /**
@@ -2656,74 +2662,76 @@ dqlStatement
     | oqlQuery
     ;
 
+showOrList: SHOW | LIST_KW ;
+
 showStatement
-    : SHOW MODULES
-    | SHOW CONTRACT ENTITIES FROM qualifiedName    // SHOW CONTRACT ENTITIES FROM Module.Service (must precede SHOW ENTITIES)
-    | SHOW CONTRACT ACTIONS FROM qualifiedName     // SHOW CONTRACT ACTIONS FROM Module.Service
-    | SHOW CONTRACT CHANNELS FROM qualifiedName   // SHOW CONTRACT CHANNELS FROM Module.Service (AsyncAPI)
-    | SHOW CONTRACT MESSAGES FROM qualifiedName   // SHOW CONTRACT MESSAGES FROM Module.Service (AsyncAPI)
-    | SHOW ENTITIES (IN (qualifiedName | IDENTIFIER))?
-    | SHOW ASSOCIATIONS (IN (qualifiedName | IDENTIFIER))?
-    | SHOW MICROFLOWS (IN (qualifiedName | IDENTIFIER))?
-    | SHOW NANOFLOWS (IN (qualifiedName | IDENTIFIER))?
-    | SHOW WORKFLOWS (IN (qualifiedName | IDENTIFIER))?
-    | SHOW PAGES (IN (qualifiedName | IDENTIFIER))?
-    | SHOW SNIPPETS (IN (qualifiedName | IDENTIFIER))?
-    | SHOW ENUMERATIONS (IN (qualifiedName | IDENTIFIER))?
-    | SHOW CONSTANTS (IN (qualifiedName | IDENTIFIER))?
-    | SHOW CONSTANT VALUES (IN (qualifiedName | IDENTIFIER))?
-    | SHOW LAYOUTS (IN (qualifiedName | IDENTIFIER))?
-    | SHOW NOTEBOOKS (IN (qualifiedName | IDENTIFIER))?
-    | SHOW JAVA ACTIONS (IN (qualifiedName | IDENTIFIER))?
-    | SHOW JAVASCRIPT ACTIONS (IN (qualifiedName | IDENTIFIER))?
-    | SHOW IMAGE COLLECTION (IN (qualifiedName | IDENTIFIER))?   // SHOW IMAGE COLLECTION [IN Module]
-    | SHOW JSON STRUCTURES (IN (qualifiedName | IDENTIFIER))?    // SHOW JSON STRUCTURES [IN Module]
-    | SHOW IMPORT MAPPINGS (IN (qualifiedName | IDENTIFIER))?       // SHOW IMPORT MAPPINGS [IN module]
-    | SHOW EXPORT MAPPINGS (IN (qualifiedName | IDENTIFIER))?       // SHOW EXPORT MAPPINGS [IN module]
-    | SHOW ENTITY qualifiedName
-    | SHOW ASSOCIATION qualifiedName
-    | SHOW PAGE qualifiedName
-    | SHOW CONNECTIONS
-    | SHOW STATUS
-    | SHOW VERSION
-    | SHOW CATALOG STATUS  // SHOW CATALOG STATUS (cache info)
-    | SHOW CATALOG TABLES  // SHOW CATALOG TABLES
-    | SHOW CALLERS OF qualifiedName TRANSITIVE?  // SHOW CALLERS OF Module.Microflow [TRANSITIVE]
-    | SHOW CALLEES OF qualifiedName TRANSITIVE?  // SHOW CALLEES OF Module.Microflow [TRANSITIVE]
-    | SHOW REFERENCES TO qualifiedName           // SHOW REFERENCES TO Module.Entity
-    | SHOW IMPACT OF qualifiedName               // SHOW IMPACT OF Module.Entity
-    | SHOW CONTEXT OF qualifiedName (DEPTH NUMBER_LITERAL)?  // SHOW CONTEXT OF Module.Microflow [DEPTH 2]
-    | SHOW WIDGETS showWidgetsFilter?            // SHOW WIDGETS [WHERE ...] [IN module]
-    | SHOW PROJECT SECURITY                     // SHOW PROJECT SECURITY
-    | SHOW MODULE ROLES (IN (qualifiedName | IDENTIFIER))?  // SHOW MODULE ROLES [IN module]
-    | SHOW USER ROLES                           // SHOW USER ROLES
-    | SHOW DEMO USERS                           // SHOW DEMO USERS
-    | SHOW ACCESS ON qualifiedName              // SHOW ACCESS ON Module.Entity
-    | SHOW ACCESS ON MICROFLOW qualifiedName    // SHOW ACCESS ON MICROFLOW Module.MF
-    | SHOW ACCESS ON PAGE qualifiedName         // SHOW ACCESS ON PAGE Module.Page
-    | SHOW ACCESS ON WORKFLOW qualifiedName     // SHOW ACCESS ON WORKFLOW Module.WF
-    | SHOW SECURITY MATRIX (IN (qualifiedName | IDENTIFIER))?  // SHOW SECURITY MATRIX [IN module]
-    | SHOW ODATA CLIENTS (IN (qualifiedName | IDENTIFIER))?    // SHOW ODATA CLIENTS [IN module]
-    | SHOW ODATA SERVICES (IN (qualifiedName | IDENTIFIER))?   // SHOW ODATA SERVICES [IN module]
-    | SHOW EXTERNAL ENTITIES (IN (qualifiedName | IDENTIFIER))? // SHOW EXTERNAL ENTITIES [IN module]
-    | SHOW EXTERNAL ACTIONS (IN (qualifiedName | IDENTIFIER))?  // SHOW EXTERNAL ACTIONS [IN module]
-    | SHOW NAVIGATION                              // SHOW NAVIGATION
-    | SHOW NAVIGATION MENU_KW (qualifiedName | IDENTIFIER)?  // SHOW NAVIGATION MENU [profile]
-    | SHOW NAVIGATION HOMES                        // SHOW NAVIGATION HOMES
-    | SHOW DESIGN PROPERTIES (FOR widgetTypeKeyword)?  // SHOW DESIGN PROPERTIES [FOR CONTAINER]
-    | SHOW STRUCTURE (DEPTH NUMBER_LITERAL)? (IN (qualifiedName | IDENTIFIER))? ALL?  // SHOW STRUCTURE [DEPTH n] [IN module] [ALL]
-    | SHOW BUSINESS EVENT SERVICES (IN (qualifiedName | IDENTIFIER))?  // SHOW BUSINESS EVENT SERVICES [IN module]
-    | SHOW BUSINESS EVENT CLIENTS (IN (qualifiedName | IDENTIFIER))?   // SHOW BUSINESS EVENT CLIENTS [IN module]
-    | SHOW BUSINESS EVENTS (IN (qualifiedName | IDENTIFIER))?          // SHOW BUSINESS EVENTS [IN module] (messages)
-    | SHOW SETTINGS                                            // SHOW SETTINGS
-    | SHOW FRAGMENTS                                           // SHOW FRAGMENTS
-    | SHOW DATABASE CONNECTIONS (IN (qualifiedName | IDENTIFIER))?  // SHOW DATABASE CONNECTIONS [IN module]
-    | SHOW REST CLIENTS (IN (qualifiedName | IDENTIFIER))?           // SHOW REST CLIENTS [IN module]
-    | SHOW PUBLISHED REST SERVICES (IN (qualifiedName | IDENTIFIER))? // SHOW PUBLISHED REST SERVICES [IN module]
-    | SHOW LANGUAGES                                                 // SHOW LANGUAGES
-    | SHOW FEATURES (IN IDENTIFIER)?                                 // SHOW FEATURES [IN area]
-    | SHOW FEATURES FOR VERSION NUMBER_LITERAL                       // SHOW FEATURES FOR VERSION 10.24
-    | SHOW FEATURES ADDED SINCE NUMBER_LITERAL                       // SHOW FEATURES ADDED SINCE 10.24
+    : showOrList MODULES
+    | showOrList CONTRACT ENTITIES FROM qualifiedName    // SHOW CONTRACT ENTITIES FROM Module.Service
+    | showOrList CONTRACT ACTIONS FROM qualifiedName     // SHOW CONTRACT ACTIONS FROM Module.Service
+    | showOrList CONTRACT CHANNELS FROM qualifiedName   // SHOW CONTRACT CHANNELS FROM Module.Service (AsyncAPI)
+    | showOrList CONTRACT MESSAGES FROM qualifiedName   // SHOW CONTRACT MESSAGES FROM Module.Service (AsyncAPI)
+    | showOrList ENTITIES (IN (qualifiedName | IDENTIFIER))?
+    | showOrList ASSOCIATIONS (IN (qualifiedName | IDENTIFIER))?
+    | showOrList MICROFLOWS (IN (qualifiedName | IDENTIFIER))?
+    | showOrList NANOFLOWS (IN (qualifiedName | IDENTIFIER))?
+    | showOrList WORKFLOWS (IN (qualifiedName | IDENTIFIER))?
+    | showOrList PAGES (IN (qualifiedName | IDENTIFIER))?
+    | showOrList SNIPPETS (IN (qualifiedName | IDENTIFIER))?
+    | showOrList ENUMERATIONS (IN (qualifiedName | IDENTIFIER))?
+    | showOrList CONSTANTS (IN (qualifiedName | IDENTIFIER))?
+    | showOrList CONSTANT VALUES (IN (qualifiedName | IDENTIFIER))?
+    | showOrList LAYOUTS (IN (qualifiedName | IDENTIFIER))?
+    | showOrList NOTEBOOKS (IN (qualifiedName | IDENTIFIER))?
+    | showOrList JAVA ACTIONS (IN (qualifiedName | IDENTIFIER))?
+    | showOrList JAVASCRIPT ACTIONS (IN (qualifiedName | IDENTIFIER))?
+    | showOrList IMAGE COLLECTION (IN (qualifiedName | IDENTIFIER))?
+    | showOrList JSON STRUCTURES (IN (qualifiedName | IDENTIFIER))?
+    | showOrList IMPORT MAPPINGS (IN (qualifiedName | IDENTIFIER))?
+    | showOrList EXPORT MAPPINGS (IN (qualifiedName | IDENTIFIER))?
+    | showOrList ENTITY qualifiedName
+    | showOrList ASSOCIATION qualifiedName
+    | showOrList PAGE qualifiedName
+    | showOrList CONNECTIONS
+    | showOrList STATUS
+    | showOrList VERSION
+    | showOrList CATALOG STATUS
+    | showOrList CATALOG TABLES
+    | showOrList CALLERS OF qualifiedName TRANSITIVE?
+    | showOrList CALLEES OF qualifiedName TRANSITIVE?
+    | showOrList REFERENCES TO qualifiedName
+    | showOrList IMPACT OF qualifiedName
+    | showOrList CONTEXT OF qualifiedName (DEPTH NUMBER_LITERAL)?
+    | showOrList WIDGETS showWidgetsFilter?
+    | showOrList PROJECT SECURITY
+    | showOrList MODULE ROLES (IN (qualifiedName | IDENTIFIER))?
+    | showOrList USER ROLES
+    | showOrList DEMO USERS
+    | showOrList ACCESS ON qualifiedName
+    | showOrList ACCESS ON MICROFLOW qualifiedName
+    | showOrList ACCESS ON PAGE qualifiedName
+    | showOrList ACCESS ON WORKFLOW qualifiedName
+    | showOrList SECURITY MATRIX (IN (qualifiedName | IDENTIFIER))?
+    | showOrList ODATA CLIENTS (IN (qualifiedName | IDENTIFIER))?
+    | showOrList ODATA SERVICES (IN (qualifiedName | IDENTIFIER))?
+    | showOrList EXTERNAL ENTITIES (IN (qualifiedName | IDENTIFIER))?
+    | showOrList EXTERNAL ACTIONS (IN (qualifiedName | IDENTIFIER))?
+    | showOrList NAVIGATION
+    | showOrList NAVIGATION MENU_KW (qualifiedName | IDENTIFIER)?
+    | showOrList NAVIGATION HOMES
+    | showOrList DESIGN PROPERTIES (FOR widgetTypeKeyword)?
+    | showOrList STRUCTURE (DEPTH NUMBER_LITERAL)? (IN (qualifiedName | IDENTIFIER))? ALL?
+    | showOrList BUSINESS EVENT SERVICES (IN (qualifiedName | IDENTIFIER))?
+    | showOrList BUSINESS EVENT CLIENTS (IN (qualifiedName | IDENTIFIER))?
+    | showOrList BUSINESS EVENTS (IN (qualifiedName | IDENTIFIER))?
+    | showOrList SETTINGS
+    | showOrList FRAGMENTS
+    | showOrList DATABASE CONNECTIONS (IN (qualifiedName | IDENTIFIER))?
+    | showOrList REST CLIENTS (IN (qualifiedName | IDENTIFIER))?
+    | showOrList PUBLISHED REST SERVICES (IN (qualifiedName | IDENTIFIER))?
+    | showOrList LANGUAGES
+    | showOrList FEATURES (IN IDENTIFIER)?
+    | showOrList FEATURES FOR VERSION NUMBER_LITERAL
+    | showOrList FEATURES ADDED SINCE NUMBER_LITERAL
     ;
 
 /**
@@ -3403,7 +3411,7 @@ keyword
     | BEGIN | END | IF | ELSE | ELSIF | THEN | WHILE | LOOP
     | DECLARE | SET | CHANGE | RETRIEVE | DELETE | COMMIT | RETURN
     | CALL | LOG | WITH | FOR | TO | OF | TYPE | VALUE
-    | SHOW | DESCRIBE | CONNECT | DISCONNECT | USE | STATUS
+    | SHOW | LIST_KW | DESCRIBE | CONNECT | DISCONNECT | USE | STATUS
     | TITLE | LAYOUT | CAPTION | LABEL | WIDTH | HEIGHT | STYLE | BUTTONSTYLE | CLASS | DESIGNPROPERTIES
     | DATASOURCE | EDITABLE | VISIBLE | REQUIRED | DEFAULT | UNIQUE
     | INDEX | OWNER | STORE | REFERENCE | CASCADE | BOTH | SINGLE | MULTIPLE | NONE | STORAGE | TABLE

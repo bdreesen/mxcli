@@ -333,9 +333,14 @@ func (e *Executor) execCreateViewEntity(s *ast.CreateViewEntityStmt) error {
 		return fmt.Errorf("failed to create ViewEntitySourceDocument: %w", err)
 	}
 
-	// Create view attributes with OqlViewValue references
-	// Note: Studio Pro may show "out of sync" errors if the attribute types don't match
-	// what it infers from the OQL. Users can sync the view entity in Studio Pro to fix this.
+	// Create view attributes with OqlViewValue references.
+	// Preserve existing attribute and value IDs on modify to avoid CE-6770.
+	existingAttrsByName := make(map[string]*domainmodel.Attribute)
+	if existingEntity != nil {
+		for _, ea := range existingEntity.Attributes {
+			existingAttrsByName[ea.Name] = ea
+		}
+	}
 	var attrs []*domainmodel.Attribute
 	for _, a := range s.Attributes {
 		attr := &domainmodel.Attribute{
@@ -344,6 +349,13 @@ func (e *Executor) execCreateViewEntity(s *ast.CreateViewEntityStmt) error {
 			Value: &domainmodel.AttributeValue{
 				ViewReference: a.Name, // OQL column alias matches attribute name
 			},
+		}
+		// Preserve IDs from existing attribute with same name
+		if ea, ok := existingAttrsByName[a.Name]; ok {
+			attr.ID = ea.ID
+			if ea.Value != nil {
+				attr.Value.ID = ea.Value.ID
+			}
 		}
 		attrs = append(attrs, attr)
 	}
@@ -363,8 +375,9 @@ func (e *Executor) execCreateViewEntity(s *ast.CreateViewEntityStmt) error {
 	}
 
 	if s.CreateOrModify && existingEntity != nil {
-		// Update existing entity
+		// Update existing entity — preserve Source object ID to avoid CE-6770
 		entity.ID = existingEntity.ID
+		entity.SourceObjectID = existingEntity.SourceObjectID
 		if err := e.writer.UpdateEntity(dm.ID, entity); err != nil {
 			return fmt.Errorf("failed to update view entity: %w", err)
 		}

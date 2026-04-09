@@ -1,0 +1,30 @@
+-- =============================================================================
+-- RENAME Examples
+-- =============================================================================
+
+CREATE MODULE RenameTest;
+
+-- Create test entities
+CREATE PERSISTENT ENTITY RenameTest.Customer (
+  Name: String(200),
+  Email: String(200)
+);
+
+CREATE PERSISTENT ENTITY RenameTest.Order (
+  OrderDate: DateTime
+);
+
+CREATE ASSOCIATION RenameTest.Order_Customer
+  FROM RenameTest.Order TO RenameTest.Customer
+  TYPE Reference;
+
+-- Rename entity
+RENAME ENTITY RenameTest.Customer TO Client;
+
+-- Rename association
+RENAME ASSOCIATION RenameTest.Order_Customer TO Order_Client;
+
+-- Clean up
+DROP ASSOCIATION RenameTest.Order_Client;
+DROP ENTITY RenameTest.Client;
+DROP ENTITY RenameTest.Order;
