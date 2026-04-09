@@ -211,12 +211,17 @@ func (b *Builder) ExitCreateExternalEntitiesStatement(ctx *parser.CreateExternal
 		ServiceRef: buildQualifiedName(ctx.QualifiedName(0)),
 	}
 
-	// INTO Module or INTO Module.Name (use module part)
+	// INTO Module — extract target module name
 	if ctx.INTO() != nil {
-		if id := ctx.IDENTIFIER(); id != nil {
+		if ctx.QualifiedName(1) != nil {
+			qn := buildQualifiedName(ctx.QualifiedName(1))
+			if qn.Module != "" {
+				stmt.TargetModule = qn.Module
+			} else {
+				stmt.TargetModule = qn.Name // single-part name like "Integration"
+			}
+		} else if id := ctx.IDENTIFIER(); id != nil {
 			stmt.TargetModule = id.GetText()
-		} else if ctx.QualifiedName(1) != nil {
-			stmt.TargetModule = buildQualifiedName(ctx.QualifiedName(1)).Module
 		}
 	}
 
