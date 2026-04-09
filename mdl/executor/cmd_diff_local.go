@@ -22,6 +22,10 @@ import (
 
 // DiffLocal compares local changes in mxunit files against a git reference.
 // This only works with MPR v2 format (Mendix 10.18+) which stores units in mprcontents/.
+//
+// The ref parameter can be:
+//   - A single ref (e.g., "HEAD", "main") — compares working tree vs ref
+//   - A range "base..target" — compares two revisions (no working tree)
 func (e *Executor) DiffLocal(ref string, opts DiffOptions) error {
 	if e.reader == nil {
 		return fmt.Errorf("not connected to a project")
@@ -142,25 +146,46 @@ func (e *Executor) findChangedMxunitFiles(contentsDir, ref string) ([]gitChange,
 	return changes, nil
 }
 
-// diffMxunitFile generates a diff for a single mxunit file
+// diffMxunitFile generates a diff for a single mxunit file.
+// For two-revision diffs (ref contains ".."), both sides are read from git.
+// For single-ref diffs, the "current" side is read from the working tree.
 func (e *Executor) diffMxunitFile(change gitChange, contentsDir, ref string) (*DiffResult, error) {
 	var currentContent, gitContent []byte
 	var err error
 
-	// Read current content (for modified or new files)
-	if change.Status != "D" {
-		currentContent, err = readFile(change.FilePath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read current file %s: %w", change.FilePath, err)
-		}
-	}
+	// Determine if this is a two-revision diff
+	baseRef, targetRef, isTwoRevision := parseRefRange(ref)
 
-	// Read git content (for modified or deleted files)
-	if change.Status != "A" {
-		cmd := execCommand("git", "show", ref+":"+change.FilePath)
-		gitContent, err = cmd.Output()
-		if err != nil {
-			return nil, fmt.Errorf("failed to read git version of %s: %w", change.FilePath, err)
+	if isTwoRevision {
+		// Two-revision mode: both sides from git
+		if change.Status != "D" {
+			cmd := execCommand("git", "show", targetRef+":"+change.FilePath)
+			currentContent, err = cmd.Output()
+			if err != nil {
+				return nil, fmt.Errorf("failed to read %s version of %s: %w", targetRef, change.FilePath, err)
+			}
+		}
+		if change.Status != "A" {
+			cmd := execCommand("git", "show", baseRef+":"+change.FilePath)
+			gitContent, err = cmd.Output()
+			if err != nil {
+				return nil, fmt.Errorf("failed to read %s version of %s: %w", baseRef, change.FilePath, err)
+			}
+		}
+	} else {
+		// Single-ref mode: current from working tree, old from git
+		if change.Status != "D" {
+			currentContent, err = readFile(change.FilePath)
+			if err != nil {
+				return nil, fmt.Errorf("failed to read current file %s: %w", change.FilePath, err)
+			}
+		}
+		if change.Status != "A" {
+			cmd := execCommand("git", "show", ref+":"+change.FilePath)
+			gitContent, err = cmd.Output()
+			if err != nil {
+				return nil, fmt.Errorf("failed to read git version of %s: %w", change.FilePath, err)
+			}
 		}
 	}
 
@@ -693,6 +718,15 @@ func (e *Executor) compareGeneric(current, proposed string) []StructuralChange {
 // ============================================================================
 // Helper Functions for Git and BSON Parsing
 // ============================================================================
+
+// parseRefRange splits a ref like "base..target" into its parts.
+// Returns (base, target, true) for ranges, or ("", ref, false) for single refs.
+func parseRefRange(ref string) (base, target string, isRange bool) {
+	if idx := strings.Index(ref, ".."); idx >= 0 {
+		return ref[:idx], ref[idx+2:], true
+	}
+	return "", ref, false
+}
 
 // execCommand creates an exec.Cmd for running git commands
 func execCommand(name string, args ...string) *exec.Cmd {

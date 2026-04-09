@@ -34,6 +34,12 @@ mxcli diff-local -p app.mpr --ref HEAD~1
 
 # Compare against a branch
 mxcli diff-local -p app.mpr --ref main
+
+# Compare two arbitrary revisions
+mxcli diff-local -p app.mpr --base main --ref feature-branch
+
+# Compare two specific commits
+mxcli diff-local -p app.mpr --base abc1234 --ref def5678
 ```
 
 ### MPR v2 Requirement
@@ -63,4 +69,14 @@ mxcli diff-local -p app.mpr --ref HEAD
 
 # See changes since two commits ago
 mxcli diff-local -p app.mpr --ref HEAD~2
+```
+
+### Compare Branches
+
+```bash
+# What changed between main and your feature branch
+mxcli diff-local -p app.mpr --base main --ref feature-branch
+
+# Feed diff into an LLM for review
+mxcli diff-local -p app.mpr --base main --ref feature-branch > changes.diff
 ```
