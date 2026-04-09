@@ -552,7 +552,7 @@ SHOW DEMO USERS;
 /**
  * Create a basic demo user with a single user role.
  */
-CREATE or modify DEMO USER 'sectest_user' PASSWORD 'Password1!' (RegularUser);
+CREATE or modify DEMO USER 'sectest_user' PASSWORD 'Password1!xx' (RegularUser);
 /
 
 -- ============================================================================
