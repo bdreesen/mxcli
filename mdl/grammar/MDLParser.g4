@@ -103,6 +103,7 @@ createStatement
       | createImportMappingStatement
       | createExportMappingStatement
       | createConfigurationStatement
+      | createPublishedRestServiceStatement
       )
     ;
 
@@ -272,6 +273,7 @@ dropStatement
     | DROP IMPORT MAPPING qualifiedName
     | DROP EXPORT MAPPING qualifiedName
     | DROP REST CLIENT qualifiedName
+    | DROP PUBLISHED REST SERVICE qualifiedName
     | DROP CONFIGURATION STRING_LITERAL
     | DROP FOLDER STRING_LITERAL IN (qualifiedName | IDENTIFIER)
     ;
@@ -2359,6 +2361,52 @@ restResponseSpec
     ;
 
 // =============================================================================
+// PUBLISHED REST SERVICE CREATION
+// =============================================================================
+
+/**
+ * CREATE PUBLISHED REST SERVICE Module.Name (
+ *   Path: 'api/v1',
+ *   Version: '1.0.0',
+ *   ServiceName: 'My API'
+ * )
+ * {
+ *   RESOURCE 'orders' {
+ *     Get / MICROFLOW Module.GetOrders;
+ *     Post / MICROFLOW Module.CreateOrder;
+ *   }
+ * };
+ */
+createPublishedRestServiceStatement
+    : PUBLISHED REST SERVICE qualifiedName
+      LPAREN publishedRestProperty (COMMA publishedRestProperty)* RPAREN
+      LBRACE publishedRestResource* RBRACE
+    ;
+
+publishedRestProperty
+    : identifierOrKeyword COLON STRING_LITERAL
+    ;
+
+publishedRestResource
+    : RESOURCE STRING_LITERAL LBRACE publishedRestOperation* RBRACE
+    ;
+
+publishedRestOperation
+    : restHttpMethod publishedRestOpPath?
+      MICROFLOW qualifiedName
+      (DEPRECATED)?
+      (IMPORT MAPPING qualifiedName)?
+      (EXPORT MAPPING qualifiedName)?
+      (COMMIT identifierOrKeyword)?
+      SEMICOLON?
+    ;
+
+publishedRestOpPath
+    : STRING_LITERAL
+    | SLASH
+    ;
+
+// =============================================================================
 // INDEX CREATION (standalone)
 // =============================================================================
 
@@ -3552,6 +3600,6 @@ keyword
     | COLLECTION                                               // Image collection keyword
     | STRUCTURES | MAPPINGS | VIA | KEY | SCHEMA               // JSON Structure / Import Mapping keywords
     | FILE_KW                                                    // REST client file keyword
-    | SEND | REQUEST                                               // REST operation call keywords
+    | SEND | REQUEST | DEPRECATED | RESOURCE                         // REST operation call keywords
     | STRUCTURES                                                   // JSON structure keywords
     ;

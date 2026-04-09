@@ -194,6 +194,12 @@ func (e *Executor) executeInner(stmt ast.Statement) error {
 		return e.createRestClient(s)
 	case *ast.DropRestClientStmt:
 		return e.dropRestClient(s)
+
+	// Published REST service statements
+	case *ast.CreatePublishedRestServiceStmt:
+		return e.execCreatePublishedRestService(s)
+	case *ast.DropPublishedRestServiceStmt:
+		return e.execDropPublishedRestService(s)
 	case *ast.CreateExternalEntityStmt:
 		return e.execCreateExternalEntity(s)
 	case *ast.CreateExternalEntitiesStmt:

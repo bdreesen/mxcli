@@ -62,3 +62,44 @@ type DropRestClientStmt struct {
 }
 
 func (s *DropRestClientStmt) isStatement() {}
+
+// ============================================================================
+// Published REST Service Statements
+// ============================================================================
+
+// CreatePublishedRestServiceStmt represents:
+//
+//	CREATE PUBLISHED REST SERVICE Module.Name (Path: '...', Version: '...') { RESOURCE ... };
+type CreatePublishedRestServiceStmt struct {
+	Name            QualifiedName
+	Path            string
+	Version         string
+	ServiceName     string
+	Folder          string
+	Resources       []*PublishedRestResourceDef
+	CreateOrReplace bool
+}
+
+func (s *CreatePublishedRestServiceStmt) isStatement() {}
+
+type PublishedRestResourceDef struct {
+	Name       string
+	Operations []*PublishedRestOperationDef
+}
+
+type PublishedRestOperationDef struct {
+	HTTPMethod    string        // GET, POST, PUT, DELETE, PATCH
+	Path          string        // endpoint path (e.g. "/{id}")
+	Microflow     QualifiedName // backing microflow
+	Deprecated    bool
+	ImportMapping string // optional qualified name
+	ExportMapping string // optional qualified name
+	Commit        string // optional: "Yes", "No"
+}
+
+// DropPublishedRestServiceStmt represents: DROP PUBLISHED REST SERVICE Module.Name
+type DropPublishedRestServiceStmt struct {
+	Name QualifiedName
+}
+
+func (s *DropPublishedRestServiceStmt) isStatement() {}

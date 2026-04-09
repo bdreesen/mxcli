@@ -1,4 +1,4 @@
-// Code generated from MDLParser.g4 by ANTLR 4.13.1. DO NOT EDIT.
+// Code generated from MDLParser.g4 by ANTLR 4.13.2. DO NOT EDIT.
 
 package parser // MDLParser
 import "github.com/antlr4-go/antlr/v4"
@@ -810,6 +810,21 @@ type MDLParserListener interface {
 
 	// EnterRestResponseSpec is called when entering the restResponseSpec production.
 	EnterRestResponseSpec(c *RestResponseSpecContext)
+
+	// EnterCreatePublishedRestServiceStatement is called when entering the createPublishedRestServiceStatement production.
+	EnterCreatePublishedRestServiceStatement(c *CreatePublishedRestServiceStatementContext)
+
+	// EnterPublishedRestProperty is called when entering the publishedRestProperty production.
+	EnterPublishedRestProperty(c *PublishedRestPropertyContext)
+
+	// EnterPublishedRestResource is called when entering the publishedRestResource production.
+	EnterPublishedRestResource(c *PublishedRestResourceContext)
+
+	// EnterPublishedRestOperation is called when entering the publishedRestOperation production.
+	EnterPublishedRestOperation(c *PublishedRestOperationContext)
+
+	// EnterPublishedRestOpPath is called when entering the publishedRestOpPath production.
+	EnterPublishedRestOpPath(c *PublishedRestOpPathContext)
 
 	// EnterCreateIndexStatement is called when entering the createIndexStatement production.
 	EnterCreateIndexStatement(c *CreateIndexStatementContext)
@@ -2034,6 +2049,21 @@ type MDLParserListener interface {
 
 	// ExitRestResponseSpec is called when exiting the restResponseSpec production.
 	ExitRestResponseSpec(c *RestResponseSpecContext)
+
+	// ExitCreatePublishedRestServiceStatement is called when exiting the createPublishedRestServiceStatement production.
+	ExitCreatePublishedRestServiceStatement(c *CreatePublishedRestServiceStatementContext)
+
+	// ExitPublishedRestProperty is called when exiting the publishedRestProperty production.
+	ExitPublishedRestProperty(c *PublishedRestPropertyContext)
+
+	// ExitPublishedRestResource is called when exiting the publishedRestResource production.
+	ExitPublishedRestResource(c *PublishedRestResourceContext)
+
+	// ExitPublishedRestOperation is called when exiting the publishedRestOperation production.
+	ExitPublishedRestOperation(c *PublishedRestOperationContext)
+
+	// ExitPublishedRestOpPath is called when exiting the publishedRestOpPath production.
+	ExitPublishedRestOpPath(c *PublishedRestOpPathContext)
 
 	// ExitCreateIndexStatement is called when exiting the createIndexStatement production.
 	ExitCreateIndexStatement(c *CreateIndexStatementContext)

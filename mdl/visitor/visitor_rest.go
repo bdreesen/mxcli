@@ -249,3 +249,104 @@ func extractDocCommentText(ctx parser.IDocCommentContext) string {
 	}
 	return strings.Join(lines, "\n")
 }
+
+// ExitCreatePublishedRestServiceStatement handles CREATE PUBLISHED REST SERVICE.
+func (b *Builder) ExitCreatePublishedRestServiceStatement(ctx *parser.CreatePublishedRestServiceStatementContext) {
+	stmt := &ast.CreatePublishedRestServiceStmt{
+		Name: buildQualifiedName(ctx.QualifiedName()),
+	}
+
+	// Check for CREATE OR REPLACE
+	createStmt := findParentCreateStatement(ctx)
+	if createStmt != nil {
+		if createStmt.OR() != nil && (createStmt.REPLACE() != nil || createStmt.MODIFY() != nil) {
+			stmt.CreateOrReplace = true
+		}
+	}
+
+	// Parse properties (Path, Version, ServiceName)
+	for _, propCtx := range ctx.AllPublishedRestProperty() {
+		pc := propCtx.(*parser.PublishedRestPropertyContext)
+		key := identifierOrKeywordText(pc.IdentifierOrKeyword().(*parser.IdentifierOrKeywordContext))
+		val := unquoteString(pc.STRING_LITERAL().GetText())
+		switch strings.ToLower(key) {
+		case "path":
+			stmt.Path = val
+		case "version":
+			stmt.Version = val
+		case "servicename":
+			stmt.ServiceName = val
+		case "folder":
+			stmt.Folder = val
+		}
+	}
+
+	// Parse resources
+	for _, resCtx := range ctx.AllPublishedRestResource() {
+		rc := resCtx.(*parser.PublishedRestResourceContext)
+		resDef := &ast.PublishedRestResourceDef{
+			Name: unquoteString(rc.STRING_LITERAL().GetText()),
+		}
+
+		// Parse operations
+		for _, opCtx := range rc.AllPublishedRestOperation() {
+			oc := opCtx.(*parser.PublishedRestOperationContext)
+			opDef := &ast.PublishedRestOperationDef{}
+
+			// HTTP method
+			if mCtx := oc.RestHttpMethod(); mCtx != nil {
+				opDef.HTTPMethod = strings.ToUpper(mCtx.GetText())
+			}
+
+			// Operation path
+			if pCtx := oc.PublishedRestOpPath(); pCtx != nil {
+				pc := pCtx.(*parser.PublishedRestOpPathContext)
+				if pc.STRING_LITERAL() != nil {
+					opDef.Path = unquoteString(pc.STRING_LITERAL().GetText())
+				} else {
+					opDef.Path = "/"
+				}
+			} else {
+				opDef.Path = "/"
+			}
+
+			// Microflow reference
+			allQN := oc.AllQualifiedName()
+			if len(allQN) >= 1 {
+				opDef.Microflow = buildQualifiedName(allQN[0])
+			}
+
+			// Optional modifiers
+			if oc.DEPRECATED() != nil {
+				opDef.Deprecated = true
+			}
+
+			// Import/Export mapping (qualifiedName after IMPORT/EXPORT MAPPING)
+			if oc.IMPORT() != nil && len(allQN) >= 2 {
+				opDef.ImportMapping = allQN[1].GetText()
+			}
+			if oc.EXPORT() != nil {
+				idx := 1
+				if oc.IMPORT() != nil {
+					idx = 2
+				}
+				if len(allQN) > idx {
+					opDef.ExportMapping = allQN[idx].GetText()
+				}
+			}
+
+			// Commit
+			if oc.COMMIT() != nil {
+				if idCtx := oc.IdentifierOrKeyword(); idCtx != nil {
+					opDef.Commit = identifierOrKeywordText(idCtx.(*parser.IdentifierOrKeywordContext))
+				}
+			}
+
+			resDef.Operations = append(resDef.Operations, opDef)
+		}
+
+		stmt.Resources = append(stmt.Resources, resDef)
+	}
+
+	b.statements = append(b.statements, stmt)
+}

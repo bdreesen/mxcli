@@ -1,4 +1,4 @@
-// Code generated from MDLParser.g4 by ANTLR 4.13.1. DO NOT EDIT.
+// Code generated from MDLParser.g4 by ANTLR 4.13.2. DO NOT EDIT.
 
 package parser // MDLParser
 import "github.com/antlr4-go/antlr/v4"
@@ -1689,6 +1689,38 @@ func (s *BaseMDLParserListener) EnterRestResponseSpec(ctx *RestResponseSpecConte
 
 // ExitRestResponseSpec is called when production restResponseSpec is exited.
 func (s *BaseMDLParserListener) ExitRestResponseSpec(ctx *RestResponseSpecContext) {}
+
+// EnterCreatePublishedRestServiceStatement is called when production createPublishedRestServiceStatement is entered.
+func (s *BaseMDLParserListener) EnterCreatePublishedRestServiceStatement(ctx *CreatePublishedRestServiceStatementContext) {
+}
+
+// ExitCreatePublishedRestServiceStatement is called when production createPublishedRestServiceStatement is exited.
+func (s *BaseMDLParserListener) ExitCreatePublishedRestServiceStatement(ctx *CreatePublishedRestServiceStatementContext) {
+}
+
+// EnterPublishedRestProperty is called when production publishedRestProperty is entered.
+func (s *BaseMDLParserListener) EnterPublishedRestProperty(ctx *PublishedRestPropertyContext) {}
+
+// ExitPublishedRestProperty is called when production publishedRestProperty is exited.
+func (s *BaseMDLParserListener) ExitPublishedRestProperty(ctx *PublishedRestPropertyContext) {}
+
+// EnterPublishedRestResource is called when production publishedRestResource is entered.
+func (s *BaseMDLParserListener) EnterPublishedRestResource(ctx *PublishedRestResourceContext) {}
+
+// ExitPublishedRestResource is called when production publishedRestResource is exited.
+func (s *BaseMDLParserListener) ExitPublishedRestResource(ctx *PublishedRestResourceContext) {}
+
+// EnterPublishedRestOperation is called when production publishedRestOperation is entered.
+func (s *BaseMDLParserListener) EnterPublishedRestOperation(ctx *PublishedRestOperationContext) {}
+
+// ExitPublishedRestOperation is called when production publishedRestOperation is exited.
+func (s *BaseMDLParserListener) ExitPublishedRestOperation(ctx *PublishedRestOperationContext) {}
+
+// EnterPublishedRestOpPath is called when production publishedRestOpPath is entered.
+func (s *BaseMDLParserListener) EnterPublishedRestOpPath(ctx *PublishedRestOpPathContext) {}
+
+// ExitPublishedRestOpPath is called when production publishedRestOpPath is exited.
+func (s *BaseMDLParserListener) ExitPublishedRestOpPath(ctx *PublishedRestOpPathContext) {}
 
 // EnterCreateIndexStatement is called when production createIndexStatement is entered.
 func (s *BaseMDLParserListener) EnterCreateIndexStatement(ctx *CreateIndexStatementContext) {}

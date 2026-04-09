@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	"github.com/mendixlabs/mxcli/model"
 )
 
 // showPublishedRestServices handles SHOW PUBLISHED REST SERVICES [IN module] command.
@@ -102,6 +103,10 @@ func (e *Executor) describePublishedRestService(name ast.QualifiedName) error {
 		if svc.ServiceName != "" {
 			fmt.Fprintf(e.output, ",\n  ServiceName: '%s'", svc.ServiceName)
 		}
+		folderPath := h.BuildFolderPath(svc.ContainerID)
+		if folderPath != "" {
+			fmt.Fprintf(e.output, ",\n  Folder: '%s'", folderPath)
+		}
 		fmt.Fprintln(e.output, "\n)")
 
 		if len(svc.Resources) > 0 {
@@ -121,8 +126,12 @@ func (e *Executor) describePublishedRestService(name ast.QualifiedName) error {
 					if op.Summary != "" {
 						summary = fmt.Sprintf(" -- %s", op.Summary)
 					}
-					fmt.Fprintf(e.output, "    %s %s%s%s;%s\n",
-						op.HTTPMethod, op.Path, mf, deprecated, summary)
+					opPath := ""
+					if op.Path != "" {
+						opPath = fmt.Sprintf(" '%s'", op.Path)
+					}
+					fmt.Fprintf(e.output, "    %s%s%s%s;%s\n",
+						strings.ToUpper(op.HTTPMethod), opPath, mf, deprecated, summary)
 				}
 				fmt.Fprintln(e.output, "  }")
 			}
@@ -136,4 +145,121 @@ func (e *Executor) describePublishedRestService(name ast.QualifiedName) error {
 	}
 
 	return fmt.Errorf("published REST service not found: %s", name)
+}
+
+// findPublishedRestService looks up a published REST service by module and name.
+func (e *Executor) findPublishedRestService(moduleName, name string) (*model.PublishedRestService, error) {
+	services, err := e.reader.ListPublishedRestServices()
+	if err != nil {
+		return nil, err
+	}
+	h, err := e.getHierarchy()
+	if err != nil {
+		return nil, err
+	}
+	for _, svc := range services {
+		modID := h.FindModuleID(svc.ContainerID)
+		modName := h.GetModuleName(modID)
+		if modName == moduleName && svc.Name == name {
+			return svc, nil
+		}
+	}
+	return nil, fmt.Errorf("not found")
+}
+
+// execCreatePublishedRestService creates a new published REST service.
+func (e *Executor) execCreatePublishedRestService(s *ast.CreatePublishedRestServiceStmt) error {
+	if e.writer == nil {
+		return fmt.Errorf("not connected to a project in write mode")
+	}
+
+	// Handle CREATE OR REPLACE — delete existing if found
+	if s.CreateOrReplace {
+		if existing, _ := e.findPublishedRestService(s.Name.Module, s.Name.Name); existing != nil {
+			if err := e.writer.DeletePublishedRestService(existing.ID); err != nil {
+				return fmt.Errorf("failed to replace existing service: %w", err)
+			}
+		}
+	}
+
+	module, err := e.findModule(s.Name.Module)
+	if err != nil {
+		return fmt.Errorf("module %s not found", s.Name.Module)
+	}
+
+	containerID := module.ID
+	if s.Folder != "" {
+		folderID, err := e.resolveFolder(module.ID, s.Folder)
+		if err != nil {
+			return fmt.Errorf("failed to resolve folder '%s': %w", s.Folder, err)
+		}
+		containerID = folderID
+	}
+
+	svc := &model.PublishedRestService{
+		ContainerID: containerID,
+		Name:        s.Name.Name,
+		Path:        s.Path,
+		Version:     s.Version,
+		ServiceName: s.ServiceName,
+	}
+
+	for _, resDef := range s.Resources {
+		resource := &model.PublishedRestResource{
+			Name: resDef.Name,
+		}
+		for _, opDef := range resDef.Operations {
+			op := &model.PublishedRestOperation{
+				HTTPMethod: opDef.HTTPMethod,
+				Path:       opDef.Path,
+				Microflow:  opDef.Microflow.String(),
+				Summary:    "",
+				Deprecated: opDef.Deprecated,
+			}
+			resource.Operations = append(resource.Operations, op)
+		}
+		svc.Resources = append(svc.Resources, resource)
+	}
+
+	if err := e.writer.CreatePublishedRestService(svc); err != nil {
+		return fmt.Errorf("failed to create published REST service: %w", err)
+	}
+
+	if !e.quiet {
+		fmt.Fprintf(e.output, "Created published REST service %s.%s\n", s.Name.Module, s.Name.Name)
+	}
+	return nil
+}
+
+// execDropPublishedRestService deletes a published REST service.
+func (e *Executor) execDropPublishedRestService(s *ast.DropPublishedRestServiceStmt) error {
+	if e.writer == nil {
+		return fmt.Errorf("not connected to a project in write mode")
+	}
+
+	services, err := e.reader.ListPublishedRestServices()
+	if err != nil {
+		return fmt.Errorf("failed to list published REST services: %w", err)
+	}
+
+	h, err := e.getHierarchy()
+	if err != nil {
+		return err
+	}
+
+	for _, svc := range services {
+		modID := h.FindModuleID(svc.ContainerID)
+		modName := h.GetModuleName(modID)
+		if modName == s.Name.Module && svc.Name == s.Name.Name {
+			if err := e.writer.DeletePublishedRestService(svc.ID); err != nil {
+				return fmt.Errorf("failed to drop published REST service: %w", err)
+			}
+			if !e.quiet {
+				fmt.Fprintf(e.output, "Dropped published REST service %s.%s\n", s.Name.Module, s.Name.Name)
+			}
+			return nil
+		}
+	}
+
+	return fmt.Errorf("published REST service %s.%s not found", s.Name.Module, s.Name.Name)
 }

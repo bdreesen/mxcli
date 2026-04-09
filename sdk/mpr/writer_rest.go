@@ -304,6 +304,79 @@ func serializeRestDataType(typeName string) bson.M {
 	}
 }
 
+// CreatePublishedRestService creates a new published REST service document.
+func (w *Writer) CreatePublishedRestService(svc *model.PublishedRestService) error {
+	if svc.ID == "" {
+		svc.ID = model.ID(generateUUID())
+	}
+	svc.TypeName = "Rest$PublishedRestService"
+
+	contents, err := w.serializePublishedRestService(svc)
+	if err != nil {
+		return fmt.Errorf("failed to serialize published REST service: %w", err)
+	}
+
+	return w.insertUnit(string(svc.ID), string(svc.ContainerID), "Documents", "Rest$PublishedRestService", contents)
+}
+
+// DeletePublishedRestService deletes a published REST service by ID.
+func (w *Writer) DeletePublishedRestService(id model.ID) error {
+	return w.deleteUnit(string(id))
+}
+
+func (w *Writer) serializePublishedRestService(svc *model.PublishedRestService) ([]byte, error) {
+	resources := bson.A{int32(2)}
+	for _, res := range svc.Resources {
+		ops := bson.A{int32(2)}
+		for _, op := range res.Operations {
+			opDoc := bson.M{
+				"$ID":         idToBsonBinary(GenerateID()),
+				"$Type":       "Rest$PublishedRestServiceOperation",
+				"HttpMethod":  httpMethodToMendix(op.HTTPMethod),
+				"Path":        op.Path,
+				"Microflow":   op.Microflow,
+				"Summary":     op.Summary,
+				"Deprecated":  op.Deprecated,
+				"Commit":      "Yes",
+				"Documentation": "",
+				"ExportMapping": "",
+				"ImportMapping": "",
+				"ObjectHandlingBackup": "Create",
+				"Parameters":  bson.A{int32(2)},
+			}
+			ops = append(ops, opDoc)
+		}
+		resDoc := bson.M{
+			"$ID":           idToBsonBinary(GenerateID()),
+			"$Type":         "Rest$PublishedRestServiceResource",
+			"Name":          res.Name,
+			"Documentation": "",
+			"Operations":    ops,
+		}
+		resources = append(resources, resDoc)
+	}
+
+	doc := bson.M{
+		"$ID":                    idToBsonBinary(string(svc.ID)),
+		"$Type":                  "Rest$PublishedRestService",
+		"Name":                   svc.Name,
+		"Documentation":          "",
+		"Excluded":               svc.Excluded,
+		"ExportLevel":            "Hidden",
+		"Path":                   svc.Path,
+		"Version":                svc.Version,
+		"ServiceName":            svc.ServiceName,
+		"AllowedRoles":           bson.A{int32(2)},
+		"AuthenticationTypes":    bson.A{int32(2)},
+		"AuthenticationMicroflow": "",
+		"CorsConfiguration":      nil,
+		"Parameters":             bson.A{int32(2)},
+		"Resources":              resources,
+	}
+
+	return bson.Marshal(doc)
+}
+
 // httpMethodToMendix converts uppercase HTTP method names to Mendix casing.
 func httpMethodToMendix(method string) string {
 	switch strings.ToUpper(method) {

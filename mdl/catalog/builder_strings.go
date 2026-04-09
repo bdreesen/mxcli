@@ -124,6 +124,33 @@ func (b *Builder) buildStrings() error {
 		}
 	}
 
+	// Extract from published REST services
+	prsServices, err := b.reader.ListPublishedRestServices()
+	if err == nil {
+		for _, svc := range prsServices {
+			moduleID := b.hierarchy.findModuleID(svc.ContainerID)
+			moduleName := b.hierarchy.getModuleName(moduleID)
+			qn := moduleName + "." + svc.Name
+			svcID := string(svc.ID)
+
+			insert(qn, "PUBLISHED_REST_SERVICE", svc.Path, "rest_path", "", svcID, moduleName)
+			insert(qn, "PUBLISHED_REST_SERVICE", svc.ServiceName, "service_name", "", svcID, moduleName)
+			insert(qn, "PUBLISHED_REST_SERVICE", svc.Version, "version", "", svcID, moduleName)
+
+			for _, res := range svc.Resources {
+				insert(qn, "PUBLISHED_REST_SERVICE", res.Name, "resource_name", "", svcID, moduleName)
+				for _, op := range res.Operations {
+					if op.Path != "" {
+						insert(qn, "PUBLISHED_REST_SERVICE", op.Path, "operation_path", "", svcID, moduleName)
+					}
+					if op.Summary != "" {
+						insert(qn, "PUBLISHED_REST_SERVICE", op.Summary, "operation_summary", "", svcID, moduleName)
+					}
+				}
+			}
+		}
+	}
+
 	b.report("strings", count)
 	return nil
 }
