@@ -23,10 +23,10 @@ func (b *Builder) buildMicroflows() error {
 
 	mfStmt, err := b.tx.Prepare(`
 		INSERT INTO microflows (Id, Name, QualifiedName, ModuleName, Folder, MicroflowType,
-			Description, ReturnType, ParameterCount, ActivityCount, Complexity,
+			Description, ReturnType, ParameterCount, ActivityCount, Complexity, Excluded,
 			ProjectId, ProjectName, SnapshotId, SnapshotDate, SnapshotSource,
 			SourceId, SourceBranch, SourceRevision)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`)
 	if err != nil {
 		return err
@@ -86,6 +86,7 @@ func (b *Builder) buildMicroflows() error {
 			len(mf.Parameters),
 			activityCount,
 			complexity,
+			mf.Excluded,
 			projectID, projectName, snapshotID, snapshotDate, snapshotSource,
 			sourceID, sourceBranch, sourceRevision,
 		)
@@ -176,6 +177,7 @@ func (b *Builder) buildMicroflows() error {
 			len(nf.Parameters),
 			activityCount,
 			complexity,
+			nf.Excluded,
 			projectID, projectName, snapshotID, snapshotDate, snapshotSource,
 			sourceID, sourceBranch, sourceRevision,
 		)

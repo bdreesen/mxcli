@@ -53,6 +53,9 @@ func (e *Executor) showMicroflows(moduleName string) error {
 		modName := h.GetModuleName(modID)
 		if moduleName == "" || modName == moduleName {
 			qualifiedName := modName + "." + mf.Name
+			if mf.Excluded {
+				qualifiedName += " [EXCLUDED]"
+			}
 			folderPath := h.BuildFolderPath(mf.ContainerID)
 			returnType := ""
 			if mf.ReturnType != nil {

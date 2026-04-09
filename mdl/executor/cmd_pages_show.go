@@ -46,6 +46,9 @@ func (e *Executor) showPages(moduleName string) error {
 		modName := h.GetModuleName(modID)
 		if moduleName == "" || modName == moduleName {
 			qualifiedName := modName + "." + p.Name
+			if p.Excluded {
+				qualifiedName += " [EXCLUDED]"
+			}
 			folderPath := h.BuildFolderPath(p.ContainerID)
 			title := ""
 			if p.Title != nil {

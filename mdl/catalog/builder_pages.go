@@ -19,10 +19,10 @@ func (b *Builder) buildPages() error {
 
 	pageStmt, err := b.tx.Prepare(`
 		INSERT INTO pages (Id, Name, QualifiedName, ModuleName, Folder, Title, URL, LayoutRef,
-			Description, ParameterCount, WidgetCount,
+			Description, ParameterCount, WidgetCount, Excluded,
 			ProjectId, ProjectName, SnapshotId, SnapshotDate, SnapshotSource,
 			SourceId, SourceBranch, SourceRevision)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`)
 	if err != nil {
 		return err
@@ -91,6 +91,7 @@ func (b *Builder) buildPages() error {
 			pg.Documentation,
 			len(pg.Parameters),
 			widgetCnt,
+			pg.Excluded,
 			projectID, projectName, snapshotID, snapshotDate, snapshotSource,
 			sourceID, sourceBranch, sourceRevision,
 		)
