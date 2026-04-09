@@ -81,7 +81,7 @@ func (e *Executor) execCreateMicroflow(s *ast.CreateMicroflowStmt) error {
 		Documentation:            s.Documentation,
 		AllowConcurrentExecution: true, // Default: allow concurrent execution
 		MarkAsUsed:               false,
-		Excluded:                 false,
+		Excluded:                 s.Excluded,
 	}
 
 	// Build entity resolver function for parameter/return types

@@ -53,6 +53,7 @@ type CreateMicroflowStmt struct {
 	Comment        string
 	Folder         string // Folder path within module (e.g., "Resources/Images")
 	CreateOrModify bool
+	Excluded       bool // @excluded — document excluded from project
 }
 
 func (s *CreateMicroflowStmt) isStatement() {}
@@ -105,12 +106,13 @@ type RaiseErrorStmt struct {
 func (s *RaiseErrorStmt) isMicroflowStatement() {}
 
 // ActivityAnnotations holds metadata annotations for microflow activities.
-// These are emitted as @position, @caption, @color, @annotation lines in MDL.
+// These are emitted as @position, @caption, @color, @annotation, @excluded lines in MDL.
 type ActivityAnnotations struct {
 	Position       *Position // @position(x, y)
 	Caption        string    // @caption 'text'
 	Color          string    // @color Green
 	AnnotationText string    // @annotation 'text'
+	Excluded       bool      // @excluded
 }
 
 // ChangeItem represents a single assignment in CREATE/CHANGE: Attr = expr

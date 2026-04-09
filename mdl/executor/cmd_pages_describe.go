@@ -85,6 +85,11 @@ func (e *Executor) describePage(name ast.QualifiedName) error {
 		}
 	}
 
+	// @excluded annotation
+	if foundPage.Excluded {
+		fmt.Fprintln(e.output, "@excluded")
+	}
+
 	// V3 syntax: CREATE PAGE Module.Page (Title: '...', Layout: ..., Params: { })
 	header := fmt.Sprintf("CREATE OR MODIFY PAGE %s.%s", modName, foundPage.Name)
 	props := []string{}

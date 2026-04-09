@@ -479,6 +479,7 @@ func parseActionActivity(raw map[string]any) *microflows.ActionActivity {
 	activity.Documentation = extractString(raw["Documentation"])
 	activity.AutoGenerateCaption = extractBool(raw["AutoGenerateCaption"], false)
 	activity.BackgroundColor = extractString(raw["BackgroundColor"])
+	activity.Disabled = extractBool(raw["Disabled"], false)
 
 	if errorHandling, ok := raw["ErrorHandlingType"].(string); ok {
 		activity.ErrorHandlingType = microflows.ErrorHandlingType(errorHandling)

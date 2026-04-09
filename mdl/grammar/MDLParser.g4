@@ -277,14 +277,12 @@ dropStatement
     ;
 
 renameStatement
-    : RENAME ENTITY qualifiedName TO identifierOrKeyword (DRY RUN)?
-    | RENAME MICROFLOW qualifiedName TO identifierOrKeyword (DRY RUN)?
-    | RENAME NANOFLOW qualifiedName TO identifierOrKeyword (DRY RUN)?
-    | RENAME PAGE qualifiedName TO identifierOrKeyword (DRY RUN)?
-    | RENAME ENUMERATION qualifiedName TO identifierOrKeyword (DRY RUN)?
-    | RENAME ASSOCIATION qualifiedName TO identifierOrKeyword (DRY RUN)?
-    | RENAME CONSTANT qualifiedName TO identifierOrKeyword (DRY RUN)?
+    : RENAME renameTarget qualifiedName TO identifierOrKeyword (DRY RUN)?
     | RENAME MODULE identifierOrKeyword TO identifierOrKeyword (DRY RUN)?
+    ;
+
+renameTarget
+    : ENTITY | MICROFLOW | NANOFLOW | PAGE | ENUMERATION | ASSOCIATION | CONSTANT
     ;
 
 /**

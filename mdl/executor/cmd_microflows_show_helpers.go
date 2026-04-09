@@ -69,8 +69,11 @@ func emitObjectAnnotations(obj microflows.MicroflowObject, lines *[]string, inde
 	pos := obj.GetPosition()
 	*lines = append(*lines, indentStr+fmt.Sprintf("@position(%d, %d)", pos.X, pos.Y))
 
-	// @caption and @color (only for ActionActivity)
+	// @excluded, @caption, and @color (only for ActionActivity)
 	if activity, ok := obj.(*microflows.ActionActivity); ok {
+		if activity.Disabled {
+			*lines = append(*lines, indentStr+"@excluded")
+		}
 		if !activity.AutoGenerateCaption && activity.Caption != "" {
 			escapedCaption := strings.ReplaceAll(activity.Caption, "'", "''")
 			*lines = append(*lines, indentStr+fmt.Sprintf("@caption '%s'", escapedCaption))

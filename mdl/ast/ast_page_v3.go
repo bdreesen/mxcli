@@ -30,6 +30,7 @@ type CreatePageStmtV3 struct {
 	Documentation string
 	IsReplace     bool // CREATE OR REPLACE
 	IsModify      bool // CREATE OR MODIFY
+	Excluded      bool // @excluded — document excluded from project
 }
 
 func (s *CreatePageStmtV3) isStatement() {}

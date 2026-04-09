@@ -176,6 +176,11 @@ func extractMicroflowAnnotations(annotations []parser.IAnnotationContext) *ast.A
 					hasAny = true
 				}
 			}
+
+		case "excluded":
+			// @excluded — no value needed
+			result.Excluded = true
+			hasAny = true
 		}
 	}
 

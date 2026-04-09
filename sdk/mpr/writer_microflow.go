@@ -439,7 +439,7 @@ func serializeMicroflowObject(obj microflows.MicroflowObject) bson.D {
 		doc = append(doc, bson.E{Key: "AutoGenerateCaption", Value: o.AutoGenerateCaption})
 		doc = append(doc, bson.E{Key: "BackgroundColor", Value: bgColor})
 		doc = append(doc, bson.E{Key: "Caption", Value: o.Caption})
-		doc = append(doc, bson.E{Key: "Disabled", Value: false})
+		doc = append(doc, bson.E{Key: "Disabled", Value: o.Disabled})
 		doc = append(doc, bson.E{Key: "Documentation", Value: o.Documentation})
 		doc = append(doc, bson.E{Key: "RelativeMiddlePoint", Value: pointToString(o.Position)})
 		doc = append(doc, bson.E{Key: "Size", Value: sizeToString(o.Size)})

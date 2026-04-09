@@ -42,7 +42,7 @@ func (b *Builder) buildPageV3(ctx *parser.CreatePageStatementContext) *ast.Creat
 		stmt.Name = buildQualifiedName(qn)
 	}
 
-	// Check for CREATE OR REPLACE/MODIFY
+	// Check for CREATE OR REPLACE/MODIFY and parse @excluded
 	createStmt := findParentCreateStatement(ctx)
 	if createStmt != nil {
 		if createStmt.OR() != nil {
@@ -54,6 +54,12 @@ func (b *Builder) buildPageV3(ctx *parser.CreatePageStatementContext) *ast.Creat
 			}
 		}
 		stmt.Documentation = findDocCommentText(ctx)
+		for _, ann := range createStmt.AllAnnotation() {
+			annCtx := ann.(*parser.AnnotationContext)
+			if strings.EqualFold(annCtx.AnnotationName().GetText(), "excluded") {
+				stmt.Excluded = true
+			}
+		}
 	}
 
 	// Parse V3 header

@@ -738,30 +738,18 @@ func (b *Builder) ExitRenameStatement(ctx *parser.RenameStatementContext) {
 		return
 	}
 
-	// All other types use qualifiedName TO identifierOrKeyword
+	// All other types use renameTarget qualifiedName TO identifierOrKeyword
 	qn := buildQualifiedName(ctx.QualifiedName())
 	if len(ioks) < 1 {
 		return
 	}
 	newName := identifierOrKeywordText(ioks[0])
 
-	var objectType string
-	switch {
-	case ctx.ENTITY() != nil:
-		objectType = "ENTITY"
-	case ctx.MICROFLOW() != nil:
-		objectType = "MICROFLOW"
-	case ctx.NANOFLOW() != nil:
-		objectType = "NANOFLOW"
-	case ctx.PAGE() != nil:
-		objectType = "PAGE"
-	case ctx.ENUMERATION() != nil:
-		objectType = "ENUMERATION"
-	case ctx.ASSOCIATION() != nil:
-		objectType = "ASSOCIATION"
-	case ctx.CONSTANT() != nil:
-		objectType = "CONSTANT"
-	default:
+	objectType := ""
+	if rt := ctx.RenameTarget(); rt != nil {
+		objectType = strings.ToUpper(rt.GetText())
+	}
+	if objectType == "" {
 		return
 	}
 

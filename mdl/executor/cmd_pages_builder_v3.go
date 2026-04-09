@@ -39,7 +39,7 @@ func (pb *pageBuilder) buildPageV3(s *ast.CreatePageStmtV3) (*pages.Page, error)
 		Documentation: s.Documentation,
 		URL:           s.URL,
 		MarkAsUsed:    false,
-		Excluded:      false,
+		Excluded:      s.Excluded,
 	}
 
 	// Set title

@@ -152,6 +152,12 @@ func (s *BaseMDLParserListener) EnterRenameStatement(ctx *RenameStatementContext
 // ExitRenameStatement is called when production renameStatement is exited.
 func (s *BaseMDLParserListener) ExitRenameStatement(ctx *RenameStatementContext) {}
 
+// EnterRenameTarget is called when production renameTarget is entered.
+func (s *BaseMDLParserListener) EnterRenameTarget(ctx *RenameTargetContext) {}
+
+// ExitRenameTarget is called when production renameTarget is exited.
+func (s *BaseMDLParserListener) ExitRenameTarget(ctx *RenameTargetContext) {}
+
 // EnterMoveStatement is called when production moveStatement is entered.
 func (s *BaseMDLParserListener) EnterMoveStatement(ctx *MoveStatementContext) {}
 

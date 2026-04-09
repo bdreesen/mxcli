@@ -310,6 +310,11 @@ func (e *Executor) describeMicroflow(name ast.QualifiedName) error {
 		lines = append(lines, " */")
 	}
 
+	// @excluded annotation
+	if targetMf.Excluded {
+		lines = append(lines, "@excluded")
+	}
+
 	// CREATE MICROFLOW header
 	qualifiedName := name.Module + "." + name.Name
 	if len(targetMf.Parameters) > 0 {

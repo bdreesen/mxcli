@@ -109,14 +109,14 @@ func (fb *flowBuilder) applyAnnotations(activityID model.ID, ann *ast.ActivityAn
 		return
 	}
 
-	// Find the object by ID for @caption and @color
-	if ann.Caption != "" || ann.Color != "" {
+	// Find the object by ID for @caption, @color, and @excluded
+	if ann.Caption != "" || ann.Color != "" || ann.Excluded {
 		for _, obj := range fb.objects {
 			if obj.GetID() != activityID {
 				continue
 			}
 
-			// @caption and @color — only applicable to ActionActivity
+			// @caption, @color, and @excluded — only applicable to ActionActivity
 			if activity, ok := obj.(*microflows.ActionActivity); ok {
 				if ann.Caption != "" {
 					activity.Caption = ann.Caption
@@ -124,6 +124,9 @@ func (fb *flowBuilder) applyAnnotations(activityID model.ID, ann *ast.ActivityAn
 				}
 				if ann.Color != "" {
 					activity.BackgroundColor = ann.Color
+				}
+				if ann.Excluded {
+					activity.Disabled = true
 				}
 			}
 

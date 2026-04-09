@@ -73,6 +73,9 @@ type MDLParserListener interface {
 	// EnterRenameStatement is called when entering the renameStatement production.
 	EnterRenameStatement(c *RenameStatementContext)
 
+	// EnterRenameTarget is called when entering the renameTarget production.
+	EnterRenameTarget(c *RenameTargetContext)
+
 	// EnterMoveStatement is called when entering the moveStatement production.
 	EnterMoveStatement(c *MoveStatementContext)
 
@@ -1257,6 +1260,9 @@ type MDLParserListener interface {
 
 	// ExitRenameStatement is called when exiting the renameStatement production.
 	ExitRenameStatement(c *RenameStatementContext)
+
+	// ExitRenameTarget is called when exiting the renameTarget production.
+	ExitRenameTarget(c *RenameTargetContext)
 
 	// ExitMoveStatement is called when exiting the moveStatement production.
 	ExitMoveStatement(c *MoveStatementContext)

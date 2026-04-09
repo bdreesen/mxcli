@@ -364,6 +364,7 @@ type BaseActivity struct {
 	ErrorHandlingType   ErrorHandlingType `json:"errorHandlingType,omitempty"`
 	AutoGenerateCaption bool              `json:"autoGenerateCaption"`
 	BackgroundColor     string            `json:"backgroundColor,omitempty"`
+	Disabled            bool              `json:"disabled"` // @excluded in MDL
 }
 
 // IsActivity marks this as an activity.

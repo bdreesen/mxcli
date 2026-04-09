@@ -44,11 +44,17 @@ func (b *Builder) ExitCreateMicroflowStatement(ctx *parser.CreateMicroflowStatem
 		stmt.Body = buildMicroflowBody(body)
 	}
 
-	// Check for CREATE OR MODIFY and extract doc comment
+	// Check for CREATE OR MODIFY, extract doc comment, and parse @excluded
 	createStmt := findParentCreateStatement(ctx)
 	if createStmt != nil {
 		if createStmt.OR() != nil && (createStmt.MODIFY() != nil || createStmt.REPLACE() != nil) {
 			stmt.CreateOrModify = true
+		}
+		for _, ann := range createStmt.AllAnnotation() {
+			annCtx := ann.(*parser.AnnotationContext)
+			if strings.EqualFold(annCtx.AnnotationName().GetText(), "excluded") {
+				stmt.Excluded = true
+			}
 		}
 	}
 	stmt.Documentation = findDocCommentText(ctx)
