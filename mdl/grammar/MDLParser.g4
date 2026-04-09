@@ -92,6 +92,7 @@ createStatement
       | createODataClientStatement
       | createODataServiceStatement
       | createExternalEntityStatement
+      | createExternalEntitiesStatement
       | createNavigationStatement
       | createBusinessEventServiceStatement
       | createWorkflowStatement
@@ -2398,6 +2399,16 @@ createExternalEntityStatement
       FROM ODATA CLIENT qualifiedName
       LPAREN odataPropertyAssignment (COMMA odataPropertyAssignment)* RPAREN
       (LPAREN attributeDefinitionList? RPAREN)?
+    ;
+
+/**
+ * CREATE [OR MODIFY] EXTERNAL ENTITIES FROM Module.Service [INTO Module] [ENTITIES (Name1, Name2)]
+ * Bulk-creates external entities from a consumed OData service's cached $metadata.
+ */
+createExternalEntitiesStatement
+    : EXTERNAL ENTITIES FROM qualifiedName
+      (INTO (qualifiedName | IDENTIFIER))?
+      (ENTITIES LPAREN identifierOrKeyword (COMMA identifierOrKeyword)* RPAREN)?
     ;
 
 /**

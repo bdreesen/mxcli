@@ -136,3 +136,13 @@ type CreateExternalEntityStmt struct {
 }
 
 func (s *CreateExternalEntityStmt) isStatement() {}
+
+// CreateExternalEntitiesStmt represents: CREATE [OR MODIFY] EXTERNAL ENTITIES FROM Module.Service [INTO Module] [ENTITIES (Name1, Name2)]
+type CreateExternalEntitiesStmt struct {
+	ServiceRef     QualifiedName // FROM Module.Service
+	TargetModule   string        // INTO Module (optional, defaults to service module)
+	EntityNames    []string      // ENTITIES (Name1, Name2) filter (optional, imports all if empty)
+	CreateOrModify bool          // True if CREATE OR MODIFY was used
+}
+
+func (s *CreateExternalEntitiesStmt) isStatement() {}

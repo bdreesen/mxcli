@@ -366,6 +366,49 @@ SHOW EXTERNAL ACTIONS IN OdTest;
 /
 
 -- ############################################################################
+-- LEVEL 10: CREATE EXTERNAL ENTITIES (bulk from contract)
+-- ############################################################################
+
+/**
+ * Level 10.1: Create all external entities from a consumed OData service.
+ * Reads the service's cached $metadata and creates one external entity
+ * per entity type in the domain model.
+ * Prerequisite: The OData client must have cached metadata (fetched during CREATE).
+ *
+ * CREATE EXTERNAL ENTITIES FROM OdTest.SalesforceAPI;
+ */
+
+/**
+ * Level 10.2: Create external entities into a different module.
+ * By default entities are created in the same module as the service.
+ * Use INTO to redirect them.
+ *
+ * CREATE EXTERNAL ENTITIES FROM OdTest.SalesforceAPI INTO Integration;
+ */
+
+/**
+ * Level 10.3: Create only specific external entities by name.
+ * Use the ENTITIES clause to filter which entity types to create.
+ *
+ * CREATE EXTERNAL ENTITIES FROM OdTest.SalesforceAPI ENTITIES (Account, Contact);
+ */
+
+/**
+ * Level 10.4: Idempotent bulk create — updates existing entities.
+ *
+ * CREATE OR MODIFY EXTERNAL ENTITIES FROM OdTest.SalesforceAPI;
+ */
+
+/**
+ * Level 10.5: Combine INTO, ENTITIES filter, and OR MODIFY.
+ *
+ * CREATE OR MODIFY EXTERNAL ENTITIES FROM OdTest.SalesforceAPI INTO Integration ENTITIES (Account, Contact);
+ */
+
+-- NOTE: These commands require a live OData client with cached $metadata,
+-- so they are shown as comments above. The syntax is validated by mxcli check.
+
+-- ############################################################################
 -- NOTE: CREATE ODATA CLIENT now auto-fetches and caches $metadata from the
 -- MetadataUrl. CONTRACT BROWSING commands (SHOW CONTRACT ENTITIES/ACTIONS)
 -- work on services with cached metadata. The test URLs above are not reachable

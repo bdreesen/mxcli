@@ -469,6 +469,137 @@ func edmToMendixType(p *mpr.EdmProperty) string {
 }
 
 // ============================================================================
+// CREATE EXTERNAL ENTITIES (bulk)
+// ============================================================================
+
+// createExternalEntities handles CREATE [OR MODIFY] EXTERNAL ENTITIES FROM Module.Service [INTO Module] [ENTITIES (...)].
+// It reads entity types from the cached $metadata and creates external entities in the domain model.
+func (e *Executor) createExternalEntities(s *ast.CreateExternalEntitiesStmt) error {
+	if e.writer == nil {
+		return fmt.Errorf("not connected to a project in write mode")
+	}
+
+	doc, svcQN, err := e.parseServiceContract(s.ServiceRef)
+	if err != nil {
+		return err
+	}
+
+	// Build entity set lookup: entity type qualified name → entity set name
+	esMap := make(map[string]string)
+	for _, es := range doc.EntitySets {
+		esMap[es.EntityType] = es.Name
+	}
+
+	// Build filter set if entity names specified
+	filterSet := make(map[string]bool)
+	for _, name := range s.EntityNames {
+		filterSet[strings.ToLower(name)] = true
+	}
+
+	// Determine target module
+	targetModule := s.TargetModule
+	if targetModule == "" {
+		targetModule = s.ServiceRef.Module
+	}
+
+	var created, skipped, failed int
+
+	for _, schema := range doc.Schemas {
+		for _, et := range schema.EntityTypes {
+			// Apply entity name filter
+			if len(filterSet) > 0 && !filterSet[strings.ToLower(et.Name)] {
+				continue
+			}
+
+			entitySetName := esMap[schema.Namespace+"."+et.Name]
+			if entitySetName == "" {
+				entitySetName = et.Name + "s" // fallback
+			}
+
+			// Build attributes from properties
+			var attrs []ast.Attribute
+			for _, p := range et.Properties {
+				// Skip key properties named ID (Mendix manages its own ID)
+				isKey := false
+				for _, k := range et.KeyProperties {
+					if p.Name == k {
+						isKey = true
+						break
+					}
+				}
+				if isKey && p.Name == "ID" {
+					continue
+				}
+
+				attrs = append(attrs, ast.Attribute{
+					Name: p.Name,
+					Type: edmToAstDataType(p),
+				})
+			}
+
+			stmt := &ast.CreateExternalEntityStmt{
+				Name:           ast.QualifiedName{Module: targetModule, Name: et.Name},
+				ServiceRef:     s.ServiceRef,
+				EntitySet:      entitySetName,
+				RemoteName:     et.Name,
+				Countable:      true,
+				Attributes:     attrs,
+				CreateOrModify: s.CreateOrModify,
+			}
+
+			if err := e.execCreateExternalEntity(stmt); err != nil {
+				fmt.Fprintf(e.output, "  FAILED: %s.%s — %v\n", targetModule, et.Name, err)
+				failed++
+			} else {
+				created++
+			}
+		}
+	}
+
+	if skipped > 0 || failed > 0 {
+		fmt.Fprintf(e.output, "\nImported %d entities from %s (%d failed)\n", created, svcQN, failed)
+	} else {
+		fmt.Fprintf(e.output, "\nImported %d entities from %s into %s\n", created, svcQN, targetModule)
+	}
+
+	return nil
+}
+
+// edmToAstDataType converts an Edm property to an AST data type.
+func edmToAstDataType(p *mpr.EdmProperty) ast.DataType {
+	switch p.Type {
+	case "Edm.String":
+		length := 200
+		if p.MaxLength != "" && p.MaxLength != "max" {
+			if n, err := fmt.Sscanf(p.MaxLength, "%d", &length); n == 0 || err != nil {
+				length = 200
+			}
+		}
+		return ast.DataType{Kind: ast.TypeString, Length: length}
+	case "Edm.Int32":
+		return ast.DataType{Kind: ast.TypeInteger}
+	case "Edm.Int64":
+		return ast.DataType{Kind: ast.TypeLong}
+	case "Edm.Decimal":
+		return ast.DataType{Kind: ast.TypeDecimal}
+	case "Edm.Boolean":
+		return ast.DataType{Kind: ast.TypeBoolean}
+	case "Edm.DateTime", "Edm.DateTimeOffset", "Edm.Date":
+		return ast.DataType{Kind: ast.TypeDateTime}
+	case "Edm.Double", "Edm.Single":
+		return ast.DataType{Kind: ast.TypeDecimal}
+	case "Edm.Byte", "Edm.SByte", "Edm.Int16":
+		return ast.DataType{Kind: ast.TypeInteger}
+	case "Edm.Guid":
+		return ast.DataType{Kind: ast.TypeString, Length: 36}
+	case "Edm.Binary":
+		return ast.DataType{Kind: ast.TypeString, Length: 200}
+	default:
+		return ast.DataType{Kind: ast.TypeString, Length: 200}
+	}
+}
+
+// ============================================================================
 // AsyncAPI Contract Commands
 // ============================================================================
 

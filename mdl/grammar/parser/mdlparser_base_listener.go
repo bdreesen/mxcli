@@ -1694,6 +1694,14 @@ func (s *BaseMDLParserListener) EnterCreateExternalEntityStatement(ctx *CreateEx
 func (s *BaseMDLParserListener) ExitCreateExternalEntityStatement(ctx *CreateExternalEntityStatementContext) {
 }
 
+// EnterCreateExternalEntitiesStatement is called when production createExternalEntitiesStatement is entered.
+func (s *BaseMDLParserListener) EnterCreateExternalEntitiesStatement(ctx *CreateExternalEntitiesStatementContext) {
+}
+
+// ExitCreateExternalEntitiesStatement is called when production createExternalEntitiesStatement is exited.
+func (s *BaseMDLParserListener) ExitCreateExternalEntitiesStatement(ctx *CreateExternalEntitiesStatementContext) {
+}
+
 // EnterCreateNavigationStatement is called when production createNavigationStatement is entered.
 func (s *BaseMDLParserListener) EnterCreateNavigationStatement(ctx *CreateNavigationStatementContext) {
 }

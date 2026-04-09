@@ -196,6 +196,8 @@ func (e *Executor) executeInner(stmt ast.Statement) error {
 		return e.dropRestClient(s)
 	case *ast.CreateExternalEntityStmt:
 		return e.execCreateExternalEntity(s)
+	case *ast.CreateExternalEntitiesStmt:
+		return e.createExternalEntities(s)
 	case *ast.GrantODataServiceAccessStmt:
 		return e.execGrantODataServiceAccess(s)
 	case *ast.RevokeODataServiceAccessStmt:

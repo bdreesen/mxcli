@@ -811,6 +811,9 @@ type MDLParserListener interface {
 	// EnterCreateExternalEntityStatement is called when entering the createExternalEntityStatement production.
 	EnterCreateExternalEntityStatement(c *CreateExternalEntityStatementContext)
 
+	// EnterCreateExternalEntitiesStatement is called when entering the createExternalEntitiesStatement production.
+	EnterCreateExternalEntitiesStatement(c *CreateExternalEntitiesStatementContext)
+
 	// EnterCreateNavigationStatement is called when entering the createNavigationStatement production.
 	EnterCreateNavigationStatement(c *CreateNavigationStatementContext)
 
@@ -1992,6 +1995,9 @@ type MDLParserListener interface {
 
 	// ExitCreateExternalEntityStatement is called when exiting the createExternalEntityStatement production.
 	ExitCreateExternalEntityStatement(c *CreateExternalEntityStatementContext)
+
+	// ExitCreateExternalEntitiesStatement is called when exiting the createExternalEntitiesStatement production.
+	ExitCreateExternalEntitiesStatement(c *CreateExternalEntitiesStatementContext)
 
 	// ExitCreateNavigationStatement is called when exiting the createNavigationStatement production.
 	ExitCreateNavigationStatement(c *CreateNavigationStatementContext)

@@ -198,6 +198,47 @@ func (b *Builder) ExitCreateExternalEntityStatement(ctx *parser.CreateExternalEn
 }
 
 // ============================================================================
+// CREATE EXTERNAL ENTITIES (bulk)
+// ============================================================================
+
+// ExitCreateExternalEntitiesStatement handles CREATE [OR MODIFY] EXTERNAL ENTITIES FROM Module.Service [INTO Module] [ENTITIES (...)].
+func (b *Builder) ExitCreateExternalEntitiesStatement(ctx *parser.CreateExternalEntitiesStatementContext) {
+	if ctx.QualifiedName(0) == nil {
+		return
+	}
+
+	stmt := &ast.CreateExternalEntitiesStmt{
+		ServiceRef: buildQualifiedName(ctx.QualifiedName(0)),
+	}
+
+	// INTO Module or INTO Module.Name (use module part)
+	if ctx.INTO() != nil {
+		if id := ctx.IDENTIFIER(); id != nil {
+			stmt.TargetModule = id.GetText()
+		} else if ctx.QualifiedName(1) != nil {
+			stmt.TargetModule = buildQualifiedName(ctx.QualifiedName(1)).Module
+		}
+	}
+
+	// ENTITIES (Name1, Name2, ...) — the second ENTITIES token (index 1) indicates the filter clause
+	if len(ctx.AllENTITIES()) > 1 {
+		for _, iok := range ctx.AllIdentifierOrKeyword() {
+			stmt.EntityNames = append(stmt.EntityNames, identifierOrKeywordText(iok))
+		}
+	}
+
+	// Check for CREATE OR MODIFY
+	createStmt := findParentCreateStatement(ctx)
+	if createStmt != nil {
+		if createStmt.OR() != nil && (createStmt.MODIFY() != nil || createStmt.REPLACE() != nil) {
+			stmt.CreateOrModify = true
+		}
+	}
+
+	b.statements = append(b.statements, stmt)
+}
+
+// ============================================================================
 // Helpers
 // ============================================================================
 

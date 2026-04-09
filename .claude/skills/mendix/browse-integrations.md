@@ -111,7 +111,25 @@ WHERE ObjectType IN ('ODATA_CLIENT', 'REST_CLIENT', 'ODATA_SERVICE',
 AND ModuleName = 'Integration';
 ```
 
-## Workflow: Import an Entity from a Contract
+## Workflow: Import Entities from a Contract
+
+### Bulk import (all or filtered)
+
+```sql
+-- Import all entity types at once
+CREATE EXTERNAL ENTITIES FROM MyModule.SalesforceAPI;
+
+-- Import into a different module
+CREATE EXTERNAL ENTITIES FROM MyModule.SalesforceAPI INTO Integration;
+
+-- Import only specific entities
+CREATE EXTERNAL ENTITIES FROM MyModule.SalesforceAPI ENTITIES (PurchaseOrder, Supplier);
+
+-- Idempotent re-import (updates existing)
+CREATE OR MODIFY EXTERNAL ENTITIES FROM MyModule.SalesforceAPI;
+```
+
+### Single entity (with customization)
 
 1. Browse available entities:
    ```sql

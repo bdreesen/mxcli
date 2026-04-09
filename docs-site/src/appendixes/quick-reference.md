@@ -26,6 +26,7 @@ CREATE PERSISTENT ENTITY Module.Photo (
 | Create with extends | `CREATE PERSISTENT ENTITY Module.Name EXTENDS Parent.Entity (attrs);` | EXTENDS before `(` |
 | Create view entity | `CREATE VIEW ENTITY Module.Name (attrs) AS SELECT ...;` | OQL-backed read-only |
 | Create external entity | `CREATE EXTERNAL ENTITY Module.Name FROM ODATA CLIENT Module.Client (...) (attrs);` | From consumed OData |
+| Create external entities | `CREATE [OR MODIFY] EXTERNAL ENTITIES FROM Module.Client [INTO Module] [ENTITIES (...)];` | Bulk from $metadata |
 | Drop entity | `DROP ENTITY Module.Name;` | |
 | Describe entity | `DESCRIBE ENTITY Module.Name;` | Full MDL output |
 | List entities | `LIST ENTITIES [IN Module];` | List all or filter by module |
@@ -94,6 +95,7 @@ CREATE CONSTANT MyModule.EnableLogging TYPE Boolean DEFAULT true;
 | List external entities | `LIST EXTERNAL ENTITIES [IN Module];` | OData-backed entities |
 | List external actions | `LIST EXTERNAL ACTIONS [IN Module];` | Actions used in microflows |
 | Create external entity | `CREATE [OR MODIFY] EXTERNAL ENTITY Module.Name FROM ODATA CLIENT Module.Client (...) (attrs);` | |
+| Create external entities | `CREATE [OR MODIFY] EXTERNAL ENTITIES FROM Module.Client [INTO Module] [ENTITIES (...)];` | Bulk from $metadata |
 | Grant OData access | `GRANT ACCESS ON ODATA SERVICE Module.Name TO Module.Role, ...;` | |
 | Revoke OData access | `REVOKE ACCESS ON ODATA SERVICE Module.Name FROM Module.Role, ...;` | |
 | List contract entities | `LIST CONTRACT ENTITIES FROM Module.Client;` | Browse cached $metadata |

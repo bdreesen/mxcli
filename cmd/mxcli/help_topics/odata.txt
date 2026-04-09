@@ -108,6 +108,24 @@ CREATE EXTERNAL ENTITY
     Email: String(200)
   );
 
+CREATE EXTERNAL ENTITIES (bulk from $metadata)
+-----------------------------------------------
+
+  -- Create all entity types as external entities
+  CREATE EXTERNAL ENTITIES FROM MyModule.ExternalAPI;
+
+  -- Create into a different module
+  CREATE EXTERNAL ENTITIES FROM MyModule.ExternalAPI INTO Integration;
+
+  -- Create only specific entities
+  CREATE EXTERNAL ENTITIES FROM MyModule.ExternalAPI ENTITIES (Customer, Order);
+
+  -- Idempotent — updates existing entities
+  CREATE OR MODIFY EXTERNAL ENTITIES FROM MyModule.ExternalAPI;
+
+  -- Combine all options
+  CREATE OR MODIFY EXTERNAL ENTITIES FROM MyModule.ExternalAPI INTO Integration ENTITIES (Customer, Order);
+
 ALTER / DROP
 -----------
 

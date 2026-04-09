@@ -273,6 +273,20 @@ FROM ODATA CLIENT ProductClient.ProductDataApiClient
 GRANT ProductClient.User ON ProductClient.CustomerAddressesEE (READ *);
 ```
 
+**Bulk alternative:** Instead of creating external entities one by one, import all (or a subset) from the contract:
+
+```sql
+-- All entities from the service
+CREATE EXTERNAL ENTITIES FROM ProductClient.ProductDataApiClient;
+
+-- Or specific ones only
+CREATE EXTERNAL ENTITIES FROM ProductClient.ProductDataApiClient
+  ENTITIES (Product, CustomerAddress);
+
+-- Idempotent re-import
+CREATE OR MODIFY EXTERNAL ENTITIES FROM ProductClient.ProductDataApiClient;
+```
+
 ## Step-by-Step: Read-Write API with Microflow Handlers
 
 For write operations (insert, update, delete), the OData service delegates to microflows that map between the view entity and the underlying persistent entities.
