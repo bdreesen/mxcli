@@ -347,6 +347,10 @@ func (e *Executor) showAccessOnWorkflow(name *ast.QualifiedName) error {
 
 // showSecurityMatrix handles SHOW SECURITY MATRIX [IN module].
 func (e *Executor) showSecurityMatrix(moduleName string) error {
+	if e.format == FormatJSON {
+		return e.showSecurityMatrixJSON(moduleName)
+	}
+
 	h, err := e.getHierarchy()
 	if err != nil {
 		return fmt.Errorf("failed to build hierarchy: %w", err)
@@ -564,6 +568,145 @@ func (e *Executor) showSecurityMatrix(moduleName string) error {
 	fmt.Fprintln(e.output)
 
 	return nil
+}
+
+// showSecurityMatrixJSON emits the security matrix as a JSON table
+// with one row per access rule across entities, microflows, pages, and workflows.
+func (e *Executor) showSecurityMatrixJSON(moduleName string) error {
+	h, err := e.getHierarchy()
+	if err != nil {
+		return fmt.Errorf("failed to build hierarchy: %w", err)
+	}
+
+	tr := &TableResult{
+		Columns: []string{"ObjectType", "QualifiedName", "Roles", "Rights"},
+	}
+
+	// Entities
+	dms, _ := e.reader.ListDomainModels()
+	for _, dm := range dms {
+		modID := h.FindModuleID(dm.ContainerID)
+		modName := h.GetModuleName(modID)
+		if moduleName != "" && modName != moduleName {
+			continue
+		}
+		for _, entity := range dm.Entities {
+			for _, rule := range entity.AccessRules {
+				var roleStrs []string
+				for _, rn := range rule.ModuleRoleNames {
+					roleStrs = append(roleStrs, rn)
+				}
+				if len(roleStrs) == 0 {
+					for _, rid := range rule.ModuleRoles {
+						roleStrs = append(roleStrs, string(rid))
+					}
+				}
+
+				var rights []string
+				if rule.AllowCreate {
+					rights = append(rights, "C")
+				}
+				rr := rule.DefaultMemberAccessRights == domainmodel.MemberAccessRightsReadOnly ||
+					rule.DefaultMemberAccessRights == domainmodel.MemberAccessRightsReadWrite
+				rw := rule.DefaultMemberAccessRights == domainmodel.MemberAccessRightsReadWrite
+				for _, ma := range rule.MemberAccesses {
+					if ma.AccessRights == domainmodel.MemberAccessRightsReadOnly || ma.AccessRights == domainmodel.MemberAccessRightsReadWrite {
+						rr = true
+					}
+					if ma.AccessRights == domainmodel.MemberAccessRightsReadWrite {
+						rw = true
+					}
+				}
+				if rr {
+					rights = append(rights, "R")
+				}
+				if rw {
+					rights = append(rights, "W")
+				}
+				if rule.AllowDelete {
+					rights = append(rights, "D")
+				}
+
+				tr.Rows = append(tr.Rows, []any{
+					"Entity",
+					modName + "." + entity.Name,
+					strings.Join(roleStrs, ", "),
+					strings.Join(rights, ""),
+				})
+			}
+		}
+	}
+
+	// Microflows
+	mfs, _ := e.reader.ListMicroflows()
+	for _, mf := range mfs {
+		if len(mf.AllowedModuleRoles) == 0 {
+			continue
+		}
+		modID := h.FindModuleID(mf.ContainerID)
+		modName := h.GetModuleName(modID)
+		if moduleName != "" && modName != moduleName {
+			continue
+		}
+		var roleStrs []string
+		for _, r := range mf.AllowedModuleRoles {
+			roleStrs = append(roleStrs, string(r))
+		}
+		tr.Rows = append(tr.Rows, []any{
+			"Microflow",
+			modName + "." + mf.Name,
+			strings.Join(roleStrs, ", "),
+			"X",
+		})
+	}
+
+	// Pages
+	pages, _ := e.reader.ListPages()
+	for _, pg := range pages {
+		if len(pg.AllowedRoles) == 0 {
+			continue
+		}
+		modID := h.FindModuleID(pg.ContainerID)
+		modName := h.GetModuleName(modID)
+		if moduleName != "" && modName != moduleName {
+			continue
+		}
+		var roleStrs []string
+		for _, r := range pg.AllowedRoles {
+			roleStrs = append(roleStrs, string(r))
+		}
+		tr.Rows = append(tr.Rows, []any{
+			"Page",
+			modName + "." + pg.Name,
+			strings.Join(roleStrs, ", "),
+			"X",
+		})
+	}
+
+	// Workflows
+	wfs, _ := e.reader.ListWorkflows()
+	for _, wf := range wfs {
+		if len(wf.AllowedModuleRoles) == 0 {
+			continue
+		}
+		modID := h.FindModuleID(wf.ContainerID)
+		modName := h.GetModuleName(modID)
+		if moduleName != "" && modName != moduleName {
+			continue
+		}
+		var roleStrs []string
+		for _, r := range wf.AllowedModuleRoles {
+			roleStrs = append(roleStrs, string(r))
+		}
+		tr.Rows = append(tr.Rows, []any{
+			"Workflow",
+			modName + "." + wf.Name,
+			strings.Join(roleStrs, ", "),
+			"X",
+		})
+	}
+
+	return e.writeResult(tr)
 }
 
 // describeModuleRole handles DESCRIBE MODULE ROLE Module.RoleName.

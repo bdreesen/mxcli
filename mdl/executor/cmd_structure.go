@@ -35,8 +35,17 @@ func (e *Executor) execShowStructure(s *ast.ShowStmt) error {
 	}
 
 	if len(modules) == 0 {
-		fmt.Fprintln(e.output, "(no modules found)")
+		if e.format == FormatJSON {
+			fmt.Fprintln(e.output, "[]")
+		} else {
+			fmt.Fprintln(e.output, "(no modules found)")
+		}
 		return nil
+	}
+
+	// JSON mode: emit structured table
+	if e.format == FormatJSON {
+		return e.structureDepth1JSON(modules)
 	}
 
 	switch depth {
@@ -49,6 +58,51 @@ func (e *Executor) execShowStructure(s *ast.ShowStmt) error {
 	default:
 		return e.structureDepth2(modules)
 	}
+}
+
+// structureDepth1JSON emits structure as a JSON table with one row per module
+// and columns for each element type count.
+func (e *Executor) structureDepth1JSON(modules []structureModule) error {
+	entityCounts := e.queryCountByModule("entities")
+	mfCounts := e.queryCountByModule("microflows WHERE MicroflowType = 'MICROFLOW'")
+	nfCounts := e.queryCountByModule("microflows WHERE MicroflowType = 'NANOFLOW'")
+	pageCounts := e.queryCountByModule("pages")
+	enumCounts := e.queryCountByModule("enumerations")
+	snippetCounts := e.queryCountByModule("snippets")
+	jaCounts := e.queryCountByModule("java_actions")
+	wfCounts := e.queryCountByModule("workflows")
+	odataClientCounts := e.queryCountByModule("odata_clients")
+	odataServiceCounts := e.queryCountByModule("odata_services")
+	beServiceCounts := e.queryCountByModule("business_event_services")
+	constantCounts := e.countByModuleFromReader("constants")
+	scheduledEventCounts := e.countByModuleFromReader("scheduled_events")
+
+	tr := &TableResult{
+		Columns: []string{
+			"Module", "Entities", "Enumerations", "Microflows", "Nanoflows",
+			"Workflows", "Pages", "Snippets", "JavaActions", "Constants",
+			"ScheduledEvents", "ODataClients", "ODataServices", "BusinessEventServices",
+		},
+	}
+	for _, m := range modules {
+		tr.Rows = append(tr.Rows, []any{
+			m.Name,
+			entityCounts[m.Name],
+			enumCounts[m.Name],
+			mfCounts[m.Name],
+			nfCounts[m.Name],
+			wfCounts[m.Name],
+			pageCounts[m.Name],
+			snippetCounts[m.Name],
+			jaCounts[m.Name],
+			constantCounts[m.Name],
+			scheduledEventCounts[m.Name],
+			odataClientCounts[m.Name],
+			odataServiceCounts[m.Name],
+			beServiceCounts[m.Name],
+		})
+	}
+	return e.writeResult(tr)
 }
 
 // structureModule holds module info for structure output.
