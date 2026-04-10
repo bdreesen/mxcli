@@ -1453,6 +1453,36 @@ ALTER ENTITY DmTest.VATRate
 ALTER ENTITY DmTest.VATRate
   SET POSITION (300, 400);
 
+-- ============================================================================
+-- ENTITY EVENT HANDLERS
+-- ============================================================================
+-- Entity event handlers run microflows before/after Create, Commit, Delete,
+-- or Rollback. RAISE ERROR makes the handler act as a validation microflow:
+-- if it returns false, the operation is aborted.
+
+CREATE MICROFLOW DmTest.ACT_ValidateBankAccount ()
+BEGIN
+  LOG INFO 'Validating bank account';
+END;
+/
+
+CREATE MICROFLOW DmTest.ACT_InitBankAccountDefaults ()
+BEGIN
+  LOG INFO 'Initializing defaults';
+END;
+/
+
+-- Add event handlers via ALTER ENTITY
+ALTER ENTITY DmTest.BankAccount
+  ADD EVENT HANDLER ON BEFORE COMMIT CALL DmTest.ACT_ValidateBankAccount RAISE ERROR;
+
+ALTER ENTITY DmTest.BankAccount
+  ADD EVENT HANDLER ON AFTER CREATE CALL DmTest.ACT_InitBankAccountDefaults;
+
+-- Drop an event handler
+ALTER ENTITY DmTest.BankAccount
+  DROP EVENT HANDLER ON AFTER CREATE;
+
 -- @version: 10.18+
 -- ============================================================================
 -- PART 11: COMPLEX VIEW ENTITIES WITH SUBQUERIES — requires Mendix 10.18+

@@ -20,6 +20,7 @@ CREATE [OR MODIFY] <entity-type> ENTITY <Module>.<Name> (
   <attribute-definitions>
 )
 [INDEX (<column-list>)]
+[ON BEFORE|AFTER CREATE|COMMIT|DELETE|ROLLBACK CALL <Module>.<Microflow> [RAISE ERROR]]
 [;|/]
 ```
 
@@ -141,6 +142,36 @@ INDEX (Email);
 ```
 
 Attribute-level documentation appears in Studio Pro when hovering over the attribute in the domain model.
+
+## Entity Event Handlers
+
+Persistent entities can have microflow event handlers that run before or after Create, Commit, Delete, or Rollback operations. The optional `RAISE ERROR` clause makes the handler act as a validation microflow — if it returns false, the operation is aborted.
+
+```sql
+CREATE PERSISTENT ENTITY Sales.Order (
+  Total: Decimal,
+  Status: String(50)
+)
+ON BEFORE COMMIT CALL Sales.ACT_ValidateOrder RAISE ERROR
+ON AFTER CREATE CALL Sales.ACT_InitDefaults;
+```
+
+Event handlers can also be added or removed via `ALTER ENTITY`:
+
+```sql
+-- Add a handler to an existing entity
+ALTER ENTITY Sales.Order
+  ADD EVENT HANDLER ON BEFORE DELETE CALL Sales.ACT_CheckCanDelete RAISE ERROR;
+
+-- Remove a handler
+ALTER ENTITY Sales.Order
+  DROP EVENT HANDLER ON BEFORE COMMIT;
+```
+
+**Moments**: `BEFORE`, `AFTER`
+**Events**: `CREATE`, `COMMIT`, `DELETE`, `ROLLBACK`
+
+Each (Moment, Event) combination supports one handler per entity. The microflow must exist in the project (validated at execution time).
 
 ## DROP ENTITY
 

@@ -253,6 +253,33 @@ WHERE e.Status != 'CANCELLED'   -- Correct: uses enum value
 WHERE e.Status != 'Cancelled'   -- Wrong: this is the caption
 ```
 
+### Entity Event Handlers
+
+Microflows can run before/after entity Create, Commit, Delete, or Rollback. Use the optional `RAISE ERROR` clause to make a handler act as a validation microflow — if it returns false, the operation is aborted.
+
+```sql
+-- In CREATE ENTITY (handlers go after attributes/indexes)
+CREATE PERSISTENT ENTITY Sales.Order (
+  Total: Decimal,
+  Status: String(50)
+)
+ON BEFORE COMMIT CALL Sales.ACT_ValidateOrder RAISE ERROR
+ON AFTER CREATE CALL Sales.ACT_InitDefaults;
+
+-- Add via ALTER ENTITY
+ALTER ENTITY Sales.Order
+  ADD EVENT HANDLER ON BEFORE DELETE CALL Sales.ACT_CheckCanDelete RAISE ERROR;
+
+-- Drop via ALTER ENTITY
+ALTER ENTITY Sales.Order
+  DROP EVENT HANDLER ON BEFORE COMMIT;
+```
+
+**Moments**: `BEFORE`, `AFTER`
+**Events**: `CREATE`, `COMMIT`, `DELETE`, `ROLLBACK`
+
+Each (Moment, Event) combination can only have one handler per entity. The microflow must exist (the executor validates the reference). `RAISE ERROR` is optional — without it, the handler runs but its return value doesn't affect the operation.
+
 ### Associations
 
 **CRITICAL: Association Directionality**

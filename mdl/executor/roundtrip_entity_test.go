@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
@@ -86,6 +87,94 @@ func TestRoundtripEntity_WithIndex(t *testing.T) {
 		"String(100)",
 		"INDEX",
 	})
+}
+
+func TestRoundtripEntity_WithEventHandler(t *testing.T) {
+	env := setupTestEnv(t)
+	defer env.teardown()
+
+	entityName := testModule + ".TestEntityEventHandler"
+	mfName := testModule + ".ACT_ValidateTestEntity"
+
+	// Create a microflow first (event handler references it)
+	if err := env.executeMDL(`CREATE OR MODIFY MICROFLOW ` + mfName + ` ()
+BEGIN
+  LOG INFO 'validating';
+END;`); err != nil {
+		t.Fatalf("failed to create microflow: %v", err)
+	}
+
+	// Create entity with event handler
+	createMDL := `CREATE OR MODIFY PERSISTENT ENTITY ` + entityName + ` (
+		Name: String(100)
+	)
+	ON BEFORE COMMIT CALL ` + mfName + ` RAISE ERROR;`
+
+	// Verify roundtrip preserves the event handler
+	env.assertContains(createMDL, []string{
+		"PERSISTENT ENTITY",
+		"Name:",
+		"String(100)",
+		"ON BEFORE COMMIT CALL",
+		mfName,
+		"RAISE ERROR",
+	})
+}
+
+func TestRoundtripEntity_AlterAddDropEventHandler(t *testing.T) {
+	env := setupTestEnv(t)
+	defer env.teardown()
+
+	entityName := testModule + ".TestAlterEventHandler"
+	mfName := testModule + ".ACT_AlterEventTest"
+
+	// Create microflow
+	if err := env.executeMDL(`CREATE OR MODIFY MICROFLOW ` + mfName + ` ()
+BEGIN
+  LOG INFO 'test';
+END;`); err != nil {
+		t.Fatalf("failed to create microflow: %v", err)
+	}
+
+	// Create entity without handlers
+	if err := env.executeMDL(`CREATE OR MODIFY PERSISTENT ENTITY ` + entityName + ` (
+		Code: String(50)
+	);`); err != nil {
+		t.Fatalf("failed to create entity: %v", err)
+	}
+
+	// Add event handler via ALTER
+	if err := env.executeMDL(`ALTER ENTITY ` + entityName + `
+		ADD EVENT HANDLER ON AFTER CREATE CALL ` + mfName + `;`); err != nil {
+		t.Fatalf("failed to add event handler: %v", err)
+	}
+
+	// Verify handler appears in DESCRIBE
+	out, err := env.describeMDL(`DESCRIBE ENTITY ` + entityName + `;`)
+	if err != nil {
+		t.Fatalf("describe failed: %v", err)
+	}
+	if !strings.Contains(out, "ON AFTER CREATE CALL") {
+		t.Errorf("expected ON AFTER CREATE CALL in DESCRIBE output, got:\n%s", out)
+	}
+	if !strings.Contains(out, mfName) {
+		t.Errorf("expected microflow name %q in DESCRIBE output, got:\n%s", mfName, out)
+	}
+
+	// Drop the event handler
+	if err := env.executeMDL(`ALTER ENTITY ` + entityName + `
+		DROP EVENT HANDLER ON AFTER CREATE;`); err != nil {
+		t.Fatalf("failed to drop event handler: %v", err)
+	}
+
+	// Verify handler is gone
+	out, err = env.describeMDL(`DESCRIBE ENTITY ` + entityName + `;`)
+	if err != nil {
+		t.Fatalf("describe after drop failed: %v", err)
+	}
+	if strings.Contains(out, "ON AFTER CREATE CALL") {
+		t.Errorf("event handler should be removed but still in DESCRIBE output:\n%s", out)
+	}
 }
 
 func TestRoundtripEnumeration(t *testing.T) {
