@@ -206,8 +206,6 @@ Security - Access Control:
   REVOKE EXECUTE ON MICROFLOW Module.Name FROM Role [, Role...];
   GRANT VIEW ON PAGE Module.Name TO Role [, Role...];
   REVOKE VIEW ON PAGE Module.Name FROM Role [, Role...];
-  GRANT EXECUTE ON WORKFLOW Module.Name TO Role [, Role...];
-  REVOKE EXECUTE ON WORKFLOW Module.Name FROM Role [, Role...];
   GRANT Role ON Module.Entity (CREATE, DELETE, READ *, WRITE *) [WHERE 'xpath'];
   REVOKE Role ON Module.Entity;
 

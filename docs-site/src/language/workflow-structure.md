@@ -62,12 +62,7 @@ DROP WORKFLOW HR.OnboardEmployee;
 
 ## Workflow Access
 
-Grant or revoke execute access to control who can start a workflow:
-
-```sql
-GRANT EXECUTE ON WORKFLOW HR.OnboardEmployee TO HR.Manager, HR.Admin;
-REVOKE EXECUTE ON WORKFLOW HR.OnboardEmployee FROM HR.Manager;
-```
+> **Not supported.** Mendix workflows do not have document-level `AllowedModuleRoles` (unlike microflows and pages). Workflow access is controlled through the microflow that triggers the workflow and UserTask targeting.
 
 ## See Also
 
