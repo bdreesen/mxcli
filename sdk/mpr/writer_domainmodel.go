@@ -606,10 +606,12 @@ func (w *Writer) serializeDomainModel(dm *domainmodel.DomainModel) ([]byte, erro
 }
 
 func serializeEntity(e *domainmodel.Entity, moduleName string, pv *version.ProjectVersion) bson.D {
+	isExternal := e.Source == "Rest$ODataRemoteEntitySource"
+
 	// Attributes array with version prefix 3
 	attrs := bson.A{int32(3)}
 	for _, a := range e.Attributes {
-		attrs = append(attrs, serializeAttribute(a))
+		attrs = append(attrs, serializeAttribute(a, isExternal))
 	}
 
 	// Indexes array with version prefix 3
@@ -669,10 +671,7 @@ func serializeEntity(e *domainmodel.Entity, moduleName string, pv *version.Proje
 
 	// Add Source for external entities (OData remote entity source)
 	if e.Source == "Rest$ODataRemoteEntitySource" && e.RemoteServiceName != "" {
-		doc = append(doc, bson.E{Key: "Source", Value: serializeODataRemoteEntitySource(
-			e.RemoteServiceName, e.RemoteEntitySet, e.RemoteEntityName,
-			e.Countable, e.Creatable, e.Deletable, e.Updatable,
-		)})
+		doc = append(doc, bson.E{Key: "Source", Value: serializeODataRemoteEntitySource(e)})
 	}
 
 	return doc
@@ -741,10 +740,17 @@ func serializeMemberAccess(ma *domainmodel.MemberAccess) bson.D {
 }
 
 func serializeNoGeneralization(e *domainmodel.Entity) bson.D {
+	// Studio Pro stores external entities with Persistable=true (counter-intuitive
+	// but verified against reference projects). Setting Persistable=false on an
+	// external entity causes Studio Pro validation errors (CE6630).
+	persistable := e.Persistable
+	if e.Source == "Rest$ODataRemoteEntitySource" {
+		persistable = true
+	}
 	doc := bson.D{
 		{Key: "$ID", Value: idToBsonBinary(generateUUID())},
 		{Key: "$Type", Value: "DomainModels$NoGeneralization"},
-		{Key: "Persistable", Value: e.Persistable},
+		{Key: "Persistable", Value: persistable},
 	}
 	if e.HasOwner {
 		doc = append(doc, bson.E{Key: "HasOwner", Value: true})
@@ -788,21 +794,67 @@ func serializeOqlViewEntitySource(sourceObjectID model.ID, sourceDocumentRef, oq
 	return doc
 }
 
-func serializeODataRemoteEntitySource(serviceName, entitySet, remoteName string, countable, creatable, deletable, updatable bool) bson.D {
-	return bson.D{
+func serializeODataRemoteEntitySource(e *domainmodel.Entity) bson.D {
+	doc := bson.D{
 		{Key: "$ID", Value: idToBsonBinary(generateUUID())},
 		{Key: "$Type", Value: "Rest$ODataRemoteEntitySource"},
-		{Key: "SourceDocument", Value: serviceName},
-		{Key: "EntitySet", Value: entitySet},
-		{Key: "RemoteName", Value: remoteName},
-		{Key: "Countable", Value: countable},
-		{Key: "Creatable", Value: creatable},
-		{Key: "Deletable", Value: deletable},
-		{Key: "Updatable", Value: updatable},
+		{Key: "Countable", Value: e.Countable},
+		{Key: "Creatable", Value: e.Creatable},
+		{Key: "CreateChangeLocally", Value: e.CreateChangeLocally},
+		{Key: "Deletable", Value: e.Deletable},
+		{Key: "EntitySet", Value: e.RemoteEntitySet},
+	}
+
+	// Key with KeyParts (storageListType 2)
+	if len(e.RemoteKeyParts) > 0 {
+		parts := bson.A{int32(2)}
+		for _, kp := range e.RemoteKeyParts {
+			parts = append(parts, serializeODataKeyPart(kp))
+		}
+		key := bson.D{
+			{Key: "$ID", Value: idToBsonBinary(generateUUID())},
+			{Key: "$Type", Value: "Rest$ODataKey"},
+			{Key: "Parts", Value: parts},
+		}
+		doc = append(doc, bson.E{Key: "Key", Value: key})
+	}
+
+	doc = append(doc,
+		bson.E{Key: "RemoteName", Value: e.RemoteEntityName},
+		bson.E{Key: "SkipSupported", Value: e.SkipSupported},
+		bson.E{Key: "SourceDocument", Value: e.RemoteServiceName},
+		bson.E{Key: "TopSupported", Value: e.TopSupported},
+		bson.E{Key: "Updatable", Value: e.Updatable},
+	)
+	return doc
+}
+
+func serializeODataKeyPart(kp *domainmodel.RemoteKeyPart) bson.D {
+	// Build the type sub-document, similar to serializeAttribute's NewType
+	typeName := "DomainModels$StringAttributeType"
+	if kp.Type != nil {
+		typeName = "DomainModels$" + kp.Type.GetTypeName() + "AttributeType"
+	}
+	typeDoc := bson.D{
+		{Key: "$ID", Value: idToBsonBinary(generateUUID())},
+		{Key: "$Type", Value: typeName},
+	}
+	if t, ok := kp.Type.(*domainmodel.StringAttributeType); ok {
+		typeDoc = append(typeDoc, bson.E{Key: "Length", Value: t.Length})
+	}
+
+	return bson.D{
+		{Key: "$ID", Value: idToBsonBinary(generateUUID())},
+		{Key: "$Type", Value: "Rest$ODataKeyPart"},
+		{Key: "EntityKeyPartName", Value: kp.Name},
+		{Key: "Filterable", Value: true},
+		{Key: "Name", Value: kp.RemoteName},
+		{Key: "RemoteType", Value: kp.RemoteType},
+		{Key: "Type", Value: typeDoc},
 	}
 }
 
-func serializeAttribute(a *domainmodel.Attribute) bson.D {
+func serializeAttribute(a *domainmodel.Attribute, isExternalEntity bool) bson.D {
 	// Attribute type with its own ID - use bson.D for ordered fields
 	typeName := "DomainModels$StringAttributeType"
 	if a.Type != nil {
@@ -845,7 +897,7 @@ func serializeAttribute(a *domainmodel.Attribute) bson.D {
 		}
 	}
 
-	// Determine value type: OqlViewValue, CalculatedValue, or StoredValue
+	// Determine value type: OqlViewValue, CalculatedValue, ODataMappedValue, or StoredValue
 	var valueDoc bson.D
 	valueID := ""
 	if a.Value != nil && a.Value.ID != "" {
@@ -869,6 +921,24 @@ func serializeAttribute(a *domainmodel.Attribute) bson.D {
 			{Key: "$Type", Value: "DomainModels$CalculatedValue"},
 			{Key: "Microflow", Value: microflowRef},
 			{Key: "PassEntity", Value: microflowRef != ""},
+		}
+	} else if isExternalEntity && a.RemoteName != "" {
+		// External entity attribute backed by an OData property - use ODataMappedValue
+		defaultValue := ""
+		if a.Value != nil && a.Value.DefaultValue != "" {
+			defaultValue = a.Value.DefaultValue
+		}
+		valueDoc = bson.D{
+			{Key: "$ID", Value: idToBsonBinary(valueID)},
+			{Key: "$Type", Value: "Rest$ODataMappedValue"},
+			{Key: "Creatable", Value: a.Creatable},
+			{Key: "DefaultValueDesignTime", Value: defaultValue},
+			{Key: "Filterable", Value: a.Filterable},
+			{Key: "RemoteName", Value: a.RemoteName},
+			{Key: "RemoteType", Value: a.RemoteType},
+			{Key: "RepresentsStream", Value: false},
+			{Key: "Sortable", Value: a.Sortable},
+			{Key: "Updatable", Value: a.Updatable},
 		}
 	} else {
 		// Regular entity attribute - use StoredValue

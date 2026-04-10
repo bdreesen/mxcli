@@ -954,6 +954,11 @@ func (e *Executor) createODataClient(stmt *ast.CreateODataClientStmt) error {
 		containerID = folderID
 	}
 
+	timeout := stmt.TimeoutExpression
+	if timeout == "" {
+		timeout = "300" // Mendix requires a non-empty Timeout (CE6893)
+	}
+
 	newSvc := &model.ConsumedODataService{
 		ContainerID:            containerID,
 		Name:                   stmt.Name.Name,
@@ -962,7 +967,7 @@ func (e *Executor) createODataClient(stmt *ast.CreateODataClientStmt) error {
 		Version:                stmt.Version,
 		ODataVersion:           stmt.ODataVersion,
 		MetadataUrl:            stmt.MetadataUrl,
-		TimeoutExpression:      stmt.TimeoutExpression,
+		TimeoutExpression:      timeout,
 		ProxyType:              stmt.ProxyType,
 		Description:            stmt.Description,
 		ConfigurationMicroflow: extractMicroflowRef(stmt.ConfigurationMicroflow),

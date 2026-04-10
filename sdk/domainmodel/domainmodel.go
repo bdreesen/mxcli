@@ -91,13 +91,26 @@ type Entity struct {
 	GeneralizationRef string `json:"generalizationRef,omitempty"`
 
 	// OData remote entity source fields (for external entities)
-	RemoteServiceName string `json:"remoteServiceName,omitempty"` // Qualified name of consumed OData service
-	RemoteEntitySet   string `json:"remoteEntitySet,omitempty"`   // Entity set name
-	RemoteEntityName  string `json:"remoteEntityName,omitempty"`  // Remote type name
-	Countable         bool   `json:"countable,omitempty"`
-	Creatable         bool   `json:"creatable,omitempty"`
-	Deletable         bool   `json:"deletable,omitempty"`
-	Updatable         bool   `json:"updatable,omitempty"`
+	RemoteServiceName   string             `json:"remoteServiceName,omitempty"` // Qualified name of consumed OData service
+	RemoteEntitySet     string             `json:"remoteEntitySet,omitempty"`   // Entity set name
+	RemoteEntityName    string             `json:"remoteEntityName,omitempty"`  // Remote type name
+	Countable           bool               `json:"countable,omitempty"`
+	Creatable           bool               `json:"creatable,omitempty"`
+	Deletable           bool               `json:"deletable,omitempty"`
+	Updatable           bool               `json:"updatable,omitempty"`
+	SkipSupported       bool               `json:"skipSupported,omitempty"`
+	TopSupported        bool               `json:"topSupported,omitempty"`
+	CreateChangeLocally bool               `json:"createChangeLocally,omitempty"`
+	RemoteKeyParts      []*RemoteKeyPart   `json:"remoteKeyParts,omitempty"` // OData key properties
+}
+
+// RemoteKeyPart describes one key property of an external entity, used to
+// generate the Rest$ODataKey block in BSON output.
+type RemoteKeyPart struct {
+	Name       string // Mendix attribute name
+	RemoteName string // OData property name (often same as Name)
+	RemoteType string // OData EDM type, e.g. "Edm.String"
+	Type       AttributeType
 }
 
 // GetName returns the entity's name.
@@ -154,6 +167,16 @@ type Attribute struct {
 	Documentation string          `json:"documentation,omitempty"`
 	Type          AttributeType   `json:"type"`
 	Value         *AttributeValue `json:"value,omitempty"`
+
+	// External entity attribute fields (for OData remote entities).
+	// When RemoteName is set on an attribute of an external entity, the writer
+	// emits a Rest$ODataMappedValue instead of DomainModels$StoredValue.
+	RemoteName string `json:"remoteName,omitempty"` // OData property name
+	RemoteType string `json:"remoteType,omitempty"` // OData EDM type, e.g. "Edm.String"
+	Filterable bool   `json:"filterable,omitempty"`
+	Sortable   bool   `json:"sortable,omitempty"`
+	Creatable  bool   `json:"creatable,omitempty"`
+	Updatable  bool   `json:"updatable,omitempty"`
 }
 
 // GetName returns the attribute's name.

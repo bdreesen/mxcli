@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	"github.com/mendixlabs/mxcli/model"
+	"github.com/mendixlabs/mxcli/sdk/domainmodel"
 	"github.com/mendixlabs/mxcli/sdk/mpr"
 )
 
@@ -431,8 +433,17 @@ func edmToMendixType(p *mpr.EdmProperty) string {
 // CREATE EXTERNAL ENTITIES (bulk)
 // ============================================================================
 
+// reservedEntityAttrNames are Mendix-reserved attribute names that must be
+// renamed when imported from an OData property of the same name.
+var reservedEntityAttrNames = map[string]bool{
+	"id":   true,
+	"name": true,
+}
+
 // createExternalEntities handles CREATE [OR MODIFY] EXTERNAL ENTITIES FROM Module.Service [INTO Module] [ENTITIES (...)].
-// It reads entity types from the cached $metadata and creates external entities in the domain model.
+// It reads entity types from the cached $metadata and creates external entities in the domain model,
+// populating Source, Key, and per-attribute RemoteName/RemoteType fields so the resulting BSON matches
+// what Studio Pro produces.
 func (e *Executor) createExternalEntities(s *ast.CreateExternalEntitiesStmt) error {
 	if e.writer == nil {
 		return fmt.Errorf("not connected to a project in write mode")
@@ -461,67 +472,219 @@ func (e *Executor) createExternalEntities(s *ast.CreateExternalEntitiesStmt) err
 		targetModule = s.ServiceRef.Module
 	}
 
-	var created, skipped, failed int
+	module, err := e.findModule(targetModule)
+	if err != nil {
+		return err
+	}
+	dm, err := e.reader.GetDomainModel(module.ID)
+	if err != nil {
+		return fmt.Errorf("failed to get domain model: %w", err)
+	}
+
+	// Index existing entities by name for upsert
+	existing := make(map[string]*domainmodel.Entity)
+	for _, ent := range dm.Entities {
+		existing[ent.Name] = ent
+	}
+
+	serviceRef := s.ServiceRef.String()
+	var created, updated, skipped, failed int
 
 	for _, schema := range doc.Schemas {
 		for _, et := range schema.EntityTypes {
-			// Apply entity name filter
-			if len(filterSet) > 0 && !filterSet[strings.ToLower(et.Name)] {
+			// Apply entity name filter (matched against entity set name when available)
+			entitySetName := esMap[schema.Namespace+"."+et.Name]
+
+			// Skip abstract types (no entity set) — Studio Pro creates them but
+			// points them at a parent's entity set; we don't yet handle this.
+			if entitySetName == "" {
+				if len(filterSet) > 0 {
+					// Only skip silently if the user didn't ask for it
+					if !filterSet[strings.ToLower(et.Name)] {
+						continue
+					}
+				}
+				fmt.Fprintf(e.output, "  SKIPPED: %s (no entity set; abstract or derived type)\n", et.Name)
+				skipped++
 				continue
 			}
 
-			entitySetName := esMap[schema.Namespace+"."+et.Name]
-			if entitySetName == "" {
-				entitySetName = et.Name + "s" // fallback
+			// The Mendix entity name should be the entity set name (e.g. "People"),
+			// not the entity type name ("Person").
+			mendixName := entitySetName
+
+			if len(filterSet) > 0 && !filterSet[strings.ToLower(et.Name)] && !filterSet[strings.ToLower(entitySetName)] {
+				continue
 			}
 
-			// Build attributes from properties
-			var attrs []ast.Attribute
-			for _, p := range et.Properties {
-				// Skip key properties named ID (Mendix manages its own ID)
-				isKey := false
-				for _, k := range et.KeyProperties {
-					if p.Name == k {
-						isKey = true
+			// keyPropSet helps both for building Source.Key and for forcing key
+			// string attributes to have a non-zero length (CE6121).
+			keyPropSet := make(map[string]bool)
+			for _, k := range et.KeyProperties {
+				keyPropSet[k] = true
+			}
+
+			// Build key parts (used both for Source.Key and to skip emitting key
+			// properties as plain attributes when they would collide with reserved names)
+			var keyParts []*domainmodel.RemoteKeyPart
+			for _, keyName := range et.KeyProperties {
+				var keyProp *mpr.EdmProperty
+				for _, p := range et.Properties {
+					if p.Name == keyName {
+						keyProp = p
 						break
 					}
 				}
-				if isKey && p.Name == "ID" {
+				if keyProp == nil {
 					continue
 				}
-
-				attrs = append(attrs, ast.Attribute{
-					Name: p.Name,
-					Type: edmToAstDataType(p),
+				keyParts = append(keyParts, &domainmodel.RemoteKeyPart{
+					Name:       attrNameForOData(keyName, et.Name),
+					RemoteName: keyName,
+					RemoteType: keyProp.Type,
+					Type:       edmToDomainModelAttrType(keyProp, true),
 				})
 			}
 
-			stmt := &ast.CreateExternalEntityStmt{
-				Name:           ast.QualifiedName{Module: targetModule, Name: et.Name},
-				ServiceRef:     s.ServiceRef,
-				EntitySet:      entitySetName,
-				RemoteName:     et.Name,
-				Countable:      true,
-				Attributes:     attrs,
-				CreateOrModify: s.CreateOrModify,
+			// Build attributes from properties
+			var attrs []*domainmodel.Attribute
+			for _, p := range et.Properties {
+				// Drop collection-of-primitive (e.g. Collection(Edm.String)) — Studio Pro
+				// stores these via separate primitive collection entities; we skip for now.
+				if strings.HasPrefix(p.Type, "Collection(") {
+					continue
+				}
+
+				// Drop non-Edm types (complex types, entity refs) — they need to be
+				// modelled as separate non-persistent entities or external entities,
+				// which we don't yet handle. Studio Pro skips them or creates NPEs.
+				if !strings.HasPrefix(p.Type, "Edm.") {
+					continue
+				}
+
+				attrName := attrNameForOData(p.Name, et.Name)
+				attr := &domainmodel.Attribute{
+					Name:       attrName,
+					Type:       edmToDomainModelAttrType(p, keyPropSet[p.Name]),
+					RemoteName: p.Name,
+					RemoteType: p.Type,
+					Filterable: true,
+					Sortable:   true,
+					// TODO: parse Org.OData.Capabilities.V1 annotations from $metadata
+					// to derive these per-attribute. For now, defaults assume
+					// create-on-insert but no in-place update.
+					Creatable: true,
+					Updatable: false,
+				}
+				attr.ID = model.ID(mpr.GenerateID())
+				attrs = append(attrs, attr)
 			}
 
-			if err := e.execCreateExternalEntity(stmt); err != nil {
-				fmt.Fprintf(e.output, "  FAILED: %s.%s — %v\n", targetModule, et.Name, err)
-				failed++
-			} else {
-				created++
+			if existingEntity, ok := existing[mendixName]; ok {
+				if !s.CreateOrModify {
+					fmt.Fprintf(e.output, "  SKIPPED: %s.%s (already exists; use CREATE OR MODIFY to update)\n", targetModule, mendixName)
+					skipped++
+					continue
+				}
+				existingEntity.Source = "Rest$ODataRemoteEntitySource"
+				existingEntity.RemoteServiceName = serviceRef
+				existingEntity.RemoteEntitySet = entitySetName
+				existingEntity.RemoteEntityName = et.Name
+				existingEntity.Countable = true
+				existingEntity.Creatable = true
+				existingEntity.Deletable = false
+				existingEntity.Updatable = false
+				existingEntity.SkipSupported = true
+				existingEntity.TopSupported = true
+				existingEntity.CreateChangeLocally = false
+				existingEntity.RemoteKeyParts = keyParts
+				existingEntity.Attributes = attrs
+				if err := e.writer.UpdateEntity(dm.ID, existingEntity); err != nil {
+					fmt.Fprintf(e.output, "  FAILED: %s.%s — %v\n", targetModule, mendixName, err)
+					failed++
+					continue
+				}
+				updated++
+				continue
 			}
+
+			location := model.Point{X: 100 + (created+updated)*150, Y: 100}
+			newEntity := &domainmodel.Entity{
+				Name:                mendixName,
+				Persistable:         true, // Studio Pro stores external entities as persistable
+				Location:            location,
+				Attributes:          attrs,
+				Source:              "Rest$ODataRemoteEntitySource",
+				RemoteServiceName:   serviceRef,
+				RemoteEntitySet:     entitySetName,
+				RemoteEntityName:    et.Name,
+				Countable:           true,
+				Creatable:           true, // TODO: parse Capabilities annotations
+				Deletable:           false,
+				Updatable:           false,
+				SkipSupported:       true,
+				TopSupported:        true,
+				CreateChangeLocally: false,
+				RemoteKeyParts:      keyParts,
+			}
+			newEntity.ID = model.ID(mpr.GenerateID())
+			if err := e.writer.CreateEntity(dm.ID, newEntity); err != nil {
+				fmt.Fprintf(e.output, "  FAILED: %s.%s — %v\n", targetModule, mendixName, err)
+				failed++
+				continue
+			}
+			created++
 		}
 	}
 
-	if skipped > 0 || failed > 0 {
-		fmt.Fprintf(e.output, "\nImported %d entities from %s (%d failed)\n", created, svcQN, failed)
-	} else {
-		fmt.Fprintf(e.output, "\nImported %d entities from %s into %s\n", created, svcQN, targetModule)
-	}
+	fmt.Fprintf(e.output, "\nFrom %s into %s: %d created, %d updated, %d skipped, %d failed\n",
+		svcQN, targetModule, created, updated, skipped, failed)
 
 	return nil
+}
+
+// attrNameForOData returns a Mendix-safe attribute name for an OData property.
+// Reserved names like Id and Name collide with Mendix's built-in entity members,
+// so they get prefixed with the entity name (e.g. "Id" → "PhotoId").
+func attrNameForOData(propName, entityName string) string {
+	if reservedEntityAttrNames[strings.ToLower(propName)] {
+		return entityName + propName
+	}
+	return propName
+}
+
+// edmToDomainModelAttrType converts an EDM property to a domainmodel attribute type.
+// isKey forces a non-zero length for string keys: Mendix forbids unlimited
+// strings as part of an external entity key (CE6121).
+func edmToDomainModelAttrType(p *mpr.EdmProperty, isKey bool) domainmodel.AttributeType {
+	switch p.Type {
+	case "Edm.String":
+		// Studio Pro stores Length=0 (unlimited) for OData strings without MaxLength.
+		length := 0
+		if p.MaxLength != "" && p.MaxLength != "max" {
+			fmt.Sscanf(p.MaxLength, "%d", &length)
+		}
+		if isKey && length == 0 {
+			length = 100 // Mendix requires bounded length for key attributes
+		}
+		return &domainmodel.StringAttributeType{Length: length}
+	case "Edm.Int32", "Edm.Int16", "Edm.Byte", "Edm.SByte":
+		return &domainmodel.IntegerAttributeType{}
+	case "Edm.Int64":
+		return &domainmodel.LongAttributeType{}
+	case "Edm.Decimal", "Edm.Double", "Edm.Single":
+		return &domainmodel.DecimalAttributeType{}
+	case "Edm.Boolean":
+		return &domainmodel.BooleanAttributeType{}
+	case "Edm.DateTime", "Edm.DateTimeOffset", "Edm.Date":
+		return &domainmodel.DateTimeAttributeType{}
+	case "Edm.Guid":
+		return &domainmodel.StringAttributeType{Length: 36}
+	case "Edm.Binary":
+		return &domainmodel.BinaryAttributeType{}
+	default:
+		return &domainmodel.StringAttributeType{Length: 0}
+	}
 }
 
 // edmToAstDataType converts an Edm property to an AST data type.

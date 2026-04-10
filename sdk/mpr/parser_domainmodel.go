@@ -127,6 +127,30 @@ func parseEntity(raw map[string]any) *domainmodel.Entity {
 			entity.Creatable = extractBool(source["Creatable"], false)
 			entity.Deletable = extractBool(source["Deletable"], false)
 			entity.Updatable = extractBool(source["Updatable"], false)
+			entity.SkipSupported = extractBool(source["SkipSupported"], false)
+			entity.TopSupported = extractBool(source["TopSupported"], false)
+			entity.CreateChangeLocally = extractBool(source["CreateChangeLocally"], false)
+
+			// Parse Key with KeyParts
+			if keyMap, ok := source["Key"].(map[string]any); ok {
+				if partsArr := extractBsonArray(keyMap["Parts"]); len(partsArr) > 0 {
+					for _, p := range partsArr {
+						pMap, ok := p.(map[string]any)
+						if !ok {
+							continue
+						}
+						kp := &domainmodel.RemoteKeyPart{
+							Name:       extractString(pMap["EntityKeyPartName"]),
+							RemoteName: extractString(pMap["Name"]),
+							RemoteType: extractString(pMap["RemoteType"]),
+						}
+						if typeMap, ok := pMap["Type"].(map[string]any); ok {
+							kp.Type = parseAttributeType(typeMap)
+						}
+						entity.RemoteKeyParts = append(entity.RemoteKeyParts, kp)
+					}
+				}
+			}
 		}
 	}
 
@@ -232,6 +256,17 @@ func parseAttribute(raw map[string]any) *domainmodel.Attribute {
 	// Parse default value
 	if val, ok := raw["Value"].(map[string]any); ok {
 		attr.Value = parseAttributeValue(val)
+
+		// For external entities, the Value is a Rest$ODataMappedValue that
+		// carries the OData property name, type, and capability flags.
+		if extractString(val["$Type"]) == "Rest$ODataMappedValue" {
+			attr.RemoteName = extractString(val["RemoteName"])
+			attr.RemoteType = extractString(val["RemoteType"])
+			attr.Filterable = extractBool(val["Filterable"], false)
+			attr.Sortable = extractBool(val["Sortable"], false)
+			attr.Creatable = extractBool(val["Creatable"], false)
+			attr.Updatable = extractBool(val["Updatable"], false)
+		}
 	}
 
 	return attr
@@ -262,6 +297,13 @@ func parseAttributeValue(raw map[string]any) *domainmodel.AttributeValue {
 		val := &domainmodel.AttributeValue{
 			Type:          "OqlViewValue",
 			ViewReference: extractString(raw["Reference"]),
+		}
+		val.ID = valueID
+		return val
+	case "Rest$ODataMappedValue":
+		val := &domainmodel.AttributeValue{
+			Type:         "ODataMappedValue",
+			DefaultValue: extractString(raw["DefaultValueDesignTime"]),
 		}
 		val.ID = valueID
 		return val
