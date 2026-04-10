@@ -455,20 +455,22 @@ CREATE PUBLISHED REST SERVICE Module.MyAPI (
 )
 {
   RESOURCE 'orders' {
-    GET '/' MICROFLOW Module.GetAllOrders;
-    GET '/{id}' MICROFLOW Module.GetOrderById;
-    POST '/' MICROFLOW Module.CreateOrder;
-    PUT '/{id}' MICROFLOW Module.UpdateOrder;
-    DELETE '/{id}' MICROFLOW Module.DeleteOrder;
+    GET '' MICROFLOW Module.GetAllOrders;
+    GET '{id}' MICROFLOW Module.GetOrderById;
+    POST '' MICROFLOW Module.CreateOrder;
+    PUT '{id}' MICROFLOW Module.UpdateOrder;
+    DELETE '{id}' MICROFLOW Module.DeleteOrder;
   }
   RESOURCE 'customers' {
-    GET '/' MICROFLOW Module.GetAllCustomers;
+    GET '' MICROFLOW Module.GetAllCustomers;
   }
 };
 ```
 
 **Properties:** `Path` (required), `Version`, `ServiceName`, `Folder`
 **HTTP methods:** `GET`, `POST`, `PUT`, `DELETE`, `PATCH`
+**Operation paths:** Empty string `''` for the root, `'{paramName}'` for path parameters. Do NOT start or end with `/`.
+**Path parameters:** Must match a microflow parameter exactly (case-sensitive). E.g., `'{id}'` requires the microflow to have parameter `$id`.
 **Operation modifiers:** `DEPRECATED`, `IMPORT MAPPING Module.Name`, `EXPORT MAPPING Module.Name`, `COMMIT Yes|No`
 
 ## JSON Structures

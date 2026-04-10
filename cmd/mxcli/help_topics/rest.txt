@@ -25,10 +25,10 @@ CREATE / DROP PUBLISHED REST SERVICE
   )
   {
     RESOURCE 'orders' {
-      GET '/' MICROFLOW Module.GetAllOrders;
-      GET '/{id}' MICROFLOW Module.GetOrderById;
-      POST '/' MICROFLOW Module.CreateOrder;
-      DELETE '/{id}' MICROFLOW Module.DeleteOrder;
+      GET '' MICROFLOW Module.GetAllOrders;
+      GET '{id}' MICROFLOW Module.GetOrderById;
+      POST '' MICROFLOW Module.CreateOrder;
+      DELETE '{id}' MICROFLOW Module.DeleteOrder;
     }
   };
 
@@ -38,6 +38,9 @@ CREATE / DROP PUBLISHED REST SERVICE
   Properties: Path (required), Version, ServiceName, Folder
   HTTP methods: GET, POST, PUT, DELETE, PATCH
   Modifiers: DEPRECATED, IMPORT MAPPING, EXPORT MAPPING, COMMIT
+  Operation paths: empty '' for root, '{name}' for path params.
+                   Do NOT start/end with /.
+                   Path param '{id}' requires microflow parameter $id (case-sensitive).
 
 JSON STRUCTURES & MAPPINGS
 --------------------------

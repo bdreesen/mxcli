@@ -192,14 +192,16 @@ CREATE PUBLISHED REST SERVICE Module.OrderAPI (
 )
 {
   RESOURCE 'orders' {
-    GET '/' MICROFLOW Module.PRS_GetAllOrders;
-    GET '/{id}' MICROFLOW Module.PRS_GetOrderById;
-    POST '/' MICROFLOW Module.PRS_CreateOrder;
-    PUT '/{id}' MICROFLOW Module.PRS_UpdateOrder;
-    DELETE '/{id}' MICROFLOW Module.PRS_DeleteOrder;
+    GET '' MICROFLOW Module.PRS_GetAllOrders;
+    GET '{id}' MICROFLOW Module.PRS_GetOrderById;
+    POST '' MICROFLOW Module.PRS_CreateOrder;
+    PUT '{id}' MICROFLOW Module.PRS_UpdateOrder;
+    DELETE '{id}' MICROFLOW Module.PRS_DeleteOrder;
   }
 };
 ```
+
+**Operation paths:** Use empty string `''` for the root, `'{paramName}'` for path parameters. Do NOT start or end with `/`. Path parameters must match a microflow parameter name exactly (case-sensitive) — e.g., `'{id}'` requires the microflow to declare `$id: String`.
 
 ### Multiple Resources
 
@@ -211,13 +213,13 @@ CREATE PUBLISHED REST SERVICE Module.CrmAPI (
 )
 {
   RESOURCE 'orders' {
-    GET '/' MICROFLOW Module.PRS_GetOrders;
+    GET '' MICROFLOW Module.PRS_GetOrders;
   }
   RESOURCE 'customers' {
-    GET '/' MICROFLOW Module.PRS_GetCustomers;
+    GET '' MICROFLOW Module.PRS_GetCustomers;
   }
   RESOURCE 'orders/{orderId}/items' {
-    GET '/' MICROFLOW Module.PRS_GetOrderItems;
+    GET '' MICROFLOW Module.PRS_GetOrderItems;
   }
 };
 ```

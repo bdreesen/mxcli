@@ -66,10 +66,10 @@ CREATE PUBLISHED REST SERVICE PrsTest.OrderAPI (
 )
 {
   RESOURCE 'orders' {
-    GET '/' MICROFLOW PrsTest.PRS_GetAllOrders;
-    GET '/{id}' MICROFLOW PrsTest.PRS_GetOrderById;
-    POST '/' MICROFLOW PrsTest.PRS_CreateOrder;
-    DELETE '/{id}' MICROFLOW PrsTest.PRS_DeleteOrder;
+    GET '' MICROFLOW PrsTest.PRS_GetAllOrders;
+    GET '{id}' MICROFLOW PrsTest.PRS_GetOrderById;
+    POST '' MICROFLOW PrsTest.PRS_CreateOrder;
+    DELETE '{id}' MICROFLOW PrsTest.PRS_DeleteOrder;
   }
 };
 
@@ -86,10 +86,10 @@ CREATE PUBLISHED REST SERVICE PrsTest.CrmAPI (
 )
 {
   RESOURCE 'orders' {
-    GET '/' MICROFLOW PrsTest.PRS_GetAllOrders;
+    GET '' MICROFLOW PrsTest.PRS_GetAllOrders;
   }
   RESOURCE 'customers' {
-    GET '/' MICROFLOW PrsTest.PRS_GetCustomers;
+    GET '' MICROFLOW PrsTest.PRS_GetCustomers;
   }
 };
 
@@ -106,11 +106,11 @@ CREATE OR REPLACE PUBLISHED REST SERVICE PrsTest.CrmAPI (
 )
 {
   RESOURCE 'orders' {
-    GET '/' MICROFLOW PrsTest.PRS_GetAllOrders;
-    GET '/{id}' MICROFLOW PrsTest.PRS_GetOrderById;
+    GET '' MICROFLOW PrsTest.PRS_GetAllOrders;
+    GET '{id}' MICROFLOW PrsTest.PRS_GetOrderById;
   }
   RESOURCE 'customers' {
-    GET '/' MICROFLOW PrsTest.PRS_GetCustomers;
+    GET '' MICROFLOW PrsTest.PRS_GetCustomers;
   }
 };
 
