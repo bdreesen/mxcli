@@ -313,36 +313,7 @@ func (e *Executor) showAccessOnPage(name *ast.QualifiedName) error {
 
 // showAccessOnWorkflow handles SHOW ACCESS ON WORKFLOW Module.WF.
 func (e *Executor) showAccessOnWorkflow(name *ast.QualifiedName) error {
-	if name == nil {
-		return fmt.Errorf("workflow name required")
-	}
-
-	h, err := e.getHierarchy()
-	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
-	}
-
-	wfs, err := e.reader.ListWorkflows()
-	if err != nil {
-		return fmt.Errorf("failed to list workflows: %w", err)
-	}
-
-	for _, wf := range wfs {
-		modName := h.GetModuleName(h.FindModuleID(wf.ContainerID))
-		if modName == name.Module && wf.Name == name.Name {
-			if len(wf.AllowedModuleRoles) == 0 {
-				fmt.Fprintf(e.output, "No module roles granted execute access on %s.%s\n", modName, wf.Name)
-				return nil
-			}
-			fmt.Fprintf(e.output, "Allowed module roles for %s.%s:\n", modName, wf.Name)
-			for _, role := range wf.AllowedModuleRoles {
-				fmt.Fprintf(e.output, "  %s\n", string(role))
-			}
-			return nil
-		}
-	}
-
-	return fmt.Errorf("workflow not found: %s", name)
+	return fmt.Errorf("SHOW ACCESS ON WORKFLOW is not supported: Mendix workflows do not have document-level AllowedModuleRoles (unlike microflows and pages). Workflow access is controlled through the microflow that triggers the workflow and UserTask targeting")
 }
 
 // showSecurityMatrix handles SHOW SECURITY MATRIX [IN module].
@@ -536,35 +507,10 @@ func (e *Executor) showSecurityMatrix(moduleName string) error {
 	}
 	fmt.Fprintln(e.output)
 
-	// Workflow section
+	// Workflow section — workflows don't have document-level AllowedModuleRoles
 	fmt.Fprintln(e.output, "## Workflow Access")
 	fmt.Fprintln(e.output)
-
-	wfs, err := e.reader.ListWorkflows()
-	if err != nil {
-		return fmt.Errorf("failed to list workflows: %w", err)
-	}
-
-	wfFound := false
-	for _, wf := range wfs {
-		if len(wf.AllowedModuleRoles) == 0 {
-			continue
-		}
-		modID := h.FindModuleID(wf.ContainerID)
-		modName := h.GetModuleName(modID)
-		if moduleName != "" && modName != moduleName {
-			continue
-		}
-		wfFound = true
-		var roleStrs []string
-		for _, r := range wf.AllowedModuleRoles {
-			roleStrs = append(roleStrs, string(r))
-		}
-		fmt.Fprintf(e.output, "  %s.%s: %s\n", modName, wf.Name, strings.Join(roleStrs, ", "))
-	}
-	if !wfFound {
-		fmt.Fprintln(e.output, "(no workflow access rules configured)")
-	}
+	fmt.Fprintln(e.output, "(workflow access is controlled through triggering microflows and UserTask targeting, not document-level roles)")
 	fmt.Fprintln(e.output)
 
 	return nil
@@ -683,28 +629,6 @@ func (e *Executor) showSecurityMatrixJSON(moduleName string) error {
 		})
 	}
 
-	// Workflows
-	wfs, _ := e.reader.ListWorkflows()
-	for _, wf := range wfs {
-		if len(wf.AllowedModuleRoles) == 0 {
-			continue
-		}
-		modID := h.FindModuleID(wf.ContainerID)
-		modName := h.GetModuleName(modID)
-		if moduleName != "" && modName != moduleName {
-			continue
-		}
-		var roleStrs []string
-		for _, r := range wf.AllowedModuleRoles {
-			roleStrs = append(roleStrs, string(r))
-		}
-		tr.Rows = append(tr.Rows, []any{
-			"Workflow",
-			modName + "." + wf.Name,
-			strings.Join(roleStrs, ", "),
-			"X",
-		})
-	}
 
 	return e.writeResult(tr)
 }

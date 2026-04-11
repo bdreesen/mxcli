@@ -204,7 +204,7 @@ Document types that exist in Mendix but have no MDL support:
 | **JSON transformations** | Y | Y | Y | Y | Y | N | 20 | Y | N | N | P | N | N | N | N | N | N | JSON structure definitions |
 | **Message definitions** | N | N | N | N | N | N | N | N | N | N | N | N | N | N | N | N | N | Message definition documents |
 | **XML schemas** | N | N | N | N | N | N | N | N | N | N | N | N | N | N | N | N | N | Imported XML schema documents |
-| **Workflows** | Y | Y | Y | N | Y | N | N | N | Y | Y | N | N | Y | N | Y | Y | N | SHOW/DESCRIBE/CREATE/DROP/GRANT/REVOKE implemented |
+| **Workflows** | Y | Y | Y | N | Y | N | N | N | Y | Y | N | N | Y | N | N | N | N | SHOW/DESCRIBE/CREATE/DROP implemented; GRANT/REVOKE removed (workflows lack AllowedModuleRoles) |
 | **Module settings** | N | N | N | N | N | N | N | N | N | N | N | N | N | N | N | N | N | Module-level configuration |
 | **Image collection** | N | N | N | N | N | N | N | N | N | N | N | N | N | N | N | N | N | Image document collections |
 | **Icon collection** | N | N | N | N | N | N | N | N | N | N | N | N | N | N | N | N | N | Icon/glyph collections |

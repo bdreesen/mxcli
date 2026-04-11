@@ -232,8 +232,6 @@ Nested folders use `/` separator: `'Parent/Child/Grandchild'`. Missing folders a
 | Describe workflow | `DESCRIBE WORKFLOW Module.Name;` | Full MDL output |
 | Create workflow | `CREATE [OR MODIFY] WORKFLOW Module.Name PARAMETER $Ctx: Module.Entity BEGIN ... END WORKFLOW;` | See activity types below |
 | Drop workflow | `DROP WORKFLOW Module.Name;` | |
-| Grant workflow access | `GRANT EXECUTE ON WORKFLOW Module.Name TO Mod.Role, ...;` | |
-| Revoke workflow access | `REVOKE EXECUTE ON WORKFLOW Module.Name FROM Mod.Role, ...;` | |
 
 **Workflow Activity Types:**
 - `USER TASK <name> '<caption>' [PAGE Mod.Page] [TARGETING MICROFLOW Mod.MF] [OUTCOMES '<out>' { } ...];`

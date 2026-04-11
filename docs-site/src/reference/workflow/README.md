@@ -17,5 +17,3 @@ Mendix workflows model long-running business processes with user tasks, decision
 |-----------|--------|
 | Show workflows | `SHOW WORKFLOWS [IN module]` |
 | Describe workflow | `DESCRIBE WORKFLOW module.Name` |
-| Grant workflow access | `GRANT EXECUTE ON WORKFLOW module.Name TO module.Role, ...` |
-| Revoke workflow access | `REVOKE EXECUTE ON WORKFLOW module.Name FROM module.Role, ...` |

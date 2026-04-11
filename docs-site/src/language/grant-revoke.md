@@ -134,10 +134,7 @@ REVOKE EXECUTE ON NANOFLOW <Module>.<Name> FROM <Module>.<Role> [, ...];
 
 ## Workflow Access
 
-```sql
-GRANT EXECUTE ON WORKFLOW <Module>.<Name> TO <Module>.<Role> [, ...];
-REVOKE EXECUTE ON WORKFLOW <Module>.<Name> FROM <Module>.<Role> [, ...];
-```
+> **Not supported.** Mendix workflows do not have document-level `AllowedModuleRoles` (unlike microflows and pages). Workflow access is controlled through the microflow that triggers the workflow and UserTask targeting.
 
 ## OData Service Access
 
