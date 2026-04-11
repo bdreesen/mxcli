@@ -64,6 +64,17 @@ type EdmNavigationProperty struct {
 type EdmEntitySet struct {
 	Name       string
 	EntityType string // Qualified name of entity type
+
+	// Capabilities derived from Org.OData.Capabilities.V1 annotations.
+	// nil = not specified (treat as default true).
+	Insertable *bool // InsertRestrictions/Insertable
+	Updatable  *bool // UpdateRestrictions/Updatable
+	Deletable  *bool // DeleteRestrictions/Deletable
+
+	// Navigation property names listed under
+	// Org.OData.Capabilities.V1.{Insert,Update}Restrictions/Non*NavigationProperties.
+	NonInsertableNavigationProperties []string
+	NonUpdatableNavigationProperties  []string
 }
 
 // EdmAction represents an OData4 action or OData3 function import.
@@ -137,10 +148,12 @@ func ParseEdmx(metadataXML string) (*EdmxDocument, error) {
 			// Parse entity container
 			for _, ec := range s.EntityContainers {
 				for _, es := range ec.EntitySets {
-					doc.EntitySets = append(doc.EntitySets, &EdmEntitySet{
+					entitySet := &EdmEntitySet{
 						Name:       es.Name,
 						EntityType: es.EntityType,
-					})
+					}
+					applyCapabilityAnnotations(entitySet, es.Annotations)
+					doc.EntitySets = append(doc.EntitySets, entitySet)
 				}
 
 				// OData3 function imports
@@ -292,6 +305,54 @@ func parseXmlEntityType(et *xmlEntityType) *EdmEntityType {
 	return entityType
 }
 
+// applyCapabilityAnnotations reads Org.OData.Capabilities.V1.{Insert,Update,
+// Delete}Restrictions annotations on an entity set and stores the relevant
+// flags on the EdmEntitySet.
+func applyCapabilityAnnotations(es *EdmEntitySet, annotations []xmlCapabilitiesAnnotation) {
+	for _, ann := range annotations {
+		if ann.Record == nil {
+			continue
+		}
+		switch ann.Term {
+		case "Org.OData.Capabilities.V1.InsertRestrictions":
+			for _, pv := range ann.Record.PropertyValues {
+				switch pv.Property {
+				case "Insertable":
+					if pv.Bool != "" {
+						v := pv.Bool == "true"
+						es.Insertable = &v
+					}
+				case "NonInsertableNavigationProperties":
+					if pv.Collection != nil {
+						es.NonInsertableNavigationProperties = pv.Collection.NavigationPropertyPaths
+					}
+				}
+			}
+		case "Org.OData.Capabilities.V1.UpdateRestrictions":
+			for _, pv := range ann.Record.PropertyValues {
+				switch pv.Property {
+				case "Updatable":
+					if pv.Bool != "" {
+						v := pv.Bool == "true"
+						es.Updatable = &v
+					}
+				case "NonUpdatableNavigationProperties":
+					if pv.Collection != nil {
+						es.NonUpdatableNavigationProperties = pv.Collection.NavigationPropertyPaths
+					}
+				}
+			}
+		case "Org.OData.Capabilities.V1.DeleteRestrictions":
+			for _, pv := range ann.Record.PropertyValues {
+				if pv.Property == "Deletable" && pv.Bool != "" {
+					v := pv.Bool == "true"
+					es.Deletable = &v
+				}
+			}
+		}
+	}
+}
+
 // resolveNavType parses "Collection(Namespace.Type)" or "Namespace.Type" into the short type name.
 func resolveNavType(t string) (typeName string, isMany bool) {
 	if strings.HasPrefix(t, "Collection(") && strings.HasSuffix(t, ")") {
@@ -386,8 +447,33 @@ type xmlEntityContainer struct {
 }
 
 type xmlEntitySet struct {
-	Name       string `xml:"Name,attr"`
-	EntityType string `xml:"EntityType,attr"`
+	Name        string                      `xml:"Name,attr"`
+	EntityType  string                      `xml:"EntityType,attr"`
+	Annotations []xmlCapabilitiesAnnotation `xml:"Annotation"`
+}
+
+// xmlCapabilitiesAnnotation captures the bits of OData V1 Capabilities
+// annotations we care about. The wrapping <Record> contains
+// <PropertyValue Property="Insertable" Bool="..."/> and (sometimes)
+// <PropertyValue Property="NonInsertableNavigationProperties"><Collection>
+// <NavigationPropertyPath>Trips</NavigationPropertyPath></Collection></PropertyValue>.
+type xmlCapabilitiesAnnotation struct {
+	Term   string                  `xml:"Term,attr"`
+	Record *xmlCapabilitiesRecord `xml:"Record"`
+}
+
+type xmlCapabilitiesRecord struct {
+	PropertyValues []xmlCapabilitiesPropertyValue `xml:"PropertyValue"`
+}
+
+type xmlCapabilitiesPropertyValue struct {
+	Property               string                              `xml:"Property,attr"`
+	Bool                   string                              `xml:"Bool,attr"`
+	Collection             *xmlCapabilitiesCollection          `xml:"Collection"`
+}
+
+type xmlCapabilitiesCollection struct {
+	NavigationPropertyPaths []string `xml:"NavigationPropertyPath"`
 }
 
 type xmlFunctionImport struct {

@@ -456,8 +456,10 @@ func (e *Executor) createExternalEntities(s *ast.CreateExternalEntitiesStmt) err
 
 	// Build entity set lookup: entity type qualified name → entity set name
 	esMap := make(map[string]string)
+	esByType := make(map[string]*mpr.EdmEntitySet)
 	for _, es := range doc.EntitySets {
 		esMap[es.EntityType] = es.Name
+		esByType[es.EntityType] = es
 	}
 
 	// Build filter set if entity names specified
@@ -500,7 +502,11 @@ func (e *Executor) createExternalEntities(s *ast.CreateExternalEntitiesStmt) err
 
 	for _, schema := range doc.Schemas {
 		for _, et := range schema.EntityTypes {
-			entitySetName := esMap[schema.Namespace+"."+et.Name]
+			entitySet := esByType[schema.Namespace+"."+et.Name]
+			entitySetName := ""
+			if entitySet != nil {
+				entitySetName = entitySet.Name
+			}
 			isTopLevel := entitySetName != ""
 
 			// Mendix entity name: entity set name when present (e.g. "People"),
@@ -544,12 +550,20 @@ func (e *Executor) createExternalEntities(s *ast.CreateExternalEntitiesStmt) err
 				})
 			}
 
-			// Default Updatable depends on whether the parent will be a top-
-			// level entity-set entity or a derived/contained entity-type source.
-			// Top-level entities are typically read-only on writable attributes
-			// (matches People/Photos/Airlines in TripPin); contained types are
-			// updatable.
+			// Default Updatable for attributes follows the entity-set's
+			// UpdateRestrictions when available; otherwise falls back to true
+			// for non-top-level entities and false for top-level (matching
+			// TripPin's pattern where attributes are read-only on writable
+			// entity sets but mutable on contained types).
 			defaultUpdatable := !isTopLevel
+			if entitySet != nil && entitySet.Updatable != nil {
+				defaultUpdatable = *entitySet.Updatable
+			}
+			// Default Creatable for attributes follows InsertRestrictions.
+			defaultCreatable := true
+			if entitySet != nil && entitySet.Insertable != nil {
+				defaultCreatable = *entitySet.Insertable
+			}
 
 			// Build attributes from merged properties
 			var attrs []*domainmodel.Attribute
@@ -578,10 +592,8 @@ func (e *Executor) createExternalEntities(s *ast.CreateExternalEntitiesStmt) err
 					RemoteType: p.Type,
 					Filterable: true,
 					Sortable:   true,
-					// TODO: parse Org.OData.Capabilities.V1 annotations to set
-					// these per-attribute. Defaults match TripPin's pattern.
-					Creatable: true,
-					Updatable: defaultUpdatable,
+					Creatable:  defaultCreatable,
+					Updatable:  defaultUpdatable,
 				}
 				attr.ID = model.ID(mpr.GenerateID())
 				attrs = append(attrs, attr)
@@ -593,7 +605,7 @@ func (e *Executor) createExternalEntities(s *ast.CreateExternalEntitiesStmt) err
 					skipped++
 					continue
 				}
-				applyExternalEntityFields(existingEntity, et, isTopLevel, serviceRef, entitySetName, keyParts, attrs)
+				applyExternalEntityFields(existingEntity, et, isTopLevel, serviceRef, entitySet, keyParts, attrs)
 				if err := e.writer.UpdateEntity(dm.ID, existingEntity); err != nil {
 					fmt.Fprintf(e.output, "  FAILED: %s.%s — %v\n", targetModule, mendixName, err)
 					failed++
@@ -609,7 +621,7 @@ func (e *Executor) createExternalEntities(s *ast.CreateExternalEntitiesStmt) err
 				Location: location,
 			}
 			newEntity.ID = model.ID(mpr.GenerateID())
-			applyExternalEntityFields(newEntity, et, isTopLevel, serviceRef, entitySetName, keyParts, attrs)
+			applyExternalEntityFields(newEntity, et, isTopLevel, serviceRef, entitySet, keyParts, attrs)
 			if err := e.writer.CreateEntity(dm.ID, newEntity); err != nil {
 				fmt.Fprintf(e.output, "  FAILED: %s.%s — %v\n", targetModule, mendixName, err)
 				failed++
@@ -836,7 +848,10 @@ func singular(name string) string {
 // navigation properties from BaseType chains are walked too.
 //
 // Each association uses Rest$ODataRemoteAssociationSource so Studio Pro can
-// map it back to the OData navigation property.
+// map it back to the OData navigation property. Per-association
+// CreatableFromParent / UpdatableFromParent come from the entity set's
+// Org.OData.Capabilities.V1.{Insert,Update}Restrictions/Non*NavigationProperties
+// annotations.
 func (e *Executor) createNavigationAssociations(
 	dm *domainmodel.DomainModel,
 	doc *mpr.EdmxDocument,
@@ -844,6 +859,25 @@ func (e *Executor) createNavigationAssociations(
 	esMap map[string]string,
 	serviceRef string,
 ) int {
+	// Build per-entity-type lookup of nav property name → restricted flags.
+	type navRestrictions struct {
+		nonInsertable map[string]bool
+		nonUpdatable  map[string]bool
+	}
+	restrictionsByType := make(map[string]navRestrictions)
+	for _, es := range doc.EntitySets {
+		r := navRestrictions{
+			nonInsertable: make(map[string]bool),
+			nonUpdatable:  make(map[string]bool),
+		}
+		for _, name := range es.NonInsertableNavigationProperties {
+			r.nonInsertable[name] = true
+		}
+		for _, name := range es.NonUpdatableNavigationProperties {
+			r.nonUpdatable[name] = true
+		}
+		restrictionsByType[es.EntityType] = r
+	}
 	// Build a lookup from EDMX type qualified name → existing Mendix entity.
 	// An entity type matches by its EntitySet name when present, otherwise by
 	// its bare type name.
@@ -924,6 +958,22 @@ func (e *Executor) createNavigationAssociations(
 					assocType = domainmodel.AssociationTypeReferenceSet
 				}
 
+				// Apply per-association capability defaults. For top-level
+				// entities (entity-set source), Studio Pro defaults
+				// UpdatableFromParent=false because link updates happen via
+				// the foreign key on the entity, not by updating the nav
+				// property. For contained/derived types, both default to true.
+				creatable := true
+				updatable := !parentEnt.Persistable
+				if r, ok := restrictionsByType[parentQN]; ok {
+					if r.nonInsertable[np.Name] {
+						creatable = false
+					}
+					if r.nonUpdatable[np.Name] {
+						updatable = false
+					}
+				}
+
 				assoc := &domainmodel.Association{
 					Name:                           assocName,
 					ParentID:                       parentEnt.ID,
@@ -934,11 +984,8 @@ func (e *Executor) createNavigationAssociations(
 					Source:                         "Rest$ODataRemoteAssociationSource",
 					RemoteParentNavigationProperty: np.Name,
 					Navigability2:                  "ParentToChild",
-					// TODO: parse Org.OData.Capabilities.V1 annotations to
-					// derive these per-association. Defaults match TripPin's
-					// most common case.
-					CreatableFromParent: true,
-					UpdatableFromParent: true,
+					CreatableFromParent:            creatable,
+					UpdatableFromParent:            updatable,
 				}
 				assoc.ID = model.ID(mpr.GenerateID())
 
@@ -989,11 +1036,16 @@ func uniqueAssocName(base string, dm *domainmodel.DomainModel, existingAssocs ma
 //
 // Top-level entities (have an entity set) → Rest$ODataRemoteEntitySource.
 // Derived/abstract/contained types → Rest$ODataEntityTypeSource.
+//
+// When entitySet is non-nil, its parsed capability annotations
+// (InsertRestrictions/UpdateRestrictions/DeleteRestrictions) override the
+// optimistic defaults.
 func applyExternalEntityFields(
 	ent *domainmodel.Entity,
 	et *mpr.EdmEntityType,
 	isTopLevel bool,
-	serviceRef, entitySetName string,
+	serviceRef string,
+	entitySet *mpr.EdmEntitySet,
 	keyParts []*domainmodel.RemoteKeyPart,
 	attrs []*domainmodel.Attribute,
 ) {
@@ -1005,11 +1057,16 @@ func applyExternalEntityFields(
 	if isTopLevel {
 		ent.Source = "Rest$ODataRemoteEntitySource"
 		ent.Persistable = true
-		ent.RemoteEntitySet = entitySetName
+		ent.RemoteEntitySet = entitySet.Name
 		ent.Countable = true
-		ent.Creatable = true // TODO: parse Capabilities annotations per-entity
-		ent.Deletable = false
-		ent.Updatable = false
+		// Capabilities default to true unless the entity set's annotations
+		// say otherwise.
+		ent.Creatable = entitySet.Insertable == nil || *entitySet.Insertable
+		ent.Updatable = entitySet.Updatable == nil || *entitySet.Updatable
+		// Deletable defaults to false in TripPin and most read-mostly OData
+		// services, so default to the annotation value when present and to
+		// false otherwise.
+		ent.Deletable = entitySet.Deletable != nil && *entitySet.Deletable
 		ent.SkipSupported = true
 		ent.TopSupported = true
 		ent.CreateChangeLocally = false
