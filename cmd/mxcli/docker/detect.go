@@ -94,10 +94,18 @@ func resolveMxBuild(explicitPath string) (string, error) {
 func mxbuildSearchPaths() []string {
 	switch runtime.GOOS {
 	case "windows":
-		return []string{
-			`C:\Program Files\Mendix\*\modeler\mxbuild.exe`,
-			`C:\Program Files (x86)\Mendix\*\modeler\mxbuild.exe`,
+		var paths []string
+		// Use environment variables — the system drive is not always C:.
+		for _, env := range []string{"PROGRAMFILES", "PROGRAMW6432", "PROGRAMFILES(X86)"} {
+			if dir := os.Getenv(env); dir != "" {
+				paths = append(paths, filepath.Join(dir, "Mendix", "*", "modeler", "mxbuild.exe"))
+			}
 		}
+		if len(paths) == 0 {
+			// Fallback if env vars are missing (unlikely but safe).
+			paths = []string{`C:\Program Files\Mendix\*\modeler\mxbuild.exe`}
+		}
+		return paths
 	case "darwin":
 		return []string{
 			"/Applications/Mendix/*/modeler/mxbuild",
@@ -174,11 +182,20 @@ func resolveMacOSJavaHome() (string, error) {
 func jdkSearchPaths() []string {
 	switch runtime.GOOS {
 	case "windows":
-		return []string{
-			`C:\Program Files\Eclipse Adoptium\jdk-21*`,
-			`C:\Program Files\Java\jdk-21*`,
-			`C:\Program Files\Microsoft\jdk-21*`,
+		var paths []string
+		for _, env := range []string{"PROGRAMFILES", "PROGRAMW6432"} {
+			if dir := os.Getenv(env); dir != "" {
+				paths = append(paths,
+					filepath.Join(dir, "Eclipse Adoptium", "jdk-21*"),
+					filepath.Join(dir, "Java", "jdk-21*"),
+					filepath.Join(dir, "Microsoft", "jdk-21*"),
+				)
+			}
 		}
+		if len(paths) == 0 {
+			paths = []string{`C:\Program Files\Eclipse Adoptium\jdk-21*`}
+		}
+		return paths
 	case "darwin":
 		return []string{
 			"/Library/Java/JavaVirtualMachines/temurin-21*/Contents/Home",

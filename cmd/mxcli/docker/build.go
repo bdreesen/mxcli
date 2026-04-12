@@ -641,9 +641,18 @@ func ensurePADFiles(productVersion string, w io.Writer) error {
 		return nil
 	}
 
-	// Check that the runtime PAD source exists
+	// Check that the runtime PAD source exists; if not, the cached runtime is stale
+	// (downloaded before PAD files were included). Invalidate and re-download.
 	if _, err := os.Stat(runtimePAD); err != nil {
-		return fmt.Errorf("runtime PAD files not found at %s", runtimePAD)
+		fmt.Fprintf(w, "  PAD files missing from cached runtime, re-downloading...\n")
+		os.RemoveAll(runtimeDir)
+		if _, err := DownloadRuntime(productVersion, w); err != nil {
+			return fmt.Errorf("re-downloading runtime for PAD files: %w", err)
+		}
+		// Check again — some versions simply don't ship PAD files.
+		if _, err := os.Stat(runtimePAD); err != nil {
+			return fmt.Errorf("runtime PAD files not found at %s (not included in this Mendix version)", runtimePAD)
+		}
 	}
 
 	// Create parent directory if needed
