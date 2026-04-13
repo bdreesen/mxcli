@@ -1,4 +1,4 @@
-// Code generated from MDLParser.g4 by ANTLR 4.13.2. DO NOT EDIT.
+// Code generated from MDLParser.g4 by ANTLR 4.13.1. DO NOT EDIT.
 
 package parser // MDLParser
 import "github.com/antlr4-go/antlr/v4"
@@ -2621,12 +2621,6 @@ func (s *BaseMDLParserListener) EnterAnnotationValue(ctx *AnnotationValueContext
 
 // ExitAnnotationValue is called when production annotationValue is exited.
 func (s *BaseMDLParserListener) ExitAnnotationValue(ctx *AnnotationValueContext) {}
-
-// EnterCommonNameKeyword is called when production commonNameKeyword is entered.
-func (s *BaseMDLParserListener) EnterCommonNameKeyword(ctx *CommonNameKeywordContext) {}
-
-// ExitCommonNameKeyword is called when production commonNameKeyword is exited.
-func (s *BaseMDLParserListener) ExitCommonNameKeyword(ctx *CommonNameKeywordContext) {}
 
 // EnterKeyword is called when production keyword is entered.
 func (s *BaseMDLParserListener) EnterKeyword(ctx *KeywordContext) {}
