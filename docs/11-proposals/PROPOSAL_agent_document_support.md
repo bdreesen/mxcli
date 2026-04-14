@@ -20,61 +20,196 @@ Currently, `mxcli` has no visibility into agent documents. `SHOW STRUCTURE` repo
 
 ## BSON Structure
 
-Agents use a generic extensibility mechanism:
+All four agent-editor document types (Agent, Model, Knowledge Base, Consumed MCP Service) share the same outer wrapper — a generic `CustomBlobDocument` with a JSON payload in `Contents`. They're distinguished by the `CustomDocumentType` field.
+
+### Outer Wrapper (common to all four types)
 
 ```
 CustomBlobDocuments$CustomBlobDocument:
   $ID: bytes
   $Type: "CustomBlobDocuments$CustomBlobDocument"
   Name: string
-  Contents: string (JSON payload)
+  Contents: string (JSON payload — schema depends on CustomDocumentType)
   CustomDocumentType: "agenteditor.agent"
+                    | "agenteditor.model"
+                    | "agenteditor.knowledgebase"
+                    | "agenteditor.consumedMCPService"
   Documentation: string
-  Excluded: true
+  Excluded: bool
   ExportLevel: "Hidden"
   Metadata:
     $ID: bytes
     $Type: "CustomBlobDocuments$CustomBlobDocumentMetadata"
     CreatedByExtension: "extension/agent-editor"
-    ReadableTypeName: "Agent"
+    ReadableTypeName: "Agent" | "Model" | "Knowledge base" | "Consumed MCP service"
 ```
 
-The `Contents` field is a JSON string with this schema:
+Key observations about the wrapper:
+- `CustomDocumentType` is the discriminator for the inner JSON schema
+- `Contents` is a JSON string (not nested BSON) — the agent editor extension owns the inner schema
+- `Metadata.ReadableTypeName` is a human-friendly label (also used as the UI badge in Studio Pro)
+- `Excluded` is `false` for documents created in the new Agent Editor extension; observed as `true` on the 4 older agents in the project (likely pre-release format)
+
+### MODEL — `Contents` JSON schema
+
+Observed in `Agents.MyFirstModel`:
 
 ```json
 {
-  "description": "",
-  "systemPrompt": "Extract {{Information}} from text...",
-  "userPrompt": "example input text...",
-  "usageType": "Task",
-  "variables": [
-    { "key": "Information", "isAttributeInEntity": true }
-  ],
-  "tools": [],
-  "knowledgebaseTools": [],
-  "entity": {
-    "documentId": "<uuid>",
-    "qualifiedName": "Module.EntityName"
+  "type": "",
+  "name": "",
+  "displayName": "",
+  "provider": "MxCloudGenAI",
+  "providerFields": {
+    "environment": "",
+    "deepLinkURL": "",
+    "keyId": "",
+    "keyName": "",
+    "resourceName": "",
+    "key": {
+      "documentId": "51b85be5-f040-4562-bf4c-086347d387a9",
+      "qualifiedName": "Agents.LLMKey"
+    }
   }
 }
 ```
 
-Key observations:
-- `CustomDocumentType` discriminates agents from other CustomBlobDocuments
-- `Contents` is a JSON string (not nested BSON) — the agent editor extension owns this schema
-- `Excluded: true` and `ExportLevel: Hidden` are always set
-- The `entity` field is optional — links the agent to an entity whose attributes become variables
-- `variables` contains template placeholders used in `{{varName}}` syntax within prompts
-- `tools` and `knowledgebaseTools` are arrays (empty in all current examples — tools are managed through AgentCommons entities at runtime, not in the document)
+- `provider` is a top-level discriminator — `"MxCloudGenAI"` is the only observed value. `providerFields` shape depends on `provider`.
+- `providerFields.key` references a **String constant** (holding the Mendix Cloud GenAI Portal key) by `{documentId, qualifiedName}`.
+- `type`, `name`, `displayName`, `environment`, `deepLinkURL`, `keyId`, `keyName`, `resourceName` are all empty in the sample — they're **Portal-populated** when the user clicks **Test Key** in Studio Pro, not user-set fields.
 
-### Observed Agent Examples (test3 project)
+### KNOWLEDGE BASE — `Contents` JSON schema
 
-| Agent | System Prompt | Entity | Variables |
-|-------|--------------|--------|-----------|
-| InformationExtractorAgent | Extract {{Information}} from text | AgentCommons.InformationExtractor_EXAMPLE | Information |
-| SummarizationAgent | Summarize in 3-5 sentences | (none) | (none) |
-| TranslationAgent | Translate into {{Description}} | System.Language | Description |
-| ProductDescription | Sales assistant for product descriptions | AgentCommons.ProductDescriptionGenerator_EXAMPLE | ProductName, Keywords |
+Observed in `Agents.Knowledge_base`:
+
+```json
+{
+  "name": "",
+  "provider": "MxCloudGenAI",
+  "providerFields": {
+    "environment": "",
+    "deepLinkURL": "",
+    "keyId": "",
+    "keyName": "",
+    "modelDisplayName": "",
+    "modelName": "",
+    "key": {
+      "documentId": "51b85be5-f040-4562-bf4c-086347d387a9",
+      "qualifiedName": "Agents.LLMKey"
+    }
+  }
+}
+```
+
+Same shape as Model, but `providerFields` includes embedding-model info (`modelDisplayName`, `modelName`) instead of `resourceName`. The `key` reference points to the same String constant.
+
+### CONSUMED MCP SERVICE — `Contents` JSON schema
+
+Observed in `Agents.Consumed_MCP_service`:
+
+```json
+{
+  "protocolVersion": "v2025_03_26",
+  "documentation": " fqwef qwec qwefc",
+  "version": "0.0.1",
+  "connectionTimeoutSeconds": 30
+}
+```
+
+Notably **absent**: no endpoint URL and no credentials microflow reference. Those are presumably configured at runtime via the `MCPClient.ConsumedMCPService` entity (see the `Agents.MCP_Server_Endpoint` String constant in the same project — used by a runtime microflow, not embedded in the document). This matches real-world deployment: endpoints typically differ across dev/staging/prod.
+
+Enum values for `protocolVersion`: `"v2024_11_05"` or `"v2025_03_26"`.
+
+### AGENT — `Contents` JSON schema
+
+Simple agent (observed in `AgentEditorCommons.TranslationAgent`):
+
+```json
+{
+  "description": "",
+  "systemPrompt": "Translate the given text into {{Description}}.",
+  "userPrompt": "...",
+  "usageType": "Task",
+  "variables": [
+    { "key": "Description", "isAttributeInEntity": true }
+  ],
+  "tools": [],
+  "knowledgebaseTools": [],
+  "entity": {
+    "documentId": "83d81a7b-4a84-416e-a64f-0ffa981c8408",
+    "qualifiedName": "System.Language"
+  }
+}
+```
+
+Fully-populated agent (observed in `Agents.Agent007`):
+
+```json
+{
+  "description": "doing your stuff for you",
+  "systemPrompt": "Do you intereesting and useful stuff that makes me money",
+  "userPrompt": "Just do it",
+  "usageType": "Task",
+  "variables": [],
+  "tools": [
+    {
+      "id": "044bc8c2-8ca6-4166-b8f0-9d2245aba8c7",
+      "name": "",
+      "description": "",
+      "enabled": true,
+      "toolType": "MCP",
+      "document": {
+        "qualifiedName": "Agents.Consumed_MCP_service",
+        "documentId": "47c9987a-e922-44eb-a389-e641f325ce15"
+      }
+    }
+  ],
+  "knowledgebaseTools": [
+    {
+      "id": "20980c3d-399b-409e-8292-49df7d0ab533",
+      "name": "My_mem",
+      "description": "My memory of useful stuff",
+      "enabled": true,
+      "toolType": "",
+      "document": {
+        "qualifiedName": "Agents.Knowledge_base",
+        "documentId": "cccc0b5b-7600-47a9-8f6e-5761ce2fc620"
+      },
+      "collectionIdentifier": "agent1-collection",
+      "maxResults": 3
+    }
+  ],
+  "model": {
+    "documentId": "3addaaa1-8bd3-4654-8cc9-2c886d0a01e9",
+    "qualifiedName": "Agents.MyFirstModel"
+  },
+  "maxTokens": 16384,
+  "toolChoice": "Auto"
+}
+```
+
+Agent schema observations:
+- **`model`**: Reference to a Model document by `{documentId, qualifiedName}`. Optional in the older samples (model set at runtime); present on new Agent Editor agents.
+- **`tools[]`**: Array of tool references. Each entry has a UUID `id`, name, description, `enabled` boolean, and a `toolType` discriminator. Observed `toolType` values: `"MCP"` (a whole MCP service attached as tools). A microflow-tool sample is still missing — likely `"Microflow"` with a `microflow` reference instead of `document`.
+- **`knowledgebaseTools[]`**: Array of KB references. Same base fields plus `collectionIdentifier` and `maxResults`. No `minSimilarity` observed in current schema.
+- **`variables[]`**: Empty in `Agent007`; populated in older samples with `{key, isAttributeInEntity}`.
+- **`entity`**: Optional. Present on older agents with `isAttributeInEntity: true` variables; absent on `Agent007`.
+- **`maxTokens`**, **`toolChoice`**: Agent-level inference parameters. Enum values for `toolChoice` observed: `"Auto"` (capitalized, not the lowercase `auto` used by `GenAICommons.ENUM_ToolChoice` at runtime). Other likely values: `"None"`, `"Any"`, `"Tool"`.
+- **`temperature`**, **`topP`**: Not observed in any sample — omitted when not set.
+- **No `UserAccessApproval`/`Access` field** on tools. That's a runtime-only concern (set on `AgentCommons.Tool` entity, not the document). **This is a correction to earlier versions of this proposal.**
+
+### Observed documents in test3 project
+
+| Document | Type | Notes |
+|---|---|---|
+| `AgentEditorCommons.InformationExtractorAgent` | Agent | Older format, `Excluded: true`, no model reference |
+| `AgentEditorCommons.SummarizationAgent` | Agent | Older format |
+| `AgentEditorCommons.TranslationAgent` | Agent | Older format, bound to `System.Language` |
+| `AgentEditorCommons.ProductDescription` | Agent | Older format, bound to `AgentCommons.ProductDescriptionGenerator_EXAMPLE` |
+| `Agents.Agent007` | Agent | New format with model reference, MCP tool, KB tool |
+| `Agents.MyFirstModel` | Model | Provider `MxCloudGenAI`, key → `Agents.LLMKey` |
+| `Agents.Knowledge_base` | Knowledge Base | Provider `MxCloudGenAI`, key → `Agents.LLMKey` |
+| `Agents.Consumed_MCP_service` | Consumed MCP Service | Protocol v2025_03_26, timeout 30s |
 
 ## Proposed MDL Syntax
 
@@ -123,49 +258,48 @@ CREATE AGENT MyModule."SentimentAnalyzer" (
   UsageType: Task,
   Entity: MyModule.FeedbackItem,
   Variables: ("FeedbackText": EntityAttribute),
+  Model: MyModule.GPT4Model,
   SystemPrompt: 'Analyze the sentiment of {{FeedbackText}}. Classify as positive, negative, or neutral.',
   UserPrompt: '{{FeedbackText}}'
 );
 ```
 
-**Agent with tools, knowledge bases, and MCP services:**
+**Agent with tools, knowledge bases, and MCP services (matches `Agents.Agent007`):**
 
 ```sql
-CREATE AGENT MyModule."ResearchAssistant" (
-  UsageType: Conversational,
-  Description: 'Research assistant with tools and knowledge base',
-  Variables: ("Topic": String),
-  SystemPrompt: 'You are a research assistant helping research {{Topic}}.',
-  UserPrompt: 'What are the latest trends in renewable energy?'
+CREATE AGENT Agents."Agent007" (
+  UsageType: Task,
+  Model: Agents.MyFirstModel,
+  MaxTokens: 16384,
+  ToolChoice: Auto,
+  Description: 'doing your stuff for you',
+  SystemPrompt: 'Do you intereesting and useful stuff that makes me money',
+  UserPrompt: 'Just do it'
 )
 {
-  TOOL GetCurrentTime {
-    Microflow: MyModule.Tool_GetCurrentTime,
-    Description: 'Get the current date and time',
-    Access: VisibleForUser
+  MCP SERVICE Agents.Consumed_MCP_service {
+    Enabled: true
   }
 
-  TOOL SendEmail {
-    Microflow: MyModule.Tool_SendEmail,
-    Description: 'Send an email notification',
-    Access: UserConfirmationRequired
-  }
-
-  KNOWLEDGE BASE MyModule.ResearchKB {
-    Collection: 'research-papers',
-    MaxResults: 10,
-    MinSimilarity: 0.75
-  }
-
-  MCP SERVICE MyModule.WebSearchMCP {
-    Access: VisibleForUser
-  }
-
-  MCP SERVICE MyModule.FileSystemMCP {
-    Access: UserConfirmationRequired
+  KNOWLEDGE BASE My_mem {
+    Source: Agents.Knowledge_base,
+    Collection: 'agent1-collection',
+    MaxResults: 3,
+    Description: 'My memory of useful stuff',
+    Enabled: true
   }
 };
 ```
+
+**Block-level property reference:**
+
+Each block maps to one entry in the agent's `Contents` JSON (`tools[]` for TOOL/MCP SERVICE, `knowledgebaseTools[]` for KNOWLEDGE BASE). Block IDs (the `id` UUID field in JSON) are auto-generated by the writer.
+
+| Block | Referenced by | Properties | Maps to JSON field |
+|---|---|---|---|
+| `MCP SERVICE <QualifiedName> { ... }` | ConsumedMCPService document | `Enabled`, `Description` | `tools[]` entry with `toolType: "MCP"`, `document: {...}` |
+| `TOOL <Name> { Microflow: ... }` | microflow name | `Microflow`, `Enabled`, `Description` | `tools[]` entry with `toolType: "Microflow"` *(shape speculative — see Open Questions)* |
+| `KNOWLEDGE BASE <Name> { Source: ... }` | KB document via `Source:` | `Source` (required), `Collection`, `MaxResults`, `Description`, `Enabled` | `knowledgebaseTools[]` entry |
 
 ### DROP AGENT
 
@@ -181,7 +315,7 @@ The layering follows the same pattern as `CREATE REST CLIENT`:
 
 | Layer | REST CLIENT | AGENT |
 |---|---|---|
-| **Document-level static config** (stored in document) | `BaseUrl`, `Authentication` | `UsageType`, `Description`, `Entity`, `SystemPrompt`, `UserPrompt` |
+| **Document-level static config** (stored in document) | `BaseUrl`, `Authentication` | `UsageType`, `Description`, `Entity`, `Model`, `MaxTokens`, `ToolChoice`, `SystemPrompt`, `UserPrompt` |
 | **Input contract** (what the caller must bring at call time) | `Parameters: ($id: String)` on each operation | `Variables: ("Topic": String, ...)` on the agent |
 | **Attached resources** (body blocks) | `OPERATION` blocks | `TOOL` / `KNOWLEDGE BASE` / `MCP SERVICE` blocks |
 | **Runtime invocation** (values supplied at call site) | `SEND REST REQUEST Mod.Api.GetItems (id = $x)` | `CALL AGENT WITH HISTORY $agent REQUEST $req CONTEXT $obj` |
@@ -219,16 +353,18 @@ CALL AGENT WITHOUT HISTORY $Agent CONTEXT $Review INTO $Response;
 |----------|-----------|
 | `AGENT` as document type keyword | Matches `Metadata.ReadableTypeName = "Agent"` and Mendix UI terminology |
 | Top-level `(Key: Value)` config + `{...}` body with singular blocks | Mirrors `CREATE REST CLIENT ... (...) { OPERATION Name {...} }` exactly — same shape, same mental model |
+| `Model: <QualifiedName>` in top-level config | Agent documents can reference a Model document directly via the `model` JSON field (confirmed in `Agent007`). Making it a peer of `UsageType` mirrors how the Agent Editor UI presents it |
+| `ToolChoice: Auto` PascalCase enum literal | Matches the real JSON value (`"Auto"`), which differs from the lowercase `auto` used by `GenAICommons.ENUM_ToolChoice` at runtime. Values: `Auto`, `None`, `Any`, `Tool` |
+| `MaxTokens: <int>` on the agent | Matches the JSON `maxTokens` field; agent-level inference parameter |
 | `TOOL`, `KNOWLEDGE BASE`, `MCP SERVICE` as singular block types | Matches the `OPERATION` singular used in REST CLIENT; each block defines one resource |
-| `TOOL <Name> { Microflow: ..., Description: ..., Access: ... }` | `Microflow`, `Description`, `Access` are regular properties (not positional), same as REST CLIENT operation properties |
-| `KNOWLEDGE BASE <QualifiedName>` (module-qualified) | The name references an external KB document (peer `CustomBlobDocument`), not a free-form identifier |
-| `MCP SERVICE <QualifiedName>` (module-qualified) | Same rationale — references a ConsumedMCPService document |
+| `MCP SERVICE <QualifiedName> { Enabled, Description }` | The name is the qualified name of a ConsumedMCPService document (the whole service is attached as a bundle of tools) |
+| `KNOWLEDGE BASE <Name> { Source: <doc>, Collection, MaxResults, ... }` | `<Name>` is the per-agent identifier stored in JSON `name`; `Source:` references the KB document. Matches `Agent007`'s `My_mem` KB entry |
+| `TOOL <Name> { Microflow: ..., Description, Enabled }` | Speculative: microflow-tool JSON shape not yet observed (test3 only has MCP tools). Final shape TBD when we capture a sample |
 | `Variables: (...)` is the input-schema analog of REST CLIENT's `Parameters: (...)` | Declares what the caller must supply; values flow in via the `CONTEXT` object at the `CALL AGENT` site. Inline form matches REST CLIENT's `Parameters: ($id: String)` |
-| `Access: VisibleForUser` as enum literal | Maps to `GenAICommons.ENUM_UserAccessApproval` values: `HiddenForUser`, `VisibleForUser`, `UserConfirmationRequired` |
+| No `Access:` on tool blocks | `UserAccessApproval` is NOT stored in the agent document JSON — it's a runtime-only concern on the `AgentCommons.Tool` entity. (Earlier drafts of this proposal incorrectly placed it on the block.) |
 | Body omitted when there are no tools/KB/MCP | Same concession REST CLIENT makes implicitly — empty bodies are awkward; drop them |
 | Prompts as string literals | Consistent with other MDL string properties; `{{var}}` placeholders are just text |
-
-> **Note on tool storage:** In the 4 observed agents in the test3 project, the `tools`, `knowledgebaseTools`, and MCP arrays in the `Contents` JSON are empty — all the sample agents are simple `Task` agents without tools. According to the [Agent Editor documentation](https://docs.mendix.com/appstore/modules/genai/genai-for-mx/agent-editor/), tools and knowledge bases ARE configured on the agent in the editor (not at runtime), so the `Contents` JSON schema supports them. Implementation will need to verify the exact JSON shape with an agent that has tools attached — a known gap flagged in the Open Questions section.
+| Auto-generated `id` UUIDs on block entries | Each tool/KB entry has a UUID `id` in the JSON (Studio Pro-generated). The MDL writer will generate these; they round-trip stably through `DESCRIBE` |
 
 ## What Already Exists
 
@@ -263,18 +399,23 @@ type Agent struct {
     Documentation string
 
     // Parsed from Contents JSON
-    Description   string
-    SystemPrompt  string
-    UserPrompt    string
-    UsageType     string       // "Task", "Conversational"
-    Variables     []Variable
-    Tools         []ToolRef
-    KBTools       []KBToolRef
-    Entity        *EntityRef   // optional
+    Description  string
+    SystemPrompt string
+    UserPrompt   string
+    UsageType    string        // "Task", "Conversational"
+    Variables    []Variable
+    Tools        []ToolRef     // tools[] array
+    KBTools      []KBToolRef   // knowledgebaseTools[] array
+    Model        *DocRef       // optional, points to a Model document
+    Entity       *EntityRef    // optional, points to a domain entity
+    MaxTokens    *int          // optional
+    ToolChoice   string        // optional: "Auto", "None", "Any", "Tool"
+    Temperature  *float64      // optional, not yet observed
+    TopP         *float64      // optional, not yet observed
 }
 
 type Variable struct {
-    Key                string
+    Key                 string
     IsAttributeInEntity bool
 }
 
@@ -283,54 +424,144 @@ type EntityRef struct {
     QualifiedName string // Module.EntityName
 }
 
-type ToolRef struct {
-    // TBD — populate when we see non-empty examples
+type DocRef struct {
+    DocumentID    string // UUID of the referenced CustomBlobDocument
+    QualifiedName string // Module.DocumentName
 }
 
+// Entry in the agent's tools[] array
+type ToolRef struct {
+    ID          string  // per-tool UUID (generated by writer)
+    Name        string
+    Description string
+    Enabled     bool
+    ToolType    string  // "MCP" | "Microflow" (microflow shape TBD)
+    Document    *DocRef // set when ToolType=="MCP", references ConsumedMCPService
+    Microflow   string  // set when ToolType=="Microflow" (speculative)
+}
+
+// Entry in the agent's knowledgebaseTools[] array
 type KBToolRef struct {
-    // TBD
+    ID                   string
+    Name                 string
+    Description          string
+    Enabled              bool
+    ToolType             string  // empty string in observed sample
+    Document             *DocRef // references KnowledgeBase document
+    CollectionIdentifier string
+    MaxResults           int
+}
+
+// Peer document types (same wrapper, different Contents JSON)
+
+type Model struct {
+    ContainerID   model.ID
+    ID            model.ID
+    Name          string
+    Documentation string
+
+    Type        string                 // Portal-populated, usually empty
+    DisplayName string                 // Portal-populated
+    Provider    string                 // "MxCloudGenAI"
+    Fields      map[string]interface{} // providerFields — shape depends on provider
+    KeyConstant *ConstantRef           // providerFields.key → String constant
+}
+
+type KnowledgeBase struct {
+    ContainerID   model.ID
+    ID            model.ID
+    Name          string
+    Documentation string
+
+    Provider    string                 // "MxCloudGenAI"
+    Fields      map[string]interface{} // providerFields (includes modelDisplayName, modelName)
+    KeyConstant *ConstantRef
+}
+
+type ConsumedMCPService struct {
+    ContainerID              model.ID
+    ID                       model.ID
+    Name                     string
+    Documentation            string
+
+    ProtocolVersion          string // "v2024_11_05" | "v2025_03_26"
+    Version                  string // app-specified version
+    InnerDocumentation       string // Contents.documentation (free text)
+    ConnectionTimeoutSeconds int
+}
+
+type ConstantRef struct {
+    DocumentID    string
+    QualifiedName string // e.g. "Agents.LLMKey"
 }
 ```
 
 #### 1.2 Add BSON Parser
 
-In `sdk/mpr/parser_agent.go`:
+In `sdk/mpr/parser_customblob.go` (generic — handles all four document types):
 
 - Parse `CustomBlobDocuments$CustomBlobDocument` documents
-- Filter by `CustomDocumentType == "agenteditor.agent"`
-- Decode `Contents` JSON string into the `Agent` struct
-- Store in the reader's document map
+- Dispatch by `CustomDocumentType`:
+  - `"agenteditor.agent"` → decode Contents JSON as `Agent`
+  - `"agenteditor.model"` → decode as `Model`
+  - `"agenteditor.knowledgebase"` → decode as `KnowledgeBase`
+  - `"agenteditor.consumedMCPService"` → decode as `ConsumedMCPService`
+  - unknown → store raw Contents, warn
+- Store in per-type maps on the reader
 
 The parser should be tolerant: unknown JSON fields in `Contents` are ignored (the agent editor extension may add fields in future versions).
 
 #### 1.3 Add Reader Methods
 
 ```go
-func (r *Reader) Agents() []*agents.Agent
-func (r *Reader) AgentByQualifiedName(name string) *agents.Agent
+func (r *Reader) Agents() []*agenteditor.Agent
+func (r *Reader) AgentByQualifiedName(name string) *agenteditor.Agent
+
+func (r *Reader) Models() []*agenteditor.Model
+func (r *Reader) ModelByQualifiedName(name string) *agenteditor.Model
+
+func (r *Reader) KnowledgeBases() []*agenteditor.KnowledgeBase
+func (r *Reader) KnowledgeBaseByQualifiedName(name string) *agenteditor.KnowledgeBase
+
+func (r *Reader) ConsumedMCPServices() []*agenteditor.ConsumedMCPService
+func (r *Reader) ConsumedMCPServiceByQualifiedName(name string) *agenteditor.ConsumedMCPService
 ```
 
-#### 1.4 Add Catalog Table
+#### 1.4 Add Catalog Tables
 
-Add `CATALOG.AGENTS` with columns: `module`, `name`, `qualified_name`, `usage_type`, `entity`, `variables`, `has_tools`, `has_knowledge_base`.
+- `CATALOG.AGENTS` (module, name, qualified_name, usage_type, entity, model, variables, tool_count, kb_count)
+- `CATALOG.MODELS` (module, name, qualified_name, provider, key_constant)
+- `CATALOG.KNOWLEDGE_BASES` (module, name, qualified_name, provider, key_constant)
+- `CATALOG.CONSUMED_MCP_SERVICES` (module, name, qualified_name, protocol_version, timeout_seconds)
 
 #### 1.5 Add Grammar/AST/Visitor/Executor
 
-- Grammar: `SHOW AGENTS [IN module]`, `DESCRIBE AGENT qualifiedName`
-- AST: `ShowAgentsStmt`, `DescribeAgentStmt`
+- Grammar: `SHOW {AGENTS | MODELS | KNOWLEDGE BASES | CONSUMED MCP SERVICES} [IN module]`
+- Grammar: `DESCRIBE {AGENT | MODEL | KNOWLEDGE BASE | CONSUMED MCP SERVICE} qualifiedName`
+- AST: `ShowCustomBlobStmt`, `DescribeCustomBlobStmt` (discriminated by type enum)
 - Executor: format output using standard table/MDL patterns
+
+**Recommended implementation order** (matches user preference to start with MODEL):
+1. Generic wrapper parser + `Model` type + `SHOW MODELS` + `DESCRIBE MODEL` (smallest Contents JSON)
+2. `ConsumedMCPService` (also small)
+3. `KnowledgeBase` (similar shape to Model)
+4. `Agent` (largest, depends on the other three for resolving `model`/`document` references in its body)
 
 ### Phase 2: Write Support (CREATE/DROP)
 
 #### 2.1 Add BSON Writer
 
-In `sdk/mpr/writer_agent.go`:
+In `sdk/mpr/writer_customblob.go` (generic wrapper for all four types):
 
-- Serialize `Agent` struct to `CustomBlobDocuments$CustomBlobDocument` BSON
-- Set `CustomDocumentType = "agenteditor.agent"`
-- Set `Metadata` with `CreatedByExtension`, `ReadableTypeName`
-- Serialize `Contents` as JSON string
-- Set `Excluded = true`, `ExportLevel = "Hidden"`
+- Serialize any of `Agent` / `Model` / `KnowledgeBase` / `ConsumedMCPService` structs to a `CustomBlobDocuments$CustomBlobDocument` BSON
+- Set `CustomDocumentType` per type (`agenteditor.agent`, `agenteditor.model`, etc.)
+- Set `Metadata.CreatedByExtension = "extension/agent-editor"`
+- Set `Metadata.ReadableTypeName` per type (`"Agent"`, `"Model"`, `"Knowledge base"`, `"Consumed MCP service"`)
+- Serialize `Contents` as a JSON string (per-type encoder)
+- Set `Excluded = false`, `ExportLevel = "Hidden"` (matches the new Agent Editor defaults)
+- Generate stable UUIDs for `$ID` and `Metadata.$ID`
+- For `Agent`: generate UUIDs for `id` field on each `tools[]` and `knowledgebaseTools[]` entry
+- For `Model` / `KnowledgeBase`: resolve the `Key` constant reference to `{documentId, qualifiedName}` by looking up the String constant in the reader
 
 #### 2.2 Add Grammar/AST/Visitor/Executor for CREATE/DROP
 
@@ -379,42 +610,109 @@ Full agent support requires MDL coverage of related `CustomBlobDocument` types a
 
 #### 4.1 `CREATE MODEL` Document
 
-Models are peer documents to agents, referencing a Mendix Cloud GenAI Portal key via a String constant:
+Models are peer `CustomBlobDocument`s that reference a Mendix Cloud GenAI Portal key stored in a **String constant**. The minimum input from the user is the provider and the constant reference — Portal metadata (`displayName`, `keyId`, `keyName`, `environment`, `resourceName`, etc.) is filled by Studio Pro when the user clicks **Test Key** and shouldn't be user-set in MDL.
+
+Matches the observed BSON for `Agents.MyFirstModel`:
 
 ```sql
-CREATE MODEL MyModule."GPT4Model" (
-  DisplayName: 'GPT-4 Turbo',
-  Architecture: 'MxCloud',
-  KeyConstant: MyModule.GPT4ModelKey     -- String constant containing the resource key
+CREATE MODEL Agents."MyFirstModel" (
+  Provider: MxCloudGenAI,
+  Key: Agents.LLMKey
 );
 ```
 
-At runtime, `ASU_AgentEditor` reads the constant and creates the corresponding `GenAICommons.DeployedModel`.
+`DESCRIBE MODEL` may show Portal-populated fields when present (round-trip preserves them, but they're not user-editable in MDL):
+
+```sql
+-- What DESCRIBE produces for a model that has been activated against the Portal
+CREATE MODEL Agents."MyFirstModel" (
+  Provider: MxCloudGenAI,
+  Key: Agents.LLMKey,
+  DisplayName: 'GPT-4 Turbo',          -- Portal-populated, read-only in MDL
+  KeyName: 'prod-gpt4',                -- Portal-populated, read-only in MDL
+  Environment: 'production'            -- Portal-populated, read-only in MDL
+);
+```
+
+At runtime, `AgentEditorCommons.ASU_AgentEditor` reads the constant and creates the corresponding `GenAICommons.DeployedModel`.
+
+**JSON output shape:**
+```json
+{
+  "type": "",
+  "name": "",
+  "displayName": "<portal-populated or empty>",
+  "provider": "MxCloudGenAI",
+  "providerFields": {
+    "environment": "", "deepLinkURL": "", "keyId": "", "keyName": "", "resourceName": "",
+    "key": { "documentId": "<uuid>", "qualifiedName": "Agents.LLMKey" }
+  }
+}
+```
 
 #### 4.2 `CREATE KNOWLEDGE BASE` Document
 
+Same shape as Model, but `providerFields` carries embedding-model info instead of model-resource info. User-settable fields are just `Provider` and `Key`:
+
 ```sql
-CREATE KNOWLEDGE BASE MyModule."ProductDocsKB" (
-  DisplayName: 'Product Documentation',
-  Architecture: 'MxCloud',
-  KeyConstant: MyModule.ProductDocsKBKey
+CREATE KNOWLEDGE BASE Agents."Knowledge_base" (
+  Provider: MxCloudGenAI,
+  Key: Agents.LLMKey
 );
 ```
 
-Referenced from agents via `KNOWLEDGE BASE <QualifiedName> { ... }` blocks inside the agent body.
+`DESCRIBE` can round-trip Portal-populated fields:
+
+```sql
+CREATE KNOWLEDGE BASE Agents."Knowledge_base" (
+  Provider: MxCloudGenAI,
+  Key: Agents.LLMKey,
+  ModelDisplayName: 'text-embedding-3-large',   -- Portal-populated
+  ModelName: 'text-embedding-3-large'           -- Portal-populated
+);
+```
+
+Referenced from agents via `KNOWLEDGE BASE <Name> { Source: <QualifiedName>, ... }` blocks inside the agent body.
+
+**JSON output shape:**
+```json
+{
+  "name": "",
+  "provider": "MxCloudGenAI",
+  "providerFields": {
+    "environment": "", "deepLinkURL": "", "keyId": "", "keyName": "",
+    "modelDisplayName": "", "modelName": "",
+    "key": { "documentId": "<uuid>", "qualifiedName": "Agents.LLMKey" }
+  }
+}
+```
 
 #### 4.3 `CREATE CONSUMED MCP SERVICE` Document
 
+Matches the observed BSON for `Agents.Consumed_MCP_service`. Endpoint and credentials are **not** part of the document — they're runtime configuration on the `MCPClient.ConsumedMCPService` entity. The document only carries protocol version, app-level version, timeout, and documentation.
+
 ```sql
-CREATE CONSUMED MCP SERVICE MyModule."WebSearchMCP" (
-  Endpoint: 'https://mcp.example.com/search',
+CREATE CONSUMED MCP SERVICE Agents."Consumed_MCP_service" (
   ProtocolVersion: v2025_03_26,
-  GetCredentialsMicroflow: MyModule.MCP_GetCredentials,
-  ConnectionTimeOutInSeconds: 30
+  Version: '0.0.1',
+  ConnectionTimeoutSeconds: 30,
+  Documentation: 'Description of what this MCP service provides'
 );
 ```
 
 Referenced from agents via `MCP SERVICE <QualifiedName> { ... }` blocks inside the agent body.
+
+**JSON output shape:**
+```json
+{
+  "protocolVersion": "v2025_03_26",
+  "documentation": "Description of what this MCP service provides",
+  "version": "0.0.1",
+  "connectionTimeoutSeconds": 30
+}
+```
+
+> **Note:** `Documentation` as a top-level property maps to the JSON `documentation` field (inside `Contents`), not to the outer BSON `Documentation` field on the CustomBlobDocument wrapper. Two different fields with the same name — the MDL writer sets both consistently.
 
 #### 4.4 `CALL AGENT` / `NEW CHAT FOR AGENT` Microflow Activities
 
@@ -436,14 +734,20 @@ Follows the same shape as `ALTER PAGE` — in-place modifications to top-level p
 ALTER AGENT MyModule."SentimentAnalyzer" {
   SET SystemPrompt = 'New prompt with {{Variable}}.';
   SET Variables = ("FeedbackText": EntityAttribute, "NewVar": String);
+  SET Model = MyModule.OtherModel;
+  SET ToolChoice = None;
 
-  INSERT TOOL NewTool {
-    Microflow: MyModule.NewToolMicroflow,
-    Description: 'A new tool',
-    Access: VisibleForUser
+  INSERT MCP SERVICE MyModule.NewMCPService {
+    Enabled: true
   };
 
-  DROP TOOL OldTool;
+  INSERT KNOWLEDGE BASE NewKB {
+    Source: MyModule.OtherKB,
+    Collection: 'other-collection',
+    MaxResults: 5
+  };
+
+  DROP MCP SERVICE MyModule.OldMCPService;
 };
 ```
 
@@ -1647,21 +1951,21 @@ The combination of `CREATE AGENT` (document definition), tool microflows (busine
 
 ## Open Questions
 
-1. **CustomBlobDocument extensibility**: Will Mendix add more `CustomDocumentType` values beyond `agenteditor.agent`? Observed values already suggest this is a general extension pattern (agent documents, model documents, knowledge base documents, and consumed MCP service documents all likely use CustomBlobDocument with different `CustomDocumentType` discriminators). The parser should dispatch by `CustomDocumentType` rather than hardcode agent-specific logic.
+1. **CustomBlobDocument extensibility** *(answered)*: Mendix uses `CustomBlobDocument` as a general extension pattern. Four `CustomDocumentType` values observed so far: `agenteditor.agent`, `agenteditor.model`, `agenteditor.knowledgebase`, `agenteditor.consumedMCPService`. The parser dispatches by `CustomDocumentType` rather than hardcoding agent-specific logic. Future types (other extensions, other agent-editor documents) plug in naturally.
 
-2. **Contents JSON schema for tools/KB/MCP**: All 4 observed agents in the test3 project have empty `tools`, `knowledgebaseTools`, and MCP arrays. Per the [Agent Editor docs](https://docs.mendix.com/appstore/modules/genai/genai-for-mx/agent-editor/), tools ARE attached to the agent document in the editor — we need to observe the exact JSON shape (keys, nesting, how microflow references are serialized) with a non-empty example before finalizing the writer. Request: user creates an agent with one tool and one KB in Studio Pro so we can capture the BSON.
+2. **Contents JSON schema for tools/KB/MCP** *(answered for MCP tools and KB tools, still open for microflow tools)*: The `Agents.Agent007` document in the test3 project gave us the schema for MCP-type tools and knowledge base tools (see BSON Structure section). **Still open**: the JSON shape for a microflow-type tool — none observed yet. Expected: `toolType: "Microflow"` plus a `microflow: { qualifiedName, microflowId }` reference, but the exact key names and nesting need a real sample. Implementation should capture one before finalizing the microflow-tool writer.
 
-3. **Separate document types for Model, Knowledge Base, and MCP Service**: The Agent Editor treats these as peer document types. To fully support the `TOOL`, `KNOWLEDGE BASE`, and `MCP SERVICE` blocks inside an agent body, the implementation must also support:
-   - `CREATE MODEL` (document with model key constant reference)
-   - `CREATE KNOWLEDGE BASE` (document with KB resource key reference)
-   - `CREATE CONSUMED MCP SERVICE` (document with endpoint, protocol, credentials microflow)
-   These are proposed as Phase 4 extensions but are prerequisites for fully functional `CREATE AGENT`.
+3. **Separate document types for Model, Knowledge Base, and MCP Service** *(answered)*: Confirmed. Phase 4 of the implementation plan covers `CREATE MODEL`, `CREATE KNOWLEDGE BASE`, `CREATE CONSUMED MCP SERVICE` with schemas matching the observed BSON.
 
-4. **`CALL AGENT` activity BSON format**: The proposed `CALL AGENT WITH HISTORY` / `CALL AGENT WITHOUT HISTORY` / `NEW CHAT FOR AGENT` MDL statements need to map to a Studio Pro microflow activity. Is this a dedicated activity type in BSON, or does Studio Pro render a generic `JavaActionCallAction` (pointing at `AgentCommons.Agent_Call_WithHistory`) as "Call Agent"? If it's the latter, MDL can emit a standard Java action call; if the former, we need to identify the new activity BSON `$Type`.
+4. **`CALL AGENT` activity BSON format**: The proposed `CALL AGENT WITH HISTORY` / `CALL AGENT WITHOUT HISTORY` / `NEW CHAT FOR AGENT` MDL statements need to map to a Studio Pro microflow activity. Is this a dedicated activity type in BSON, or does Studio Pro render a generic `JavaActionCallAction` (pointing at `AgentCommons.Agent_Call_WithHistory`) as "Call Agent"? If it's the latter, MDL can emit a standard Java action call; if the former, we need to identify the new activity BSON `$Type`. **Action:** inspect a Studio Pro microflow that uses "Call Agent" to resolve.
 
 5. **ASU_AgentEditor behavior**: `AgentEditorCommons.ASU_AgentEditor` is the after-startup microflow that syncs agent documents to runtime `AgentCommons.Agent` entities. Does `CREATE AGENT` via MDL need to trigger this sync, or does it happen automatically on next app startup? What happens if MDL creates an agent and the app is already running?
 
-6. **Module placement**: Agent documents in the test3 project live in AgentEditorCommons (a marketplace module). Can users create agents in their own modules? The BSON format supports it (any module can contain CustomBlobDocuments), but does the Agent Editor extension require or prefer a specific location?
+6. **Module placement** *(partially answered)*: The new documents in test3 live in a user-created `Agents` module (not in `AgentEditorCommons`), confirming that users **can** place agent-editor documents in their own modules. The older 4 agents in `AgentEditorCommons` appear to be samples shipped with the marketplace module.
+
+7. **Cross-document UUID stability**: Agent documents reference model/KB/MCP documents by both `qualifiedName` AND `documentId` (UUID). When MDL creates a document, the generated UUID must be stable so that subsequent `CREATE AGENT` statements can correctly fill the `documentId` field. If an `ALTER` or re-create changes the UUID, all referring agents break. The writer must either (a) preserve existing UUIDs on update or (b) allow the agent's `documentId` field to be left empty and resolved at app-startup time by qualified name.
+
+8. **Portal-populated fields on Model/KB**: Fields like `displayName`, `keyId`, `keyName`, `environment`, `resourceName`, `modelName`, `modelDisplayName` are populated by Studio Pro after the user clicks "Test Key". Should MDL `CREATE MODEL` write them as empty strings (letting Studio Pro fill them on next open), preserve them if provided by `DESCRIBE` round-trip, or outright reject user-supplied values? Current proposal: accept-and-round-trip but document them as read-only.
 
 7. **Non-Mendix-Cloud model providers (e.g., OpenRouter)**: The [Agent Editor docs](https://docs.mendix.com/appstore/modules/genai/genai-for-mx/agent-editor/) state that model documents require "a String constant that contains the key for a **Text Generation resource**... obtained in the **Mendix Cloud GenAI Portal**" — so the model document format is currently locked to Mendix Cloud GenAI. Meanwhile, `GenAICommons.DeployedModel` is provider-agnostic (it's just `DisplayName` + `Architecture` + a `Microflow` pointer), and marketplace connectors exist for OpenAI, Amazon Bedrock, Google Gemini, and Mistral. This creates a split:
    - Users who want OpenAI-compatible endpoints like **OpenRouter** (including its free models: `google/gemini-flash-1.5-8b:free`, `mistralai/mistral-7b-instruct:free`, etc.) cannot use the Agent Editor's model documents today. Workarounds: (a) reconfigure the OpenAI Connector's base URL to OpenRouter; (b) build a custom microflow-based `DeployedModel`; (c) skip the Agent Editor and create `AgentCommons.Agent` / `Version` entities at runtime instead.
@@ -1673,21 +1977,30 @@ The combination of `CREATE AGENT` (document definition), tool microflows (busine
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|-----------|--------|------------|
-| Tools/KB/MCP JSON shape in `Contents` unknown | High | High | Block Phase 2 writer until we capture a non-empty example from Studio Pro |
+| Microflow-tool JSON shape in `Contents.tools[]` still unobserved | Medium | Medium | Observed MCP-tool and KB-tool shapes; capture a microflow-tool sample before finalizing that writer path |
 | `CALL AGENT` activity is a new BSON `$Type` | Medium | Medium | Inspect a Studio Pro microflow that uses "Call Agent" before implementing |
+| Cross-document UUIDs become stale when documents are re-created | High | High | Preserve UUIDs on update; validate referring agents on `CREATE`/`DROP` of a referenced document |
 | Contents JSON schema changes in future Mendix versions | Medium | Medium | Parse tolerantly (ignore unknown fields), version-gate new fields |
 | CustomBlobDocument format changes | Low | High | Monitor Mendix release notes, BSON schema comparison |
-| Studio Pro fails to open MDL-created agents | Medium | High | Test with `mx check` and Studio Pro after creation; compare BSON byte-for-byte with editor-created agents |
+| Studio Pro fails to open MDL-created documents | Medium | High | Test with `mx check` and Studio Pro after creation; compare BSON byte-for-byte with editor-created documents (`Agents.MyFirstModel` etc.) |
+| Portal-populated fields overwritten by MDL round-trip | Medium | Medium | On `CREATE MODEL` / `CREATE KNOWLEDGE BASE`, preserve any existing Portal fields if the document already exists; write empty strings only on fresh creates |
 | Prerequisites (Encryption, ASU_AgentEditor) not set up before CREATE AGENT | Medium | Medium | MDL `CREATE AGENT` should warn/pre-check that prerequisites are configured |
 | Agent document + matching Model/KB/MCP documents out of sync | Medium | Medium | `mxcli check` should validate cross-document references when `--references` is passed |
-| Users want third-party LLM providers (OpenRouter, custom OpenAI-compatible) but Agent Editor model documents are Mendix-Cloud-only | High | Low (out of scope) | Document the workarounds (reconfigure OpenAI connector, custom microflow DeployedModel, skip agent documents); keep `CREATE MODEL` syntax open to future `Architecture` values |
+| Users want third-party LLM providers (OpenRouter, custom OpenAI-compatible) but Agent Editor model documents are Mendix-Cloud-only | High | Low (out of scope) | Document the workarounds (reconfigure OpenAI connector, custom microflow DeployedModel, skip agent documents); keep `CREATE MODEL` syntax open to future `Provider` values |
 
 ## References
 
 - Test project: `mx-test-projects/test3-app/test3.mpr` (Mendix 11.9.0)
-- Agent documents: `mprcontents/50/15/5015e35c-...`, `f5/80/f5802216-...`, `e8/d9/e8d9c5c8-...`, `8e/bc/8ebc7f85-...`
+- **Older agent documents (AgentEditorCommons module)**: `InformationExtractorAgent`, `ProductDescription`, `SummarizationAgent`, `TranslationAgent` — `Excluded: true`, no model reference, no tools/KB
+- **New Agent Editor sample documents (Agents module)**:
+  - `Agents.Agent007` — fully populated agent with model, MCP tool, KB tool (`mprcontents/e0/72/e072318a-...mxunit`)
+  - `Agents.MyFirstModel` — Model document, provider `MxCloudGenAI` (`mprcontents/3a/dd/3addaaa1-...mxunit`)
+  - `Agents.Knowledge_base` — Knowledge Base document (`mprcontents/cc/cc/cccc0b5b-...mxunit`)
+  - `Agents.Consumed_MCP_service` — Consumed MCP Service document (`mprcontents/47/c9/47c9987a-...mxunit`)
 - Agent Editor extension manifest: `.mendix-cache/modules/agenteditor.mxmodule/extensions/agent-editor/manifest.json`
 - AgentCommons module: Marketplace v3.1.0 (31 entities, 226 microflows)
+- AgentEditorCommons module: Marketplace v1.0.0 (9 entities, 32 microflows, including `ASU_AgentEditor`)
 - MCPClient module: Marketplace v3.0.1 (20 entities, 35 microflows)
 - GenAICommons module: Marketplace v6.1.0 (34 entities, 112 microflows)
 - ConversationalUI module: Marketplace v6.1.0 (17 entities, 152 microflows)
+- [Mendix Agent Editor documentation](https://docs.mendix.com/appstore/modules/genai/genai-for-mx/agent-editor/)
