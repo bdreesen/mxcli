@@ -2168,15 +2168,20 @@ attributeListV3
 
 // V3 DataSource expressions
 dataSourceExprV3
-    : VARIABLE SLASH attributePathV3                  // $currentObject/Module.Assoc (ByAssociation — sugar for ASSOCIATION)
+    : VARIABLE SLASH associationPathV3                // $currentObject/Module.Assoc (ByAssociation — sugar for ASSOCIATION)
     | VARIABLE                                        // $ParamName
     | DATABASE FROM? qualifiedName                    // DATABASE [FROM] Entity [WHERE ...] [SORT BY ...]
       (WHERE (xpathConstraint (andOrXpath? xpathConstraint)* | expression))?
       (SORT_BY sortColumn (COMMA sortColumn)*)?
     | MICROFLOW qualifiedName microflowArgsV3?        // MICROFLOW Module.Flow
     | NANOFLOW qualifiedName microflowArgsV3?         // NANOFLOW Module.Flow
-    | ASSOCIATION attributePathV3                     // ASSOCIATION Path (explicit form)
+    | ASSOCIATION associationPathV3                   // ASSOCIATION Module.Assoc (explicit form)
     | SELECTION IDENTIFIER                            // SELECTION widgetName
+    ;
+
+// Association path: Module.Assoc or Module.Assoc/Module.Entity or multi-step
+associationPathV3
+    : qualifiedName (SLASH qualifiedName)*
     ;
 
 // V3 Action expressions

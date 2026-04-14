@@ -586,13 +586,20 @@ func (pb *pageBuilder) buildDataSourceV3(ds *ast.DataSourceV3) (pages.DataSource
 		}, entityName, nil
 
 	case "association":
-		// Association path source
+		// Association path source — emits Forms$AssociationSource BSON.
+		// EntityPath is the qualified association name (and optional /DestinationEntity).
+		// ContextVariable is the page parameter name (empty when source is $currentObject of parent dataview).
+		ctxVar := ds.ContextVariable
+		if ctxVar == "currentObject" {
+			ctxVar = "" // implicit context — no SourceVariable in BSON
+		}
 		return &pages.AssociationSource{
 			BaseElement: model.BaseElement{
 				ID:       model.ID(mpr.GenerateID()),
 				TypeName: "Forms$AssociationSource",
 			},
-			EntityPath: ds.Reference,
+			EntityPath:      ds.Reference,
+			ContextVariable: ctxVar,
 		}, "", nil
 
 	case "selection":
