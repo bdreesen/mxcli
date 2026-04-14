@@ -615,7 +615,13 @@ func buildDataSourceV3(ctx parser.IDataSourceExprV3Context) *ast.DataSourceV3 {
 	dsCtx := ctx.(*parser.DataSourceExprV3Context)
 	ds := &ast.DataSourceV3{}
 
-	if v := dsCtx.VARIABLE(); v != nil {
+	if v := dsCtx.VARIABLE(); v != nil && dsCtx.SLASH() != nil {
+		// $currentObject/Module.Assoc — ByAssociation data source (sugar for ASSOCIATION Path)
+		ds.Type = "association"
+		if pathCtx := dsCtx.AttributePathV3(); pathCtx != nil {
+			ds.Reference = buildAttributePathV3(pathCtx)
+		}
+	} else if v := dsCtx.VARIABLE(); v != nil {
 		// $ParamName
 		ds.Type = "parameter"
 		ds.Reference = v.GetText()
