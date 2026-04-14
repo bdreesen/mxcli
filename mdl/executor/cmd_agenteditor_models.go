@@ -1,0 +1,150 @@
+// SPDX-License-Identifier: Apache-2.0
+
+// Package executor - Commands for agent-editor Model documents.
+//
+// Handles `SHOW MODELS [IN module]` and `DESCRIBE MODEL Module.Name`.
+// The underlying BSON is a CustomBlobDocuments$CustomBlobDocument with
+// CustomDocumentType = "agenteditor.model". See
+// docs/11-proposals/PROPOSAL_agent_document_support.md for schema.
+package executor
+
+import (
+	"fmt"
+
+	"github.com/mendixlabs/mxcli/mdl/ast"
+	"github.com/mendixlabs/mxcli/sdk/agenteditor"
+)
+
+// showAgentEditorModels handles SHOW MODELS [IN module].
+func (e *Executor) showAgentEditorModels(moduleName string) error {
+	if e.reader == nil {
+		return fmt.Errorf("not connected to a project")
+	}
+
+	models, err := e.reader.ListAgentEditorModels()
+	if err != nil {
+		return fmt.Errorf("failed to list models: %w", err)
+	}
+
+	h, err := e.getHierarchy()
+	if err != nil {
+		return err
+	}
+
+	result := &TableResult{
+		Columns: []string{"Qualified Name", "Module", "Name", "Provider", "Key Constant", "Display Name"},
+	}
+
+	for _, m := range models {
+		modID := h.FindModuleID(m.ContainerID)
+		modName := h.GetModuleName(modID)
+		if moduleName != "" && modName != moduleName {
+			continue
+		}
+
+		keyConstant := ""
+		if m.Key != nil {
+			keyConstant = m.Key.QualifiedName
+		}
+
+		result.Rows = append(result.Rows, []any{
+			fmt.Sprintf("%s.%s", modName, m.Name),
+			modName,
+			m.Name,
+			m.Provider,
+			keyConstant,
+			m.DisplayName,
+		})
+	}
+
+	result.Summary = fmt.Sprintf("(%d model(s))", len(result.Rows))
+	return e.writeResult(result)
+}
+
+// describeAgentEditorModel handles DESCRIBE MODEL Module.Name.
+// Emits a round-trippable CREATE MODEL statement.
+func (e *Executor) describeAgentEditorModel(name ast.QualifiedName) error {
+	if e.reader == nil {
+		return fmt.Errorf("not connected to a project")
+	}
+
+	m := e.findAgentEditorModel(name.Module, name.Name)
+	if m == nil {
+		return fmt.Errorf("model not found: %s", name)
+	}
+
+	h, err := e.getHierarchy()
+	if err != nil {
+		return err
+	}
+	modID := h.FindModuleID(m.ContainerID)
+	modName := h.GetModuleName(modID)
+	qualifiedName := fmt.Sprintf("%s.%s", modName, m.Name)
+
+	if m.Documentation != "" {
+		fmt.Fprintf(e.output, "/**\n * %s\n */\n", m.Documentation)
+	}
+
+	fmt.Fprintf(e.output, "CREATE MODEL %s (\n", qualifiedName)
+
+	// Emit properties in stable order. User-set properties (Provider, Key)
+	// come first; Portal-populated metadata comes last and only if non-empty.
+	var lines []string
+	if m.Provider != "" {
+		lines = append(lines, fmt.Sprintf("  Provider: %s", m.Provider))
+	}
+	if m.Key != nil && m.Key.QualifiedName != "" {
+		lines = append(lines, fmt.Sprintf("  Key: %s", m.Key.QualifiedName))
+	}
+	// Portal-populated fields — round-tripped but flagged read-only in MDL.
+	if m.DisplayName != "" {
+		lines = append(lines, fmt.Sprintf("  DisplayName: '%s'", escapeSQLString(m.DisplayName)))
+	}
+	if m.KeyName != "" {
+		lines = append(lines, fmt.Sprintf("  KeyName: '%s'", escapeSQLString(m.KeyName)))
+	}
+	if m.KeyID != "" {
+		lines = append(lines, fmt.Sprintf("  KeyId: '%s'", escapeSQLString(m.KeyID)))
+	}
+	if m.Environment != "" {
+		lines = append(lines, fmt.Sprintf("  Environment: '%s'", escapeSQLString(m.Environment)))
+	}
+	if m.ResourceName != "" {
+		lines = append(lines, fmt.Sprintf("  ResourceName: '%s'", escapeSQLString(m.ResourceName)))
+	}
+	if m.DeepLinkURL != "" {
+		lines = append(lines, fmt.Sprintf("  DeepLinkURL: '%s'", escapeSQLString(m.DeepLinkURL)))
+	}
+
+	for i, line := range lines {
+		if i < len(lines)-1 {
+			fmt.Fprintln(e.output, line+",")
+		} else {
+			fmt.Fprintln(e.output, line)
+		}
+	}
+
+	fmt.Fprintln(e.output, ");")
+	fmt.Fprintln(e.output, "/")
+	return nil
+}
+
+// findAgentEditorModel looks up a model by module and name.
+func (e *Executor) findAgentEditorModel(moduleName, modelName string) *agenteditor.Model {
+	models, err := e.reader.ListAgentEditorModels()
+	if err != nil {
+		return nil
+	}
+	h, err := e.getHierarchy()
+	if err != nil {
+		return nil
+	}
+	for _, m := range models {
+		modID := h.FindModuleID(m.ContainerID)
+		modName := h.GetModuleName(modID)
+		if m.Name == modelName && modName == moduleName {
+			return m
+		}
+	}
+	return nil
+}

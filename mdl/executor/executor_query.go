@@ -110,6 +110,8 @@ func (e *Executor) execShow(s *ast.ShowStmt) error {
 		return e.showDatabaseConnections(s.InModule)
 	case ast.ShowImageCollections:
 		return e.showImageCollections(s.InModule)
+	case ast.ShowModels:
+		return e.showAgentEditorModels(s.InModule)
 	case ast.ShowRestClients:
 		return e.showRestClients(s.InModule)
 	case ast.ShowPublishedRestServices:
@@ -196,6 +198,8 @@ func (e *Executor) execDescribe(s *ast.DescribeStmt) error {
 			return e.describeFragment(s.Name)
 		case ast.DescribeImageCollection:
 			return e.describeImageCollection(s.Name)
+		case ast.DescribeModel:
+			return e.describeAgentEditorModel(s.Name)
 		case ast.DescribeRestClient:
 			return e.describeRestClient(s.Name)
 		case ast.DescribePublishedRestService:
@@ -273,6 +277,8 @@ func describeObjectTypeLabel(t ast.DescribeObjectType) string {
 		return "fragment"
 	case ast.DescribeImageCollection:
 		return "imagecollection"
+	case ast.DescribeModel:
+		return "model"
 	case ast.DescribeRestClient:
 		return "restclient"
 	case ast.DescribePublishedRestService:

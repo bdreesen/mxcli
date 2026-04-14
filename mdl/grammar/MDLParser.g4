@@ -2909,6 +2909,7 @@ showStatement
     | showOrList JAVA ACTIONS (IN (qualifiedName | IDENTIFIER))?
     | showOrList JAVASCRIPT ACTIONS (IN (qualifiedName | IDENTIFIER))?
     | showOrList IMAGE COLLECTION (IN (qualifiedName | IDENTIFIER))?
+    | showOrList MODELS (IN (qualifiedName | IDENTIFIER))?
     | showOrList JSON STRUCTURES (IN (qualifiedName | IDENTIFIER))?
     | showOrList IMPORT MAPPINGS (IN (qualifiedName | IDENTIFIER))?
     | showOrList EXPORT MAPPINGS (IN (qualifiedName | IDENTIFIER))?
@@ -3043,6 +3044,7 @@ describeStatement
     | DESCRIBE FRAGMENT FROM PAGE qualifiedName WIDGET identifierOrKeyword     // DESCRIBE FRAGMENT FROM PAGE Module.Page WIDGET name
     | DESCRIBE FRAGMENT FROM SNIPPET qualifiedName WIDGET identifierOrKeyword  // DESCRIBE FRAGMENT FROM SNIPPET Module.Snippet WIDGET name
     | DESCRIBE IMAGE COLLECTION qualifiedName           // DESCRIBE IMAGE COLLECTION Module.Name
+    | DESCRIBE MODEL qualifiedName                      // DESCRIBE MODEL Module.Name (agent-editor)
     | DESCRIBE JSON STRUCTURE qualifiedName              // DESCRIBE JSON STRUCTURE Module.Name
     | DESCRIBE IMPORT MAPPING qualifiedName             // DESCRIBE IMPORT MAPPING Module.Name
     | DESCRIBE EXPORT MAPPING qualifiedName             // DESCRIBE EXPORT MAPPING Module.Name
@@ -3645,7 +3647,7 @@ keyword
     | INTEGER_TYPE | LONG_TYPE | STRING_TYPE | STRINGTEMPLATE_TYPE
 
     // Module / project structure
-    | ACTIONS | COLLECTION | FOLDER | LAYOUT | LAYOUTS | LOCAL | MODULE | MODULES
+    | ACTIONS | COLLECTION | FOLDER | LAYOUT | LAYOUTS | LOCAL | MODEL | MODELS | MODULE | MODULES
     | NOTEBOOK | NOTEBOOKS | PAGE | PAGES | PROJECT | SNIPPET | SNIPPETS
     | STORE | STRUCTURE | STRUCTURES | VIEW
 

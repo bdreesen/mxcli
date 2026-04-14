@@ -89,6 +89,7 @@ const (
 	ShowJsonStructures        // SHOW JSON STRUCTURES [IN module]
 	ShowImportMappings        // SHOW IMPORT MAPPINGS [IN module]
 	ShowExportMappings        // SHOW EXPORT MAPPINGS [IN module]
+	ShowModels                // SHOW MODELS [IN module] (agent-editor Model documents)
 )
 
 // String returns the human-readable name of the show object type.
@@ -214,6 +215,8 @@ func (t ShowObjectType) String() string {
 		return "IMPORT MAPPINGS"
 	case ShowExportMappings:
 		return "EXPORT MAPPINGS"
+	case ShowModels:
+		return "MODELS"
 	default:
 		return "UNKNOWN"
 	}
@@ -291,6 +294,7 @@ const (
 	DescribeNanoflow             // DESCRIBE NANOFLOW Module.Name
 	DescribeImportMapping        // DESCRIBE IMPORT MAPPING Module.Name
 	DescribeExportMapping        // DESCRIBE EXPORT MAPPING Module.Name
+	DescribeModel                // DESCRIBE MODEL Module.Name (agent-editor Model document)
 )
 
 // String returns the human-readable name of the describe object type.
@@ -364,6 +368,8 @@ func (t DescribeObjectType) String() string {
 		return "IMPORT MAPPING"
 	case DescribeExportMapping:
 		return "EXPORT MAPPING"
+	case DescribeModel:
+		return "MODEL"
 	default:
 		return "UNKNOWN"
 	}

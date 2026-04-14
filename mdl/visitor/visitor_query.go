@@ -467,6 +467,17 @@ func (b *Builder) ExitShowStatement(ctx *parser.ShowStatementContext) {
 			}
 		}
 		b.statements = append(b.statements, stmt)
+	} else if ctx.MODELS() != nil {
+		// SHOW MODELS [IN module] (agent-editor Model documents)
+		stmt := &ast.ShowStmt{ObjectType: ast.ShowModels}
+		if ctx.IN() != nil {
+			if qn := ctx.QualifiedName(); qn != nil {
+				stmt.InModule = getQualifiedNameText(qn)
+			} else if id := ctx.IDENTIFIER(); id != nil {
+				stmt.InModule = id.GetText()
+			}
+		}
+		b.statements = append(b.statements, stmt)
 	} else if ctx.PUBLISHED() != nil && ctx.REST() != nil && ctx.SERVICES() != nil {
 		// SHOW PUBLISHED REST SERVICES [IN module] - must come before REST CLIENTS check
 		stmt := &ast.ShowStmt{ObjectType: ast.ShowPublishedRestServices}
@@ -874,6 +885,12 @@ func (b *Builder) ExitDescribeStatement(ctx *parser.DescribeStatementContext) {
 	} else if ctx.IMAGE() != nil && ctx.COLLECTION() != nil {
 		b.statements = append(b.statements, &ast.DescribeStmt{
 			ObjectType: ast.DescribeImageCollection,
+			Name:       name,
+		})
+	} else if ctx.MODEL() != nil {
+		// DESCRIBE MODEL Module.Name (agent-editor Model document)
+		b.statements = append(b.statements, &ast.DescribeStmt{
+			ObjectType: ast.DescribeModel,
 			Name:       name,
 		})
 	} else if ctx.REST() != nil && ctx.CLIENT() != nil {
