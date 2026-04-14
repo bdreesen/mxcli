@@ -44,7 +44,7 @@ func TestAuthTransport_InjectsPATHeader(t *testing.T) {
 	}
 
 	// Use a known Mendix host so the scheme lookup succeeds.
-	resp, err := client.Get("https://appstore.home.mendix.com/rest/packagesapi/v2/packages/2888")
+	resp, err := client.Get("https://marketplace-api.mendix.com/v1/content/2888")
 	if err != nil {
 		t.Fatalf("request: %v", err)
 	}
@@ -81,7 +81,7 @@ func TestAuthTransport_401WrapsAsUnauthenticated(t *testing.T) {
 		},
 	}
 
-	resp, err := client.Get("https://appstore.home.mendix.com/foo")
+	resp, err := client.Get("https://marketplace-api.mendix.com/foo")
 	if resp != nil {
 		resp.Body.Close()
 	}
@@ -107,7 +107,7 @@ func TestAuthTransport_DoesNotMutateCallerRequest(t *testing.T) {
 		inner: &rewriteTransport{target: target, inner: http.DefaultTransport},
 	}
 
-	req, _ := http.NewRequest("GET", "https://appstore.home.mendix.com/foo", nil)
+	req, _ := http.NewRequest("GET", "https://marketplace-api.mendix.com/foo", nil)
 	if _, err := tr.RoundTrip(req); err != nil {
 		t.Fatalf("roundtrip: %v", err)
 	}
@@ -178,8 +178,11 @@ func contains(s, sub string) bool {
 }
 
 func TestSchemeForHost(t *testing.T) {
-	if s, ok := SchemeForHost("appstore.home.mendix.com"); !ok || s != SchemePAT {
-		t.Errorf("appstore host should map to PAT, got (%q, %v)", s, ok)
+	if s, ok := SchemeForHost("marketplace-api.mendix.com"); !ok || s != SchemePAT {
+		t.Errorf("marketplace-api host should map to PAT, got (%q, %v)", s, ok)
+	}
+	if s, ok := SchemeForHost("catalog.mendix.com"); !ok || s != SchemePAT {
+		t.Errorf("catalog host should map to PAT, got (%q, %v)", s, ok)
 	}
 	if _, ok := SchemeForHost("evil.example.com"); ok {
 		t.Errorf("unknown host should return false")
