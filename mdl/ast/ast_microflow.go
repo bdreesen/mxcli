@@ -619,9 +619,16 @@ func (s *RestCallStmt) isMicroflowStatement() {}
 type SendRestRequestStmt struct {
 	OutputVariable string               // Optional output variable (without $)
 	Operation      QualifiedName        // Consumed REST service operation (Module.Service.Operation)
+	Parameters     []SendRestParamDef   // Parameter bindings from WITH clause
 	BodyVariable   string               // Optional body variable name (without $)
 	ErrorHandling  *ErrorHandlingClause // Optional ON ERROR clause
 	Annotations    *ActivityAnnotations // Optional @position, @caption, @color, @annotation
+}
+
+// SendRestParamDef represents a parameter binding: $paramName = expression
+type SendRestParamDef struct {
+	Name       string // parameter name (without $)
+	Expression string // Mendix expression
 }
 
 func (s *SendRestRequestStmt) isMicroflowStatement() {}
@@ -647,3 +654,14 @@ type ExportToMappingStmt struct {
 }
 
 func (s *ExportToMappingStmt) isMicroflowStatement() {}
+
+// TransformJsonStmt represents: $Result = TRANSFORM $Input WITH Module.Transformer
+type TransformJsonStmt struct {
+	OutputVariable  string               // Result string variable (without $)
+	InputVariable   string               // Source JSON string variable (without $)
+	Transformation  QualifiedName        // Data transformer qualified name
+	ErrorHandling   *ErrorHandlingClause // Optional ON ERROR clause
+	Annotations     *ActivityAnnotations // Optional @position, @caption, @color, @annotation
+}
+
+func (s *TransformJsonStmt) isMicroflowStatement() {}

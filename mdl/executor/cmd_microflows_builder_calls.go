@@ -787,13 +787,30 @@ func (fb *flowBuilder) addSendRestRequestAction(s *ast.SendRestRequestStmt) mode
 		}
 	}
 
+	// Build parameter mappings from WITH clause
+	var paramMappings []*microflows.RestParameterMapping
+	var queryParamMappings []*microflows.RestQueryParameterMapping
+	for _, p := range s.Parameters {
+		// Determine if path or query param by convention:
+		// the executor can't distinguish at this level, so we emit both
+		// and let the BSON field names sort it out. For now, emit as
+		// query parameter mappings (most common use case).
+		queryParamMappings = append(queryParamMappings, &microflows.RestQueryParameterMapping{
+			Parameter: operationQN + "." + p.Name,
+			Value:     p.Expression,
+			Included:  "Yes",
+		})
+	}
+
 	// RestOperationCallAction does not support custom error handling (CE6035).
 	// ON ERROR clauses in the MDL are silently ignored for this action type.
 	action := &microflows.RestOperationCallAction{
-		BaseElement:    model.BaseElement{ID: model.ID(mpr.GenerateID())},
-		Operation:      operationQN,
-		OutputVariable: outputVar,
-		BodyVariable:   bodyVar,
+		BaseElement:            model.BaseElement{ID: model.ID(mpr.GenerateID())},
+		Operation:              operationQN,
+		OutputVariable:         outputVar,
+		BodyVariable:           bodyVar,
+		ParameterMappings:      paramMappings,
+		QueryParameterMappings: queryParamMappings,
 	}
 
 	activity := &microflows.ActionActivity{
@@ -939,6 +956,41 @@ func (fb *flowBuilder) addImportFromMappingAction(s *ast.ImportFromMappingStmt) 
 }
 
 // addExportToMappingAction adds an ExportXmlAction to the microflow.
+func (fb *flowBuilder) addTransformJsonAction(s *ast.TransformJsonStmt) model.ID {
+	activityX := fb.posX
+
+	action := &microflows.TransformJsonAction{
+		BaseElement:        model.BaseElement{ID: model.ID(mpr.GenerateID())},
+		ErrorHandlingType:  convertErrorHandlingType(s.ErrorHandling),
+		InputVariableName:  s.InputVariable,
+		OutputVariableName: s.OutputVariable,
+		Transformation:     s.Transformation.String(),
+	}
+
+	activity := &microflows.ActionActivity{
+		BaseActivity: microflows.BaseActivity{
+			BaseMicroflowObject: microflows.BaseMicroflowObject{
+				BaseElement: model.BaseElement{ID: model.ID(mpr.GenerateID())},
+				Position:    model.Point{X: fb.posX, Y: fb.posY},
+				Size:        model.Size{Width: ActivityWidth, Height: ActivityHeight},
+			},
+			AutoGenerateCaption: true,
+		},
+		Action: action,
+	}
+
+	fb.objects = append(fb.objects, activity)
+	fb.posX += fb.spacing
+
+	if s.ErrorHandling != nil && len(s.ErrorHandling.Body) > 0 {
+		errorY := fb.posY + VerticalSpacing
+		mergeID := fb.addErrorHandlerFlow(activity.ID, activityX, s.ErrorHandling.Body)
+		fb.handleErrorHandlerMerge(mergeID, activity.ID, errorY)
+	}
+
+	return activity.ID
+}
+
 func (fb *flowBuilder) addExportToMappingAction(s *ast.ExportToMappingStmt) model.ID {
 	activityX := fb.posX
 

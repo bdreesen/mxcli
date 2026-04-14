@@ -434,6 +434,9 @@ func serializeMicroflowAction(action microflows.MicroflowAction) bson.D {
 	case *microflows.ExportXmlAction:
 		return serializeExportXmlAction(a)
 
+	case *microflows.TransformJsonAction:
+		return serializeTransformJsonAction(a)
+
 	// Workflow actions
 	case *microflows.WorkflowCallAction:
 		return serializeWorkflowCallAction(a)
@@ -615,8 +618,31 @@ func serializeRestOperationCallAction(a *microflows.RestOperationCallAction) bso
 	}
 
 	doc = append(doc, bson.E{Key: "BaseUrlParameterMapping", Value: nil})
-	doc = append(doc, bson.E{Key: "ParameterMappings", Value: bson.A{int32(3)}})
-	doc = append(doc, bson.E{Key: "QueryParameterMappings", Value: bson.A{int32(3)}})
+
+	// ParameterMappings (path params)
+	paramMappings := bson.A{int32(3)}
+	for _, pm := range a.ParameterMappings {
+		paramMappings = append(paramMappings, bson.D{
+			{Key: "$ID", Value: idToBsonBinary(GenerateID())},
+			{Key: "$Type", Value: "Microflows$ParameterMapping"},
+			{Key: "Parameter", Value: pm.Parameter},
+			{Key: "Value", Value: pm.Value},
+		})
+	}
+	doc = append(doc, bson.E{Key: "ParameterMappings", Value: paramMappings})
+
+	// QueryParameterMappings
+	queryMappings := bson.A{int32(3)}
+	for _, qm := range a.QueryParameterMappings {
+		queryMappings = append(queryMappings, bson.D{
+			{Key: "$ID", Value: idToBsonBinary(GenerateID())},
+			{Key: "$Type", Value: "Microflows$QueryParameterMapping"},
+			{Key: "QueryParameter", Value: qm.Parameter},
+			{Key: "Value", Value: qm.Value},
+			{Key: "Included", Value: qm.Included},
+		})
+	}
+	doc = append(doc, bson.E{Key: "QueryParameterMappings", Value: queryMappings})
 
 	return doc
 }
@@ -1161,6 +1187,17 @@ func serializeImportXmlAction(a *microflows.ImportXmlAction) bson.D {
 		{Key: "IsValidationRequired", Value: a.IsValidationRequired},
 		{Key: "ResultHandling", Value: resultHandling},
 		{Key: "XmlDocumentVariableName", Value: a.XmlDocumentVariable},
+	}
+}
+
+func serializeTransformJsonAction(a *microflows.TransformJsonAction) bson.D {
+	return bson.D{
+		{Key: "$ID", Value: idToBsonBinary(string(a.ID))},
+		{Key: "$Type", Value: "Microflows$TransformJsonAction"},
+		{Key: "ErrorHandlingType", Value: stringOrDefault(string(a.ErrorHandlingType), "Rollback")},
+		{Key: "InputVariableName", Value: a.InputVariableName},
+		{Key: "OutputVariableName", Value: a.OutputVariableName},
+		{Key: "Transformation", Value: a.Transformation},
 	}
 }
 

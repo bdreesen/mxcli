@@ -104,6 +104,7 @@ createStatement
       | createExportMappingStatement
       | createConfigurationStatement
       | createPublishedRestServiceStatement
+      | createDataTransformerStatement
       )
     ;
 
@@ -285,6 +286,7 @@ dropStatement
     | DROP EXPORT MAPPING qualifiedName
     | DROP REST CLIENT qualifiedName
     | DROP PUBLISHED REST SERVICE qualifiedName
+    | DROP DATA TRANSFORMER qualifiedName
     | DROP CONFIGURATION STRING_LITERAL
     | DROP FOLDER STRING_LITERAL IN (qualifiedName | IDENTIFIER)
     ;
@@ -1191,6 +1193,7 @@ microflowStatement
     | annotation* sendRestRequestStatement SEMICOLON?
     | annotation* importFromMappingStatement SEMICOLON?
     | annotation* exportToMappingStatement SEMICOLON?
+    | annotation* transformJsonStatement SEMICOLON?
     | annotation* callWorkflowStatement SEMICOLON?
     | annotation* getWorkflowDataStatement SEMICOLON?
     | annotation* getWorkflowsStatement SEMICOLON?
@@ -1593,8 +1596,17 @@ restCallReturnsClause
  */
 sendRestRequestStatement
     : (VARIABLE EQUALS)? SEND REST REQUEST qualifiedName
+      sendRestRequestWithClause?
       sendRestRequestBodyClause?
       onErrorClause?
+    ;
+
+sendRestRequestWithClause
+    : WITH LPAREN sendRestRequestParam (COMMA sendRestRequestParam)* RPAREN
+    ;
+
+sendRestRequestParam
+    : VARIABLE EQUALS expression
     ;
 
 sendRestRequestBodyClause
@@ -1614,6 +1626,14 @@ importFromMappingStatement
  */
 exportToMappingStatement
     : (VARIABLE EQUALS)? EXPORT TO MAPPING qualifiedName LPAREN VARIABLE RPAREN
+      onErrorClause?
+    ;
+
+/**
+ * Transform JSON: $Result = TRANSFORM $Input WITH Module.Transformer;
+ */
+transformJsonStatement
+    : (VARIABLE EQUALS)? TRANSFORM VARIABLE WITH qualifiedName
       onErrorClause?
     ;
 
@@ -2932,6 +2952,7 @@ showStatement
     | showOrList DATABASE CONNECTIONS (IN (qualifiedName | IDENTIFIER))?
     | showOrList REST CLIENTS (IN (qualifiedName | IDENTIFIER))?
     | showOrList PUBLISHED REST SERVICES (IN (qualifiedName | IDENTIFIER))?
+    | showOrList DATA TRANSFORMERS (IN (qualifiedName | IDENTIFIER))?
     | showOrList LANGUAGES
     | showOrList FEATURES (IN IDENTIFIER)?
     | showOrList FEATURES FOR VERSION NUMBER_LITERAL
@@ -3027,6 +3048,7 @@ describeStatement
     | DESCRIBE EXPORT MAPPING qualifiedName             // DESCRIBE EXPORT MAPPING Module.Name
     | DESCRIBE REST CLIENT qualifiedName                // DESCRIBE REST CLIENT Module.Name
     | DESCRIBE PUBLISHED REST SERVICE qualifiedName    // DESCRIBE PUBLISHED REST SERVICE Module.Name
+    | DESCRIBE DATA TRANSFORMER qualifiedName          // DESCRIBE DATA TRANSFORMER Module.Name
     | DESCRIBE FRAGMENT identifierOrKeyword            // DESCRIBE FRAGMENT Name
     ;
 
@@ -3506,6 +3528,27 @@ expressionList
     ;
 
 // =============================================================================
+// DATA TRANSFORMER
+// =============================================================================
+
+/**
+ * CREATE DATA TRANSFORMER Module.Name
+ * SOURCE JSON '{"latitude": 51.916, ...}'
+ * {
+ *   JSLT '{ "lat": .latitude }';
+ * };
+ */
+createDataTransformerStatement
+    : DATA TRANSFORMER qualifiedName
+      SOURCE_KW (JSON | XML) STRING_LITERAL
+      LBRACE dataTransformerStep* RBRACE
+    ;
+
+dataTransformerStep
+    : (JSLT | XSLT) (STRING_LITERAL | DOLLAR_STRING) SEMICOLON?
+    ;
+
+// =============================================================================
 // COMMON RULES
 // =============================================================================
 
@@ -3729,6 +3772,9 @@ keyword
     | ACTION | BOTH | CONTEXT | DATA | FORMAT | ITEM | LIST
     | MESSAGE | MOD | DIV | MULTIPLE | NONE | OBJECT | OBJECTS
     | SINGLE | SQL | TEMPLATE | TEXT | TYPE | VALUE
+
+    // Data transformers
+    | TRANSFORM | TRANSFORMER | TRANSFORMERS | JSLT | XSLT
 
     // Import/Export mapping / SQL generate
     | ATTRIBUTE_NAME | CONNECTOR | MEMBERS | OVER | JAVA | XPATH

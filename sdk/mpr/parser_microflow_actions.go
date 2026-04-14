@@ -389,6 +389,27 @@ func parseRestOperationCallAction(raw map[string]any) *microflows.RestOperationC
 		}
 	}
 
+	// Parse ParameterMappings (path params)
+	for _, pm := range extractBsonArray(raw["ParameterMappings"]) {
+		if pmMap, ok := pm.(map[string]any); ok {
+			action.ParameterMappings = append(action.ParameterMappings, &microflows.RestParameterMapping{
+				Parameter: extractString(pmMap["Parameter"]),
+				Value:     extractString(pmMap["Value"]),
+			})
+		}
+	}
+
+	// Parse QueryParameterMappings
+	for _, qm := range extractBsonArray(raw["QueryParameterMappings"]) {
+		if qmMap, ok := qm.(map[string]any); ok {
+			action.QueryParameterMappings = append(action.QueryParameterMappings, &microflows.RestQueryParameterMapping{
+				Parameter: extractString(qmMap["QueryParameter"]),
+				Value:     extractString(qmMap["Value"]),
+				Included:  extractString(qmMap["Included"]),
+			})
+		}
+	}
+
 	return action
 }
 
@@ -589,6 +610,16 @@ func parseImportXmlAction(raw map[string]any) *microflows.ImportXmlAction {
 		action.ResultHandling = handling
 	}
 
+	return action
+}
+
+func parseTransformJsonAction(raw map[string]any) *microflows.TransformJsonAction {
+	action := &microflows.TransformJsonAction{}
+	action.ID = model.ID(extractBsonID(raw["$ID"]))
+	action.ErrorHandlingType = microflows.ErrorHandlingType(extractString(raw["ErrorHandlingType"]))
+	action.InputVariableName = extractString(raw["InputVariableName"])
+	action.OutputVariableName = extractString(raw["OutputVariableName"])
+	action.Transformation = extractString(raw["Transformation"])
 	return action
 }
 

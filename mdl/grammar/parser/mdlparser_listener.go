@@ -1,4 +1,4 @@
-// Code generated from MDLParser.g4 by ANTLR 4.13.1. DO NOT EDIT.
+// Code generated from MDLParser.g4 by ANTLR 4.13.2. DO NOT EDIT.
 
 package parser // MDLParser
 import "github.com/antlr4-go/antlr/v4"
@@ -559,6 +559,12 @@ type MDLParserListener interface {
 	// EnterSendRestRequestStatement is called when entering the sendRestRequestStatement production.
 	EnterSendRestRequestStatement(c *SendRestRequestStatementContext)
 
+	// EnterSendRestRequestWithClause is called when entering the sendRestRequestWithClause production.
+	EnterSendRestRequestWithClause(c *SendRestRequestWithClauseContext)
+
+	// EnterSendRestRequestParam is called when entering the sendRestRequestParam production.
+	EnterSendRestRequestParam(c *SendRestRequestParamContext)
+
 	// EnterSendRestRequestBodyClause is called when entering the sendRestRequestBodyClause production.
 	EnterSendRestRequestBodyClause(c *SendRestRequestBodyClauseContext)
 
@@ -567,6 +573,9 @@ type MDLParserListener interface {
 
 	// EnterExportToMappingStatement is called when entering the exportToMappingStatement production.
 	EnterExportToMappingStatement(c *ExportToMappingStatementContext)
+
+	// EnterTransformJsonStatement is called when entering the transformJsonStatement production.
+	EnterTransformJsonStatement(c *TransformJsonStatementContext)
 
 	// EnterListOperationStatement is called when entering the listOperationStatement production.
 	EnterListOperationStatement(c *ListOperationStatementContext)
@@ -1225,6 +1234,12 @@ type MDLParserListener interface {
 	// EnterExpressionList is called when entering the expressionList production.
 	EnterExpressionList(c *ExpressionListContext)
 
+	// EnterCreateDataTransformerStatement is called when entering the createDataTransformerStatement production.
+	EnterCreateDataTransformerStatement(c *CreateDataTransformerStatementContext)
+
+	// EnterDataTransformerStep is called when entering the dataTransformerStep production.
+	EnterDataTransformerStep(c *DataTransformerStepContext)
+
 	// EnterQualifiedName is called when entering the qualifiedName production.
 	EnterQualifiedName(c *QualifiedNameContext)
 
@@ -1813,6 +1828,12 @@ type MDLParserListener interface {
 	// ExitSendRestRequestStatement is called when exiting the sendRestRequestStatement production.
 	ExitSendRestRequestStatement(c *SendRestRequestStatementContext)
 
+	// ExitSendRestRequestWithClause is called when exiting the sendRestRequestWithClause production.
+	ExitSendRestRequestWithClause(c *SendRestRequestWithClauseContext)
+
+	// ExitSendRestRequestParam is called when exiting the sendRestRequestParam production.
+	ExitSendRestRequestParam(c *SendRestRequestParamContext)
+
 	// ExitSendRestRequestBodyClause is called when exiting the sendRestRequestBodyClause production.
 	ExitSendRestRequestBodyClause(c *SendRestRequestBodyClauseContext)
 
@@ -1821,6 +1842,9 @@ type MDLParserListener interface {
 
 	// ExitExportToMappingStatement is called when exiting the exportToMappingStatement production.
 	ExitExportToMappingStatement(c *ExportToMappingStatementContext)
+
+	// ExitTransformJsonStatement is called when exiting the transformJsonStatement production.
+	ExitTransformJsonStatement(c *TransformJsonStatementContext)
 
 	// ExitListOperationStatement is called when exiting the listOperationStatement production.
 	ExitListOperationStatement(c *ListOperationStatementContext)
@@ -2478,6 +2502,12 @@ type MDLParserListener interface {
 
 	// ExitExpressionList is called when exiting the expressionList production.
 	ExitExpressionList(c *ExpressionListContext)
+
+	// ExitCreateDataTransformerStatement is called when exiting the createDataTransformerStatement production.
+	ExitCreateDataTransformerStatement(c *CreateDataTransformerStatementContext)
+
+	// ExitDataTransformerStep is called when exiting the dataTransformerStep production.
+	ExitDataTransformerStep(c *DataTransformerStepContext)
 
 	// ExitQualifiedName is called when exiting the qualifiedName production.
 	ExitQualifiedName(c *QualifiedNameContext)
