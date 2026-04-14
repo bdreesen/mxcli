@@ -1663,6 +1663,12 @@ The combination of `CREATE AGENT` (document definition), tool microflows (busine
 
 6. **Module placement**: Agent documents in the test3 project live in AgentEditorCommons (a marketplace module). Can users create agents in their own modules? The BSON format supports it (any module can contain CustomBlobDocuments), but does the Agent Editor extension require or prefer a specific location?
 
+7. **Non-Mendix-Cloud model providers (e.g., OpenRouter)**: The [Agent Editor docs](https://docs.mendix.com/appstore/modules/genai/genai-for-mx/agent-editor/) state that model documents require "a String constant that contains the key for a **Text Generation resource**... obtained in the **Mendix Cloud GenAI Portal**" — so the model document format is currently locked to Mendix Cloud GenAI. Meanwhile, `GenAICommons.DeployedModel` is provider-agnostic (it's just `DisplayName` + `Architecture` + a `Microflow` pointer), and marketplace connectors exist for OpenAI, Amazon Bedrock, Google Gemini, and Mistral. This creates a split:
+   - Users who want OpenAI-compatible endpoints like **OpenRouter** (including its free models: `google/gemini-flash-1.5-8b:free`, `mistralai/mistral-7b-instruct:free`, etc.) cannot use the Agent Editor's model documents today. Workarounds: (a) reconfigure the OpenAI Connector's base URL to OpenRouter; (b) build a custom microflow-based `DeployedModel`; (c) skip the Agent Editor and create `AgentCommons.Agent` / `Version` entities at runtime instead.
+   - Option (c) means losing the design-time benefits of agent documents (MDL support, version control in the project, LLM-friendly static configuration). `CREATE AGENT` in MDL therefore won't help these users until Mendix opens the model document format to other providers.
+   - **Implications for this proposal**: The proposed `CREATE MODEL` document (Phase 4) should not hard-code `Architecture: 'MxCloud'`. If/when Mendix supports third-party architectures in model documents, the `CREATE MODEL` syntax must accept `Architecture: 'OpenAI' | 'OpenRouter' | 'Bedrock' | ...` and a connector-specific configuration block. The `CREATE AGENT` body is already model-provider-agnostic (it references a model document by name, not by architecture), so no changes needed there.
+   - **Track this externally**: Monitor Mendix release notes for the Agent Editor opening to additional providers. If that happens, the MDL grammar already has room for it — we'd just add more valid `Architecture` values to `CREATE MODEL`.
+
 ## Risk Assessment
 
 | Risk | Likelihood | Impact | Mitigation |
@@ -1674,6 +1680,7 @@ The combination of `CREATE AGENT` (document definition), tool microflows (busine
 | Studio Pro fails to open MDL-created agents | Medium | High | Test with `mx check` and Studio Pro after creation; compare BSON byte-for-byte with editor-created agents |
 | Prerequisites (Encryption, ASU_AgentEditor) not set up before CREATE AGENT | Medium | Medium | MDL `CREATE AGENT` should warn/pre-check that prerequisites are configured |
 | Agent document + matching Model/KB/MCP documents out of sync | Medium | Medium | `mxcli check` should validate cross-document references when `--references` is passed |
+| Users want third-party LLM providers (OpenRouter, custom OpenAI-compatible) but Agent Editor model documents are Mendix-Cloud-only | High | Low (out of scope) | Document the workarounds (reconfigure OpenAI connector, custom microflow DeployedModel, skip agent documents); keep `CREATE MODEL` syntax open to future `Architecture` values |
 
 ## References
 
