@@ -105,61 +105,66 @@ Output (round-trippable MDL):
 CREATE AGENT AgentEditorCommons."TranslationAgent" (
   UsageType: Task,
   Entity: System.Language,
+  Variables: ("Description": EntityAttribute),
   SystemPrompt: 'Translate the given text into {{Description}}.',
   UserPrompt: 'What is a multi-agent AI system?...'
-)
-VARIABLES (
-  "Description" ENTITY ATTRIBUTE
 );
 /
 ```
 
 ### CREATE AGENT
 
-Simple task agent:
+The syntax follows the same shape as `CREATE REST CLIENT`: top-level configuration in `(...)` followed by a `{...}` body containing one block per attached resource (`TOOL`, `KNOWLEDGE BASE`, `MCP SERVICE`). Simple agents with no resources omit the body entirely.
+
+**Simple task agent (no body needed):**
 
 ```sql
 CREATE AGENT MyModule."SentimentAnalyzer" (
   UsageType: Task,
   Entity: MyModule.FeedbackItem,
+  Variables: ("FeedbackText": EntityAttribute),
   SystemPrompt: 'Analyze the sentiment of {{FeedbackText}}. Classify as positive, negative, or neutral.',
   UserPrompt: '{{FeedbackText}}'
-)
-VARIABLES (
-  "FeedbackText" ENTITY ATTRIBUTE
 );
 ```
 
-Agent with tools, knowledge bases, and MCP services:
+**Agent with tools, knowledge bases, and MCP services:**
 
 ```sql
 CREATE AGENT MyModule."ResearchAssistant" (
   UsageType: Conversational,
   Description: 'Research assistant with tools and knowledge base',
-  SystemPrompt: 'You are a research assistant.',
+  Variables: ("Topic": String),
+  SystemPrompt: 'You are a research assistant helping research {{Topic}}.',
   UserPrompt: 'What are the latest trends in renewable energy?'
 )
-TOOLS (
-  "GetCurrentTime" MICROFLOW MyModule.Tool_GetCurrentTime
-    DESCRIPTION 'Get the current date and time'
-    ACCESS VisibleForUser,
-  "SendEmail" MICROFLOW MyModule.Tool_SendEmail
-    DESCRIPTION 'Send an email notification'
-    ACCESS UserConfirmationRequired
-)
-KNOWLEDGE BASES (
-  MyModule.ResearchKB
-    COLLECTION 'research-papers'
-    MAX_RESULTS 10
-    MIN_SIMILARITY 0.75
-)
-MCP SERVICES (
-  MyModule.WebSearchMCP ACCESS VisibleForUser,
-  MyModule.FileSystemMCP ACCESS UserConfirmationRequired
-)
-VARIABLES (
-  "Topic"
-);
+{
+  TOOL GetCurrentTime {
+    Microflow: MyModule.Tool_GetCurrentTime,
+    Description: 'Get the current date and time',
+    Access: VisibleForUser
+  }
+
+  TOOL SendEmail {
+    Microflow: MyModule.Tool_SendEmail,
+    Description: 'Send an email notification',
+    Access: UserConfirmationRequired
+  }
+
+  KNOWLEDGE BASE MyModule.ResearchKB {
+    Collection: 'research-papers',
+    MaxResults: 10,
+    MinSimilarity: 0.75
+  }
+
+  MCP SERVICE MyModule.WebSearchMCP {
+    Access: VisibleForUser
+  }
+
+  MCP SERVICE MyModule.FileSystemMCP {
+    Access: UserConfirmationRequired
+  }
+};
 ```
 
 ### DROP AGENT
@@ -173,13 +178,14 @@ DROP AGENT MyModule."SentimentAnalyzer"
 | Decision | Rationale |
 |----------|-----------|
 | `AGENT` as document type keyword | Matches `Metadata.ReadableTypeName = "Agent"` and Mendix UI terminology |
-| `UsageType: Task` in properties | Follows standard `(Key: value)` property pattern used by all MDL commands |
-| `VARIABLES`, `TOOLS`, `KNOWLEDGE BASES`, `MCP SERVICES` as separate clauses | Each is structurally distinct; clauses keep the property block readable and mirror the Agent Editor UI's tabbed sections |
-| `ENTITY ATTRIBUTE` modifier on variables | Distinguishes entity-bound variables (auto-replaced from context object attributes) from free-form template variables |
-| `ACCESS` modifier on tools/MCP | Maps to `GenAICommons.ENUM_UserAccessApproval` (`HiddenForUser` / `VisibleForUser` / `UserConfirmationRequired`) |
-| Tools reference microflows by qualified name | Matches the Agent Editor behavior: the microflow signature becomes the tool JSON schema |
-| Knowledge bases reference KB documents (future Phase 4 addition) | KB documents are a separate `CustomBlobDocument` type that also needs MDL support |
-| MCP services reference ConsumedMCPService documents (Phase 4) | Same pattern as KB — a separate document type for MCP server configs |
+| Top-level `(Key: Value)` config + `{...}` body with singular blocks | Mirrors `CREATE REST CLIENT ... (...) { OPERATION Name {...} }` exactly — same shape, same mental model |
+| `TOOL`, `KNOWLEDGE BASE`, `MCP SERVICE` as singular block types | Matches the `OPERATION` singular used in REST CLIENT; each block defines one resource |
+| `TOOL <Name> { Microflow: ..., Description: ..., Access: ... }` | `Microflow`, `Description`, `Access` are regular properties (not positional), same as REST CLIENT operation properties |
+| `KNOWLEDGE BASE <QualifiedName>` (module-qualified) | The name references an external KB document (peer `CustomBlobDocument`), not a free-form identifier |
+| `MCP SERVICE <QualifiedName>` (module-qualified) | Same rationale — references a ConsumedMCPService document |
+| `Variables: ("Name": EntityAttribute, ...)` inline | Variables are 1–2 properties each; inline matches how REST CLIENT handles `Parameters: ($id: String)` and `Headers: ('Accept' = 'application/json')` |
+| `Access: VisibleForUser` as enum literal | Maps to `GenAICommons.ENUM_UserAccessApproval` values: `HiddenForUser`, `VisibleForUser`, `UserConfirmationRequired` |
+| Body omitted when there are no tools/KB/MCP | Same concession REST CLIENT makes implicitly — empty bodies are awkward; drop them |
 | Prompts as string literals | Consistent with other MDL string properties; `{{var}}` placeholders are just text |
 
 > **Note on tool storage:** In the 4 observed agents in the test3 project, the `tools`, `knowledgebaseTools`, and MCP arrays in the `Contents` JSON are empty — all the sample agents are simple `Task` agents without tools. According to the [Agent Editor documentation](https://docs.mendix.com/appstore/modules/genai/genai-for-mx/agent-editor/), tools and knowledge bases ARE configured on the agent in the editor (not at runtime), so the `Contents` JSON schema supports them. Implementation will need to verify the exact JSON shape with an agent that has tools attached — a known gap flagged in the Open Questions section.
@@ -295,7 +301,7 @@ In `sdk/mpr/writer_agent.go`:
 #### 2.3 Validation
 
 - Entity reference must exist (if specified)
-- Variables marked `ENTITY ATTRIBUTE` must correspond to attributes on the referenced entity
+- Variables marked `EntityAttribute` must correspond to attributes on the referenced entity
 - `UsageType` must be a known value (`Task` or `Conversational`)
 - Variable names used in `{{...}}` in prompts should match declared variables (warning, not error)
 
@@ -316,7 +322,7 @@ In `sdk/mpr/writer_agent.go`:
   agents:
     agent_document:
       min_version: "11.9.0"
-      mdl: "CREATE AGENT Module.Name (...) VARIABLES (...)"
+      mdl: "CREATE AGENT Module.Name (...) { TOOL ... { ... } ... }"
       notes: "Requires AgentEditorCommons marketplace module"
   ```
 - Executor pre-check: `checkFeature("agent_document")` before CREATE
@@ -355,7 +361,7 @@ CREATE KNOWLEDGE BASE MyModule."ProductDocsKB" (
 );
 ```
 
-Referenced from agents via the `KNOWLEDGE BASES (...)` clause.
+Referenced from agents via `KNOWLEDGE BASE <QualifiedName> { ... }` blocks inside the agent body.
 
 #### 4.3 `CREATE CONSUMED MCP SERVICE` Document
 
@@ -368,7 +374,7 @@ CREATE CONSUMED MCP SERVICE MyModule."WebSearchMCP" (
 );
 ```
 
-Referenced from agents via the `MCP SERVICES (...)` clause.
+Referenced from agents via `MCP SERVICE <QualifiedName> { ... }` blocks inside the agent body.
 
 #### 4.4 `CALL AGENT` / `NEW CHAT FOR AGENT` Microflow Activities
 
@@ -384,14 +390,21 @@ These need a new BSON activity type (or mapping to the generic Java action call 
 
 #### 4.5 ALTER AGENT
 
+Follows the same shape as `ALTER PAGE` — in-place modifications to top-level properties and body blocks:
+
 ```sql
-ALTER AGENT MyModule."SentimentAnalyzer"
-  SET SystemPrompt = 'New prompt with {{Variable}}.',
-  ADD VARIABLE "NewVar" ENTITY ATTRIBUTE,
-  ADD TOOL "NewTool" MICROFLOW MyModule.NewToolMicroflow
-    DESCRIPTION 'A new tool' ACCESS VisibleForUser,
-  DROP TOOL "OldTool",
-  DROP VARIABLE "OldVar";
+ALTER AGENT MyModule."SentimentAnalyzer" {
+  SET SystemPrompt = 'New prompt with {{Variable}}.';
+  SET Variables = ("FeedbackText": EntityAttribute, "NewVar": String);
+
+  INSERT TOOL NewTool {
+    Microflow: MyModule.NewToolMicroflow,
+    Description: 'A new tool',
+    Access: VisibleForUser
+  };
+
+  DROP TOOL OldTool;
+};
 ```
 
 ## Building Smart Apps with MDL: End-to-End Examples
@@ -642,20 +655,28 @@ Guidelines:
 - If you cannot resolve an issue, create a support ticket
 - Be empathetic and professional in your responses'
 )
-TOOLS (
-  "LookupCustomer" MICROFLOW Support.Tool_LookupCustomer
-    DESCRIPTION 'Look up a customer by their email address'
-    ACCESS VisibleForUser,
-  "GetOrders" MICROFLOW Support.Tool_GetOrders
-    DESCRIPTION 'Get recent orders for a customer by name'
-    ACCESS VisibleForUser,
-  "CreateTicket" MICROFLOW Support.Tool_CreateTicket
-    DESCRIPTION 'Create a new support ticket with the given subject, description, and priority'
-    ACCESS UserConfirmationRequired
-);
+{
+  TOOL LookupCustomer {
+    Microflow: Support.Tool_LookupCustomer,
+    Description: 'Look up a customer by their email address',
+    Access: VisibleForUser
+  }
+
+  TOOL GetOrders {
+    Microflow: Support.Tool_GetOrders,
+    Description: 'Get recent orders for a customer by name',
+    Access: VisibleForUser
+  }
+
+  TOOL CreateTicket {
+    Microflow: Support.Tool_CreateTicket,
+    Description: 'Create a new support ticket with the given subject, description, and priority',
+    Access: UserConfirmationRequired
+  }
+};
 ```
 
-The `ACCESS` modifier maps to `GenAICommons.ENUM_UserAccessApproval`:
+The `Access` property maps to `GenAICommons.ENUM_UserAccessApproval`:
 - `HiddenForUser` — tool executes silently
 - `VisibleForUser` — tool call is shown in the chat UI but executes automatically
 - `UserConfirmationRequired` — tool call is shown and user must approve before execution
@@ -855,6 +876,7 @@ CREATE AGENT Research."ResearchAssistant" (
   UsageType: Conversational,
   Description: 'Research assistant with web search and document analysis via MCP',
   Entity: Research.ResearchProject,
+  Variables: ("Title": EntityAttribute, "Objective": EntityAttribute),
   SystemPrompt: 'You are a research assistant helping with project: {{Title}}.
 
 Objective: {{Objective}}
@@ -866,13 +888,11 @@ Use the available tools to:
 
 Always cite your sources. Present findings in a structured format.'
 )
-VARIABLES (
-  "Title" ENTITY ATTRIBUTE,
-  "Objective" ENTITY ATTRIBUTE
-)
-MCP SERVICES (
-  Research.ResearchTools ACCESS VisibleForUser
-);
+{
+  MCP SERVICE Research.ResearchTools {
+    Access: VisibleForUser
+  }
+};
 ```
 
 #### Step 5: Action Microflow — Same Simple Pattern
@@ -951,6 +971,7 @@ CREATE AGENT Reviews."SentimentAnalyzer" (
   UsageType: Task,
   Description: 'Single-call agent that extracts sentiment and themes from a product review',
   Entity: Reviews.ProductReview,
+  Variables: ("ProductName": EntityAttribute, "ReviewText": EntityAttribute),
   SystemPrompt: 'Analyze the following product review for {{ProductName}}.
 
 Extract:
@@ -961,10 +982,6 @@ Respond in this exact format:
 Sentiment: <sentiment>
 Themes: <theme1>, <theme2>, <theme3>',
   UserPrompt: '{{ReviewText}}'
-)
-VARIABLES (
-  "ProductName" ENTITY ATTRIBUTE,
-  "ReviewText" ENTITY ATTRIBUTE
 );
 ```
 
@@ -1107,14 +1124,19 @@ You have access to tools that can:
 IMPORTANT: Always show the expense details before recommending approval.
 Never approve expenses that exceed typical department limits without explicit user instruction.'
 )
-TOOLS (
-  "LookupExpenses" MICROFLOW Finance.Tool_LookupExpenses
-    DESCRIPTION 'List pending expense reports for a department'
-    ACCESS VisibleForUser,
-  "ApproveExpense" MICROFLOW Finance.Tool_ApproveExpense
-    DESCRIPTION 'Approve a specific expense report by report number'
-    ACCESS UserConfirmationRequired
-);
+{
+  TOOL LookupExpenses {
+    Microflow: Finance.Tool_LookupExpenses,
+    Description: 'List pending expense reports for a department',
+    Access: VisibleForUser
+  }
+
+  TOOL ApproveExpense {
+    Microflow: Finance.Tool_ApproveExpense,
+    Description: 'Approve a specific expense report by report number',
+    Access: UserConfirmationRequired
+  }
+};
 ```
 
 #### Step 3: Action Microflow — Unchanged
@@ -1186,12 +1208,13 @@ Always include the source document reference in your answer.
 
 Do not make up information that is not in the context.'
 )
-KNOWLEDGE BASES (
-  HelpDesk.ProductDocsKB
-    COLLECTION 'product-documentation'
-    MAX_RESULTS 5
-    MIN_SIMILARITY 0.7
-);
+{
+  KNOWLEDGE BASE HelpDesk.ProductDocsKB {
+    Collection: 'product-documentation',
+    MaxResults: 5,
+    MinSimilarity: 0.7
+  }
+};
 ```
 
 #### Step 3: Action Microflow — Identical to the Simple Pattern
@@ -1425,17 +1448,25 @@ Always try the knowledge base first before creating a ticket.
 Be patient and ask clarifying questions when the issue is unclear.
 For password resets and access requests, always create a ticket.'
 )
-TOOLS (
-  "SearchKB" MICROFLOW ITHelp.Tool_SearchKB
-    DESCRIPTION 'Search the knowledge base for articles matching a query'
-    ACCESS VisibleForUser,
-  "CreateTicket" MICROFLOW ITHelp.Tool_CreateTicket
-    DESCRIPTION 'Create a new support ticket with subject, description, and category'
-    ACCESS UserConfirmationRequired,
-  "GetTicketStatus" MICROFLOW ITHelp.Tool_GetTicketStatus
-    DESCRIPTION 'Get current status of an existing support ticket by ID'
-    ACCESS VisibleForUser
-);
+{
+  TOOL SearchKB {
+    Microflow: ITHelp.Tool_SearchKB,
+    Description: 'Search the knowledge base for articles matching a query',
+    Access: VisibleForUser
+  }
+
+  TOOL CreateTicket {
+    Microflow: ITHelp.Tool_CreateTicket,
+    Description: 'Create a new support ticket with subject, description, and category',
+    Access: UserConfirmationRequired
+  }
+
+  TOOL GetTicketStatus {
+    Microflow: ITHelp.Tool_GetTicketStatus,
+    Description: 'Get current status of an existing support ticket by ID',
+    Access: VisibleForUser
+  }
+};
 
 -- 6. Chat action microflow — uniform pattern with Call Agent
 CREATE MICROFLOW ITHelp."Chat_ITSupport" (
@@ -1580,7 +1611,7 @@ The combination of `CREATE AGENT` (document definition), tool microflows (busine
 
 2. **Contents JSON schema for tools/KB/MCP**: All 4 observed agents in the test3 project have empty `tools`, `knowledgebaseTools`, and MCP arrays. Per the [Agent Editor docs](https://docs.mendix.com/appstore/modules/genai/genai-for-mx/agent-editor/), tools ARE attached to the agent document in the editor — we need to observe the exact JSON shape (keys, nesting, how microflow references are serialized) with a non-empty example before finalizing the writer. Request: user creates an agent with one tool and one KB in Studio Pro so we can capture the BSON.
 
-3. **Separate document types for Model, Knowledge Base, and MCP Service**: The Agent Editor treats these as peer document types. To fully support the `TOOLS (...)`, `KNOWLEDGE BASES (...)`, and `MCP SERVICES (...)` clauses, the implementation must also support:
+3. **Separate document types for Model, Knowledge Base, and MCP Service**: The Agent Editor treats these as peer document types. To fully support the `TOOL`, `KNOWLEDGE BASE`, and `MCP SERVICE` blocks inside an agent body, the implementation must also support:
    - `CREATE MODEL` (document with model key constant reference)
    - `CREATE KNOWLEDGE BASE` (document with KB resource key reference)
    - `CREATE CONSUMED MCP SERVICE` (document with endpoint, protocol, credentials microflow)
