@@ -1,8 +1,37 @@
 # Proposal: `mxcli marketplace` — Download & Manage Marketplace Modules
 
-**Status:** Draft
-**Date:** 2026-03-23
+**Status:** Partial — read-only commands shipping; install blocked upstream
+**Date:** 2026-03-23 (initial), revised 2026-04-16 (spike results)
 **Author:** Generated with Claude Code
+
+## Status update (2026-04-16)
+
+After four rounds of spiking (`scripts/auth-discovery-spike.sh`), the
+**install** path is blocked by a gap in Mendix's API: there is no way to
+obtain the `.mpk` download URL with a Personal Access Token.
+
+- The API at `marketplace-api.mendix.com` does not expose `downloadUrl` or
+  any equivalent field on content or version objects.
+- The CDN at `files.appstore.mendix.com` is public for GET, but its path
+  format (`/{N}/{M}/{version}/{filename}.mpk`) contains three opaque
+  per-module values (N, M, and the filename convention) that the API does
+  not return and we cannot derive.
+- The marketplace website at `marketplace.mendix.com/link/component/{id}`
+  contains the download link in its HTML, but requires AAD SSO — PATs
+  return a 404/login page.
+- `mx` (mxbuild) has no marketplace subcommand; only `module-import` for
+  an already-downloaded `.mpk`.
+
+This proposal is therefore scoped in two phases:
+
+- **Phase A — ship now**: read-only discovery commands (`search`, `info`,
+  `versions`). These work with the existing PAT auth layer and the
+  confirmed API endpoints. They deliver concrete user value (CLI
+  marketplace browsing, version-compat filtering) without the install gap.
+- **Phase B — parked**: `install` and `update` commands. Unblocked by
+  either Mendix adding `downloadUrl` to the API, or a future AAD device-
+  code auth flow that could access the web app HTML (see
+  `PROPOSAL_platform_auth.md` Phase 6).
 
 ## Problem
 
