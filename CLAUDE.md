@@ -224,6 +224,11 @@ Available namespaces: `DomainModels`, `Enumerations`, `Microflows`, `Pages`, `Mo
 
 When reviewing pull requests or validating work before commit, verify these items:
 
+### Bug fixes
+- [ ] **Fix-issue skill consulted** — read `.claude/skills/fix-issue.md` before diagnosing; match symptom to table before opening files
+- [ ] **Symptom table updated** — new symptom/layer/file mapping added to `.claude/skills/fix-issue.md` if not already covered
+- [ ] **Test written first** — failing test exists before implementation (parser test in `sdk/mpr/`, formatter test in `mdl/executor/`)
+
 ### Overlap & duplication
 - [ ] Check `docs/11-proposals/` for existing proposals covering the same functionality
 - [ ] Search the codebase for existing implementations (grep for key function names, command names, types)
