@@ -84,3 +84,35 @@ func (c *Client) Search(ctx context.Context, opts SearchOptions) (*SearchRespons
 
 	return &result, nil
 }
+
+// GetEndpoint retrieves detailed endpoint metadata by UUID.
+// Calls GET /endpoints/{uuid} and returns parsed result including embedded contract.
+func (c *Client) GetEndpoint(ctx context.Context, uuid string) (*EndpointDetails, error) {
+	reqURL := c.baseURL + "/endpoints/" + uuid
+	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		// auth.authTransport wraps 401/403 as auth.ErrUnauthenticated
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, fmt.Errorf("endpoint %s not found", uuid)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("catalog API returned status %d", resp.StatusCode)
+	}
+
+	var result EndpointDetails
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("decode response: %w", err)
+	}
+
+	return &result, nil
+}

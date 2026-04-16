@@ -186,13 +186,13 @@ mxcli catalog search "sales" --owned-only
 
 ### Table Output Format
 
-**Design Decision:** 7 columns, ~120 chars wide (fits standard terminal width).
+**Design Decision:** 7 columns, ~155 chars wide with full UUIDs.
 
 ```
-NAME                   TYPE    VERSION    APPLICATION           ENVIRONMENT   PROD  UUID
-CustomerService        OData   1.2.0      CRM Application       Production    Yes   a7f3c2d1
-OrderAPI               REST    2.0.1      E-commerce Platform   Acceptance    No    b8e4d3e2
-InventorySync          SOAP    1.0.0      Warehouse System      Test          No    c9f5e4f3
+NAME                TYPE   VERSION  APPLICATION           ENVIRONMENT   PROD  UUID
+CustomerService     OData  1.2.0    CRM Application       Production    Yes   a7f3c2d1-4b5e-6c7f-8d9e-0a1b2c3d4e5f
+OrderAPI            REST   2.0.1    E-commerce Platform   Acceptance    No    b8e4d3e2-1a2b-3c4d-5e6f-7a8b9c0d1e2f
+InventorySync       SOAP   1.0.0    Warehouse System      Test          No    c9f5e4f3-2b3c-4d5e-6f7a-8b9c0d1e2f3a
 ```
 
 **Column Widths:**
@@ -202,10 +202,10 @@ InventorySync          SOAP    1.0.0      Warehouse System      Test          No
 - APPLICATION (20 chars) — Truncate with "..." if longer
 - ENVIRONMENT (12 chars) — Type field (Production, Acceptance, Test)
 - PROD (4 chars) — "Yes" if environment.Type == "Production", blank otherwise
-- UUID (8 chars) — First 8 chars only (full UUID available in --json mode)
+- UUID (36 chars) — Full UUID for use with `mxcli catalog show <uuid>`
 
 **Rationale:**
-- Short UUIDs reduce cognitive load while remaining unique enough for manual lookup
+- Full UUIDs required for `catalog show` command (API requires full UUID)
 - PROD column provides at-a-glance production status without reading ENVIRONMENT
 - APPLICATION provides context without requiring a separate lookup
 - Full details available via `--json` for scripting use cases

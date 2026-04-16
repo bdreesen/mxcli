@@ -37,10 +37,10 @@ mxcli catalog search "data" --json | jq '.[] | {name, uuid, type}'
 
 **Table (default):**
 ```
-NAME                   TYPE    VERSION    APPLICATION           ENVIRONMENT   PROD  UUID
-CustomerService        OData   1.2.0      CRM Application       Production    Yes   a7f3c2d1
-OrderAPI               REST    2.0.1      E-commerce Platform   Acceptance    No    b8e4d3e2
-InventorySync          SOAP    1.0.0      Warehouse System      Test          No    c9f5e4f3
+NAME                TYPE   VERSION  APPLICATION           ENVIRONMENT   PROD  UUID
+CustomerService     OData  1.2.0    CRM Application       Production    Yes   a7f3c2d1-4b5e-6c7f-8d9e-0a1b2c3d4e5f
+OrderAPI            REST   2.0.1    E-commerce Platform   Acceptance    No    b8e4d3e2-1a2b-3c4d-5e6f-7a8b9c0d1e2f
+InventorySync       SOAP   1.0.0    Warehouse System      Test          No    c9f5e4f3-2b3c-4d5e-6f7a-8b9c0d1e2f3a
 
 Total: 42 results (showing 1-3)
 ```
@@ -51,7 +51,7 @@ Total: 42 results (showing 1-3)
 - **APPLICATION**: Hosting application name
 - **ENVIRONMENT**: Production, Acceptance, Test
 - **PROD**: "Yes" if production, blank otherwise
-- **UUID**: First 8 characters (full UUID in JSON mode)
+- **UUID**: Full UUID (36 chars) - copy this for use with `mxcli catalog show <uuid>`
 
 **JSON mode:**
 ```bash
