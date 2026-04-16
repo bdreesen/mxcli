@@ -287,6 +287,7 @@ func (fb *flowBuilder) addLoopStatement(s *ast.LoopStmt) model.ID {
 		measurer:     fb.measurer,     // Share measurer
 		reader:       fb.reader,       // Share reader
 		hierarchy:    fb.hierarchy,    // Share hierarchy
+		restServices: fb.restServices, // Share REST services for parameter classification
 	}
 
 	// Process loop body statements and connect them with flows
@@ -360,6 +361,7 @@ func (fb *flowBuilder) addWhileStatement(s *ast.WhileStmt) model.ID {
 		measurer:     fb.measurer,
 		reader:       fb.reader,
 		hierarchy:    fb.hierarchy,
+		restServices: fb.restServices,
 	}
 
 	var lastBodyID model.ID

@@ -33,6 +33,7 @@ type flowBuilder struct {
 	reader              *mpr.Reader              // For looking up page/microflow references
 	hierarchy           *ContainerHierarchy      // For resolving container IDs to module names
 	pendingAnnotations  *ast.ActivityAnnotations // Pending annotations to attach to next activity
+	restServices        []*model.ConsumedRestService // Cached REST services for parameter classification
 }
 
 // addError records a validation error during flow building.

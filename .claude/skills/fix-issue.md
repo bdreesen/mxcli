@@ -25,6 +25,7 @@ to the symptom table below, so the next similar issue costs fewer reads.
 | CE0463 "widget definition changed" | Object property structure doesn't match Type PropertyTypes | `sdk/widgets/templates/` | Re-extract template from Studio Pro; see `sdk/widgets/templates/README.md` |
 | Parser returns `nil` for a known BSON type | Unhandled `default` in a `parseXxx()` switch | `sdk/mpr/parser_microflow.go` or `parser_page.go` | Find the switch by grepping for `default: return nil`; add the missing case |
 | MDL check gives "unexpected token" on valid-looking syntax | Grammar missing rule or token | `mdl/grammar/MDLParser.g4` + `MDLLexer.g4` | Add rule/token, run `make grammar` |
+| CE7054 "parameters updated" / CE7067 "does not support body entity" after `SEND REST REQUEST` | `addSendRestRequestAction` emitted wrong BSON: all params as query params, BodyVariable set for JSON bodies | `mdl/executor/cmd_microflows_builder_calls.go` → `addSendRestRequestAction` | Look up operation via `fb.restServices`; route path/query params with `buildRestParameterMappings`; suppress BodyVariable for JSON/TEMPLATE/FILE via `shouldSetBodyVariable` |
 
 ---
 
