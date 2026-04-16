@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/mendixlabs/mxcli/internal/pathutil"
 )
 
 func TestFetchODataMetadata_LocalFile(t *testing.T) {
@@ -99,49 +101,49 @@ func TestNormalizeMetadataUrl(t *testing.T) {
 	tests := []struct {
 		name       string
 		input      string
-		mprDir     string
+		baseDir    string
 		wantPrefix string
 		wantErr    bool
 	}{
 		{
 			name:       "HTTP URL unchanged",
 			input:      "https://api.example.com/$metadata",
-			mprDir:     "",
+			baseDir:    "",
 			wantPrefix: "https://",
 			wantErr:    false,
 		},
 		{
 			name:       "HTTPS URL unchanged",
 			input:      "http://localhost:8080/odata/$metadata",
-			mprDir:     "",
+			baseDir:    "",
 			wantPrefix: "http://",
 			wantErr:    false,
 		},
 		{
 			name:       "Absolute file:// unchanged",
 			input:      "file:///tmp/metadata.xml",
-			mprDir:     "",
+			baseDir:    "",
 			wantPrefix: "file://",
 			wantErr:    false,
 		},
 		{
 			name:       "Relative path normalized to file://",
 			input:      "./metadata.xml",
-			mprDir:     tmpDir,
+			baseDir:    tmpDir,
 			wantPrefix: "file://",
 			wantErr:    false,
 		},
 		{
 			name:       "Bare relative path normalized to file://",
 			input:      "metadata.xml",
-			mprDir:     tmpDir,
+			baseDir:    tmpDir,
 			wantPrefix: "file://",
 			wantErr:    false,
 		},
 		{
 			name:       "Absolute path normalized to file://",
 			input:      "/tmp/metadata.xml",
-			mprDir:     "",
+			baseDir:    "",
 			wantPrefix: "file://",
 			wantErr:    false,
 		},
@@ -149,7 +151,7 @@ func TestNormalizeMetadataUrl(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := normalizeMetadataUrl(tt.input, tt.mprDir)
+			result, err := pathutil.NormalizeURL(tt.input, tt.baseDir)
 
 			if tt.wantErr {
 				if err == nil {
