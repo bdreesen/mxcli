@@ -9,6 +9,11 @@ This example demonstrates how to create consumed OData services using local meta
 - **Version-pinned metadata** — lock to a specific metadata version
 - **Pre-production services** — test against metadata files before deployment
 
+## Important Notes
+
+1. **Relative paths are normalized** — Any relative path is automatically converted to an absolute `file://` URL in the Mendix model for Studio Pro compatibility
+2. **ServiceUrl must be a constant** — Always use `@Module.ConstantName` format, not direct URLs
+
 ## Supported Formats
 
 ### 1. Absolute `file://` URI
@@ -20,13 +25,16 @@ CREATE ODATA CLIENT MyModule.Service (
 
 ### 2. Relative path (with or without `./`)
 ```mdl
--- Resolved relative to the .mpr file's directory when project is loaded
+-- Resolved relative to the .mpr file's directory, then normalized to absolute file://
+-- Example: './metadata/service.xml' → 'file:///absolute/path/to/project/metadata/service.xml'
 CREATE ODATA CLIENT MyModule.Service (
-  MetadataUrl: './metadata/service.xml'
+  MetadataUrl: './metadata/service.xml',
+  ServiceUrl: '@MyModule.ServiceLocation'
 );
 
 CREATE ODATA CLIENT MyModule.Service2 (
-  MetadataUrl: 'metadata/service.xml'
+  MetadataUrl: 'metadata/service.xml',
+  ServiceUrl: '@MyModule.ServiceLocation'
 );
 ```
 

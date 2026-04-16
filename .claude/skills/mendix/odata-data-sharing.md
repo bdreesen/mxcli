@@ -16,13 +16,18 @@ This skill covers how to use OData services to share data between Mendix applica
 
 `CREATE ODATA CLIENT` supports three formats for the `MetadataUrl` parameter:
 
-| Format | Example | Use Case |
-|--------|---------|----------|
-| **HTTP(S) URL** | `https://api.example.com/odata/v4/$metadata` | Production, fetches from live service |
-| **Absolute file:// URI** | `file:///Users/team/contracts/service.xml` | Local metadata at fixed path |
-| **Relative path** | `./metadata/service.xml` or `metadata/service.xml` | Metadata alongside project (offline, testing, CI/CD) |
+| Format | Example | Stored In Model |
+|--------|---------|-----------------|
+| **HTTP(S) URL** | `https://api.example.com/odata/v4/$metadata` | Unchanged |
+| **Absolute file:// URI** | `file:///Users/team/contracts/service.xml` | Unchanged |
+| **Relative path** | `./metadata/service.xml` or `metadata/service.xml` | **Normalized to absolute `file://`** |
 
-**Path Resolution:**
+**Path Normalization:**
+- Relative paths (with or without `./`) are **automatically converted** to absolute `file://` URLs in the Mendix model
+- This ensures Studio Pro can properly detect local file vs HTTP metadata sources (radio button in UI)
+- Example: `./metadata/service.xml` → `file:///absolute/path/to/project/metadata/service.xml`
+
+**Path Resolution (before normalization):**
 - With project loaded (`-p` flag or REPL): relative paths are resolved against the `.mpr` file's directory
 - Without project: relative paths are resolved against the current working directory
 
@@ -32,6 +37,34 @@ This skill covers how to use OData services to share data between Mendix applica
 - **Version control** — commit metadata files alongside code
 - **Pre-production** — test against upcoming API changes before deployment
 - **Firewall-friendly** — works in locked-down corporate environments
+
+## ServiceUrl Must Be a Constant
+
+**IMPORTANT:** The `ServiceUrl` parameter **must always be a constant reference** (prefixed with `@`). Direct URLs are not allowed.
+
+**Correct:**
+```sql
+CREATE CONSTANT ProductClient.ProductDataApiLocation
+  TYPE String
+  DEFAULT 'http://localhost:8080/odata/productdataapi/v1/';
+
+CREATE ODATA CLIENT ProductClient.ProductDataApiClient (
+  ODataVersion: OData4,
+  MetadataUrl: 'https://api.example.com/$metadata',
+  ServiceUrl: '@ProductClient.ProductDataApiLocation'  -- ✅ Constant reference
+);
+```
+
+**Incorrect:**
+```sql
+CREATE ODATA CLIENT ProductClient.ProductDataApiClient (
+  ODataVersion: OData4,
+  MetadataUrl: 'https://api.example.com/$metadata',
+  ServiceUrl: 'https://api.example.com/odata'  -- ❌ Direct URL not allowed
+);
+```
+
+This enforces Mendix best practice of externalizing configuration values for different environments.
 
 ## Architecture Overview
 

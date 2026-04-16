@@ -93,6 +93,91 @@ func TestFetchODataMetadata_LocalFile(t *testing.T) {
 	}
 }
 
+func TestNormalizeMetadataUrl(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	tests := []struct {
+		name       string
+		input      string
+		mprDir     string
+		wantPrefix string
+		wantErr    bool
+	}{
+		{
+			name:       "HTTP URL unchanged",
+			input:      "https://api.example.com/$metadata",
+			mprDir:     "",
+			wantPrefix: "https://",
+			wantErr:    false,
+		},
+		{
+			name:       "HTTPS URL unchanged",
+			input:      "http://localhost:8080/odata/$metadata",
+			mprDir:     "",
+			wantPrefix: "http://",
+			wantErr:    false,
+		},
+		{
+			name:       "Absolute file:// unchanged",
+			input:      "file:///tmp/metadata.xml",
+			mprDir:     "",
+			wantPrefix: "file://",
+			wantErr:    false,
+		},
+		{
+			name:       "Relative path normalized to file://",
+			input:      "./metadata.xml",
+			mprDir:     tmpDir,
+			wantPrefix: "file://",
+			wantErr:    false,
+		},
+		{
+			name:       "Bare relative path normalized to file://",
+			input:      "metadata.xml",
+			mprDir:     tmpDir,
+			wantPrefix: "file://",
+			wantErr:    false,
+		},
+		{
+			name:       "Absolute path normalized to file://",
+			input:      "/tmp/metadata.xml",
+			mprDir:     "",
+			wantPrefix: "file://",
+			wantErr:    false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := normalizeMetadataUrl(tt.input, tt.mprDir)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("Expected error but got none")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("Unexpected error: %v", err)
+				return
+			}
+
+			if !strings.HasPrefix(result, tt.wantPrefix) {
+				t.Errorf("Result %q does not start with %q", result, tt.wantPrefix)
+			}
+
+			// Verify file:// URLs are absolute
+			if strings.HasPrefix(result, "file://") {
+				path := strings.TrimPrefix(result, "file://")
+				if !filepath.IsAbs(path) {
+					t.Errorf("file:// URL contains relative path: %q", result)
+				}
+			}
+		})
+	}
+}
+
 func TestFetchODataMetadata_RelativePathWithoutProject(t *testing.T) {
 	// Create metadata file in current directory
 	tmpDir := t.TempDir()

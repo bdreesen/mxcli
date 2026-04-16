@@ -149,19 +149,25 @@ CREATE ODATA CLIENT MyModule.LocalService (
   Timeout: 300
 );
 
--- Local file with relative path (resolved against .mpr directory)
+-- Local file with relative path (normalized to absolute file:// in model)
 CREATE ODATA CLIENT MyModule.LocalService2 (
   Version: '1.0',
   ODataVersion: OData4,
   MetadataUrl: './metadata/service.xml',
-  Timeout: 300
+  Timeout: 300,
+  ServiceUrl: '@MyModule.ServiceLocation'  -- Must be a constant reference
 );
 ```
 
 **Note:** `MetadataUrl` supports three formats:
 - `https://...` or `http://...` — fetches from HTTP(S) endpoint
 - `file:///abs/path` — reads from local absolute path
-- `./path` or `path/file.xml` — reads from local relative path (resolved against `.mpr` directory when project is loaded, or `cwd` otherwise)
+- `./path` or `path/file.xml` — reads from local relative path, **normalized to absolute `file://` in the model** for Studio Pro compatibility
+
+**Important:** `ServiceUrl` must always be a constant reference starting with `@` (e.g., `@Module.ConstantName`). Create a constant first:
+```sql
+CREATE CONSTANT MyModule.ServiceLocation TYPE String DEFAULT 'https://api.example.com/odata/v4/';
+```
 
 **OData Service Example:**
 ```sql

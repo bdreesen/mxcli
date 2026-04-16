@@ -991,6 +991,10 @@ func (e *Executor) createODataClient(stmt *ast.CreateODataClientStmt) error {
 			ClientCertificate: stmt.ClientCertificate,
 		}
 		if stmt.ServiceUrl != "" {
+			// ServiceUrl must be a constant reference (e.g., @Module.ConstantName)
+			if !strings.HasPrefix(stmt.ServiceUrl, "@") {
+				return fmt.Errorf("ServiceUrl must be a constant reference starting with '@' (e.g., '@Module.LocationConstant'), got: %s", stmt.ServiceUrl)
+			}
 			cfg.OverrideLocation = true
 			cfg.CustomLocation = stmt.ServiceUrl
 		}
@@ -1004,12 +1008,21 @@ func (e *Executor) createODataClient(stmt *ast.CreateODataClientStmt) error {
 	}
 
 	// Fetch and cache $metadata from the service URL
+	// Normalize local file paths to absolute file:// URLs for Studio Pro compatibility
 	if newSvc.MetadataUrl != "" {
 		mprDir := ""
 		if e.mprPath != "" {
 			mprDir = filepath.Dir(e.mprPath)
 		}
-		metadata, hash, err := fetchODataMetadata(newSvc.MetadataUrl, mprDir)
+
+		// Normalize MetadataUrl: convert relative paths to absolute file:// URLs
+		normalizedUrl, err := normalizeMetadataUrl(newSvc.MetadataUrl, mprDir)
+		if err != nil {
+			return fmt.Errorf("failed to normalize MetadataUrl: %w", err)
+		}
+		newSvc.MetadataUrl = normalizedUrl
+
+		metadata, hash, err := fetchODataMetadata(normalizedUrl, mprDir)
 		if err != nil {
 			fmt.Fprintf(e.output, "Warning: could not fetch $metadata: %v\n", err)
 		} else if metadata != "" {
@@ -1409,6 +1422,59 @@ func astEntityDefToModel(def *ast.PublishedEntityDef) (*model.PublishedEntityTyp
 	}
 
 	return entityType, entitySet
+}
+
+// normalizeMetadataUrl converts relative paths to absolute file:// URLs.
+// This ensures Studio Pro can properly detect local file vs HTTP metadata sources.
+//
+// Input formats:
+//   - https://... or http://... → returned as-is
+//   - file:///abs/path → returned as-is
+//   - ./path or path/file.xml → converted to file:///absolute/path
+//
+// If mprDir is provided, relative paths are resolved against it.
+// Otherwise, they're resolved against the current working directory.
+func normalizeMetadataUrl(metadataUrl string, mprDir string) (string, error) {
+	if metadataUrl == "" {
+		return "", nil
+	}
+
+	// HTTP(S) URLs are already normalized
+	if strings.HasPrefix(metadataUrl, "http://") || strings.HasPrefix(metadataUrl, "https://") {
+		return metadataUrl, nil
+	}
+
+	// Extract file path
+	filePath := metadataUrl
+	if strings.HasPrefix(metadataUrl, "file://") {
+		filePath = pathutil.URIToPath(metadataUrl)
+		if filePath == "" {
+			return "", fmt.Errorf("invalid file:// URI: %s", metadataUrl)
+		}
+	}
+
+	// Convert relative paths to absolute
+	if !filepath.IsAbs(filePath) {
+		if mprDir != "" {
+			filePath = filepath.Join(mprDir, filePath)
+		} else {
+			// No project loaded - use cwd
+			cwd, err := os.Getwd()
+			if err != nil {
+				return "", fmt.Errorf("failed to resolve relative path: %w", err)
+			}
+			filePath = filepath.Join(cwd, filePath)
+		}
+	}
+
+	// Convert to absolute path (clean up ./ and ../)
+	absPath, err := filepath.Abs(filePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to get absolute path: %w", err)
+	}
+
+	// Return as file:// URL
+	return "file://" + filepath.ToSlash(absPath), nil
 }
 
 // fetchODataMetadata downloads or reads the $metadata document.
