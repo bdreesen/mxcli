@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	"github.com/mendixlabs/mxcli/mdl/backend"
 	"github.com/mendixlabs/mxcli/mdl/catalog"
 	"github.com/mendixlabs/mxcli/mdl/diaglog"
 	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
@@ -122,6 +123,7 @@ const (
 type Executor struct {
 	writer        *mpr.Writer
 	reader        *mpr.Reader
+	backend       backend.FullBackend // domain backend (populated on Connect)
 	output        io.Writer
 	guard         *outputGuard // line-limit wrapper around output
 	mprPath       string
@@ -297,6 +299,7 @@ func (e *Executor) Close() error {
 		e.writer.Close()
 		e.writer = nil
 		e.reader = nil
+		e.backend = nil
 	}
 	if e.sqlMgr != nil {
 		e.sqlMgr.CloseAll()

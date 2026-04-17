@@ -10,10 +10,10 @@ import (
 	"github.com/mendixlabs/mxcli/mdl/backend"
 	"github.com/mendixlabs/mxcli/mdl/catalog"
 	"github.com/mendixlabs/mxcli/mdl/diaglog"
+	sqllib "github.com/mendixlabs/mxcli/sql"
 )
 
 // ExecContext carries all dependencies a statement handler needs.
-// It will replace the direct *Executor receiver once handlers are migrated.
 //
 // Design notes:
 //   - Embeds context.Context for cancellation and timeout propagation.
@@ -24,7 +24,8 @@ import (
 type ExecContext struct {
 	context.Context
 
-	// Backend provides all domain operations.
+	// Backend provides all domain operations (read/write/connect).
+	// Nil when not connected.
 	Backend backend.FullBackend
 
 	// Output is the writer for user-visible output (with line-limit guard).
@@ -48,9 +49,34 @@ type ExecContext struct {
 	// Cache holds per-session cached data for performance.
 	Cache *executorCache
 
+	// MprPath is the filesystem path to the connected .mpr file.
+	// Empty when not connected.
+	MprPath string
+
+	// SqlMgr manages external SQL database connections (lazy init).
+	SqlMgr *sqllib.Manager
+
+	// ThemeRegistry holds cached theme design property definitions (lazy init).
+	ThemeRegistry *ThemeRegistry
+
+	// Settings holds session-scoped key-value settings (SET command).
+	Settings map[string]any
+
 	// executor is a temporary back-reference used during incremental migration.
 	// Handlers that have not yet been migrated to use Backend can access the
 	// original Executor through this field. It will be removed once all handlers
-	// are migrated.
+	// are fully migrated to ctx.Backend.
 	executor *Executor
+}
+
+// Connected returns true if a project is connected via the Backend.
+func (ctx *ExecContext) Connected() bool {
+	return ctx.Backend != nil && ctx.Backend.IsConnected()
+}
+
+// ConnectedForWrite returns true if a project is connected and the backend
+// supports write operations. Currently equivalent to Connected() since
+// MprBackend always supports writes.
+func (ctx *ExecContext) ConnectedForWrite() bool {
+	return ctx.Connected()
 }

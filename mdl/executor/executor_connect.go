@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mprbackend "github.com/mendixlabs/mxcli/mdl/backend/mpr"
 	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/sdk/mpr"
 )
@@ -25,6 +26,9 @@ func execConnect(ctx *ExecContext, s *ast.ConnectStmt) error {
 	e.reader = writer.Reader()
 	e.mprPath = s.Path
 	e.cache = &executorCache{} // Initialize fresh cache
+
+	// Wrap the writer in an MprBackend for ctx.Backend propagation.
+	e.backend = mprbackend.Wrap(writer, s.Path)
 
 	// Display connection info with version
 	pv := e.reader.ProjectVersion()
@@ -59,6 +63,7 @@ func reconnect(ctx *ExecContext) error {
 	e.writer = writer
 	e.reader = writer.Reader()
 	e.cache = &executorCache{} // Reset cache
+	e.backend = mprbackend.Wrap(writer, e.mprPath)
 	return nil
 }
 
@@ -80,6 +85,7 @@ func execDisconnect(ctx *ExecContext) error {
 	e.reader = nil
 	e.mprPath = ""
 	e.cache = nil
+	e.backend = nil
 	return nil
 }
 
