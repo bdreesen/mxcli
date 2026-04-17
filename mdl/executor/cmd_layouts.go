@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 )
 
 // showLayouts handles SHOW LAYOUTS command.
@@ -14,13 +16,13 @@ func (e *Executor) showLayouts(moduleName string) error {
 	// Get hierarchy for module/folder resolution
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	// Get all layouts
 	layouts, err := e.reader.ListLayouts()
 	if err != nil {
-		return fmt.Errorf("failed to list layouts: %w", err)
+		return mdlerrors.NewBackend("list layouts", err)
 	}
 
 	// Collect rows

@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 )
 
 // DiffFormat represents the output format for diff results
@@ -67,7 +68,7 @@ const (
 // DiffProgram compares an MDL program against the current project state
 func (e *Executor) DiffProgram(prog *ast.Program, opts DiffOptions) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	// Set defaults

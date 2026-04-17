@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/model"
 	"github.com/mendixlabs/mxcli/sdk/domainmodel"
 	"github.com/mendixlabs/mxcli/sdk/microflows"
@@ -17,7 +18,7 @@ import (
 // Supported types: entity (renders full domain model), microflow, page.
 func (e *Executor) DescribeMermaid(objectType, name string) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	parts := strings.SplitN(name, ".", 2)
@@ -36,7 +37,7 @@ func (e *Executor) DescribeMermaid(objectType, name string) error {
 	case "PAGE":
 		return e.pageToMermaid(qn)
 	default:
-		return fmt.Errorf("mermaid format not supported for type: %s", objectType)
+		return mdlerrors.NewUnsupported(fmt.Sprintf("mermaid format not supported for type: %s", objectType))
 	}
 }
 
@@ -49,7 +50,7 @@ func (e *Executor) domainModelToMermaid(moduleName string) error {
 
 	dm, err := e.reader.GetDomainModel(module.ID)
 	if err != nil {
-		return fmt.Errorf("failed to get domain model: %w", err)
+		return mdlerrors.NewBackend("get domain model", err)
 	}
 
 	// Build entity ID-to-name map for this module
@@ -183,7 +184,7 @@ func (e *Executor) domainModelToMermaid(moduleName string) error {
 func (e *Executor) microflowToMermaid(name ast.QualifiedName) error {
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	// Build entity name lookup
@@ -199,7 +200,7 @@ func (e *Executor) microflowToMermaid(name ast.QualifiedName) error {
 	// Find the microflow
 	allMicroflows, err := e.reader.ListMicroflows()
 	if err != nil {
-		return fmt.Errorf("failed to list microflows: %w", err)
+		return mdlerrors.NewBackend("list microflows", err)
 	}
 
 	var targetMf *microflows.Microflow
@@ -213,7 +214,7 @@ func (e *Executor) microflowToMermaid(name ast.QualifiedName) error {
 	}
 
 	if targetMf == nil {
-		return fmt.Errorf("microflow not found: %s", name)
+		return mdlerrors.NewNotFound("microflow", name.String())
 	}
 
 	return e.renderMicroflowMermaid(targetMf, entityNames)
@@ -361,12 +362,12 @@ func (e *Executor) renderMicroflowMermaid(mf *microflows.Microflow, entityNames 
 func (e *Executor) pageToMermaid(name ast.QualifiedName) error {
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	allPages, err := e.reader.ListPages()
 	if err != nil {
-		return fmt.Errorf("failed to list pages: %w", err)
+		return mdlerrors.NewBackend("list pages", err)
 	}
 
 	var foundPage *pages.Page
@@ -380,7 +381,7 @@ func (e *Executor) pageToMermaid(name ast.QualifiedName) error {
 	}
 
 	if foundPage == nil {
-		return fmt.Errorf("page not found: %s", name)
+		return mdlerrors.NewNotFound("page", name.String())
 	}
 
 	// Use raw widget data (same approach as describePage)

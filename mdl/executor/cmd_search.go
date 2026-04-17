@@ -7,12 +7,13 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 )
 
 // execShowCallers handles SHOW CALLERS OF Module.Microflow [TRANSITIVE].
 func (e *Executor) execShowCallers(s *ast.ShowStmt) error {
 	if s.Name == nil {
-		return fmt.Errorf("target name required for SHOW CALLERS")
+		return mdlerrors.NewValidation("target name required for SHOW CALLERS")
 	}
 
 	// Ensure catalog is available with full mode for refs
@@ -59,7 +60,7 @@ func (e *Executor) execShowCallers(s *ast.ShowStmt) error {
 
 	result, err := e.catalog.Query(strings.Replace(query, "?", "'"+targetName+"'", 1))
 	if err != nil {
-		return fmt.Errorf("failed to query callers: %w", err)
+		return mdlerrors.NewBackend("query callers", err)
 	}
 
 	if result.Count == 0 {
@@ -75,7 +76,7 @@ func (e *Executor) execShowCallers(s *ast.ShowStmt) error {
 // execShowCallees handles SHOW CALLEES OF Module.Microflow [TRANSITIVE].
 func (e *Executor) execShowCallees(s *ast.ShowStmt) error {
 	if s.Name == nil {
-		return fmt.Errorf("target name required for SHOW CALLEES")
+		return mdlerrors.NewValidation("target name required for SHOW CALLEES")
 	}
 
 	// Ensure catalog is available with full mode for refs
@@ -122,7 +123,7 @@ func (e *Executor) execShowCallees(s *ast.ShowStmt) error {
 
 	result, err := e.catalog.Query(strings.Replace(query, "?", "'"+sourceName+"'", 1))
 	if err != nil {
-		return fmt.Errorf("failed to query callees: %w", err)
+		return mdlerrors.NewBackend("query callees", err)
 	}
 
 	if result.Count == 0 {
@@ -138,7 +139,7 @@ func (e *Executor) execShowCallees(s *ast.ShowStmt) error {
 // execShowReferences handles SHOW REFERENCES TO Module.Entity.
 func (e *Executor) execShowReferences(s *ast.ShowStmt) error {
 	if s.Name == nil {
-		return fmt.Errorf("target name required for SHOW REFERENCES")
+		return mdlerrors.NewValidation("target name required for SHOW REFERENCES")
 	}
 
 	// Ensure catalog is available with full mode for refs
@@ -159,7 +160,7 @@ func (e *Executor) execShowReferences(s *ast.ShowStmt) error {
 
 	result, err := e.catalog.Query(strings.Replace(query, "?", "'"+targetName+"'", 1))
 	if err != nil {
-		return fmt.Errorf("failed to query references: %w", err)
+		return mdlerrors.NewBackend("query references", err)
 	}
 
 	if result.Count == 0 {
@@ -176,7 +177,7 @@ func (e *Executor) execShowReferences(s *ast.ShowStmt) error {
 // This shows all elements that would be affected by changing the target.
 func (e *Executor) execShowImpact(s *ast.ShowStmt) error {
 	if s.Name == nil {
-		return fmt.Errorf("target name required for SHOW IMPACT")
+		return mdlerrors.NewValidation("target name required for SHOW IMPACT")
 	}
 
 	// Ensure catalog is available with full mode for refs
@@ -197,7 +198,7 @@ func (e *Executor) execShowImpact(s *ast.ShowStmt) error {
 
 	result, err := e.catalog.Query(strings.Replace(directQuery, "?", "'"+targetName+"'", 1))
 	if err != nil {
-		return fmt.Errorf("failed to query impact: %w", err)
+		return mdlerrors.NewBackend("query impact", err)
 	}
 
 	if result.Count == 0 {

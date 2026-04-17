@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/model"
 	"github.com/mendixlabs/mxcli/sdk/domainmodel"
 )
@@ -14,13 +15,13 @@ import (
 // execMove handles MOVE PAGE/MICROFLOW/SNIPPET/NANOFLOW/ENTITY/ENUMERATION statements.
 func (e *Executor) execMove(s *ast.MoveStmt) error {
 	if e.writer == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	// Find the source module
 	sourceModule, err := e.findModule(s.Name.Module)
 	if err != nil {
-		return fmt.Errorf("source module not found: %w", err)
+		return mdlerrors.NewBackend("find source module", err)
 	}
 
 	// Determine target module
@@ -29,7 +30,7 @@ func (e *Executor) execMove(s *ast.MoveStmt) error {
 	if s.TargetModule != "" {
 		targetModule, err = e.findModule(s.TargetModule)
 		if err != nil {
-			return fmt.Errorf("target module not found: %w", err)
+			return mdlerrors.NewBackend("find target module", err)
 		}
 		isCrossModuleMove = targetModule.ID != sourceModule.ID
 	} else {
@@ -46,7 +47,7 @@ func (e *Executor) execMove(s *ast.MoveStmt) error {
 	if s.Folder != "" {
 		targetContainerID, err = e.resolveFolder(targetModule.ID, s.Folder)
 		if err != nil {
-			return fmt.Errorf("failed to resolve target folder: %w", err)
+			return mdlerrors.NewBackend("resolve target folder", err)
 		}
 	} else {
 		targetContainerID = targetModule.ID
@@ -81,7 +82,7 @@ func (e *Executor) execMove(s *ast.MoveStmt) error {
 			return err
 		}
 	default:
-		return fmt.Errorf("unsupported document type: %s", s.DocumentType)
+		return mdlerrors.NewUnsupported("unsupported document type: " + string(s.DocumentType))
 	}
 
 	// For cross-module moves, update all BY_NAME references throughout the project
@@ -100,7 +101,7 @@ func (e *Executor) updateQualifiedNameRefs(name ast.QualifiedName, newModule str
 	newQN := newModule + "." + name.Name // "NewModule.ElementName"
 	updated, err := e.writer.UpdateQualifiedNameInAllUnits(oldQN, newQN)
 	if err != nil {
-		return fmt.Errorf("failed to update references: %w", err)
+		return mdlerrors.NewBackend("update references", err)
 	}
 	if updated > 0 {
 		fmt.Fprintf(e.output, "Updated references in %d document(s): %s → %s\n", updated, oldQN, newQN)
@@ -113,12 +114,12 @@ func (e *Executor) movePage(name ast.QualifiedName, targetContainerID model.ID) 
 	// Find the page
 	pages, err := e.reader.ListPages()
 	if err != nil {
-		return fmt.Errorf("failed to list pages: %w", err)
+		return mdlerrors.NewBackend("list pages", err)
 	}
 
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	for _, p := range pages {
@@ -128,14 +129,14 @@ func (e *Executor) movePage(name ast.QualifiedName, targetContainerID model.ID) 
 			// Update container ID and move the unit
 			p.ContainerID = targetContainerID
 			if err := e.writer.MovePage(p); err != nil {
-				return fmt.Errorf("failed to move page: %w", err)
+				return mdlerrors.NewBackend("move page", err)
 			}
 			fmt.Fprintf(e.output, "Moved page %s to new location\n", name.String())
 			return nil
 		}
 	}
 
-	return fmt.Errorf("page not found: %s", name.String())
+	return mdlerrors.NewNotFound("page", name.String())
 }
 
 // moveMicroflow moves a microflow to a new container.
@@ -143,12 +144,12 @@ func (e *Executor) moveMicroflow(name ast.QualifiedName, targetContainerID model
 	// Find the microflow
 	mfs, err := e.reader.ListMicroflows()
 	if err != nil {
-		return fmt.Errorf("failed to list microflows: %w", err)
+		return mdlerrors.NewBackend("list microflows", err)
 	}
 
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	for _, mf := range mfs {
@@ -158,14 +159,14 @@ func (e *Executor) moveMicroflow(name ast.QualifiedName, targetContainerID model
 			// Update container ID and move the unit
 			mf.ContainerID = targetContainerID
 			if err := e.writer.MoveMicroflow(mf); err != nil {
-				return fmt.Errorf("failed to move microflow: %w", err)
+				return mdlerrors.NewBackend("move microflow", err)
 			}
 			fmt.Fprintf(e.output, "Moved microflow %s to new location\n", name.String())
 			return nil
 		}
 	}
 
-	return fmt.Errorf("microflow not found: %s", name.String())
+	return mdlerrors.NewNotFound("microflow", name.String())
 }
 
 // moveSnippet moves a snippet to a new container.
@@ -173,12 +174,12 @@ func (e *Executor) moveSnippet(name ast.QualifiedName, targetContainerID model.I
 	// Find the snippet
 	snippets, err := e.reader.ListSnippets()
 	if err != nil {
-		return fmt.Errorf("failed to list snippets: %w", err)
+		return mdlerrors.NewBackend("list snippets", err)
 	}
 
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	for _, s := range snippets {
@@ -188,14 +189,14 @@ func (e *Executor) moveSnippet(name ast.QualifiedName, targetContainerID model.I
 			// Update container ID and move the unit
 			s.ContainerID = targetContainerID
 			if err := e.writer.MoveSnippet(s); err != nil {
-				return fmt.Errorf("failed to move snippet: %w", err)
+				return mdlerrors.NewBackend("move snippet", err)
 			}
 			fmt.Fprintf(e.output, "Moved snippet %s to new location\n", name.String())
 			return nil
 		}
 	}
 
-	return fmt.Errorf("snippet not found: %s", name.String())
+	return mdlerrors.NewNotFound("snippet", name.String())
 }
 
 // moveNanoflow moves a nanoflow to a new container.
@@ -203,12 +204,12 @@ func (e *Executor) moveNanoflow(name ast.QualifiedName, targetContainerID model.
 	// Find the nanoflow
 	nfs, err := e.reader.ListNanoflows()
 	if err != nil {
-		return fmt.Errorf("failed to list nanoflows: %w", err)
+		return mdlerrors.NewBackend("list nanoflows", err)
 	}
 
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	for _, nf := range nfs {
@@ -218,14 +219,14 @@ func (e *Executor) moveNanoflow(name ast.QualifiedName, targetContainerID model.
 			// Update container ID and move the unit
 			nf.ContainerID = targetContainerID
 			if err := e.writer.MoveNanoflow(nf); err != nil {
-				return fmt.Errorf("failed to move nanoflow: %w", err)
+				return mdlerrors.NewBackend("move nanoflow", err)
 			}
 			fmt.Fprintf(e.output, "Moved nanoflow %s to new location\n", name.String())
 			return nil
 		}
 	}
 
-	return fmt.Errorf("nanoflow not found: %s", name.String())
+	return mdlerrors.NewNotFound("nanoflow", name.String())
 }
 
 // moveEntity moves an entity from one domain model to another.
@@ -236,7 +237,7 @@ func (e *Executor) moveEntity(name ast.QualifiedName, sourceModule, targetModule
 	// Get source domain model
 	sourceDM, err := e.reader.GetDomainModel(sourceModule.ID)
 	if err != nil {
-		return fmt.Errorf("failed to get source domain model: %w", err)
+		return mdlerrors.NewBackend("get source domain model", err)
 	}
 
 	// Find the entity in the source domain model
@@ -248,19 +249,19 @@ func (e *Executor) moveEntity(name ast.QualifiedName, sourceModule, targetModule
 		}
 	}
 	if entity == nil {
-		return fmt.Errorf("entity not found: %s", name.String())
+		return mdlerrors.NewNotFound("entity", name.String())
 	}
 
 	// Get target domain model
 	targetDM, err := e.reader.GetDomainModel(targetModule.ID)
 	if err != nil {
-		return fmt.Errorf("failed to get target domain model: %w", err)
+		return mdlerrors.NewBackend("get target domain model", err)
 	}
 
 	// Move entity via writer (converts associations to CrossAssociations, updates validation rule refs)
 	convertedAssocs, err := e.writer.MoveEntity(entity, sourceDM.ID, targetDM.ID, sourceModule.Name, targetModule.Name)
 	if err != nil {
-		return fmt.Errorf("failed to move entity: %w", err)
+		return mdlerrors.NewBackend("move entity", err)
 	}
 
 	// Move ViewEntitySourceDocument for view entities
@@ -297,13 +298,13 @@ func (e *Executor) moveEntity(name ast.QualifiedName, sourceModule, targetModule
 func (e *Executor) moveEnumeration(name ast.QualifiedName, targetContainerID model.ID, targetModuleName string) error {
 	enum := e.findEnumeration(name.Module, name.Name)
 	if enum == nil {
-		return fmt.Errorf("enumeration not found: %s", name.String())
+		return mdlerrors.NewNotFound("enumeration", name.String())
 	}
 
 	oldQualifiedName := name.String() // e.g., "DmTest.Country"
 	enum.ContainerID = targetContainerID
 	if err := e.writer.MoveEnumeration(enum); err != nil {
-		return fmt.Errorf("failed to move enumeration: %w", err)
+		return mdlerrors.NewBackend("move enumeration", err)
 	}
 
 	// For cross-module moves, update enumeration references in all domain models
@@ -324,12 +325,12 @@ func (e *Executor) moveEnumeration(name ast.QualifiedName, targetContainerID mod
 func (e *Executor) moveConstant(name ast.QualifiedName, targetContainerID model.ID) error {
 	constants, err := e.reader.ListConstants()
 	if err != nil {
-		return fmt.Errorf("failed to list constants: %w", err)
+		return mdlerrors.NewBackend("list constants", err)
 	}
 
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	for _, c := range constants {
@@ -338,26 +339,26 @@ func (e *Executor) moveConstant(name ast.QualifiedName, targetContainerID model.
 		if modName == name.Module && c.Name == name.Name {
 			c.ContainerID = targetContainerID
 			if err := e.writer.MoveConstant(c); err != nil {
-				return fmt.Errorf("failed to move constant: %w", err)
+				return mdlerrors.NewBackend("move constant", err)
 			}
 			fmt.Fprintf(e.output, "Moved constant %s to new location\n", name.String())
 			return nil
 		}
 	}
 
-	return fmt.Errorf("constant not found: %s", name.String())
+	return mdlerrors.NewNotFound("constant", name.String())
 }
 
 // moveDatabaseConnection moves a database connection to a new container.
 func (e *Executor) moveDatabaseConnection(name ast.QualifiedName, targetContainerID model.ID) error {
 	connections, err := e.reader.ListDatabaseConnections()
 	if err != nil {
-		return fmt.Errorf("failed to list database connections: %w", err)
+		return mdlerrors.NewBackend("list database connections", err)
 	}
 
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	for _, conn := range connections {
@@ -366,12 +367,12 @@ func (e *Executor) moveDatabaseConnection(name ast.QualifiedName, targetContaine
 		if modName == name.Module && conn.Name == name.Name {
 			conn.ContainerID = targetContainerID
 			if err := e.writer.MoveDatabaseConnection(conn); err != nil {
-				return fmt.Errorf("failed to move database connection: %w", err)
+				return mdlerrors.NewBackend("move database connection", err)
 			}
 			fmt.Fprintf(e.output, "Moved database connection %s to new location\n", name.String())
 			return nil
 		}
 	}
 
-	return fmt.Errorf("database connection not found: %s", name.String())
+	return mdlerrors.NewNotFound("database connection", name.String())
 }

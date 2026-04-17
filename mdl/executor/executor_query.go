@@ -3,14 +3,13 @@
 package executor
 
 import (
-	"fmt"
-
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 )
 
 func (e *Executor) execShow(s *ast.ShowStmt) error {
 	if e.reader == nil && s.ObjectType != ast.ShowModules && s.ObjectType != ast.ShowFragments {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	switch s.ObjectType {
@@ -139,13 +138,13 @@ func (e *Executor) execShow(s *ast.ShowStmt) error {
 	case ast.ShowExportMappings:
 		return e.showExportMappings(s.InModule)
 	default:
-		return fmt.Errorf("unknown show object type")
+		return mdlerrors.NewUnsupported("unknown show object type")
 	}
 }
 
 func (e *Executor) execDescribe(s *ast.DescribeStmt) error {
 	if e.reader == nil && s.ObjectType != ast.DescribeFragment {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	// Determine the object type label and name for JSON wrapping.
@@ -231,7 +230,7 @@ func (e *Executor) execDescribe(s *ast.DescribeStmt) error {
 		case ast.DescribeExportMapping:
 			return e.describeExportMapping(s.Name)
 		default:
-			return fmt.Errorf("unknown describe object type")
+			return mdlerrors.NewUnsupported("unknown describe object type")
 		}
 	})
 }

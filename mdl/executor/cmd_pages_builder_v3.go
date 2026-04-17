@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/model"
 	"github.com/mendixlabs/mxcli/sdk/domainmodel"
 	"github.com/mendixlabs/mxcli/sdk/microflows"
@@ -25,7 +26,7 @@ func (pb *pageBuilder) buildPageV3(s *ast.CreatePageStmtV3) (*pages.Page, error)
 	if s.Folder != "" {
 		folderID, err := pb.resolveFolder(s.Folder)
 		if err != nil {
-			return nil, fmt.Errorf("failed to resolve folder %s: %w", s.Folder, err)
+			return nil, mdlerrors.NewBackend("resolve folder "+s.Folder, err)
 		}
 		containerID = folderID
 	}
@@ -95,7 +96,7 @@ func (pb *pageBuilder) buildPageV3(s *ast.CreatePageStmtV3) (*pages.Page, error)
 			// Entity type parameter
 			entityID, err := pb.resolveEntity(param.EntityType)
 			if err != nil {
-				return nil, fmt.Errorf("failed to resolve entity %s: %w", param.EntityType.String(), err)
+				return nil, mdlerrors.NewBackend("resolve entity "+param.EntityType.String(), err)
 			}
 			entityName := param.EntityType.String()
 			pageParam.EntityID = entityID
@@ -153,7 +154,7 @@ func (pb *pageBuilder) buildPageV3(s *ast.CreatePageStmtV3) (*pages.Page, error)
 			for _, astWidget := range expanded {
 				w, err := pb.buildWidgetV3(astWidget)
 				if err != nil {
-					return nil, fmt.Errorf("failed to build widget: %w", err)
+					return nil, mdlerrors.NewBackend("build widget", err)
 				}
 				containerWidget.Widgets = append(containerWidget.Widgets, w)
 			}
@@ -174,7 +175,7 @@ func (pb *pageBuilder) buildSnippetV3(s *ast.CreateSnippetStmtV3) (*pages.Snippe
 	if s.Folder != "" {
 		folderID, err := pb.resolveFolder(s.Folder)
 		if err != nil {
-			return nil, fmt.Errorf("failed to resolve folder %s: %w", s.Folder, err)
+			return nil, mdlerrors.NewBackend("resolve folder "+s.Folder, err)
 		}
 		containerID = folderID
 	}
@@ -204,7 +205,7 @@ func (pb *pageBuilder) buildSnippetV3(s *ast.CreateSnippetStmtV3) (*pages.Snippe
 		if param.EntityType.Name != "" {
 			entityID, err := pb.resolveEntity(param.EntityType)
 			if err != nil {
-				return nil, fmt.Errorf("failed to resolve entity %s: %w", param.EntityType.String(), err)
+				return nil, mdlerrors.NewBackend("resolve entity "+param.EntityType.String(), err)
 			}
 			entityName := param.EntityType.String()
 			snippetParam.EntityID = entityID
@@ -242,7 +243,7 @@ func (pb *pageBuilder) buildSnippetV3(s *ast.CreateSnippetStmtV3) (*pages.Snippe
 	for _, astWidget := range expanded {
 		w, err := pb.buildWidgetV3(astWidget)
 		if err != nil {
-			return nil, fmt.Errorf("failed to build widget: %w", err)
+			return nil, mdlerrors.NewBackend("build widget", err)
 		}
 		snippet.Widgets = append(snippet.Widgets, w)
 	}
@@ -294,7 +295,7 @@ func (pb *pageBuilder) buildWidgetV3(w *ast.WidgetV3) (pages.Widget, error) {
 		widget, err = pb.buildTabContainerV3(w)
 	case "TABPAGE":
 		// Tab pages are handled inside TabContainer
-		return nil, fmt.Errorf("TABPAGE must be a direct child of TABCONTAINER")
+		return nil, mdlerrors.NewValidation("TABPAGE must be a direct child of TABCONTAINER")
 	case "GROUPBOX":
 		widget, err = pb.buildGroupBoxV3(w)
 	case "RADIOBUTTONS":
@@ -303,7 +304,7 @@ func (pb *pageBuilder) buildWidgetV3(w *ast.WidgetV3) (pages.Widget, error) {
 		widget, err = pb.buildNavigationListV3(w)
 	case "ITEM":
 		// Items are handled inside NavigationList
-		return nil, fmt.Errorf("ITEM must be a direct child of NAVIGATIONLIST")
+		return nil, mdlerrors.NewValidation("ITEM must be a direct child of NAVIGATIONLIST")
 	case "SNIPPETCALL":
 		widget, err = pb.buildSnippetCallV3(w)
 	case "FOOTER":
@@ -343,14 +344,14 @@ func (pb *pageBuilder) buildWidgetV3(w *ast.WidgetV3) (pages.Widget, error) {
 					if def, ok := pb.widgetRegistry.GetByWidgetID(widgetType); ok {
 						return pb.pluggableEngine.Build(def, w)
 					}
-					return nil, fmt.Errorf("no definition for widget %s (run 'mxcli widget init -p app.mpr')", widgetType)
+					return nil, mdlerrors.NewNotFoundMsg("widget", widgetType, "no definition for widget "+widgetType+" (run 'mxcli widget init -p app.mpr')")
 				}
 			}
 		}
 		if pb.pluggableEngineErr != nil {
-			return nil, fmt.Errorf("unsupported widget type: %s (%v)", w.Type, pb.pluggableEngineErr)
+			return nil, mdlerrors.NewUnsupported(fmt.Sprintf("unsupported widget type: %s (%v)", w.Type, pb.pluggableEngineErr))
 		}
-		return nil, fmt.Errorf("unsupported widget type: %s", w.Type)
+		return nil, mdlerrors.NewUnsupported("unsupported widget type: " + w.Type)
 	}
 
 	if err != nil {
@@ -484,7 +485,7 @@ func (pb *pageBuilder) buildDataSourceV3(ds *ast.DataSourceV3) (pages.DataSource
 			entityName = pb.paramEntityNames["$"+paramName]
 		}
 		if !ok {
-			return nil, "", fmt.Errorf("parameter not found: %s", ds.Reference)
+			return nil, "", mdlerrors.NewNotFound("parameter", ds.Reference)
 		}
 
 		// Fallback to lookup if entity name not stored
@@ -511,7 +512,7 @@ func (pb *pageBuilder) buildDataSourceV3(ds *ast.DataSourceV3) (pages.DataSource
 			Name:   pb.extractName(ds.Reference),
 		})
 		if err != nil {
-			return nil, "", fmt.Errorf("failed to resolve entity: %w", err)
+			return nil, "", mdlerrors.NewBackend("resolve entity", err)
 		}
 
 		dbSource := &pages.DatabaseSource{
@@ -551,7 +552,7 @@ func (pb *pageBuilder) buildDataSourceV3(ds *ast.DataSourceV3) (pages.DataSource
 		// Microflow source
 		mfID, err := pb.resolveMicroflow(ds.Reference)
 		if err != nil {
-			return nil, "", fmt.Errorf("failed to resolve microflow: %w", err)
+			return nil, "", mdlerrors.NewBackend("resolve microflow", err)
 		}
 
 		// Get entity name from microflow's return type for context resolution
@@ -570,7 +571,7 @@ func (pb *pageBuilder) buildDataSourceV3(ds *ast.DataSourceV3) (pages.DataSource
 		// Nanoflow source - resolve by listing all nanoflows
 		nfID, err := pb.resolveNanoflowByName(ds.Reference)
 		if err != nil {
-			return nil, "", fmt.Errorf("failed to resolve nanoflow: %w", err)
+			return nil, "", mdlerrors.NewBackend("resolve nanoflow", err)
 		}
 
 		// Get entity name from nanoflow's return type for context resolution
@@ -621,7 +622,7 @@ func (pb *pageBuilder) buildDataSourceV3(ds *ast.DataSourceV3) (pages.DataSource
 		widgetName := ds.Reference
 		widgetID, ok := pb.widgetScope[widgetName]
 		if !ok {
-			return nil, "", fmt.Errorf("widget not found for selection: %s", widgetName)
+			return nil, "", mdlerrors.NewNotFound("widget", widgetName)
 		}
 
 		// Get the entity context from the source widget if available
@@ -637,7 +638,7 @@ func (pb *pageBuilder) buildDataSourceV3(ds *ast.DataSourceV3) (pages.DataSource
 		}, entityName, nil
 
 	default:
-		return nil, "", fmt.Errorf("unsupported datasource type: %s", ds.Type)
+		return nil, "", mdlerrors.NewUnsupported("unsupported datasource type: " + ds.Type)
 	}
 }
 
@@ -878,7 +879,7 @@ func (pb *pageBuilder) buildClientActionV3(action *ast.ActionV3) (pages.ClientAc
 			Name:   pb.extractName(action.Target),
 		})
 		if err != nil {
-			return nil, fmt.Errorf("failed to resolve entity for create: %w", err)
+			return nil, mdlerrors.NewBackend("resolve entity for create", err)
 		}
 
 		createAct := &pages.CreateObjectClientAction{
@@ -894,7 +895,7 @@ func (pb *pageBuilder) buildClientActionV3(action *ast.ActionV3) (pages.ClientAc
 		if action.ThenAction != nil && action.ThenAction.Type == "showPage" {
 			pageID, err := pb.resolvePageRef(action.ThenAction.Target)
 			if err != nil {
-				return nil, fmt.Errorf("failed to resolve page: %w", err)
+				return nil, mdlerrors.NewBackend("resolve page", err)
 			}
 			createAct.PageID = pageID
 			createAct.PageName = action.ThenAction.Target
@@ -905,7 +906,7 @@ func (pb *pageBuilder) buildClientActionV3(action *ast.ActionV3) (pages.ClientAc
 	case "showPage":
 		_, err := pb.resolvePageRef(action.Target)
 		if err != nil {
-			return nil, fmt.Errorf("failed to resolve page: %w", err)
+			return nil, mdlerrors.NewBackend("resolve page", err)
 		}
 
 		pageAction := &pages.PageClientAction{
@@ -944,7 +945,7 @@ func (pb *pageBuilder) buildClientActionV3(action *ast.ActionV3) (pages.ClientAc
 	case "microflow":
 		mfID, err := pb.resolveMicroflow(action.Target)
 		if err != nil {
-			return nil, fmt.Errorf("failed to resolve microflow: %w", err)
+			return nil, mdlerrors.NewBackend("resolve microflow", err)
 		}
 
 		mfAction := &pages.MicroflowClientAction{
@@ -984,7 +985,7 @@ func (pb *pageBuilder) buildClientActionV3(action *ast.ActionV3) (pages.ClientAc
 	case "nanoflow":
 		nfID, err := pb.resolveNanoflowByName(action.Target)
 		if err != nil {
-			return nil, fmt.Errorf("failed to resolve nanoflow: %w", err)
+			return nil, mdlerrors.NewBackend("resolve nanoflow", err)
 		}
 
 		nfAction := &pages.NanoflowClientAction{
@@ -1051,7 +1052,7 @@ func (pb *pageBuilder) buildClientActionV3(action *ast.ActionV3) (pages.ClientAc
 		}, nil
 
 	default:
-		return nil, fmt.Errorf("unsupported action type: %s", action.Type)
+		return nil, mdlerrors.NewUnsupported("unsupported action type: " + action.Type)
 	}
 }
 
@@ -1097,7 +1098,7 @@ func (pb *pageBuilder) getEntityNameByID(entityID model.ID) (string, error) {
 			}
 		}
 	}
-	return "", fmt.Errorf("entity not found by ID: %s", entityID)
+	return "", mdlerrors.NewNotFound("entity", string(entityID))
 }
 
 // pageParamBSONType maps a DataType to the BSON $Type string for primitive page parameters.
@@ -1135,7 +1136,7 @@ func (pb *pageBuilder) resolveNanoflowByName(nfName string) (model.ID, error) {
 
 	nanoflows, err := pb.reader.ListNanoflows()
 	if err != nil {
-		return "", fmt.Errorf("failed to list nanoflows: %w", err)
+		return "", mdlerrors.NewBackend("list nanoflows", err)
 	}
 
 	h, err := pb.getHierarchy()
@@ -1157,7 +1158,7 @@ func (pb *pageBuilder) resolveNanoflowByName(nfName string) (model.ID, error) {
 		}
 	}
 
-	return "", fmt.Errorf("nanoflow not found: %s", nfName)
+	return "", mdlerrors.NewNotFound("nanoflow", nfName)
 }
 
 // mdlTypeToBsonType converts an MDL type name to a BSON DataTypes$* type string.
@@ -1351,11 +1352,11 @@ func (pb *pageBuilder) expandIfFragment(w *ast.WidgetV3) ([]*ast.WidgetV3, error
 	}
 
 	if pb.fragments == nil {
-		return nil, fmt.Errorf("fragment %q not found", w.Name)
+		return nil, mdlerrors.NewNotFound("fragment", w.Name)
 	}
 	frag, ok := pb.fragments[w.Name]
 	if !ok {
-		return nil, fmt.Errorf("fragment %q not found", w.Name)
+		return nil, mdlerrors.NewNotFound("fragment", w.Name)
 	}
 
 	widgets := cloneWidgets(frag.Widgets)

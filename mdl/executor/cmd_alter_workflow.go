@@ -9,6 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/model"
 	"github.com/mendixlabs/mxcli/sdk/mpr"
 	"github.com/mendixlabs/mxcli/sdk/workflows"
@@ -21,10 +22,10 @@ const bsonArrayMarker = int32(3)
 // execAlterWorkflow handles ALTER WORKFLOW Module.Name { operations }.
 func (e *Executor) execAlterWorkflow(s *ast.AlterWorkflowStmt) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 	if e.writer == nil {
-		return fmt.Errorf("project not opened for writing")
+		return mdlerrors.NewNotConnectedWrite()
 	}
 
 	// Version pre-check: workflows require Mendix 9.12+
@@ -36,13 +37,13 @@ func (e *Executor) execAlterWorkflow(s *ast.AlterWorkflowStmt) error {
 
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	// Find workflow by qualified name
 	allWorkflows, err := e.reader.ListWorkflows()
 	if err != nil {
-		return fmt.Errorf("failed to list workflows: %w", err)
+		return mdlerrors.NewBackend("list workflows", err)
 	}
 
 	var wfID model.ID
@@ -55,17 +56,17 @@ func (e *Executor) execAlterWorkflow(s *ast.AlterWorkflowStmt) error {
 		}
 	}
 	if wfID == "" {
-		return fmt.Errorf("workflow not found: %s.%s", s.Name.Module, s.Name.Name)
+		return mdlerrors.NewNotFound("workflow", s.Name.Module+"."+s.Name.Name)
 	}
 
 	// Load raw BSON as ordered document
 	rawBytes, err := e.reader.GetRawUnitBytes(wfID)
 	if err != nil {
-		return fmt.Errorf("failed to load raw workflow data: %w", err)
+		return mdlerrors.NewBackend("load raw workflow data", err)
 	}
 	var rawData bson.D
 	if err := bson.Unmarshal(rawBytes, &rawData); err != nil {
-		return fmt.Errorf("failed to unmarshal workflow BSON: %w", err)
+		return mdlerrors.NewBackend("unmarshal workflow BSON", err)
 	}
 
 	// Apply operations sequentially
@@ -73,70 +74,70 @@ func (e *Executor) execAlterWorkflow(s *ast.AlterWorkflowStmt) error {
 		switch o := op.(type) {
 		case *ast.SetWorkflowPropertyOp:
 			if err := applySetWorkflowProperty(&rawData, o); err != nil {
-				return fmt.Errorf("SET %s failed: %w", o.Property, err)
+				return mdlerrors.NewBackend("SET "+o.Property, err)
 			}
 		case *ast.SetActivityPropertyOp:
 			if err := applySetActivityProperty(rawData, o); err != nil {
-				return fmt.Errorf("SET ACTIVITY failed: %w", err)
+				return mdlerrors.NewBackend("SET ACTIVITY", err)
 			}
 		case *ast.InsertAfterOp:
 			if err := e.applyInsertAfterActivity(rawData, o); err != nil {
-				return fmt.Errorf("INSERT AFTER failed: %w", err)
+				return mdlerrors.NewBackend("INSERT AFTER", err)
 			}
 		case *ast.DropActivityOp:
 			if err := applyDropActivity(rawData, o); err != nil {
-				return fmt.Errorf("DROP ACTIVITY failed: %w", err)
+				return mdlerrors.NewBackend("DROP ACTIVITY", err)
 			}
 		case *ast.ReplaceActivityOp:
 			if err := e.applyReplaceActivity(rawData, o); err != nil {
-				return fmt.Errorf("REPLACE ACTIVITY failed: %w", err)
+				return mdlerrors.NewBackend("REPLACE ACTIVITY", err)
 			}
 		case *ast.InsertOutcomeOp:
 			if err := e.applyInsertOutcome(rawData, o); err != nil {
-				return fmt.Errorf("INSERT OUTCOME failed: %w", err)
+				return mdlerrors.NewBackend("INSERT OUTCOME", err)
 			}
 		case *ast.DropOutcomeOp:
 			if err := applyDropOutcome(rawData, o); err != nil {
-				return fmt.Errorf("DROP OUTCOME failed: %w", err)
+				return mdlerrors.NewBackend("DROP OUTCOME", err)
 			}
 		case *ast.InsertPathOp:
 			if err := e.applyInsertPath(rawData, o); err != nil {
-				return fmt.Errorf("INSERT PATH failed: %w", err)
+				return mdlerrors.NewBackend("INSERT PATH", err)
 			}
 		case *ast.DropPathOp:
 			if err := applyDropPath(rawData, o); err != nil {
-				return fmt.Errorf("DROP PATH failed: %w", err)
+				return mdlerrors.NewBackend("DROP PATH", err)
 			}
 		case *ast.InsertBranchOp:
 			if err := e.applyInsertBranch(rawData, o); err != nil {
-				return fmt.Errorf("INSERT BRANCH failed: %w", err)
+				return mdlerrors.NewBackend("INSERT BRANCH", err)
 			}
 		case *ast.DropBranchOp:
 			if err := applyDropBranch(rawData, o); err != nil {
-				return fmt.Errorf("DROP BRANCH failed: %w", err)
+				return mdlerrors.NewBackend("DROP BRANCH", err)
 			}
 		case *ast.InsertBoundaryEventOp:
 			if err := e.applyInsertBoundaryEvent(rawData, o); err != nil {
-				return fmt.Errorf("INSERT BOUNDARY EVENT failed: %w", err)
+				return mdlerrors.NewBackend("INSERT BOUNDARY EVENT", err)
 			}
 		case *ast.DropBoundaryEventOp:
 			if err := applyDropBoundaryEvent(rawData, o); err != nil {
-				return fmt.Errorf("DROP BOUNDARY EVENT failed: %w", err)
+				return mdlerrors.NewBackend("DROP BOUNDARY EVENT", err)
 			}
 		default:
-			return fmt.Errorf("unknown ALTER WORKFLOW operation type: %T", op)
+			return mdlerrors.NewUnsupported(fmt.Sprintf("unknown ALTER WORKFLOW operation type: %T", op))
 		}
 	}
 
 	// Marshal back to BSON bytes
 	outBytes, err := bson.Marshal(rawData)
 	if err != nil {
-		return fmt.Errorf("failed to marshal modified workflow: %w", err)
+		return mdlerrors.NewBackend("marshal modified workflow", err)
 	}
 
 	// Save
 	if err := e.writer.UpdateRawUnit(string(wfID), outBytes); err != nil {
-		return fmt.Errorf("failed to save modified workflow: %w", err)
+		return mdlerrors.NewBackend("save modified workflow", err)
 	}
 
 	e.invalidateHierarchy()
@@ -241,7 +242,7 @@ func applySetWorkflowProperty(doc *bson.D, op *ast.SetWorkflowPropertyOp) error 
 		return nil
 
 	default:
-		return fmt.Errorf("unsupported workflow property: %s", op.Property)
+		return mdlerrors.NewUnsupported("unsupported workflow property: " + op.Property)
 	}
 }
 
@@ -302,7 +303,7 @@ func applySetActivityProperty(doc bson.D, op *ast.SetActivityPropertyOp) error {
 		return nil
 
 	default:
-		return fmt.Errorf("unsupported activity property: %s", op.Property)
+		return mdlerrors.NewUnsupported("unsupported activity property: " + op.Property)
 	}
 }
 
@@ -312,29 +313,29 @@ func applySetActivityProperty(doc bson.D, op *ast.SetActivityPropertyOp) error {
 func findActivityByCaption(doc bson.D, caption string, atPosition int) (bson.D, error) {
 	flow := dGetDoc(doc, "Flow")
 	if flow == nil {
-		return nil, fmt.Errorf("workflow has no Flow")
+		return nil, mdlerrors.NewValidation("workflow has no Flow")
 	}
 
 	var matches []bson.D
 	findActivitiesRecursive(flow, caption, &matches)
 
 	if len(matches) == 0 {
-		return nil, fmt.Errorf("activity %q not found in workflow", caption)
+		return nil, mdlerrors.NewNotFound("activity", caption)
 	}
 	if len(matches) == 1 || atPosition == 0 {
 		if atPosition > 0 && atPosition > len(matches) {
-			return nil, fmt.Errorf("activity %q at position %d not found (found %d matches)", caption, atPosition, len(matches))
+			return nil, mdlerrors.NewNotFoundMsg("activity", caption, fmt.Sprintf("activity %q at position %d not found (found %d matches)", caption, atPosition, len(matches)))
 		}
 		if atPosition > 0 {
 			return matches[atPosition-1], nil
 		}
 		if len(matches) > 1 {
-			return nil, fmt.Errorf("ambiguous activity %q — %d matches. Use @N to disambiguate", caption, len(matches))
+			return nil, mdlerrors.NewValidation(fmt.Sprintf("ambiguous activity %q — %d matches. Use @N to disambiguate", caption, len(matches)))
 		}
 		return matches[0], nil
 	}
 	if atPosition > len(matches) {
-		return nil, fmt.Errorf("activity %q at position %d not found (found %d matches)", caption, atPosition, len(matches))
+		return nil, mdlerrors.NewNotFoundMsg("activity", caption, fmt.Sprintf("activity %q at position %d not found (found %d matches)", caption, atPosition, len(matches)))
 	}
 	return matches[atPosition-1], nil
 }
@@ -392,23 +393,23 @@ func getNestedFlows(actDoc bson.D) []bson.D {
 func findActivityIndex(doc bson.D, caption string, atPosition int) (int, []any, bson.D, error) {
 	flow := dGetDoc(doc, "Flow")
 	if flow == nil {
-		return -1, nil, nil, fmt.Errorf("workflow has no Flow")
+		return -1, nil, nil, mdlerrors.NewValidation("workflow has no Flow")
 	}
 
 	var matches []activityMatch
 	findActivityIndexRecursive(flow, caption, &matches)
 
 	if len(matches) == 0 {
-		return -1, nil, nil, fmt.Errorf("activity %q not found in workflow", caption)
+		return -1, nil, nil, mdlerrors.NewNotFound("activity", caption)
 	}
 	pos := 0
 	if atPosition > 0 {
 		pos = atPosition - 1
 	} else if len(matches) > 1 {
-		return -1, nil, nil, fmt.Errorf("ambiguous activity %q — %d matches. Use @N to disambiguate", caption, len(matches))
+		return -1, nil, nil, mdlerrors.NewValidation(fmt.Sprintf("ambiguous activity %q — %d matches. Use @N to disambiguate", caption, len(matches)))
 	}
 	if pos >= len(matches) {
-		return -1, nil, nil, fmt.Errorf("activity %q at position %d not found (found %d matches)", caption, atPosition, len(matches))
+		return -1, nil, nil, mdlerrors.NewNotFoundMsg("activity", caption, fmt.Sprintf("activity %q at position %d not found (found %d matches)", caption, atPosition, len(matches)))
 	}
 	m := matches[pos]
 	return m.idx, m.activities, m.flow, nil
@@ -513,7 +514,7 @@ func (e *Executor) applyInsertAfterActivity(doc bson.D, op *ast.InsertAfterOp) e
 
 	newActs := buildWorkflowActivities([]ast.WorkflowActivityNode{op.NewActivity})
 	if len(newActs) == 0 {
-		return fmt.Errorf("failed to build new activity")
+		return mdlerrors.NewValidation("failed to build new activity")
 	}
 
 	// Auto-bind parameters and deduplicate against existing workflow names
@@ -565,7 +566,7 @@ func (e *Executor) applyReplaceActivity(doc bson.D, op *ast.ReplaceActivityOp) e
 
 	newActs := buildWorkflowActivities([]ast.WorkflowActivityNode{op.NewActivity})
 	if len(newActs) == 0 {
-		return fmt.Errorf("failed to build replacement activity")
+		return mdlerrors.NewValidation("failed to build replacement activity")
 	}
 
 	e.autoBindActivitiesInFlow(newActs)
@@ -651,7 +652,7 @@ func applyDropOutcome(doc bson.D, op *ast.DropOutcomeOp) error {
 		kept = append(kept, elem)
 	}
 	if !found {
-		return fmt.Errorf("outcome %q not found on activity %q", op.OutcomeName, op.ActivityRef)
+		return mdlerrors.NewNotFoundMsg("outcome", op.OutcomeName, fmt.Sprintf("outcome %q not found on activity %q", op.OutcomeName, op.ActivityRef))
 	}
 	dSetArray(actDoc, "Outcomes", kept)
 	return nil
@@ -706,7 +707,7 @@ func applyDropPath(doc bson.D, op *ast.DropPathOp) error {
 		}
 	}
 	if pathIdx < 0 {
-		return fmt.Errorf("path %q not found on parallel split %q", op.PathCaption, op.ActivityRef)
+		return mdlerrors.NewNotFoundMsg("path", op.PathCaption, fmt.Sprintf("path %q not found on parallel split %q", op.PathCaption, op.ActivityRef))
 	}
 
 	newOutcomes := make([]any, 0, len(outcomes)-1)
@@ -811,7 +812,7 @@ func applyDropBranch(doc bson.D, op *ast.DropBranchOp) error {
 		kept = append(kept, elem)
 	}
 	if !found {
-		return fmt.Errorf("branch %q not found on activity %q", op.BranchName, op.ActivityRef)
+		return mdlerrors.NewNotFoundMsg("branch", op.BranchName, fmt.Sprintf("branch %q not found on activity %q", op.BranchName, op.ActivityRef))
 	}
 	dSetArray(actDoc, "Outcomes", kept)
 	return nil
@@ -871,7 +872,7 @@ func applyDropBoundaryEvent(doc bson.D, op *ast.DropBoundaryEventOp) error {
 
 	events := dGetArrayElements(dGet(actDoc, "BoundaryEvents"))
 	if len(events) == 0 {
-		return fmt.Errorf("activity %q has no boundary events", op.ActivityRef)
+		return mdlerrors.NewValidation(fmt.Sprintf("activity %q has no boundary events", op.ActivityRef))
 	}
 
 	if len(events) > 1 {

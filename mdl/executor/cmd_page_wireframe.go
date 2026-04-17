@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/model"
 	"github.com/mendixlabs/mxcli/sdk/pages"
 )
@@ -89,25 +90,25 @@ func (c *wireframeCounter) next() string {
 // PageWireframeJSON generates wireframe JSON for a page.
 func (e *Executor) PageWireframeJSON(name string) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	parts := strings.SplitN(name, ".", 2)
 	if len(parts) != 2 {
-		return fmt.Errorf("expected qualified name Module.Page, got: %s", name)
+		return mdlerrors.NewValidationf("expected qualified name Module.Page, got: %s", name)
 	}
 
 	qn := ast.QualifiedName{Module: parts[0], Name: parts[1]}
 
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	// Find the page
 	allPages, err := e.reader.ListPages()
 	if err != nil {
-		return fmt.Errorf("failed to list pages: %w", err)
+		return mdlerrors.NewBackend("list pages", err)
 	}
 
 	var foundPage *pages.Page
@@ -121,7 +122,7 @@ func (e *Executor) PageWireframeJSON(name string) error {
 	}
 
 	if foundPage == nil {
-		return fmt.Errorf("page %s not found", name)
+		return mdlerrors.NewNotFound("page", name)
 	}
 
 	modID := h.FindModuleID(foundPage.ContainerID)
@@ -192,7 +193,7 @@ func (e *Executor) PageWireframeJSON(name string) error {
 
 	jsonBytes, err := json.Marshal(data)
 	if err != nil {
-		return fmt.Errorf("failed to marshal wireframe JSON: %w", err)
+		return mdlerrors.NewBackend("marshal wireframe JSON", err)
 	}
 
 	fmt.Fprint(e.output, string(jsonBytes))
@@ -202,23 +203,23 @@ func (e *Executor) PageWireframeJSON(name string) error {
 // SnippetWireframeJSON generates wireframe JSON for a snippet.
 func (e *Executor) SnippetWireframeJSON(name string) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	parts := strings.SplitN(name, ".", 2)
 	if len(parts) != 2 {
-		return fmt.Errorf("expected qualified name Module.Snippet, got: %s", name)
+		return mdlerrors.NewValidationf("expected qualified name Module.Snippet, got: %s", name)
 	}
 	qn := ast.QualifiedName{Module: parts[0], Name: parts[1]}
 
 	allSnippets, err := e.reader.ListSnippets()
 	if err != nil {
-		return fmt.Errorf("failed to list snippets: %w", err)
+		return mdlerrors.NewBackend("list snippets", err)
 	}
 
 	var foundSnippet *pages.Snippet
@@ -232,7 +233,7 @@ func (e *Executor) SnippetWireframeJSON(name string) error {
 	}
 
 	if foundSnippet == nil {
-		return fmt.Errorf("snippet %s not found", name)
+		return mdlerrors.NewNotFound("snippet", name)
 	}
 
 	modID := h.FindModuleID(foundSnippet.ContainerID)
@@ -256,7 +257,7 @@ func (e *Executor) SnippetWireframeJSON(name string) error {
 
 	jsonBytes, err := json.Marshal(data)
 	if err != nil {
-		return fmt.Errorf("failed to marshal wireframe JSON: %w", err)
+		return mdlerrors.NewBackend("marshal wireframe JSON", err)
 	}
 
 	fmt.Fprint(e.output, string(jsonBytes))

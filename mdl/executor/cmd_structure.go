@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/model"
 	"github.com/mendixlabs/mxcli/sdk/domainmodel"
 	"github.com/mendixlabs/mxcli/sdk/javaactions"
@@ -18,14 +19,14 @@ import (
 // execShowStructure handles SHOW STRUCTURE [DEPTH n] [IN module] [ALL].
 func (e *Executor) execShowStructure(s *ast.ShowStmt) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	depth := min(max(s.Depth, 1), 3)
 
 	// Ensure catalog is built (fast mode is sufficient)
 	if err := e.ensureCatalog(false); err != nil {
-		return fmt.Errorf("failed to build catalog: %w", err)
+		return mdlerrors.NewBackend("build catalog", err)
 	}
 
 	// Get modules from catalog
@@ -115,7 +116,7 @@ type structureModule struct {
 func (e *Executor) getStructureModules(filterModule string, includeAll bool) ([]structureModule, error) {
 	result, err := e.catalog.Query("SELECT Id, Name, Source, AppStoreGuid FROM modules ORDER BY Name")
 	if err != nil {
-		return nil, fmt.Errorf("failed to query modules: %w", err)
+		return nil, mdlerrors.NewBackend("query modules", err)
 	}
 
 	var modules []structureModule
@@ -316,7 +317,7 @@ func (e *Executor) structureDepth2(modules []structureModule) error {
 	// Pre-load data that needs the reader
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	// Load domain models for associations
@@ -477,7 +478,7 @@ func (e *Executor) structureDepth3(modules []structureModule) error {
 	// Same data loading as depth 2
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	domainModels, _ := e.reader.ListDomainModels()

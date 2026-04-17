@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"strings"
 
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/model"
 	"github.com/mendixlabs/mxcli/sdk/pages"
 	"go.mongodb.org/mongo-driver/bson"
@@ -46,7 +47,7 @@ func getWidgetID(widget any) string {
 // setWidgetProperty sets a property value on a widget by path.
 func setWidgetProperty(widget any, path string, value any) error {
 	if widget == nil {
-		return fmt.Errorf("widget is nil")
+		return mdlerrors.NewValidation("widget is nil")
 	}
 
 	// Handle CustomWidget specifically
@@ -69,7 +70,7 @@ func setCustomWidgetProperty(cw *pages.CustomWidget, path string, value any) err
 		return updateStructuredWidgetProperty(cw.WidgetObject, cw.PropertyTypeIDMap, path, value)
 	}
 
-	return fmt.Errorf("widget has no property data")
+	return mdlerrors.NewValidation("widget has no property data")
 }
 
 // updateBSONWidgetProperty updates a property in a BSON document.
@@ -89,7 +90,7 @@ func updateBSONWidgetProperty(doc bson.D, path string, value any) error {
 			}
 		}
 	}
-	return fmt.Errorf("property not found in BSON: %s", path)
+	return mdlerrors.NewNotFound("property", path)
 }
 
 // updateBSONPropertyByKey finds and updates a property by key in a BSON array.
@@ -107,14 +108,14 @@ func updateBSONPropertyByKey(props bson.A, path string, value any) error {
 			}
 		}
 	}
-	return fmt.Errorf("property not found: %s", path)
+	return mdlerrors.NewNotFound("property", path)
 }
 
 // updateBSONPropertyValueAtIndex updates the Value field of a property at the given index.
 func updateBSONPropertyValueAtIndex(props bson.A, index int, newValue any) error {
 	propDoc, ok := props[index].(bson.D)
 	if !ok {
-		return fmt.Errorf("property is not a BSON document")
+		return mdlerrors.NewValidation("property is not a BSON document")
 	}
 
 	for i := range propDoc {
@@ -138,7 +139,7 @@ func updateBSONPropertyValueAtIndex(props bson.A, index int, newValue any) error
 		}
 	}
 
-	return fmt.Errorf("Value field not found in property")
+	return mdlerrors.NewValidation("Value field not found in property")
 }
 
 // convertToBSONValue converts a Go value to appropriate BSON format.
@@ -163,7 +164,7 @@ func convertToBSONValue(value any) any {
 // updateStructuredWidgetProperty updates a property in a structured WidgetObject.
 func updateStructuredWidgetProperty(obj *pages.WidgetObject, typeMap map[string]pages.PropertyTypeIDEntry, path string, value any) error {
 	if obj == nil || obj.Properties == nil {
-		return fmt.Errorf("widget object has no properties")
+		return mdlerrors.NewValidation("widget object has no properties")
 	}
 
 	bsonValue := convertToBSONValue(value)
@@ -209,7 +210,7 @@ func updateStructuredWidgetProperty(obj *pages.WidgetObject, typeMap map[string]
 		}
 	}
 
-	return fmt.Errorf("property not found: %s", path)
+	return mdlerrors.NewNotFound("property", path)
 }
 
 // setWidgetFieldByReflection sets a simple field on a widget using reflection.
@@ -219,15 +220,15 @@ func setWidgetFieldByReflection(widget any, fieldName string, value any) error {
 		v = v.Elem()
 	}
 	if v.Kind() != reflect.Struct {
-		return fmt.Errorf("widget is not a struct")
+		return mdlerrors.NewValidation("widget is not a struct")
 	}
 
 	field := v.FieldByName(fieldName)
 	if !field.IsValid() {
-		return fmt.Errorf("field not found: %s", fieldName)
+		return mdlerrors.NewNotFound("field", fieldName)
 	}
 	if !field.CanSet() {
-		return fmt.Errorf("field not settable: %s", fieldName)
+		return mdlerrors.NewValidationf("field not settable: %s", fieldName)
 	}
 
 	// Convert value to field type
@@ -245,7 +246,7 @@ func setWidgetFieldByReflection(widget any, fieldName string, value any) error {
 		return nil
 	}
 
-	return fmt.Errorf("cannot convert %T to %s", value, fieldType)
+	return mdlerrors.NewValidationf("cannot convert %T to %s", value, fieldType)
 }
 
 // walkPageWidgets walks all widgets in a page and calls the visitor function.

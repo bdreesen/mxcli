@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/mdl/linter"
 	"github.com/mendixlabs/mxcli/mdl/linter/rules"
 )
@@ -15,7 +16,7 @@ import (
 // execLint executes a LINT statement.
 func (e *Executor) execLint(s *ast.LintStmt) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	// Handle SHOW LINT RULES
@@ -27,7 +28,7 @@ func (e *Executor) execLint(s *ast.LintStmt) error {
 	if e.catalog == nil {
 		fmt.Fprintln(e.output, "Building catalog for linting...")
 		if err := e.buildCatalog(false); err != nil {
-			return fmt.Errorf("failed to build catalog: %w", err)
+			return mdlerrors.NewBackend("build catalog", err)
 		}
 	}
 
@@ -82,7 +83,7 @@ func (e *Executor) execLint(s *ast.LintStmt) error {
 	// Run linting
 	violations, err := lint.Run(context.Background())
 	if err != nil {
-		return fmt.Errorf("linting failed: %w", err)
+		return mdlerrors.NewBackend("lint", err)
 	}
 
 	// Filter violations if targeting specific module

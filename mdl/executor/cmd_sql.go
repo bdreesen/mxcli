@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/mdl/visitor"
 	sqllib "github.com/mendixlabs/mxcli/sql"
 )
@@ -31,7 +32,7 @@ func (e *Executor) getOrAutoConnect(alias string) (*sqllib.Connection, error) {
 
 	// Not connected yet — try auto-connect from config
 	if acErr := e.autoConnect(alias); acErr != nil {
-		return nil, fmt.Errorf("no connection '%s' (and auto-connect failed: %v)", alias, acErr)
+		return nil, mdlerrors.NewNotFoundMsg("connection", alias, fmt.Sprintf("no connection '%s' (and auto-connect failed: %v)", alias, acErr))
 	}
 	return mgr.Get(alias)
 }
@@ -242,7 +243,7 @@ func (e *Executor) execSQLGenerateConnector(s *ast.SQLGenerateConnectorStmt) err
 func (e *Executor) executeGeneratedMDL(mdl string) error {
 	prog, errs := visitor.Build(mdl)
 	if len(errs) > 0 {
-		return fmt.Errorf("failed to parse generated MDL: %v", errs[0])
+		return mdlerrors.NewBackend("parse generated MDL", fmt.Errorf("%v", errs[0]))
 	}
 	return e.ExecuteProgram(prog)
 }

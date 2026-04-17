@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/model"
 	"github.com/mendixlabs/mxcli/sdk/microflows"
 )
@@ -18,13 +19,13 @@ func (e *Executor) showMicroflows(moduleName string) error {
 	// Get hierarchy for module/folder resolution
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	// Get all microflows
 	microflows, err := e.reader.ListMicroflows()
 	if err != nil {
-		return fmt.Errorf("failed to list microflows: %w", err)
+		return mdlerrors.NewBackend("list microflows", err)
 	}
 
 	// Collect rows and calculate column widths
@@ -82,13 +83,13 @@ func (e *Executor) showNanoflows(moduleName string) error {
 	// Get hierarchy for module/folder resolution
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	// Get all nanoflows
 	nanoflows, err := e.reader.ListNanoflows()
 	if err != nil {
-		return fmt.Errorf("failed to list nanoflows: %w", err)
+		return mdlerrors.NewBackend("list nanoflows", err)
 	}
 
 	// Collect rows and calculate column widths
@@ -180,7 +181,7 @@ func (e *Executor) describeMicroflow(name ast.QualifiedName) error {
 	// Get hierarchy for module/folder resolution
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	// Use pre-warmed cache if available (from PreWarmCache), otherwise build on demand
@@ -190,7 +191,7 @@ func (e *Executor) describeMicroflow(name ast.QualifiedName) error {
 	// Find the microflow
 	allMicroflows, err := e.reader.ListMicroflows()
 	if err != nil {
-		return fmt.Errorf("failed to list microflows: %w", err)
+		return mdlerrors.NewBackend("list microflows", err)
 	}
 
 	// Supplement microflow name lookup if not pre-warmed
@@ -211,7 +212,7 @@ func (e *Executor) describeMicroflow(name ast.QualifiedName) error {
 	}
 
 	if targetMf == nil {
-		return fmt.Errorf("microflow not found: %s", name)
+		return mdlerrors.NewNotFound("microflow", name.String())
 	}
 
 	// Generate MDL output
@@ -307,7 +308,7 @@ func (e *Executor) describeMicroflow(name ast.QualifiedName) error {
 func (e *Executor) describeNanoflow(name ast.QualifiedName) error {
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	// Build entity name lookup
@@ -330,7 +331,7 @@ func (e *Executor) describeNanoflow(name ast.QualifiedName) error {
 	// Find the nanoflow
 	allNanoflows, err := e.reader.ListNanoflows()
 	if err != nil {
-		return fmt.Errorf("failed to list nanoflows: %w", err)
+		return mdlerrors.NewBackend("list nanoflows", err)
 	}
 
 	for _, nf := range allNanoflows {
@@ -348,7 +349,7 @@ func (e *Executor) describeNanoflow(name ast.QualifiedName) error {
 	}
 
 	if targetNf == nil {
-		return fmt.Errorf("nanoflow not found: %s", name)
+		return mdlerrors.NewNotFound("nanoflow", name.String())
 	}
 
 	var lines []string
@@ -423,7 +424,7 @@ func (e *Executor) describeNanoflow(name ast.QualifiedName) error {
 func (e *Executor) describeMicroflowToString(name ast.QualifiedName) (string, map[string]elkSourceRange, error) {
 	h, err := e.getHierarchy()
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to build hierarchy: %w", err)
+		return "", nil, mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	entityNames := make(map[model.ID]string)
@@ -438,7 +439,7 @@ func (e *Executor) describeMicroflowToString(name ast.QualifiedName) (string, ma
 	microflowNames := make(map[model.ID]string)
 	allMicroflows, err := e.reader.ListMicroflows()
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to list microflows: %w", err)
+		return "", nil, mdlerrors.NewBackend("list microflows", err)
 	}
 	for _, mf := range allMicroflows {
 		microflowNames[mf.ID] = h.GetQualifiedName(mf.ContainerID, mf.Name)
@@ -455,7 +456,7 @@ func (e *Executor) describeMicroflowToString(name ast.QualifiedName) (string, ma
 	}
 
 	if targetMf == nil {
-		return "", nil, fmt.Errorf("microflow not found: %s", name)
+		return "", nil, mdlerrors.NewNotFound("microflow", name.String())
 	}
 
 	sourceMap := make(map[string]elkSourceRange)

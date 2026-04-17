@@ -10,18 +10,19 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/model"
 )
 
 // execShowWidgets handles the SHOW WIDGETS statement.
 func (e *Executor) execShowWidgets(s *ast.ShowWidgetsStmt) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	// Ensure catalog is built (full mode for widgets)
 	if err := e.ensureCatalog(true); err != nil {
-		return fmt.Errorf("failed to build catalog: %w", err)
+		return mdlerrors.NewBackend("build catalog", err)
 	}
 
 	// Build SQL query from filters
@@ -49,7 +50,7 @@ func (e *Executor) execShowWidgets(s *ast.ShowWidgetsStmt) error {
 	// Execute query using SQLite parameterization
 	result, err := e.executeCatalogQueryWithArgs(query.String(), args...)
 	if err != nil {
-		return fmt.Errorf("failed to query widgets: %w", err)
+		return mdlerrors.NewBackend("query widgets", err)
 	}
 
 	// Output results as table
@@ -79,21 +80,21 @@ func (e *Executor) execShowWidgets(s *ast.ShowWidgetsStmt) error {
 // execUpdateWidgets handles the UPDATE WIDGETS statement.
 func (e *Executor) execUpdateWidgets(s *ast.UpdateWidgetsStmt) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 	if e.writer == nil {
-		return fmt.Errorf("project not opened for writing")
+		return mdlerrors.NewNotConnectedWrite()
 	}
 
 	// Ensure catalog is built (full mode for widgets)
 	if err := e.ensureCatalog(true); err != nil {
-		return fmt.Errorf("failed to build catalog: %w", err)
+		return mdlerrors.NewBackend("build catalog", err)
 	}
 
 	// Find matching widgets
 	widgets, err := e.findMatchingWidgets(s.Filters, s.InModule)
 	if err != nil {
-		return fmt.Errorf("failed to find widgets: %w", err)
+		return mdlerrors.NewBackend("find widgets", err)
 	}
 
 	if len(widgets) == 0 {
@@ -211,7 +212,7 @@ func (e *Executor) updateWidgetsInContainer(containerID string, widgetRefs []wid
 		return e.updateWidgetsInSnippet(containerID, containerName, widgetRefs, assignments, dryRun)
 	}
 
-	return 0, fmt.Errorf("unsupported container type: %s", containerType)
+	return 0, mdlerrors.NewUnsupported(fmt.Sprintf("unsupported container type: %s", containerType))
 }
 
 // updateWidgetsInPage updates widgets in a page using raw BSON.
@@ -219,11 +220,11 @@ func (e *Executor) updateWidgetsInPage(containerID, containerName string, widget
 	// Load raw BSON as ordered document (preserves field ordering)
 	rawBytes, err := e.reader.GetRawUnitBytes(model.ID(containerID))
 	if err != nil {
-		return 0, fmt.Errorf("failed to load page %s: %w", containerName, err)
+		return 0, mdlerrors.NewBackend(fmt.Sprintf("load page %s", containerName), err)
 	}
 	var rawData bson.D
 	if err := bson.Unmarshal(rawBytes, &rawData); err != nil {
-		return 0, fmt.Errorf("failed to unmarshal page %s: %w", containerName, err)
+		return 0, mdlerrors.NewBackend(fmt.Sprintf("unmarshal page %s", containerName), err)
 	}
 
 	updated := 0
@@ -251,10 +252,10 @@ func (e *Executor) updateWidgetsInPage(containerID, containerName string, widget
 	if !dryRun && updated > 0 {
 		outBytes, err := bson.Marshal(rawData)
 		if err != nil {
-			return updated, fmt.Errorf("failed to marshal page %s: %w", containerName, err)
+			return updated, mdlerrors.NewBackend(fmt.Sprintf("marshal page %s", containerName), err)
 		}
 		if err := e.writer.UpdateRawUnit(containerID, outBytes); err != nil {
-			return updated, fmt.Errorf("failed to save page %s: %w", containerName, err)
+			return updated, mdlerrors.NewBackend(fmt.Sprintf("save page %s", containerName), err)
 		}
 	}
 
@@ -266,11 +267,11 @@ func (e *Executor) updateWidgetsInSnippet(containerID, containerName string, wid
 	// Load raw BSON as ordered document (preserves field ordering)
 	rawBytes, err := e.reader.GetRawUnitBytes(model.ID(containerID))
 	if err != nil {
-		return 0, fmt.Errorf("failed to load snippet %s: %w", containerName, err)
+		return 0, mdlerrors.NewBackend(fmt.Sprintf("load snippet %s", containerName), err)
 	}
 	var rawData bson.D
 	if err := bson.Unmarshal(rawBytes, &rawData); err != nil {
-		return 0, fmt.Errorf("failed to unmarshal snippet %s: %w", containerName, err)
+		return 0, mdlerrors.NewBackend(fmt.Sprintf("unmarshal snippet %s", containerName), err)
 	}
 
 	updated := 0
@@ -298,10 +299,10 @@ func (e *Executor) updateWidgetsInSnippet(containerID, containerName string, wid
 	if !dryRun && updated > 0 {
 		outBytes, err := bson.Marshal(rawData)
 		if err != nil {
-			return updated, fmt.Errorf("failed to marshal snippet %s: %w", containerName, err)
+			return updated, mdlerrors.NewBackend(fmt.Sprintf("marshal snippet %s", containerName), err)
 		}
 		if err := e.writer.UpdateRawUnit(containerID, outBytes); err != nil {
-			return updated, fmt.Errorf("failed to save snippet %s: %w", containerName, err)
+			return updated, mdlerrors.NewBackend(fmt.Sprintf("save snippet %s", containerName), err)
 		}
 	}
 

@@ -68,8 +68,8 @@ func TestExecDefineFragmentDuplicate(t *testing.T) {
 	if err == nil {
 		t.Fatal("Expected error for duplicate fragment, got nil")
 	}
-	if !strings.Contains(err.Error(), "already defined") {
-		t.Errorf("Expected 'already defined' error, got: %v", err)
+	if !strings.Contains(err.Error(), "already exists") {
+		t.Errorf("Expected 'already exists' error, got: %v", err)
 	}
 }
 

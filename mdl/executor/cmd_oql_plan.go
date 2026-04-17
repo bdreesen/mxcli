@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/sdk/domainmodel"
 )
 
@@ -64,7 +65,7 @@ func (e *Executor) OqlQueryPlanELK(qualifiedName string, entity *domainmodel.Ent
 
 	out, err := json.MarshalIndent(plan, "", "  ")
 	if err != nil {
-		return fmt.Errorf("failed to marshal JSON: %w", err)
+		return mdlerrors.NewBackend("marshal JSON", err)
 	}
 	fmt.Fprint(e.output, string(out))
 	return nil

@@ -12,18 +12,19 @@ import (
 	"fmt"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/sdk/agenteditor"
 )
 
 // showAgentEditorKnowledgeBases handles SHOW KNOWLEDGE BASES [IN module].
 func (e *Executor) showAgentEditorKnowledgeBases(moduleName string) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	kbs, err := e.reader.ListAgentEditorKnowledgeBases()
 	if err != nil {
-		return fmt.Errorf("failed to list knowledge bases: %w", err)
+		return mdlerrors.NewBackend("list knowledge bases", err)
 	}
 
 	h, err := e.getHierarchy()
@@ -62,12 +63,12 @@ func (e *Executor) showAgentEditorKnowledgeBases(moduleName string) error {
 // describeAgentEditorKnowledgeBase handles DESCRIBE KNOWLEDGE BASE Module.Name.
 func (e *Executor) describeAgentEditorKnowledgeBase(name ast.QualifiedName) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	k := e.findAgentEditorKnowledgeBase(name.Module, name.Name)
 	if k == nil {
-		return fmt.Errorf("knowledge base not found: %s", name)
+		return mdlerrors.NewNotFound("knowledge base", name.String())
 	}
 
 	h, err := e.getHierarchy()

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/model"
 	"github.com/mendixlabs/mxcli/sdk/domainmodel"
 )
@@ -67,7 +68,7 @@ const (
 // If name contains a dot (e.g. "Module.Entity"), it delegates to EntityFocusELK for a focused view.
 func (e *Executor) DomainModelELK(name string) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	// If name is qualified (Module.Entity), render focused entity diagram
@@ -83,7 +84,7 @@ func (e *Executor) DomainModelELK(name string) error {
 
 	dm, err := e.reader.GetDomainModel(module.ID)
 	if err != nil {
-		return fmt.Errorf("failed to get domain model: %w", err)
+		return mdlerrors.NewBackend("get domain model", err)
 	}
 
 	allEntityNames, _ := e.buildAllEntityNames()
@@ -155,12 +156,12 @@ func (e *Executor) DomainModelELK(name string) error {
 // and entities directly connected to it via associations or generalization.
 func (e *Executor) EntityFocusELK(qualifiedName string) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	parts := strings.SplitN(qualifiedName, ".", 2)
 	if len(parts) != 2 {
-		return fmt.Errorf("expected qualified name Module.Entity, got: %s", qualifiedName)
+		return mdlerrors.NewValidationf("expected qualified name Module.Entity, got: %s", qualifiedName)
 	}
 	moduleName, entityName := parts[0], parts[1]
 
@@ -171,7 +172,7 @@ func (e *Executor) EntityFocusELK(qualifiedName string) error {
 
 	dm, err := e.reader.GetDomainModel(module.ID)
 	if err != nil {
-		return fmt.Errorf("failed to get domain model: %w", err)
+		return mdlerrors.NewBackend("get domain model", err)
 	}
 
 	// Find the focus entity
@@ -183,7 +184,7 @@ func (e *Executor) EntityFocusELK(qualifiedName string) error {
 		}
 	}
 	if focusEntity == nil {
-		return fmt.Errorf("entity not found: %s", qualifiedName)
+		return mdlerrors.NewNotFound("entity", qualifiedName)
 	}
 
 	// If this is a view entity with an OQL query, render query plan instead
@@ -485,7 +486,7 @@ func (e *Executor) buildDomainModelMdlSource(entities []*domainmodel.Entity, mod
 func (e *Executor) emitDomainModelELK(data domainModelELKData) error {
 	out, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
-		return fmt.Errorf("failed to marshal JSON: %w", err)
+		return mdlerrors.NewBackend("marshal JSON", err)
 	}
 	fmt.Fprint(e.output, string(out))
 	return nil

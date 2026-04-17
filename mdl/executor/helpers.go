@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/model"
 	"github.com/mendixlabs/mxcli/sdk/domainmodel"
 	"github.com/mendixlabs/mxcli/sdk/mpr"
@@ -45,12 +46,12 @@ func (e *Executor) invalidateModuleCache() {
 func (e *Executor) findModule(name string) (*model.Module, error) {
 	// Module name is required - objects must always belong to a module
 	if name == "" {
-		return nil, fmt.Errorf("module name is required: objects must be created within a module (use ModuleName.ObjectName syntax)")
+		return nil, mdlerrors.NewValidation("module name is required: objects must be created within a module (use ModuleName.ObjectName syntax)")
 	}
 
 	modules, err := e.getModulesFromCache()
 	if err != nil {
-		return nil, fmt.Errorf("failed to list modules: %w", err)
+		return nil, mdlerrors.NewBackend("list modules", err)
 	}
 
 	for _, m := range modules {
@@ -59,7 +60,7 @@ func (e *Executor) findModule(name string) (*model.Module, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("module not found: %s", name)
+	return nil, mdlerrors.NewNotFound("module", name)
 }
 
 // findOrCreateModule looks up a module by name, auto-creating it if it doesn't exist
@@ -75,7 +76,7 @@ func (e *Executor) findOrCreateModule(name string) (*model.Module, error) {
 	}
 	// Auto-create the module
 	if createErr := e.execCreateModule(&ast.CreateModuleStmt{Name: name}); createErr != nil {
-		return nil, fmt.Errorf("auto-create module %s failed: %w", name, createErr)
+		return nil, mdlerrors.NewBackend("auto-create module "+name, createErr)
 	}
 	return e.findModule(name)
 }
@@ -83,7 +84,7 @@ func (e *Executor) findOrCreateModule(name string) (*model.Module, error) {
 func (e *Executor) findModuleByID(id model.ID) (*model.Module, error) {
 	modules, err := e.getModulesFromCache()
 	if err != nil {
-		return nil, fmt.Errorf("failed to list modules: %w", err)
+		return nil, mdlerrors.NewBackend("list modules", err)
 	}
 
 	for _, m := range modules {
@@ -92,7 +93,7 @@ func (e *Executor) findModuleByID(id model.ID) (*model.Module, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("module not found with ID: %s", id)
+	return nil, mdlerrors.NewNotFoundMsg("module", string(id), "module not found with ID: "+string(id))
 }
 
 // resolveFolder resolves a folder path (e.g., "Resources/Images") to a folder ID.
@@ -104,7 +105,7 @@ func (e *Executor) resolveFolder(moduleID model.ID, folderPath string) (model.ID
 
 	folders, err := e.reader.ListFolders()
 	if err != nil {
-		return "", fmt.Errorf("failed to list folders: %w", err)
+		return "", mdlerrors.NewBackend("list folders", err)
 	}
 
 	// Split path into parts
@@ -132,7 +133,7 @@ func (e *Executor) resolveFolder(moduleID model.ID, folderPath string) (model.ID
 			parentID := currentContainerID
 			newFolderID, err := e.createFolder(part, parentID)
 			if err != nil {
-				return "", fmt.Errorf("failed to create folder %s: %w", part, err)
+				return "", mdlerrors.NewBackend("create folder "+part, err)
 			}
 			currentContainerID = newFolderID
 

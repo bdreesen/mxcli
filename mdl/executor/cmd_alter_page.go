@@ -10,6 +10,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/model"
 	"github.com/mendixlabs/mxcli/sdk/mpr"
 )
@@ -17,15 +18,15 @@ import (
 // execAlterPage handles ALTER PAGE/SNIPPET Module.Name { operations }.
 func (e *Executor) execAlterPage(s *ast.AlterPageStmt) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 	if e.writer == nil {
-		return fmt.Errorf("project not opened for writing")
+		return mdlerrors.NewNotConnectedWrite()
 	}
 
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	var unitID model.ID
@@ -55,11 +56,11 @@ func (e *Executor) execAlterPage(s *ast.AlterPageStmt) error {
 	// which is required by Mendix Studio Pro).
 	rawBytes, err := e.reader.GetRawUnitBytes(unitID)
 	if err != nil {
-		return fmt.Errorf("failed to load raw %s data: %w", strings.ToLower(containerType), err)
+		return mdlerrors.NewBackend("load raw "+strings.ToLower(containerType)+" data", err)
 	}
 	var rawData bson.D
 	if err := bson.Unmarshal(rawBytes, &rawData); err != nil {
-		return fmt.Errorf("failed to unmarshal %s BSON: %w", strings.ToLower(containerType), err)
+		return mdlerrors.NewBackend("unmarshal "+strings.ToLower(containerType)+" BSON", err)
 	}
 
 	// Resolve module name for building new widgets
@@ -75,49 +76,49 @@ func (e *Executor) execAlterPage(s *ast.AlterPageStmt) error {
 		switch o := op.(type) {
 		case *ast.SetPropertyOp:
 			if err := applySetPropertyWith(rawData, o, findWidget); err != nil {
-				return fmt.Errorf("SET failed: %w", err)
+				return mdlerrors.NewBackend("SET", err)
 			}
 		case *ast.InsertWidgetOp:
 			if err := e.applyInsertWidgetWith(rawData, o, modName, containerID, findWidget); err != nil {
-				return fmt.Errorf("INSERT failed: %w", err)
+				return mdlerrors.NewBackend("INSERT", err)
 			}
 		case *ast.DropWidgetOp:
 			if err := applyDropWidgetWith(rawData, o, findWidget); err != nil {
-				return fmt.Errorf("DROP failed: %w", err)
+				return mdlerrors.NewBackend("DROP", err)
 			}
 		case *ast.ReplaceWidgetOp:
 			if err := e.applyReplaceWidgetWith(rawData, o, modName, containerID, findWidget); err != nil {
-				return fmt.Errorf("REPLACE failed: %w", err)
+				return mdlerrors.NewBackend("REPLACE", err)
 			}
 		case *ast.AddVariableOp:
 			if err := applyAddVariable(&rawData, o); err != nil {
-				return fmt.Errorf("ADD VARIABLE failed: %w", err)
+				return mdlerrors.NewBackend("ADD VARIABLE", err)
 			}
 		case *ast.DropVariableOp:
 			if err := applyDropVariable(rawData, o); err != nil {
-				return fmt.Errorf("DROP VARIABLE failed: %w", err)
+				return mdlerrors.NewBackend("DROP VARIABLE", err)
 			}
 		case *ast.SetLayoutOp:
 			if containerType == "SNIPPET" {
-				return fmt.Errorf("SET Layout is not supported for snippets")
+				return mdlerrors.NewUnsupported("SET Layout is not supported for snippets")
 			}
 			if err := applySetLayout(rawData, o); err != nil {
-				return fmt.Errorf("SET Layout failed: %w", err)
+				return mdlerrors.NewBackend("SET Layout", err)
 			}
 		default:
-			return fmt.Errorf("unknown ALTER %s operation type: %T", containerType, op)
+			return mdlerrors.NewUnsupported(fmt.Sprintf("unknown ALTER %s operation type: %T", containerType, op))
 		}
 	}
 
 	// Marshal back to BSON bytes (bson.D preserves field ordering)
 	outBytes, err := bson.Marshal(rawData)
 	if err != nil {
-		return fmt.Errorf("failed to marshal modified %s: %w", strings.ToLower(containerType), err)
+		return mdlerrors.NewBackend("marshal modified "+strings.ToLower(containerType), err)
 	}
 
 	// Save
 	if err := e.writer.UpdateRawUnit(string(unitID), outBytes); err != nil {
-		return fmt.Errorf("failed to save modified %s: %w", strings.ToLower(containerType), err)
+		return mdlerrors.NewBackend("save modified "+strings.ToLower(containerType), err)
 	}
 
 	fmt.Fprintf(e.output, "Altered %s %s\n", strings.ToLower(containerType), s.PageName.String())
@@ -140,7 +141,7 @@ func applySetLayout(rawData bson.D, op *ast.SetLayoutOp) error {
 		}
 	}
 	if formCall == nil {
-		return fmt.Errorf("page has no FormCall (layout reference)")
+		return mdlerrors.NewValidation("page has no FormCall (layout reference)")
 	}
 
 	// Detect the old layout name from existing Parameter values
@@ -172,7 +173,7 @@ func applySetLayout(rawData bson.D, op *ast.SetLayoutOp) error {
 	}
 
 	if oldLayoutQN == "" {
-		return fmt.Errorf("cannot determine current layout from FormCall")
+		return mdlerrors.NewValidation("cannot determine current layout from FormCall")
 	}
 
 	if oldLayoutQN == newLayoutQN {
@@ -781,9 +782,9 @@ func setColumnProperty(colDoc bson.D, propKeyMap map[string]string, propName str
 			dSet(valDoc, "PrimitiveValue", strVal)
 			return nil
 		}
-		return fmt.Errorf("column property %q has no Value", propName)
+		return mdlerrors.NewValidation(fmt.Sprintf("column property %q has no Value", propName))
 	}
-	return fmt.Errorf("column property %q not found", propName)
+	return mdlerrors.NewNotFound("column property", propName)
 }
 
 // ============================================================================
@@ -810,18 +811,18 @@ func applySetPropertyWith(rawData bson.D, op *ast.SetPropertyOp, find widgetFind
 		result = find(rawData, op.Target.Widget)
 	}
 	if result == nil {
-		return fmt.Errorf("widget %q not found", op.Target.Name())
+		return mdlerrors.NewNotFound("widget", op.Target.Name())
 	}
 
 	// Apply each property
 	for propName, value := range op.Properties {
 		if op.Target.IsColumn() {
 			if err := setColumnProperty(result.widget, result.colPropKeys, propName, value); err != nil {
-				return fmt.Errorf("failed to set %s on %s: %w", propName, op.Target.Name(), err)
+				return mdlerrors.NewBackend("set "+propName+" on "+op.Target.Name(), err)
 			}
 		} else {
 			if err := setRawWidgetProperty(result.widget, propName, value); err != nil {
-				return fmt.Errorf("failed to set %s on %s: %w", propName, op.Target.Name(), err)
+				return mdlerrors.NewBackend("set "+propName+" on "+op.Target.Name(), err)
 			}
 		}
 	}
@@ -844,7 +845,7 @@ func applyPageLevelSet(rawData bson.D, properties map[string]interface{}) error 
 			strVal, _ := value.(string)
 			dSet(rawData, "Url", strVal)
 		default:
-			return fmt.Errorf("unsupported page-level property: %s", propName)
+			return mdlerrors.NewUnsupported("unsupported page-level property: " + propName)
 		}
 	}
 	return nil
@@ -928,7 +929,7 @@ func setWidgetCaption(widget bson.D, value interface{}) error {
 func setWidgetAttributeRef(widget bson.D, value interface{}) error {
 	attrPath, ok := value.(string)
 	if !ok {
-		return fmt.Errorf("Attribute value must be a string")
+		return mdlerrors.NewValidation("Attribute value must be a string")
 	}
 
 	// Build the new AttributeRef value
@@ -954,14 +955,14 @@ func setWidgetAttributeRef(widget bson.D, value interface{}) error {
 	}
 
 	// No existing AttributeRef field — this widget may not support it
-	return fmt.Errorf("widget does not have an AttributeRef property; Attribute can only be SET on input widgets (TextBox, TextArea, DatePicker, etc.)")
+	return mdlerrors.NewValidation("widget does not have an AttributeRef property; Attribute can only be SET on input widgets (TextBox, TextArea, DatePicker, etc.)")
 }
 
 // setWidgetDataSource sets the DataSource on a DataView or list widget.
 func setWidgetDataSource(widget bson.D, value interface{}) error {
 	ds, ok := value.(*ast.DataSourceV3)
 	if !ok {
-		return fmt.Errorf("DataSource value must be a datasource expression")
+		return mdlerrors.NewValidation("DataSource value must be a datasource expression")
 	}
 
 	var serialized interface{}
@@ -1019,7 +1020,7 @@ func setWidgetDataSource(widget bson.D, value interface{}) error {
 			}},
 		}
 	default:
-		return fmt.Errorf("unsupported DataSource type for ALTER PAGE SET: %s", ds.Type)
+		return mdlerrors.NewUnsupported("unsupported DataSource type for ALTER PAGE SET: " + ds.Type)
 	}
 
 	dSet(widget, "DataSource", serialized)
@@ -1042,15 +1043,15 @@ func setWidgetLabel(widget bson.D, value interface{}) error {
 func setWidgetContent(widget bson.D, value interface{}) error {
 	strVal, ok := value.(string)
 	if !ok {
-		return fmt.Errorf("Content value must be a string")
+		return mdlerrors.NewValidation("Content value must be a string")
 	}
 	content := dGetDoc(widget, "Content")
 	if content == nil {
-		return fmt.Errorf("widget has no Content property")
+		return mdlerrors.NewValidation("widget has no Content property")
 	}
 	template := dGetDoc(content, "Template")
 	if template == nil {
-		return fmt.Errorf("Content has no Template")
+		return mdlerrors.NewValidation("Content has no Template")
 	}
 	items := dGetArrayElements(dGet(template, "Items"))
 	if len(items) > 0 {
@@ -1059,7 +1060,7 @@ func setWidgetContent(widget bson.D, value interface{}) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("Content.Template has no Items with Text")
+	return mdlerrors.NewValidation("Content.Template has no Items with Text")
 }
 
 // setTranslatableText sets a translatable text value in BSON.
@@ -1100,7 +1101,7 @@ func setTranslatableText(parent bson.D, key string, value interface{}) {
 func setPluggableWidgetProperty(widget bson.D, propName string, value interface{}) error {
 	obj := dGetDoc(widget, "Object")
 	if obj == nil {
-		return fmt.Errorf("property %q not found (widget has no pluggable Object)", propName)
+		return mdlerrors.NewNotFoundMsg("property", propName, fmt.Sprintf("property %q not found (widget has no pluggable Object)", propName))
 	}
 
 	// Build TypePointer ID -> PropertyKey map from Type.ObjectType.PropertyTypes
@@ -1157,9 +1158,9 @@ func setPluggableWidgetProperty(widget bson.D, propName string, value interface{
 			}
 			return nil
 		}
-		return fmt.Errorf("property %q has no Value map", propName)
+		return mdlerrors.NewValidation(fmt.Sprintf("property %q has no Value map", propName))
 	}
-	return fmt.Errorf("pluggable property %q not found in widget Object", propName)
+	return mdlerrors.NewNotFound("pluggable property", propName)
 }
 
 // ============================================================================
@@ -1180,13 +1181,13 @@ func (e *Executor) applyInsertWidgetWith(rawData bson.D, op *ast.InsertWidgetOp,
 		result = find(rawData, op.Target.Widget)
 	}
 	if result == nil {
-		return fmt.Errorf("widget %q not found", op.Target.Name())
+		return mdlerrors.NewNotFound("widget", op.Target.Name())
 	}
 
 	// Check for duplicate widget names before building
 	for _, w := range op.Widgets {
 		if w.Name != "" && find(rawData, w.Name) != nil {
-			return fmt.Errorf("duplicate widget name '%s': a widget with this name already exists on the page", w.Name)
+			return mdlerrors.NewAlreadyExistsMsg("widget", w.Name, fmt.Sprintf("duplicate widget name '%s': a widget with this name already exists on the page", w.Name))
 		}
 	}
 
@@ -1196,7 +1197,7 @@ func (e *Executor) applyInsertWidgetWith(rawData bson.D, op *ast.InsertWidgetOp,
 	// Build new widget BSON from AST (pass rawData for page param + widget scope resolution)
 	newBsonWidgets, err := e.buildWidgetsBson(op.Widgets, moduleName, moduleID, entityCtx, rawData)
 	if err != nil {
-		return fmt.Errorf("failed to build widgets: %w", err)
+		return mdlerrors.NewBackend("build widgets", err)
 	}
 
 	// Calculate insertion index
@@ -1236,7 +1237,7 @@ func applyDropWidgetWith(rawData bson.D, op *ast.DropWidgetOp, find widgetFinder
 			result = find(rawData, target.Widget)
 		}
 		if result == nil {
-			return fmt.Errorf("widget %q not found", target.Name())
+			return mdlerrors.NewNotFound("widget", target.Name())
 		}
 
 		// Remove from parent array
@@ -1268,13 +1269,13 @@ func (e *Executor) applyReplaceWidgetWith(rawData bson.D, op *ast.ReplaceWidgetO
 		result = find(rawData, op.Target.Widget)
 	}
 	if result == nil {
-		return fmt.Errorf("widget %q not found", op.Target.Name())
+		return mdlerrors.NewNotFound("widget", op.Target.Name())
 	}
 
 	// Check for duplicate widget names (skip the widget being replaced)
 	for _, w := range op.NewWidgets {
 		if w.Name != "" && w.Name != op.Target.Widget && find(rawData, w.Name) != nil {
-			return fmt.Errorf("duplicate widget name '%s': a widget with this name already exists on the page", w.Name)
+			return mdlerrors.NewAlreadyExistsMsg("widget", w.Name, fmt.Sprintf("duplicate widget name '%s': a widget with this name already exists on the page", w.Name))
 		}
 	}
 
@@ -1284,7 +1285,7 @@ func (e *Executor) applyReplaceWidgetWith(rawData bson.D, op *ast.ReplaceWidgetO
 	// Build new widget BSON from AST (pass rawData for page param + widget scope resolution)
 	newBsonWidgets, err := e.buildWidgetsBson(op.NewWidgets, moduleName, moduleID, entityCtx, rawData)
 	if err != nil {
-		return fmt.Errorf("failed to build replacement widgets: %w", err)
+		return mdlerrors.NewBackend("build replacement widgets", err)
 	}
 
 	// Replace: remove old widget, insert new ones at same position
@@ -1455,7 +1456,7 @@ func applyAddVariable(rawData *bson.D, op *ast.AddVariableOp) error {
 	for _, ev := range existingVars {
 		if evDoc, ok := ev.(bson.D); ok {
 			if dGetString(evDoc, "Name") == op.Variable.Name {
-				return fmt.Errorf("variable $%s already exists", op.Variable.Name)
+				return mdlerrors.NewAlreadyExists("variable", "$"+op.Variable.Name)
 			}
 		}
 	}
@@ -1499,7 +1500,7 @@ func applyAddVariable(rawData *bson.D, op *ast.AddVariableOp) error {
 func applyDropVariable(rawData bson.D, op *ast.DropVariableOp) error {
 	elements := dGetArrayElements(dGet(rawData, "Variables"))
 	if elements == nil {
-		return fmt.Errorf("variable $%s not found", op.VariableName)
+		return mdlerrors.NewNotFound("variable", "$"+op.VariableName)
 	}
 
 	// Find and remove the variable
@@ -1516,7 +1517,7 @@ func applyDropVariable(rawData bson.D, op *ast.DropVariableOp) error {
 	}
 
 	if !found {
-		return fmt.Errorf("variable $%s not found", op.VariableName)
+		return mdlerrors.NewNotFound("variable", "$"+op.VariableName)
 	}
 
 	dSetArray(rawData, "Variables", kept)
@@ -1553,7 +1554,7 @@ func (e *Executor) buildWidgetsBson(widgets []*ast.WidgetV3, moduleName string, 
 	for _, w := range widgets {
 		bsonD, err := pb.buildWidgetV3ToBSON(w)
 		if err != nil {
-			return nil, fmt.Errorf("failed to build widget %s: %w", w.Name, err)
+			return nil, mdlerrors.NewBackend("build widget "+w.Name, err)
 		}
 		if bsonD == nil {
 			continue

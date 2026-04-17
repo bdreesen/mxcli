@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/model"
 )
 
@@ -24,12 +25,12 @@ func safeIdent(name string) string {
 func (e *Executor) showRestClients(moduleName string) error {
 	services, err := e.reader.ListConsumedRestServices()
 	if err != nil {
-		return fmt.Errorf("failed to list consumed REST services: %w", err)
+		return mdlerrors.NewBackend("list consumed REST services", err)
 	}
 
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	type row struct {
@@ -85,12 +86,12 @@ func (e *Executor) showRestClients(moduleName string) error {
 func (e *Executor) describeRestClient(name ast.QualifiedName) error {
 	services, err := e.reader.ListConsumedRestServices()
 	if err != nil {
-		return fmt.Errorf("failed to list consumed REST services: %w", err)
+		return mdlerrors.NewBackend("list consumed REST services", err)
 	}
 
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	for _, svc := range services {
@@ -101,7 +102,7 @@ func (e *Executor) describeRestClient(name ast.QualifiedName) error {
 		}
 	}
 
-	return fmt.Errorf("consumed REST service not found: %s", name)
+	return mdlerrors.NewNotFound("consumed REST service", name.String())
 }
 
 // outputConsumedRestServiceMDL outputs a consumed REST service in the property-based { } format.
@@ -277,7 +278,7 @@ func writeExportMappings(w io.Writer, mappings []*model.RestResponseMapping, ind
 // createRestClient handles CREATE REST CLIENT statement.
 func (e *Executor) createRestClient(stmt *ast.CreateRestClientStmt) error {
 	if e.writer == nil {
-		return fmt.Errorf("not connected to a project (read-only mode)")
+		return mdlerrors.NewNotConnectedWrite()
 	}
 
 	// Version pre-check: REST clients require 10.1+
@@ -290,14 +291,14 @@ func (e *Executor) createRestClient(stmt *ast.CreateRestClientStmt) error {
 	moduleName := stmt.Name.Module
 	module, err := e.findModule(moduleName)
 	if err != nil {
-		return fmt.Errorf("module not found: %s", moduleName)
+		return mdlerrors.NewNotFound("module", moduleName)
 	}
 
 	// Check for existing service with same name
 	existingServices, _ := e.reader.ListConsumedRestServices()
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	for _, existing := range existingServices {
@@ -307,10 +308,10 @@ func (e *Executor) createRestClient(stmt *ast.CreateRestClientStmt) error {
 			if stmt.CreateOrModify {
 				// Delete existing and recreate
 				if err := e.writer.DeleteConsumedRestService(existing.ID); err != nil {
-					return fmt.Errorf("failed to delete existing REST client: %w", err)
+					return mdlerrors.NewBackend("delete existing REST client", err)
 				}
 			} else {
-				return fmt.Errorf("REST client already exists: %s.%s (use CREATE OR MODIFY to overwrite)", moduleName, stmt.Name.Name)
+				return mdlerrors.NewAlreadyExistsMsg("REST client", moduleName+"."+stmt.Name.Name, fmt.Sprintf("REST client already exists: %s.%s (use CREATE OR MODIFY to overwrite)", moduleName, stmt.Name.Name))
 			}
 		}
 	}
@@ -320,7 +321,7 @@ func (e *Executor) createRestClient(stmt *ast.CreateRestClientStmt) error {
 	if stmt.Folder != "" {
 		folderID, err := e.resolveFolder(module.ID, stmt.Folder)
 		if err != nil {
-			return fmt.Errorf("failed to resolve folder '%s': %w", stmt.Folder, err)
+			return mdlerrors.NewBackend(fmt.Sprintf("resolve folder '%s'", stmt.Folder), err)
 		}
 		containerID = folderID
 	}
@@ -350,7 +351,7 @@ func (e *Executor) createRestClient(stmt *ast.CreateRestClientStmt) error {
 
 	// Write to project
 	if err := e.writer.CreateConsumedRestService(svc); err != nil {
-		return fmt.Errorf("failed to create REST client: %w", err)
+		return mdlerrors.NewBackend("create REST client", err)
 	}
 
 	fmt.Fprintf(e.output, "Created REST client: %s.%s (%d operations)\n", moduleName, stmt.Name.Name, len(svc.Operations))
@@ -441,10 +442,10 @@ func convertMappingEntries(entries []ast.RestMappingEntry, importDirection bool)
 			// Value mapping — direction determines which side is attribute vs JSON field
 			m := &model.RestResponseMapping{}
 			if importDirection {
-				m.Attribute = e.Left   // EntityAttr = jsonField
+				m.Attribute = e.Left // EntityAttr = jsonField
 				m.ExposedName = e.Right
 			} else {
-				m.Attribute = e.Right  // jsonField = EntityAttr
+				m.Attribute = e.Right // jsonField = EntityAttr
 				m.ExposedName = e.Left
 			}
 			result = append(result, m)
@@ -456,17 +457,17 @@ func convertMappingEntries(entries []ast.RestMappingEntry, importDirection bool)
 // dropRestClient handles DROP REST CLIENT statement.
 func (e *Executor) dropRestClient(stmt *ast.DropRestClientStmt) error {
 	if e.writer == nil {
-		return fmt.Errorf("not connected to a project (read-only mode)")
+		return mdlerrors.NewNotConnectedWrite()
 	}
 
 	services, err := e.reader.ListConsumedRestServices()
 	if err != nil {
-		return fmt.Errorf("failed to list consumed REST services: %w", err)
+		return mdlerrors.NewBackend("list consumed REST services", err)
 	}
 
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	for _, svc := range services {
@@ -474,14 +475,14 @@ func (e *Executor) dropRestClient(stmt *ast.DropRestClientStmt) error {
 		moduleName := h.GetModuleName(modID)
 		if strings.EqualFold(moduleName, stmt.Name.Module) && strings.EqualFold(svc.Name, stmt.Name.Name) {
 			if err := e.writer.DeleteConsumedRestService(svc.ID); err != nil {
-				return fmt.Errorf("failed to delete REST client: %w", err)
+				return mdlerrors.NewBackend("delete REST client", err)
 			}
 			fmt.Fprintf(e.output, "Dropped REST client: %s.%s\n", moduleName, svc.Name)
 			return nil
 		}
 	}
 
-	return fmt.Errorf("REST client not found: %s", stmt.Name)
+	return mdlerrors.NewNotFound("REST client", stmt.Name.String())
 }
 
 // formatRestAuthValue formats an authentication value for MDL output.

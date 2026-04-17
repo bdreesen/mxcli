@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/mdl/linter"
 	"github.com/mendixlabs/mxcli/sdk/domainmodel"
 )
@@ -682,7 +683,7 @@ func (e *Executor) findEntity(moduleName, entityName string) (*domainmodel.Entit
 		}
 	}
 
-	return nil, fmt.Errorf("entity not found: %s.%s", moduleName, entityName)
+	return nil, mdlerrors.NewNotFound("entity", moduleName+"."+entityName)
 }
 
 // convertDomainModelTypeToAST converts a domainmodel.AttributeType to ast.DataType.

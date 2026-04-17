@@ -4,10 +4,11 @@ package executor
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 )
 
 // ThemeProperty represents a single design property definition from design-properties.json.
@@ -47,7 +48,7 @@ func loadThemeRegistry(projectDir string) (*ThemeRegistry, error) {
 	// Walk themesource/*/web/design-properties.json
 	entries, err := os.ReadDir(themesourceDir)
 	if err != nil {
-		return nil, fmt.Errorf("reading themesource directory: %w", err)
+		return nil, mdlerrors.NewBackend("read themesource directory", err)
 	}
 
 	for _, entry := range entries {

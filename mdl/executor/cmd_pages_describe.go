@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/model"
 	"github.com/mendixlabs/mxcli/sdk/pages"
 
@@ -23,13 +24,13 @@ func (e *Executor) describePage(name ast.QualifiedName) error {
 	// Get hierarchy for module/folder resolution
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	// Find the page
 	allPages, err := e.reader.ListPages()
 	if err != nil {
-		return fmt.Errorf("failed to list pages: %w", err)
+		return mdlerrors.NewBackend("list pages", err)
 	}
 
 	var foundPage *pages.Page
@@ -43,7 +44,7 @@ func (e *Executor) describePage(name ast.QualifiedName) error {
 	}
 
 	if foundPage == nil {
-		return fmt.Errorf("page %s not found", name.String())
+		return mdlerrors.NewNotFound("page", name.String())
 	}
 
 	// Get module name for the page
@@ -178,13 +179,13 @@ func (e *Executor) describeSnippet(name ast.QualifiedName) error {
 	// Get hierarchy for module/folder resolution
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	// Find the snippet
 	allSnippets, err := e.reader.ListSnippets()
 	if err != nil {
-		return fmt.Errorf("failed to list snippets: %w", err)
+		return mdlerrors.NewBackend("list snippets", err)
 	}
 
 	var foundSnippet *pages.Snippet
@@ -198,7 +199,7 @@ func (e *Executor) describeSnippet(name ast.QualifiedName) error {
 	}
 
 	if foundSnippet == nil {
-		return fmt.Errorf("snippet %s not found", name.String())
+		return mdlerrors.NewNotFound("snippet", name.String())
 	}
 
 	// Get module name for the snippet
@@ -261,13 +262,13 @@ func (e *Executor) describeLayout(name ast.QualifiedName) error {
 	// Get hierarchy for module/folder resolution
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	// Find the layout
 	allLayouts, err := e.reader.ListLayouts()
 	if err != nil {
-		return fmt.Errorf("failed to list layouts: %w", err)
+		return mdlerrors.NewBackend("list layouts", err)
 	}
 
 	var foundLayout *pages.Layout
@@ -281,7 +282,7 @@ func (e *Executor) describeLayout(name ast.QualifiedName) error {
 	}
 
 	if foundLayout == nil {
-		return fmt.Errorf("layout %s not found", name.String())
+		return mdlerrors.NewNotFound("layout", name.String())
 	}
 
 	// Get module name for the layout

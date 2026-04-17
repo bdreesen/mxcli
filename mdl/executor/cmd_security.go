@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/sdk/domainmodel"
 	"github.com/mendixlabs/mxcli/sdk/security"
 )
@@ -16,7 +17,7 @@ import (
 func (e *Executor) showProjectSecurity() error {
 	ps, err := e.reader.GetProjectSecurity()
 	if err != nil {
-		return fmt.Errorf("failed to read project security: %w", err)
+		return mdlerrors.NewBackend("read project security", err)
 	}
 
 	fmt.Fprintf(e.output, "Security Level: %s\n", security.SecurityLevelDisplay(ps.SecurityLevel))
@@ -49,12 +50,12 @@ func (e *Executor) showProjectSecurity() error {
 func (e *Executor) showModuleRoles(moduleName string) error {
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	allMS, err := e.reader.ListModuleSecurity()
 	if err != nil {
-		return fmt.Errorf("failed to read module security: %w", err)
+		return mdlerrors.NewBackend("read module security", err)
 	}
 
 	result := &TableResult{
@@ -83,7 +84,7 @@ func (e *Executor) showModuleRoles(moduleName string) error {
 func (e *Executor) showUserRoles() error {
 	ps, err := e.reader.GetProjectSecurity()
 	if err != nil {
-		return fmt.Errorf("failed to read project security: %w", err)
+		return mdlerrors.NewBackend("read project security", err)
 	}
 
 	result := &TableResult{
@@ -110,7 +111,7 @@ func (e *Executor) showUserRoles() error {
 func (e *Executor) showDemoUsers() error {
 	ps, err := e.reader.GetProjectSecurity()
 	if err != nil {
-		return fmt.Errorf("failed to read project security: %w", err)
+		return mdlerrors.NewBackend("read project security", err)
 	}
 
 	if !ps.EnableDemoUsers {
@@ -135,7 +136,7 @@ func (e *Executor) showDemoUsers() error {
 // showAccessOnEntity handles SHOW ACCESS ON Module.Entity.
 func (e *Executor) showAccessOnEntity(name *ast.QualifiedName) error {
 	if name == nil {
-		return fmt.Errorf("entity name required")
+		return mdlerrors.NewValidation("entity name required")
 	}
 
 	module, err := e.findModule(name.Module)
@@ -145,7 +146,7 @@ func (e *Executor) showAccessOnEntity(name *ast.QualifiedName) error {
 
 	dm, err := e.reader.GetDomainModel(module.ID)
 	if err != nil {
-		return fmt.Errorf("failed to get domain model: %w", err)
+		return mdlerrors.NewBackend("get domain model", err)
 	}
 
 	var entity *domainmodel.Entity
@@ -156,7 +157,7 @@ func (e *Executor) showAccessOnEntity(name *ast.QualifiedName) error {
 		}
 	}
 	if entity == nil {
-		return fmt.Errorf("entity not found: %s", name)
+		return mdlerrors.NewNotFound("entity", name.String())
 	}
 
 	if len(entity.AccessRules) == 0 {
@@ -246,17 +247,17 @@ func (e *Executor) showAccessOnEntity(name *ast.QualifiedName) error {
 // showAccessOnMicroflow handles SHOW ACCESS ON MICROFLOW Module.MF.
 func (e *Executor) showAccessOnMicroflow(name *ast.QualifiedName) error {
 	if name == nil {
-		return fmt.Errorf("microflow name required")
+		return mdlerrors.NewValidation("microflow name required")
 	}
 
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	mfs, err := e.reader.ListMicroflows()
 	if err != nil {
-		return fmt.Errorf("failed to list microflows: %w", err)
+		return mdlerrors.NewBackend("list microflows", err)
 	}
 
 	for _, mf := range mfs {
@@ -274,23 +275,23 @@ func (e *Executor) showAccessOnMicroflow(name *ast.QualifiedName) error {
 		}
 	}
 
-	return fmt.Errorf("microflow not found: %s", name)
+	return mdlerrors.NewNotFound("microflow", name.String())
 }
 
 // showAccessOnPage handles SHOW ACCESS ON PAGE Module.Page.
 func (e *Executor) showAccessOnPage(name *ast.QualifiedName) error {
 	if name == nil {
-		return fmt.Errorf("page name required")
+		return mdlerrors.NewValidation("page name required")
 	}
 
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	pages, err := e.reader.ListPages()
 	if err != nil {
-		return fmt.Errorf("failed to list pages: %w", err)
+		return mdlerrors.NewBackend("list pages", err)
 	}
 
 	for _, pg := range pages {
@@ -308,12 +309,12 @@ func (e *Executor) showAccessOnPage(name *ast.QualifiedName) error {
 		}
 	}
 
-	return fmt.Errorf("page not found: %s", name)
+	return mdlerrors.NewNotFound("page", name.String())
 }
 
 // showAccessOnWorkflow handles SHOW ACCESS ON WORKFLOW Module.WF.
 func (e *Executor) showAccessOnWorkflow(name *ast.QualifiedName) error {
-	return fmt.Errorf("SHOW ACCESS ON WORKFLOW is not supported: Mendix workflows do not have document-level AllowedModuleRoles (unlike microflows and pages). Workflow access is controlled through the microflow that triggers the workflow and UserTask targeting")
+	return mdlerrors.NewUnsupported("SHOW ACCESS ON WORKFLOW is not supported: Mendix workflows do not have document-level AllowedModuleRoles (unlike microflows and pages). Workflow access is controlled through the microflow that triggers the workflow and UserTask targeting")
 }
 
 // showSecurityMatrix handles SHOW SECURITY MATRIX [IN module].
@@ -324,13 +325,13 @@ func (e *Executor) showSecurityMatrix(moduleName string) error {
 
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	// Collect all module roles
 	allMS, err := e.reader.ListModuleSecurity()
 	if err != nil {
-		return fmt.Errorf("failed to read module security: %w", err)
+		return mdlerrors.NewBackend("read module security", err)
 	}
 
 	// Build role list for the target module(s)
@@ -370,7 +371,7 @@ func (e *Executor) showSecurityMatrix(moduleName string) error {
 	// Collect entities with access rules
 	dms, err := e.reader.ListDomainModels()
 	if err != nil {
-		return fmt.Errorf("failed to list domain models: %w", err)
+		return mdlerrors.NewBackend("list domain models", err)
 	}
 
 	fmt.Fprintf(e.output, "Security Matrix")
@@ -451,7 +452,7 @@ func (e *Executor) showSecurityMatrix(moduleName string) error {
 
 	mfs, err := e.reader.ListMicroflows()
 	if err != nil {
-		return fmt.Errorf("failed to list microflows: %w", err)
+		return mdlerrors.NewBackend("list microflows", err)
 	}
 
 	mfFound := false
@@ -482,7 +483,7 @@ func (e *Executor) showSecurityMatrix(moduleName string) error {
 
 	pages, err := e.reader.ListPages()
 	if err != nil {
-		return fmt.Errorf("failed to list pages: %w", err)
+		return mdlerrors.NewBackend("list pages", err)
 	}
 
 	pgFound := false
@@ -521,7 +522,7 @@ func (e *Executor) showSecurityMatrix(moduleName string) error {
 func (e *Executor) showSecurityMatrixJSON(moduleName string) error {
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	tr := &TableResult{
@@ -629,7 +630,6 @@ func (e *Executor) showSecurityMatrixJSON(moduleName string) error {
 		})
 	}
 
-
 	return e.writeResult(tr)
 }
 
@@ -637,12 +637,12 @@ func (e *Executor) showSecurityMatrixJSON(moduleName string) error {
 func (e *Executor) describeModuleRole(name ast.QualifiedName) error {
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	allMS, err := e.reader.ListModuleSecurity()
 	if err != nil {
-		return fmt.Errorf("failed to read module security: %w", err)
+		return mdlerrors.NewBackend("read module security", err)
 	}
 
 	for _, ms := range allMS {
@@ -681,14 +681,14 @@ func (e *Executor) describeModuleRole(name ast.QualifiedName) error {
 		}
 	}
 
-	return fmt.Errorf("module role not found: %s", name)
+	return mdlerrors.NewNotFound("module role", name.String())
 }
 
 // describeDemoUser handles DESCRIBE DEMO USER 'name'.
 func (e *Executor) describeDemoUser(userName string) error {
 	ps, err := e.reader.GetProjectSecurity()
 	if err != nil {
-		return fmt.Errorf("failed to read project security: %w", err)
+		return mdlerrors.NewBackend("read project security", err)
 	}
 
 	for _, du := range ps.DemoUsers {
@@ -706,14 +706,14 @@ func (e *Executor) describeDemoUser(userName string) error {
 		}
 	}
 
-	return fmt.Errorf("demo user not found: %s", userName)
+	return mdlerrors.NewNotFound("demo user", userName)
 }
 
 // describeUserRole handles DESCRIBE USER ROLE Name.
 func (e *Executor) describeUserRole(name ast.QualifiedName) error {
 	ps, err := e.reader.GetProjectSecurity()
 	if err != nil {
-		return fmt.Errorf("failed to read project security: %w", err)
+		return mdlerrors.NewBackend("read project security", err)
 	}
 
 	for _, ur := range ps.UserRoles {
@@ -746,5 +746,5 @@ func (e *Executor) describeUserRole(name ast.QualifiedName) error {
 		}
 	}
 
-	return fmt.Errorf("user role not found: %s", name.Name)
+	return mdlerrors.NewNotFound("user role", name.Name)
 }

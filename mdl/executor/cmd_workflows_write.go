@@ -9,6 +9,7 @@ import (
 	"unicode"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/model"
 	"github.com/mendixlabs/mxcli/sdk/mpr"
 	"github.com/mendixlabs/mxcli/sdk/workflows"
@@ -17,7 +18,7 @@ import (
 // execCreateWorkflow handles CREATE WORKFLOW statements.
 func (e *Executor) execCreateWorkflow(s *ast.CreateWorkflowStmt) error {
 	if e.writer == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	module, err := e.findOrCreateModule(s.Name.Module)
@@ -28,12 +29,12 @@ func (e *Executor) execCreateWorkflow(s *ast.CreateWorkflowStmt) error {
 	// Check if workflow already exists
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	existingWorkflows, err := e.reader.ListWorkflows()
 	if err != nil {
-		return fmt.Errorf("failed to list workflows: %w", err)
+		return mdlerrors.NewBackend("list workflows", err)
 	}
 
 	var existingID model.ID
@@ -42,7 +43,7 @@ func (e *Executor) execCreateWorkflow(s *ast.CreateWorkflowStmt) error {
 		modName := h.GetModuleName(modID)
 		if modName == s.Name.Module && existing.Name == s.Name.Name {
 			if !s.CreateOrModify {
-				return fmt.Errorf("workflow '%s.%s' already exists (use CREATE OR REPLACE to overwrite)", s.Name.Module, s.Name.Name)
+				return mdlerrors.NewAlreadyExistsMsg("workflow", s.Name.Module+"."+s.Name.Name, "workflow '"+s.Name.Module+"."+s.Name.Name+"' already exists (use CREATE OR REPLACE to overwrite)")
 			}
 			existingID = existing.ID
 			break
@@ -113,12 +114,12 @@ func (e *Executor) execCreateWorkflow(s *ast.CreateWorkflowStmt) error {
 	if existingID != "" {
 		// Delete existing and recreate
 		if err := e.writer.DeleteWorkflow(existingID); err != nil {
-			return fmt.Errorf("failed to delete existing workflow: %w", err)
+			return mdlerrors.NewBackend("delete existing workflow", err)
 		}
 	}
 
 	if err := e.writer.CreateWorkflow(wf); err != nil {
-		return fmt.Errorf("failed to create workflow: %w", err)
+		return mdlerrors.NewBackend("create workflow", err)
 	}
 
 	e.invalidateHierarchy()
@@ -129,17 +130,17 @@ func (e *Executor) execCreateWorkflow(s *ast.CreateWorkflowStmt) error {
 // execDropWorkflow handles DROP WORKFLOW statements.
 func (e *Executor) execDropWorkflow(s *ast.DropWorkflowStmt) error {
 	if e.writer == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	wfs, err := e.reader.ListWorkflows()
 	if err != nil {
-		return fmt.Errorf("failed to list workflows: %w", err)
+		return mdlerrors.NewBackend("list workflows", err)
 	}
 
 	for _, wf := range wfs {
@@ -147,7 +148,7 @@ func (e *Executor) execDropWorkflow(s *ast.DropWorkflowStmt) error {
 		modName := h.GetModuleName(modID)
 		if modName == s.Name.Module && wf.Name == s.Name.Name {
 			if err := e.writer.DeleteWorkflow(wf.ID); err != nil {
-				return fmt.Errorf("failed to delete workflow: %w", err)
+				return mdlerrors.NewBackend("delete workflow", err)
 			}
 			e.invalidateHierarchy()
 			fmt.Fprintf(e.output, "Dropped workflow: %s.%s\n", s.Name.Module, s.Name.Name)
@@ -155,7 +156,7 @@ func (e *Executor) execDropWorkflow(s *ast.DropWorkflowStmt) error {
 		}
 	}
 
-	return fmt.Errorf("workflow not found: %s.%s", s.Name.Module, s.Name.Name)
+	return mdlerrors.NewNotFound("workflow", s.Name.Module+"."+s.Name.Name)
 }
 
 // generateWorkflowUUID generates a UUID for workflow elements.

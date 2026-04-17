@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/sdk/pages"
 )
 
@@ -18,7 +19,7 @@ func (e *Executor) execDefineFragment(s *ast.DefineFragmentStmt) error {
 		e.fragments = make(map[string]*ast.DefineFragmentStmt)
 	}
 	if _, exists := e.fragments[s.Name]; exists {
-		return fmt.Errorf("fragment %q already defined", s.Name)
+		return mdlerrors.NewAlreadyExists("fragment", s.Name)
 	}
 	e.fragments[s.Name] = s
 	fmt.Fprintf(e.output, "Defined fragment %s (%d widgets)\n", s.Name, len(s.Widgets))
@@ -51,11 +52,11 @@ func (e *Executor) showFragments() error {
 // describeFragment outputs a fragment's definition as MDL.
 func (e *Executor) describeFragment(name ast.QualifiedName) error {
 	if e.fragments == nil {
-		return fmt.Errorf("fragment %q not found", name.Name)
+		return mdlerrors.NewNotFound("fragment", name.Name)
 	}
 	frag, ok := e.fragments[name.Name]
 	if !ok {
-		return fmt.Errorf("fragment %q not found", name.Name)
+		return mdlerrors.NewNotFound("fragment", name.Name)
 	}
 
 	fmt.Fprintf(e.output, "DEFINE FRAGMENT %s AS {\n", frag.Name)
@@ -70,12 +71,12 @@ func (e *Executor) describeFragment(name ast.QualifiedName) error {
 // It finds a named widget in a page or snippet and outputs it as MDL.
 func (e *Executor) describeFragmentFrom(s *ast.DescribeFragmentFromStmt) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	var rawWidgets []rawWidget
@@ -84,7 +85,7 @@ func (e *Executor) describeFragmentFrom(s *ast.DescribeFragmentFromStmt) error {
 	case "PAGE":
 		allPages, err := e.reader.ListPages()
 		if err != nil {
-			return fmt.Errorf("failed to list pages: %w", err)
+			return mdlerrors.NewBackend("list pages", err)
 		}
 		var foundPage *pages.Page
 		for _, p := range allPages {
@@ -96,14 +97,14 @@ func (e *Executor) describeFragmentFrom(s *ast.DescribeFragmentFromStmt) error {
 			}
 		}
 		if foundPage == nil {
-			return fmt.Errorf("page %s not found", s.ContainerName.String())
+			return mdlerrors.NewNotFound("page", s.ContainerName.String())
 		}
 		rawWidgets = e.getPageWidgetsFromRaw(foundPage.ID)
 
 	case "SNIPPET":
 		allSnippets, err := e.reader.ListSnippets()
 		if err != nil {
-			return fmt.Errorf("failed to list snippets: %w", err)
+			return mdlerrors.NewBackend("list snippets", err)
 		}
 		var foundSnippet *pages.Snippet
 		for _, sn := range allSnippets {
@@ -115,7 +116,7 @@ func (e *Executor) describeFragmentFrom(s *ast.DescribeFragmentFromStmt) error {
 			}
 		}
 		if foundSnippet == nil {
-			return fmt.Errorf("snippet %s not found", s.ContainerName.String())
+			return mdlerrors.NewNotFound("snippet", s.ContainerName.String())
 		}
 		rawWidgets = e.getSnippetWidgetsFromRaw(foundSnippet.ID)
 	}
@@ -123,7 +124,7 @@ func (e *Executor) describeFragmentFrom(s *ast.DescribeFragmentFromStmt) error {
 	// Find the widget by name
 	target := findRawWidgetByName(rawWidgets, s.WidgetName)
 	if target == nil {
-		return fmt.Errorf("widget %q not found in %s %s", s.WidgetName, strings.ToLower(s.ContainerType), s.ContainerName.String())
+		return mdlerrors.NewNotFoundMsg("widget", s.WidgetName, fmt.Sprintf("not found in %s %s", strings.ToLower(s.ContainerType), s.ContainerName.String()))
 	}
 
 	// Output as MDL

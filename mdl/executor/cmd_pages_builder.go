@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/model"
 	"github.com/mendixlabs/mxcli/sdk/domainmodel"
 	"github.com/mendixlabs/mxcli/sdk/microflows"
@@ -55,7 +56,7 @@ func (pb *pageBuilder) initPluggableEngine() {
 	}
 	registry, err := NewWidgetRegistry()
 	if err != nil {
-		pb.pluggableEngineErr = fmt.Errorf("widget registry init failed: %w", err)
+		pb.pluggableEngineErr = mdlerrors.NewBackend("widget registry init", err)
 		log.Printf("warning: %v", pb.pluggableEngineErr)
 		return
 	}
@@ -75,7 +76,7 @@ func (pb *pageBuilder) registerWidgetName(name string, id model.ID) error {
 		return nil // Anonymous widgets are allowed
 	}
 	if existingID, exists := pb.widgetScope[name]; exists {
-		return fmt.Errorf("duplicate widget name '%s': widget names must be unique within a page (existing ID: %s)", name, existingID)
+		return mdlerrors.NewAlreadyExistsMsg("widget", name, fmt.Sprintf("duplicate widget name '%s': widget names must be unique within a page (existing ID: %s)", name, existingID))
 	}
 	pb.widgetScope[name] = id
 	return nil
@@ -163,12 +164,12 @@ func (pb *pageBuilder) getMicroflows() ([]*microflows.Microflow, error) {
 func (pb *pageBuilder) resolveLayout(layoutName string) (model.ID, error) {
 	layouts, err := pb.getLayouts()
 	if err != nil {
-		return "", fmt.Errorf("failed to list layouts: %w", err)
+		return "", mdlerrors.NewBackend("list layouts", err)
 	}
 
 	h, err := pb.getHierarchy()
 	if err != nil {
-		return "", fmt.Errorf("failed to build hierarchy: %w", err)
+		return "", mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	// Parse qualified name
@@ -190,7 +191,7 @@ func (pb *pageBuilder) resolveLayout(layoutName string) (model.ID, error) {
 		}
 	}
 
-	return "", fmt.Errorf("layout %s not found", layoutName)
+	return "", mdlerrors.NewNotFound("layout", layoutName)
 }
 
 // resolveEntity finds an entity by qualified name.
@@ -198,12 +199,12 @@ func (pb *pageBuilder) resolveEntity(entityRef ast.QualifiedName) (model.ID, err
 	// Get domain models which contain entities
 	domainModels, err := pb.getDomainModels()
 	if err != nil {
-		return "", fmt.Errorf("failed to list domain models: %w", err)
+		return "", mdlerrors.NewBackend("list domain models", err)
 	}
 
 	h, err := pb.getHierarchy()
 	if err != nil {
-		return "", fmt.Errorf("failed to build hierarchy: %w", err)
+		return "", mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	// Search for entity in domain models
@@ -216,7 +217,7 @@ func (pb *pageBuilder) resolveEntity(entityRef ast.QualifiedName) (model.ID, err
 		}
 	}
 
-	return "", fmt.Errorf("entity %s not found", entityRef.String())
+	return "", mdlerrors.NewNotFound("entity", entityRef.String())
 }
 
 // getModuleID returns the module ID for any container by using the hierarchy.
@@ -271,7 +272,7 @@ func (pb *pageBuilder) resolveFolder(folderPath string) (model.ID, error) {
 
 	folders, err := pb.getFolders()
 	if err != nil {
-		return "", fmt.Errorf("failed to list folders: %w", err)
+		return "", mdlerrors.NewBackend("list folders", err)
 	}
 
 	// Split path into parts
@@ -298,7 +299,7 @@ func (pb *pageBuilder) resolveFolder(folderPath string) (model.ID, error) {
 			// Create the folder
 			newFolderID, err := pb.createFolder(part, currentContainerID)
 			if err != nil {
-				return "", fmt.Errorf("failed to create folder %s: %w", part, err)
+				return "", mdlerrors.NewBackend(fmt.Sprintf("create folder %s", part), err)
 			}
 			currentContainerID = newFolderID
 
@@ -335,12 +336,12 @@ func (pb *pageBuilder) createFolder(name string, containerID model.ID) (model.ID
 // execDropPage handles DROP PAGE statement.
 func (e *Executor) execDropPage(s *ast.DropPageStmt) error {
 	if e.writer == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	pages, err := e.reader.ListPages()
 	if err != nil {
-		return fmt.Errorf("failed to list pages: %w", err)
+		return mdlerrors.NewBackend("list pages", err)
 	}
 
 	for _, p := range pages {
@@ -348,25 +349,25 @@ func (e *Executor) execDropPage(s *ast.DropPageStmt) error {
 		modName := e.getModuleName(modID)
 		if modName == s.Name.Module && p.Name == s.Name.Name {
 			if err := e.writer.DeletePage(p.ID); err != nil {
-				return fmt.Errorf("failed to delete page: %w", err)
+				return mdlerrors.NewBackend("delete page", err)
 			}
 			fmt.Fprintf(e.output, "Dropped page %s\n", s.Name.String())
 			return nil
 		}
 	}
 
-	return fmt.Errorf("page %s not found", s.Name.String())
+	return mdlerrors.NewNotFound("page", s.Name.String())
 }
 
 // execDropSnippet handles DROP SNIPPET statement.
 func (e *Executor) execDropSnippet(s *ast.DropSnippetStmt) error {
 	if e.writer == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	snippets, err := e.reader.ListSnippets()
 	if err != nil {
-		return fmt.Errorf("failed to list snippets: %w", err)
+		return mdlerrors.NewBackend("list snippets", err)
 	}
 
 	for _, snip := range snippets {
@@ -374,12 +375,12 @@ func (e *Executor) execDropSnippet(s *ast.DropSnippetStmt) error {
 		modName := e.getModuleName(modID)
 		if modName == s.Name.Module && snip.Name == s.Name.Name {
 			if err := e.writer.DeleteSnippet(snip.ID); err != nil {
-				return fmt.Errorf("failed to delete snippet: %w", err)
+				return mdlerrors.NewBackend("delete snippet", err)
 			}
 			fmt.Fprintf(e.output, "Dropped snippet %s\n", s.Name.String())
 			return nil
 		}
 	}
 
-	return fmt.Errorf("snippet %s not found", s.Name.String())
+	return mdlerrors.NewNotFound("snippet", s.Name.String())
 }

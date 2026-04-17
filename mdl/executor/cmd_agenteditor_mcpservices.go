@@ -12,18 +12,19 @@ import (
 	"fmt"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/sdk/agenteditor"
 )
 
 // showAgentEditorConsumedMCPServices handles SHOW CONSUMED MCP SERVICES [IN module].
 func (e *Executor) showAgentEditorConsumedMCPServices(moduleName string) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	svcs, err := e.reader.ListAgentEditorConsumedMCPServices()
 	if err != nil {
-		return fmt.Errorf("failed to list consumed MCP services: %w", err)
+		return mdlerrors.NewBackend("list consumed MCP services", err)
 	}
 
 	h, err := e.getHierarchy()
@@ -58,12 +59,12 @@ func (e *Executor) showAgentEditorConsumedMCPServices(moduleName string) error {
 // describeAgentEditorConsumedMCPService handles DESCRIBE CONSUMED MCP SERVICE Module.Name.
 func (e *Executor) describeAgentEditorConsumedMCPService(name ast.QualifiedName) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	c := e.findAgentEditorConsumedMCPService(name.Module, name.Name)
 	if c == nil {
-		return fmt.Errorf("consumed MCP service not found: %s", name)
+		return mdlerrors.NewNotFound("consumed MCP service", name.String())
 	}
 
 	h, err := e.getHierarchy()

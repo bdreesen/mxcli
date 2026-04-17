@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/model"
 	"github.com/mendixlabs/mxcli/sdk/domainmodel"
 )
@@ -18,7 +19,7 @@ func (e *Executor) showEntities(moduleName string) error {
 	// Build module ID -> name map (single query)
 	modules, err := e.reader.ListModules()
 	if err != nil {
-		return fmt.Errorf("failed to list modules: %w", err)
+		return mdlerrors.NewBackend("list modules", err)
 	}
 	moduleNames := make(map[model.ID]string)
 	for _, m := range modules {
@@ -28,7 +29,7 @@ func (e *Executor) showEntities(moduleName string) error {
 	// Get all domain models in a single query (avoids O(n²) behavior)
 	domainModels, err := e.reader.ListDomainModels()
 	if err != nil {
-		return fmt.Errorf("failed to list domain models: %w", err)
+		return mdlerrors.NewBackend("list domain models", err)
 	}
 
 	// Build entity ID -> association count map
@@ -158,7 +159,7 @@ func (e *Executor) showEntities(moduleName string) error {
 // showEntity handles SHOW ENTITY command.
 func (e *Executor) showEntity(name *ast.QualifiedName) error {
 	if name == nil {
-		return fmt.Errorf("entity name required")
+		return mdlerrors.NewValidation("entity name required")
 	}
 
 	module, err := e.findModule(name.Module)
@@ -168,7 +169,7 @@ func (e *Executor) showEntity(name *ast.QualifiedName) error {
 
 	dm, err := e.reader.GetDomainModel(module.ID)
 	if err != nil {
-		return fmt.Errorf("failed to get domain model: %w", err)
+		return mdlerrors.NewBackend("get domain model", err)
 	}
 
 	for _, entity := range dm.Entities {
@@ -209,7 +210,7 @@ func (e *Executor) showEntity(name *ast.QualifiedName) error {
 		}
 	}
 
-	return fmt.Errorf("entity not found: %s", name)
+	return mdlerrors.NewNotFound("entity", name.String())
 }
 
 // describeEntity handles DESCRIBE ENTITY command.
@@ -221,7 +222,7 @@ func (e *Executor) describeEntity(name ast.QualifiedName) error {
 
 	dm, err := e.reader.GetDomainModel(module.ID)
 	if err != nil {
-		return fmt.Errorf("failed to get domain model: %w", err)
+		return mdlerrors.NewBackend("get domain model", err)
 	}
 
 	for _, entity := range dm.Entities {
@@ -431,7 +432,7 @@ func (e *Executor) describeEntity(name ast.QualifiedName) error {
 		}
 	}
 
-	return fmt.Errorf("entity not found: %s", name)
+	return mdlerrors.NewNotFound("entity", name.String())
 }
 
 // describeEntityToString generates MDL source for an entity and returns it as a string.
@@ -463,7 +464,7 @@ func extractAttrNameFromQualified(qualifiedName string) string {
 func (e *Executor) resolveMicroflowByName(qualifiedName string) (model.ID, error) {
 	parts := strings.Split(qualifiedName, ".")
 	if len(parts) < 2 {
-		return "", fmt.Errorf("invalid microflow name: %s (expected Module.Name)", qualifiedName)
+		return "", mdlerrors.NewValidationf("invalid microflow name: %s (expected Module.Name)", qualifiedName)
 	}
 	moduleName := parts[0]
 	mfName := strings.Join(parts[1:], ".")
@@ -478,12 +479,12 @@ func (e *Executor) resolveMicroflowByName(qualifiedName string) (model.ID, error
 	// Search existing microflows
 	allMicroflows, err := e.reader.ListMicroflows()
 	if err != nil {
-		return "", fmt.Errorf("failed to list microflows: %w", err)
+		return "", mdlerrors.NewBackend("list microflows", err)
 	}
 
 	h, err := e.getHierarchy()
 	if err != nil {
-		return "", fmt.Errorf("failed to build hierarchy: %w", err)
+		return "", mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	for _, mf := range allMicroflows {
@@ -494,7 +495,7 @@ func (e *Executor) resolveMicroflowByName(qualifiedName string) (model.ID, error
 		}
 	}
 
-	return "", fmt.Errorf("microflow not found: %s", qualifiedName)
+	return "", mdlerrors.NewNotFound("microflow", qualifiedName)
 }
 
 // lookupMicroflowName reverse-looks up a microflow ID to its qualified name.
