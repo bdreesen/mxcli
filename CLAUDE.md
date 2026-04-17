@@ -360,11 +360,22 @@ mxcli new MyApp --version 10.24.0 --output-dir ./projects/my-app
 
 Steps performed: downloads MxBuild → `mx create-project` → `mxcli init` → downloads correct Linux mxcli binary for devcontainer. The result is a ready-to-open project with `.devcontainer/`, AI tooling, and a working `./mxcli` binary.
 
+### Slash Command Namespaces
+
+Commands in `.claude/commands/` are organised by audience:
+
+| Namespace | Folder | Invoked as | Purpose |
+|-----------|--------|------------|---------|
+| `mendix:` | `.claude/commands/mendix/` | `/mendix:lint` | mxcli **user** commands — synced to Mendix projects via `mxcli init` |
+| `mxcli-dev:` | `.claude/commands/mxcli-dev/` | `/mxcli-dev:review` | **Contributor** commands — this repo only, never synced to user projects |
+
+Both namespaces are discoverable by typing `/mxcli` in Claude Code. Add new contributor tooling (review workflows, debugging helpers, etc.) under `mxcli-dev/`. Add commands intended for Mendix project users under `mendix/`.
+
 ### mxcli init
 
 `mxcli init` creates a `.claude/` folder with skills, commands, CLAUDE.md, and VS Code MDL extension in a target Mendix project. Source of truth for synced assets:
 - Skills: `reference/mendix-repl/templates/.claude/skills/`
-- Commands: `.claude/commands/mendix/`
+- Commands: `.claude/commands/mendix/` (the `mxcli-dev/` folder is **not** synced)
 - VS Code extension: `vscode-mdl/vscode-mdl-*.vsix`
 
 Build-time sync: `make build` syncs everything automatically. Individual targets: `make sync-skills`, `make sync-commands`, `make sync-vsix`.
