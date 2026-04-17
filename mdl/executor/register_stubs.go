@@ -23,10 +23,10 @@ func registerConnectionHandlers(r *Registry) {
 
 func registerModuleHandlers(r *Registry) {
 	r.Register(&ast.CreateModuleStmt{}, func(ctx *ExecContext, stmt ast.Statement) error {
-		return ctx.executor.execCreateModule(stmt.(*ast.CreateModuleStmt))
+		return execCreateModule(ctx, stmt.(*ast.CreateModuleStmt))
 	})
 	r.Register(&ast.DropModuleStmt{}, func(ctx *ExecContext, stmt ast.Statement) error {
-		return ctx.executor.execDropModule(stmt.(*ast.DropModuleStmt))
+		return execDropModule(ctx, stmt.(*ast.DropModuleStmt))
 	})
 }
 

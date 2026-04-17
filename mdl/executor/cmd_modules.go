@@ -4,6 +4,7 @@
 package executor
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strings"
@@ -15,7 +16,8 @@ import (
 )
 
 // execCreateModule handles CREATE MODULE statements.
-func (e *Executor) execCreateModule(s *ast.CreateModuleStmt) error {
+func execCreateModule(ctx *ExecContext, s *ast.CreateModuleStmt) error {
+	e := ctx.executor
 	if e.reader == nil {
 		return mdlerrors.NewNotConnected()
 	}
@@ -28,7 +30,7 @@ func (e *Executor) execCreateModule(s *ast.CreateModuleStmt) error {
 
 	for _, m := range modules {
 		if m.Name == s.Name {
-			fmt.Fprintf(e.output, "Module '%s' already exists\n", s.Name)
+			fmt.Fprintf(ctx.Output, "Module '%s' already exists\n", s.Name)
 			return nil
 		}
 	}
@@ -45,7 +47,7 @@ func (e *Executor) execCreateModule(s *ast.CreateModuleStmt) error {
 	// Invalidate cache so new module is visible
 	e.invalidateModuleCache()
 
-	fmt.Fprintf(e.output, "Created module: %s\n", s.Name)
+	fmt.Fprintf(ctx.Output, "Created module: %s\n", s.Name)
 	return nil
 }
 
@@ -58,7 +60,8 @@ func (e *Executor) execCreateModule(s *ast.CreateModuleStmt) error {
 // - Pages
 // - Snippets
 // - Constants
-func (e *Executor) execDropModule(s *ast.DropModuleStmt) error {
+func execDropModule(ctx *ExecContext, s *ast.DropModuleStmt) error {
+	e := ctx.executor
 	if e.reader == nil {
 		return mdlerrors.NewNotConnected()
 	}
@@ -92,7 +95,7 @@ func (e *Executor) execDropModule(s *ast.DropModuleStmt) error {
 		for _, enum := range enums {
 			if moduleContainers[enum.ContainerID] {
 				if err := e.writer.DeleteEnumeration(enum.ID); err != nil {
-					fmt.Fprintf(e.output, "Warning: failed to delete enumeration %s: %v\n", enum.Name, err)
+					fmt.Fprintf(ctx.Output, "Warning: failed to delete enumeration %s: %v\n", enum.Name, err)
 				} else {
 					nEnums++
 				}
@@ -107,7 +110,7 @@ func (e *Executor) execDropModule(s *ast.DropModuleStmt) error {
 				// Delete all associations in this domain model first (they reference entities)
 				for _, assoc := range dm.Associations {
 					if err := e.writer.DeleteAssociation(dm.ID, assoc.ID); err != nil {
-						fmt.Fprintf(e.output, "Warning: failed to delete association %s: %v\n", assoc.Name, err)
+						fmt.Fprintf(ctx.Output, "Warning: failed to delete association %s: %v\n", assoc.Name, err)
 					} else {
 						nAssocs++
 					}
@@ -115,7 +118,7 @@ func (e *Executor) execDropModule(s *ast.DropModuleStmt) error {
 				// Delete all entities in this domain model
 				for _, entity := range dm.Entities {
 					if err := e.writer.DeleteEntity(dm.ID, entity.ID); err != nil {
-						fmt.Fprintf(e.output, "Warning: failed to delete entity %s: %v\n", entity.Name, err)
+						fmt.Fprintf(ctx.Output, "Warning: failed to delete entity %s: %v\n", entity.Name, err)
 					} else {
 						nEntities++
 					}
@@ -129,7 +132,7 @@ func (e *Executor) execDropModule(s *ast.DropModuleStmt) error {
 		for _, mf := range mfs {
 			if moduleContainers[mf.ContainerID] {
 				if err := e.writer.DeleteMicroflow(mf.ID); err != nil {
-					fmt.Fprintf(e.output, "Warning: failed to delete microflow %s: %v\n", mf.Name, err)
+					fmt.Fprintf(ctx.Output, "Warning: failed to delete microflow %s: %v\n", mf.Name, err)
 				} else {
 					nMicroflows++
 				}
@@ -142,7 +145,7 @@ func (e *Executor) execDropModule(s *ast.DropModuleStmt) error {
 		for _, nf := range nfs {
 			if moduleContainers[nf.ContainerID] {
 				if err := e.writer.DeleteNanoflow(nf.ID); err != nil {
-					fmt.Fprintf(e.output, "Warning: failed to delete nanoflow %s: %v\n", nf.Name, err)
+					fmt.Fprintf(ctx.Output, "Warning: failed to delete nanoflow %s: %v\n", nf.Name, err)
 				} else {
 					nNanoflows++
 				}
@@ -155,7 +158,7 @@ func (e *Executor) execDropModule(s *ast.DropModuleStmt) error {
 		for _, page := range pages {
 			if moduleContainers[page.ContainerID] {
 				if err := e.writer.DeletePage(page.ID); err != nil {
-					fmt.Fprintf(e.output, "Warning: failed to delete page %s: %v\n", page.Name, err)
+					fmt.Fprintf(ctx.Output, "Warning: failed to delete page %s: %v\n", page.Name, err)
 				} else {
 					nPages++
 				}
@@ -168,7 +171,7 @@ func (e *Executor) execDropModule(s *ast.DropModuleStmt) error {
 		for _, snippet := range snippets {
 			if moduleContainers[snippet.ContainerID] {
 				if err := e.writer.DeleteSnippet(snippet.ID); err != nil {
-					fmt.Fprintf(e.output, "Warning: failed to delete snippet %s: %v\n", snippet.Name, err)
+					fmt.Fprintf(ctx.Output, "Warning: failed to delete snippet %s: %v\n", snippet.Name, err)
 				} else {
 					nSnippets++
 				}
@@ -181,7 +184,7 @@ func (e *Executor) execDropModule(s *ast.DropModuleStmt) error {
 		for _, c := range constants {
 			if moduleContainers[c.ContainerID] {
 				if err := e.writer.DeleteConstant(c.ID); err != nil {
-					fmt.Fprintf(e.output, "Warning: failed to delete constant %s: %v\n", c.Name, err)
+					fmt.Fprintf(ctx.Output, "Warning: failed to delete constant %s: %v\n", c.Name, err)
 				} else {
 					nConstants++
 				}
@@ -194,7 +197,7 @@ func (e *Executor) execDropModule(s *ast.DropModuleStmt) error {
 		for _, l := range layouts {
 			if moduleContainers[l.ContainerID] {
 				if err := e.writer.DeleteLayout(l.ID); err != nil {
-					fmt.Fprintf(e.output, "Warning: failed to delete layout %s: %v\n", l.Name, err)
+					fmt.Fprintf(ctx.Output, "Warning: failed to delete layout %s: %v\n", l.Name, err)
 				} else {
 					nLayouts++
 				}
@@ -207,7 +210,7 @@ func (e *Executor) execDropModule(s *ast.DropModuleStmt) error {
 		for _, ja := range jas {
 			if moduleContainers[ja.ContainerID] {
 				if err := e.writer.DeleteJavaAction(ja.ID); err != nil {
-					fmt.Fprintf(e.output, "Warning: failed to delete Java action %s: %v\n", ja.Name, err)
+					fmt.Fprintf(ctx.Output, "Warning: failed to delete Java action %s: %v\n", ja.Name, err)
 				} else {
 					nJavaActions++
 				}
@@ -220,7 +223,7 @@ func (e *Executor) execDropModule(s *ast.DropModuleStmt) error {
 		for _, svc := range services {
 			if moduleContainers[svc.ContainerID] {
 				if err := e.writer.DeleteBusinessEventService(svc.ID); err != nil {
-					fmt.Fprintf(e.output, "Warning: failed to delete business event service %s: %v\n", svc.Name, err)
+					fmt.Fprintf(ctx.Output, "Warning: failed to delete business event service %s: %v\n", svc.Name, err)
 				} else {
 					nBizEvents++
 				}
@@ -233,7 +236,7 @@ func (e *Executor) execDropModule(s *ast.DropModuleStmt) error {
 		for _, conn := range conns {
 			if moduleContainers[conn.ContainerID] {
 				if err := e.writer.DeleteDatabaseConnection(conn.ID); err != nil {
-					fmt.Fprintf(e.output, "Warning: failed to delete database connection %s: %v\n", conn.Name, err)
+					fmt.Fprintf(ctx.Output, "Warning: failed to delete database connection %s: %v\n", conn.Name, err)
 				} else {
 					nDbConns++
 				}
@@ -246,7 +249,7 @@ func (e *Executor) execDropModule(s *ast.DropModuleStmt) error {
 		for _, svc := range services {
 			if moduleContainers[svc.ContainerID] {
 				if err := e.writer.DeleteConsumedODataService(svc.ID); err != nil {
-					fmt.Fprintf(e.output, "Warning: failed to delete OData client %s: %v\n", svc.Name, err)
+					fmt.Fprintf(ctx.Output, "Warning: failed to delete OData client %s: %v\n", svc.Name, err)
 				} else {
 					nServices++
 				}
@@ -259,7 +262,7 @@ func (e *Executor) execDropModule(s *ast.DropModuleStmt) error {
 		for _, svc := range services {
 			if moduleContainers[svc.ContainerID] {
 				if err := e.writer.DeletePublishedODataService(svc.ID); err != nil {
-					fmt.Fprintf(e.output, "Warning: failed to delete OData service %s: %v\n", svc.Name, err)
+					fmt.Fprintf(ctx.Output, "Warning: failed to delete OData service %s: %v\n", svc.Name, err)
 				} else {
 					nServices++
 				}
@@ -273,7 +276,7 @@ func (e *Executor) execDropModule(s *ast.DropModuleStmt) error {
 			for _, mr := range ms.ModuleRoles {
 				qualifiedRole := s.Name + "." + mr.Name
 				if n, err := e.writer.RemoveModuleRoleFromAllUserRoles(ps.ID, qualifiedRole); err == nil && n > 0 {
-					fmt.Fprintf(e.output, "Removed %s from %d user role(s)\n", qualifiedRole, n)
+					fmt.Fprintf(ctx.Output, "Removed %s from %d user role(s)\n", qualifiedRole, n)
 				}
 			}
 		}
@@ -327,11 +330,17 @@ func (e *Executor) execDropModule(s *ast.DropModuleStmt) error {
 	}
 
 	if len(parts) > 0 {
-		fmt.Fprintf(e.output, "Dropped module: %s (%s)\n", s.Name, strings.Join(parts, ", "))
+		fmt.Fprintf(ctx.Output, "Dropped module: %s (%s)\n", s.Name, strings.Join(parts, ", "))
 	} else {
-		fmt.Fprintf(e.output, "Dropped module: %s (empty)\n", s.Name)
+		fmt.Fprintf(ctx.Output, "Dropped module: %s (empty)\n", s.Name)
 	}
 	return nil
+}
+
+// Executor method wrapper — kept during migration for callers not yet
+// converted to free functions (helpers.go). Remove once all callers are migrated.
+func (e *Executor) execCreateModule(s *ast.CreateModuleStmt) error {
+	return execCreateModule(e.newExecContext(context.Background()), s)
 }
 
 // getModuleContainers returns a set of all container IDs that belong to a module

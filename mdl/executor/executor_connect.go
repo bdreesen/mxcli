@@ -3,6 +3,7 @@
 package executor
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
@@ -87,15 +88,15 @@ func execDisconnect(ctx *ExecContext) error {
 // converted to free functions. Remove once all callers are migrated.
 
 func (e *Executor) execConnect(s *ast.ConnectStmt) error {
-	return execConnect(&ExecContext{Output: e.output, Quiet: e.quiet, Logger: e.logger, executor: e}, s)
+	return execConnect(e.newExecContext(context.Background()), s)
 }
 
 func (e *Executor) execDisconnect() error {
-	return execDisconnect(&ExecContext{Output: e.output, executor: e})
+	return execDisconnect(e.newExecContext(context.Background()))
 }
 
 func (e *Executor) reconnect() error {
-	return reconnect(&ExecContext{executor: e})
+	return reconnect(e.newExecContext(context.Background()))
 }
 
 func execStatus(ctx *ExecContext) error {
