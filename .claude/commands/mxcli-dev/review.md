@@ -31,6 +31,7 @@ proactively. Add a row after every review that surfaces something new.
 | 6 | Docs-only PR cites an unmerged PR as a "model example" — cited PR had blockers | Docs quality | Only cite merged, verified PRs; or annotate with known gaps if citing in-flight work |
 | 7 | Skill/doc table references a function that doesn't exist (e.g. `formatActionStatement()` vs `formatAction()`) | Docs quality | Grep function names before writing: `grep -r "func formatA" mdl/executor/` |
 | 8 | "Always X" rule is too absolute for trivial edge cases (e.g. "always write failing test first" for one-char typos) | Docs quality | Soften to "prefer X" or add an exception clause; include the reasoning so readers can judge edge cases |
+| 9 | Doc comment promises a fallback/feature that doesn't exist in the code (e.g., "raw-map fallback in the client" when no such fallback was implemented) | Docs quality | Grep for function/type names referenced in doc comments to confirm they exist before committing |
 
 ---
 

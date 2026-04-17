@@ -2,6 +2,21 @@
 
 This file provides guidance for Claude Code when working with this repository.
 
+## Welcome — Contributing to mxcli
+
+If you're starting a new task, here's how contributions work in this repo:
+
+1. **File an issue first** — describe the bug or feature before coding. See `CONTRIBUTING.md` for details.
+2. **Get approval** — wait for maintainer sign-off before starting work.
+3. **Create a feature branch** — `feature/123-short-description` or `fix/456-what-broke`.
+4. **Use the contributor commands** to stay on track:
+   - `/mxcli-dev:proposal` — create a structured feature proposal (asks the right questions, investigates BSON storage)
+   - `/mxcli-dev:review` — review your changes against the PR checklist before pushing
+5. **Validate locally** — `make build && make test && make lint` must all pass.
+6. **Open a PR** — link the issue, document Mendix Studio Pro validation, confirm agentic testing.
+
+For the full workflow, read `CONTRIBUTING.md`. For the review checklist applied to every PR, see the "PR / Commit Review Checklist" section below.
+
 ## Project Overview
 
 **ModelSDK Go** is a Go library for reading and modifying Mendix application projects (`.mpr` files) stored locally on disk. It's a Go-native alternative to the TypeScript-based Mendix Model SDK, enabling programmatic access without cloud connectivity.
