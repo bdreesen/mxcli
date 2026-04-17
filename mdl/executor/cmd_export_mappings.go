@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/model"
 	"github.com/mendixlabs/mxcli/sdk/mpr"
 )
@@ -15,12 +16,12 @@ import (
 // showExportMappings prints a table of all export mapping documents.
 func (e *Executor) showExportMappings(inModule string) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	all, err := e.reader.ListExportMappings()
 	if err != nil {
-		return fmt.Errorf("failed to list export mappings: %w", err)
+		return mdlerrors.NewBackend("list export mappings", err)
 	}
 
 	h, err := e.getHierarchy()
@@ -78,12 +79,12 @@ func (e *Executor) showExportMappings(inModule string) error {
 // describeExportMapping prints the MDL representation of an export mapping.
 func (e *Executor) describeExportMapping(name ast.QualifiedName) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	em, err := e.reader.GetExportMappingByQualifiedName(name.Module, name.Name)
 	if err != nil {
-		return fmt.Errorf("export mapping %s not found", name)
+		return mdlerrors.NewNotFoundMsg("export mapping", name.String(), err.Error())
 	}
 
 	if em.Documentation != "" {
@@ -173,12 +174,12 @@ func printExportMappingElement(e *Executor, elem *model.ExportMappingElement, de
 // execCreateExportMapping creates a new export mapping.
 func (e *Executor) execCreateExportMapping(s *ast.CreateExportMappingStmt) error {
 	if e.writer == nil {
-		return fmt.Errorf("not connected to a project in write mode")
+		return mdlerrors.NewNotConnectedWrite()
 	}
 
 	module, err := e.findModule(s.Name.Module)
 	if err != nil {
-		return fmt.Errorf("module %s not found", s.Name.Module)
+		return mdlerrors.NewNotFound("module", s.Name.Module)
 	}
 	containerID := module.ID
 
@@ -215,7 +216,7 @@ func (e *Executor) execCreateExportMapping(s *ast.CreateExportMappingStmt) error
 	}
 
 	if err := e.writer.CreateExportMapping(em); err != nil {
-		return fmt.Errorf("failed to create export mapping: %w", err)
+		return mdlerrors.NewBackend("create export mapping", err)
 	}
 
 	if !e.quiet {
@@ -357,16 +358,16 @@ func buildExportMappingElementModel(moduleName string, def *ast.ExportMappingEle
 // execDropExportMapping deletes an export mapping.
 func (e *Executor) execDropExportMapping(s *ast.DropExportMappingStmt) error {
 	if e.writer == nil {
-		return fmt.Errorf("not connected to a project in write mode")
+		return mdlerrors.NewNotConnectedWrite()
 	}
 
 	em, err := e.reader.GetExportMappingByQualifiedName(s.Name.Module, s.Name.Name)
 	if err != nil {
-		return fmt.Errorf("export mapping %s not found", s.Name)
+		return mdlerrors.NewNotFoundMsg("export mapping", s.Name.String(), err.Error())
 	}
 
 	if err := e.writer.DeleteExportMapping(em.ID); err != nil {
-		return fmt.Errorf("failed to drop export mapping: %w", err)
+		return mdlerrors.NewBackend("drop export mapping", err)
 	}
 
 	if !e.quiet {

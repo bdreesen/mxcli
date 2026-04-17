@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/model"
 )
 
@@ -15,12 +16,12 @@ import (
 func (e *Executor) showPublishedRestServices(moduleName string) error {
 	services, err := e.reader.ListPublishedRestServices()
 	if err != nil {
-		return fmt.Errorf("failed to list published REST services: %w", err)
+		return mdlerrors.NewBackend("list published REST services", err)
 	}
 
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	type row struct {
@@ -77,12 +78,12 @@ func (e *Executor) showPublishedRestServices(moduleName string) error {
 func (e *Executor) describePublishedRestService(name ast.QualifiedName) error {
 	services, err := e.reader.ListPublishedRestServices()
 	if err != nil {
-		return fmt.Errorf("failed to list published REST services: %w", err)
+		return mdlerrors.NewBackend("list published REST services", err)
 	}
 
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	for _, svc := range services {
@@ -150,7 +151,7 @@ func (e *Executor) describePublishedRestService(name ast.QualifiedName) error {
 		return nil
 	}
 
-	return fmt.Errorf("published REST service not found: %s", name)
+	return mdlerrors.NewNotFound("published REST service", name.String())
 }
 
 // findPublishedRestService looks up a published REST service by module and name.
@@ -170,13 +171,13 @@ func (e *Executor) findPublishedRestService(moduleName, name string) (*model.Pub
 			return svc, nil
 		}
 	}
-	return nil, fmt.Errorf("not found")
+	return nil, mdlerrors.NewNotFoundMsg("published REST service", "", "not found")
 }
 
 // execCreatePublishedRestService creates a new published REST service.
 func (e *Executor) execCreatePublishedRestService(s *ast.CreatePublishedRestServiceStmt) error {
 	if e.writer == nil {
-		return fmt.Errorf("not connected to a project in write mode")
+		return mdlerrors.NewNotConnectedWrite()
 	}
 
 	if err := e.checkFeature("integration", "published_rest_service",
@@ -189,21 +190,21 @@ func (e *Executor) execCreatePublishedRestService(s *ast.CreatePublishedRestServ
 	if s.CreateOrReplace {
 		if existing, _ := e.findPublishedRestService(s.Name.Module, s.Name.Name); existing != nil {
 			if err := e.writer.DeletePublishedRestService(existing.ID); err != nil {
-				return fmt.Errorf("failed to replace existing service: %w", err)
+				return mdlerrors.NewBackend("replace existing service", err)
 			}
 		}
 	}
 
 	module, err := e.findModule(s.Name.Module)
 	if err != nil {
-		return fmt.Errorf("module %s not found", s.Name.Module)
+		return mdlerrors.NewNotFound("module", s.Name.Module)
 	}
 
 	containerID := module.ID
 	if s.Folder != "" {
 		folderID, err := e.resolveFolder(module.ID, s.Folder)
 		if err != nil {
-			return fmt.Errorf("failed to resolve folder '%s': %w", s.Folder, err)
+			return mdlerrors.NewBackend(fmt.Sprintf("resolve folder '%s'", s.Folder), err)
 		}
 		containerID = folderID
 	}
@@ -234,7 +235,7 @@ func (e *Executor) execCreatePublishedRestService(s *ast.CreatePublishedRestServ
 	}
 
 	if err := e.writer.CreatePublishedRestService(svc); err != nil {
-		return fmt.Errorf("failed to create published REST service: %w", err)
+		return mdlerrors.NewBackend("create published REST service", err)
 	}
 
 	if !e.quiet {
@@ -246,12 +247,12 @@ func (e *Executor) execCreatePublishedRestService(s *ast.CreatePublishedRestServ
 // execDropPublishedRestService deletes a published REST service.
 func (e *Executor) execDropPublishedRestService(s *ast.DropPublishedRestServiceStmt) error {
 	if e.writer == nil {
-		return fmt.Errorf("not connected to a project in write mode")
+		return mdlerrors.NewNotConnectedWrite()
 	}
 
 	services, err := e.reader.ListPublishedRestServices()
 	if err != nil {
-		return fmt.Errorf("failed to list published REST services: %w", err)
+		return mdlerrors.NewBackend("list published REST services", err)
 	}
 
 	h, err := e.getHierarchy()
@@ -264,7 +265,7 @@ func (e *Executor) execDropPublishedRestService(s *ast.DropPublishedRestServiceS
 		modName := h.GetModuleName(modID)
 		if modName == s.Name.Module && svc.Name == s.Name.Name {
 			if err := e.writer.DeletePublishedRestService(svc.ID); err != nil {
-				return fmt.Errorf("failed to drop published REST service: %w", err)
+				return mdlerrors.NewBackend("drop published REST service", err)
 			}
 			if !e.quiet {
 				fmt.Fprintf(e.output, "Dropped published REST service %s.%s\n", s.Name.Module, s.Name.Name)
@@ -273,7 +274,7 @@ func (e *Executor) execDropPublishedRestService(s *ast.DropPublishedRestServiceS
 		}
 	}
 
-	return fmt.Errorf("published REST service %s.%s not found", s.Name.Module, s.Name.Name)
+	return mdlerrors.NewNotFound("published REST service", s.Name.Module+"."+s.Name.Name)
 }
 
 // astResourceDefToModel converts an AST PublishedRestResourceDef to the
@@ -295,7 +296,7 @@ func astResourceDefToModel(def *ast.PublishedRestResourceDef) *model.PublishedRe
 // actions to an existing published REST service.
 func (e *Executor) execAlterPublishedRestService(s *ast.AlterPublishedRestServiceStmt) error {
 	if e.writer == nil {
-		return fmt.Errorf("not connected to a project in write mode")
+		return mdlerrors.NewNotConnectedWrite()
 	}
 
 	if err := e.checkFeature("integration", "published_rest_alter",
@@ -306,7 +307,7 @@ func (e *Executor) execAlterPublishedRestService(s *ast.AlterPublishedRestServic
 
 	svc, err := e.findPublishedRestService(s.Name.Module, s.Name.Name)
 	if err != nil {
-		return fmt.Errorf("published REST service %s.%s not found", s.Name.Module, s.Name.Name)
+		return mdlerrors.NewNotFound("published REST service", s.Name.Module+"."+s.Name.Name)
 	}
 
 	for _, action := range s.Actions {
@@ -321,7 +322,7 @@ func (e *Executor) execAlterPublishedRestService(s *ast.AlterPublishedRestServic
 				case "servicename":
 					svc.ServiceName = val
 				default:
-					return fmt.Errorf("unknown published REST service property: %s (allowed: Path, Version, ServiceName)", key)
+					return mdlerrors.NewUnsupported(fmt.Sprintf("unknown published REST service property: %s (allowed: Path, Version, ServiceName)", key))
 				}
 			}
 
@@ -329,7 +330,7 @@ func (e *Executor) execAlterPublishedRestService(s *ast.AlterPublishedRestServic
 			// Reject duplicate resource names
 			for _, existing := range svc.Resources {
 				if existing.Name == a.Resource.Name {
-					return fmt.Errorf("resource '%s' already exists on %s.%s", a.Resource.Name, s.Name.Module, s.Name.Name)
+					return mdlerrors.NewAlreadyExistsMsg("resource", a.Resource.Name, fmt.Sprintf("resource '%s' already exists on %s.%s", a.Resource.Name, s.Name.Module, s.Name.Name))
 				}
 			}
 			svc.Resources = append(svc.Resources, astResourceDefToModel(a.Resource))
@@ -343,17 +344,17 @@ func (e *Executor) execAlterPublishedRestService(s *ast.AlterPublishedRestServic
 				}
 			}
 			if idx == -1 {
-				return fmt.Errorf("resource '%s' not found on %s.%s", a.Name, s.Name.Module, s.Name.Name)
+				return mdlerrors.NewNotFoundMsg("resource", a.Name, fmt.Sprintf("resource '%s' not found on %s.%s", a.Name, s.Name.Module, s.Name.Name))
 			}
 			svc.Resources = append(svc.Resources[:idx], svc.Resources[idx+1:]...)
 
 		default:
-			return fmt.Errorf("unsupported alter action: %T", action)
+			return mdlerrors.NewUnsupported(fmt.Sprintf("unsupported alter action: %T", action))
 		}
 	}
 
 	if err := e.writer.UpdatePublishedRestService(svc); err != nil {
-		return fmt.Errorf("failed to alter published REST service: %w", err)
+		return mdlerrors.NewBackend("alter published REST service", err)
 	}
 
 	if !e.quiet {

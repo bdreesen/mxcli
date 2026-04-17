@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/model"
 	"github.com/mendixlabs/mxcli/sdk/domainmodel"
 	"github.com/mendixlabs/mxcli/sdk/mpr"
@@ -16,7 +17,7 @@ import (
 // showContractEntities handles SHOW CONTRACT ENTITIES FROM Module.Service.
 func (e *Executor) showContractEntities(name *ast.QualifiedName) error {
 	if name == nil {
-		return fmt.Errorf("service name required: SHOW CONTRACT ENTITIES FROM Module.Service")
+		return mdlerrors.NewValidation("service name required: SHOW CONTRACT ENTITIES FROM Module.Service")
 	}
 
 	doc, svcQN, err := e.parseServiceContract(*name)
@@ -76,7 +77,7 @@ func (e *Executor) showContractEntities(name *ast.QualifiedName) error {
 // showContractActions handles SHOW CONTRACT ACTIONS FROM Module.Service.
 func (e *Executor) showContractActions(name *ast.QualifiedName) error {
 	if name == nil {
-		return fmt.Errorf("service name required: SHOW CONTRACT ACTIONS FROM Module.Service")
+		return mdlerrors.NewValidation("service name required: SHOW CONTRACT ACTIONS FROM Module.Service")
 	}
 
 	doc, svcQN, err := e.parseServiceContract(*name)
@@ -153,7 +154,7 @@ func (e *Executor) describeContractEntity(name ast.QualifiedName, format string)
 
 	et := doc.FindEntityType(entityName)
 	if et == nil {
-		return fmt.Errorf("entity type %q not found in contract for %s", entityName, svcQN)
+		return mdlerrors.NewNotFoundMsg("entity type", entityName, fmt.Sprintf("entity type %q not found in contract for %s", entityName, svcQN))
 	}
 
 	if strings.EqualFold(format, "mdl") {
@@ -233,7 +234,7 @@ func (e *Executor) describeContractAction(name ast.QualifiedName, format string)
 		}
 	}
 	if action == nil {
-		return fmt.Errorf("action %q not found in contract for %s", actionName, svcQN)
+		return mdlerrors.NewNotFoundMsg("action", actionName, fmt.Sprintf("action %q not found in contract for %s", actionName, svcQN))
 	}
 
 	fmt.Fprintf(e.output, "%s\n", action.Name)
@@ -317,12 +318,12 @@ func (e *Executor) outputContractEntityMDL(et *mpr.EdmEntityType, svcQN string, 
 func (e *Executor) parseServiceContract(name ast.QualifiedName) (*mpr.EdmxDocument, string, error) {
 	services, err := e.reader.ListConsumedODataServices()
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to list consumed OData services: %w", err)
+		return nil, "", mdlerrors.NewBackend("list consumed OData services", err)
 	}
 
 	h, err := e.getHierarchy()
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to build hierarchy: %w", err)
+		return nil, "", mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	for _, svc := range services {
@@ -336,18 +337,18 @@ func (e *Executor) parseServiceContract(name ast.QualifiedName) (*mpr.EdmxDocume
 		svcQN := modName + "." + svc.Name
 
 		if svc.Metadata == "" {
-			return nil, svcQN, fmt.Errorf("no cached contract metadata for %s (MetadataUrl: %s). The service metadata has not been downloaded yet", svcQN, svc.MetadataUrl)
+			return nil, svcQN, mdlerrors.NewValidationf("no cached contract metadata for %s (MetadataUrl: %s). The service metadata has not been downloaded yet", svcQN, svc.MetadataUrl)
 		}
 
 		doc, err := mpr.ParseEdmx(svc.Metadata)
 		if err != nil {
-			return nil, svcQN, fmt.Errorf("failed to parse contract metadata for %s: %w", svcQN, err)
+			return nil, svcQN, mdlerrors.NewBackend(fmt.Sprintf("parse contract metadata for %s", svcQN), err)
 		}
 
 		return doc, svcQN, nil
 	}
 
-	return nil, "", fmt.Errorf("consumed OData service not found: %s.%s", name.Module, name.Name)
+	return nil, "", mdlerrors.NewNotFound("consumed OData service", name.Module+"."+name.Name)
 }
 
 // splitContractRef splits Module.Service.EntityName into (Module.Service, EntityName).
@@ -359,7 +360,7 @@ func splitContractRef(name ast.QualifiedName) (ast.QualifiedName, string, error)
 	// We need to split Name into service name and entity name.
 	parts := strings.SplitN(name.Name, ".", 2)
 	if len(parts) != 2 {
-		return name, "", fmt.Errorf("expected Module.Service.EntityName, got %s.%s", name.Module, name.Name)
+		return name, "", mdlerrors.NewValidationf("expected Module.Service.EntityName, got %s.%s", name.Module, name.Name)
 	}
 
 	svcName := ast.QualifiedName{
@@ -446,7 +447,7 @@ var reservedEntityAttrNames = map[string]bool{
 // what Studio Pro produces.
 func (e *Executor) createExternalEntities(s *ast.CreateExternalEntitiesStmt) error {
 	if e.writer == nil {
-		return fmt.Errorf("not connected to a project in write mode")
+		return mdlerrors.NewNotConnectedWrite()
 	}
 
 	doc, svcQN, err := e.parseServiceContract(s.ServiceRef)
@@ -480,7 +481,7 @@ func (e *Executor) createExternalEntities(s *ast.CreateExternalEntitiesStmt) err
 	}
 	dm, err := e.reader.GetDomainModel(module.ID)
 	if err != nil {
-		return fmt.Errorf("failed to get domain model: %w", err)
+		return mdlerrors.NewBackend("get domain model", err)
 	}
 
 	// Index existing entities by name for upsert
@@ -1245,7 +1246,7 @@ func edmToAstDataType(p *mpr.EdmProperty) ast.DataType {
 // showContractChannels handles SHOW CONTRACT CHANNELS FROM Module.Service.
 func (e *Executor) showContractChannels(name *ast.QualifiedName) error {
 	if name == nil {
-		return fmt.Errorf("service name required: SHOW CONTRACT CHANNELS FROM Module.Service")
+		return mdlerrors.NewValidation("service name required: SHOW CONTRACT CHANNELS FROM Module.Service")
 	}
 
 	doc, svcQN, err := e.parseAsyncAPIContract(*name)
@@ -1284,7 +1285,7 @@ func (e *Executor) showContractChannels(name *ast.QualifiedName) error {
 // showContractMessages handles SHOW CONTRACT MESSAGES FROM Module.Service.
 func (e *Executor) showContractMessages(name *ast.QualifiedName) error {
 	if name == nil {
-		return fmt.Errorf("service name required: SHOW CONTRACT MESSAGES FROM Module.Service")
+		return mdlerrors.NewValidation("service name required: SHOW CONTRACT MESSAGES FROM Module.Service")
 	}
 
 	doc, svcQN, err := e.parseAsyncAPIContract(*name)
@@ -1338,7 +1339,7 @@ func (e *Executor) describeContractMessage(name ast.QualifiedName) error {
 
 	msg := doc.FindMessage(msgName)
 	if msg == nil {
-		return fmt.Errorf("message %q not found in contract for %s", msgName, svcQN)
+		return mdlerrors.NewNotFoundMsg("message", msgName, fmt.Sprintf("message %q not found in contract for %s", msgName, svcQN))
 	}
 
 	fmt.Fprintf(e.output, "%s\n", msg.Name)
@@ -1380,12 +1381,12 @@ func (e *Executor) describeContractMessage(name ast.QualifiedName) error {
 func (e *Executor) parseAsyncAPIContract(name ast.QualifiedName) (*mpr.AsyncAPIDocument, string, error) {
 	services, err := e.reader.ListBusinessEventServices()
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to list business event services: %w", err)
+		return nil, "", mdlerrors.NewBackend("list business event services", err)
 	}
 
 	h, err := e.getHierarchy()
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to build hierarchy: %w", err)
+		return nil, "", mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	for _, svc := range services {
@@ -1399,18 +1400,18 @@ func (e *Executor) parseAsyncAPIContract(name ast.QualifiedName) (*mpr.AsyncAPID
 		svcQN := modName + "." + svc.Name
 
 		if svc.Document == "" {
-			return nil, svcQN, fmt.Errorf("no cached AsyncAPI contract for %s. This service has no Document field (it may be a publisher, not a consumer)", svcQN)
+			return nil, svcQN, mdlerrors.NewValidationf("no cached AsyncAPI contract for %s. This service has no Document field (it may be a publisher, not a consumer)", svcQN)
 		}
 
 		doc, err := mpr.ParseAsyncAPI(svc.Document)
 		if err != nil {
-			return nil, svcQN, fmt.Errorf("failed to parse AsyncAPI contract for %s: %w", svcQN, err)
+			return nil, svcQN, mdlerrors.NewBackend(fmt.Sprintf("parse AsyncAPI contract for %s", svcQN), err)
 		}
 
 		return doc, svcQN, nil
 	}
 
-	return nil, "", fmt.Errorf("business event service not found: %s.%s", name.Module, name.Name)
+	return nil, "", mdlerrors.NewNotFound("business event service", name.Module+"."+name.Name)
 }
 
 // asyncTypeString formats an AsyncAPI property type for display.

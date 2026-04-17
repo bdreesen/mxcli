@@ -7,18 +7,19 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 )
 
 // execShowContext handles SHOW CONTEXT OF <name> [DEPTH n] command.
 // It assembles relevant context information for LLM consumption.
 func (e *Executor) execShowContext(s *ast.ShowStmt) error {
 	if s.Name == nil {
-		return fmt.Errorf("SHOW CONTEXT requires a qualified name")
+		return mdlerrors.NewValidation("SHOW CONTEXT requires a qualified name")
 	}
 
 	// Ensure catalog is built with full mode for refs
 	if err := e.ensureCatalog(true); err != nil {
-		return fmt.Errorf("failed to build catalog: %w", err)
+		return mdlerrors.NewBackend("build catalog", err)
 	}
 
 	name := s.Name.String()
@@ -90,7 +91,7 @@ func (e *Executor) detectElementType(name string) (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("element not found: %s", name)
+	return "", mdlerrors.NewNotFound("element", name)
 }
 
 // assembleMicroflowContext assembles context for a microflow.

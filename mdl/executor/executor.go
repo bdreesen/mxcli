@@ -12,6 +12,7 @@ import (
 	"github.com/mendixlabs/mxcli/mdl/ast"
 	"github.com/mendixlabs/mxcli/mdl/catalog"
 	"github.com/mendixlabs/mxcli/mdl/diaglog"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/model"
 	"github.com/mendixlabs/mxcli/sdk/domainmodel"
 	"github.com/mendixlabs/mxcli/sdk/mpr"
@@ -256,7 +257,7 @@ func (e *Executor) finalizeProgramExecution() error {
 
 		count, err := e.writer.ReconcileMemberAccesses(dm.ID, moduleName)
 		if err != nil {
-			return fmt.Errorf("finalization: failed to reconcile security for module %s: %w", moduleName, err)
+			return mdlerrors.NewBackend(fmt.Sprintf("reconcile security for module %s", moduleName), err)
 		}
 		if count > 0 && !e.quiet {
 			fmt.Fprintf(e.output, "Reconciled %d access rule(s) in module %s\n", count, moduleName)

@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 )
 
 // executeInner dispatches a statement to its handler.
@@ -302,6 +303,6 @@ func (e *Executor) executeInner(stmt ast.Statement) error {
 		return e.execImport(s)
 
 	default:
-		return fmt.Errorf("unknown statement type: %T", stmt)
+		return mdlerrors.NewUnsupported(fmt.Sprintf("unknown statement type: %T", stmt))
 	}
 }

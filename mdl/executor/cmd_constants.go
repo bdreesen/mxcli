@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/model"
 )
 
@@ -15,13 +16,13 @@ import (
 func (e *Executor) showConstants(moduleName string) error {
 	constants, err := e.reader.ListConstants()
 	if err != nil {
-		return fmt.Errorf("failed to list constants: %w", err)
+		return mdlerrors.NewBackend("list constants", err)
 	}
 
 	// Use hierarchy for proper module resolution (handles constants inside folders)
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	// Collect rows
@@ -82,13 +83,13 @@ func (e *Executor) showConstants(moduleName string) error {
 func (e *Executor) describeConstant(name ast.QualifiedName) error {
 	constants, err := e.reader.ListConstants()
 	if err != nil {
-		return fmt.Errorf("failed to list constants: %w", err)
+		return mdlerrors.NewBackend("list constants", err)
 	}
 
 	// Use hierarchy for proper module resolution
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	// Find the constant
@@ -100,7 +101,7 @@ func (e *Executor) describeConstant(name ast.QualifiedName) error {
 		}
 	}
 
-	return fmt.Errorf("constant not found: %s", name)
+	return mdlerrors.NewNotFound("constant", name.String())
 }
 
 // outputConstantMDL outputs a constant definition in MDL format.
@@ -248,12 +249,12 @@ func formatDefaultValue(dt model.ConstantDataType, value string) string {
 // createConstant handles CREATE CONSTANT command.
 func (e *Executor) createConstant(stmt *ast.CreateConstantStmt) error {
 	if e.writer == nil {
-		return fmt.Errorf("not connected in write mode")
+		return mdlerrors.NewNotConnectedWrite()
 	}
 
 	// Validate module name is specified
 	if stmt.Name.Module == "" {
-		return fmt.Errorf("module name required for constant: use CREATE CONSTANT Module.ConstantName")
+		return mdlerrors.NewValidation("module name required for constant: use CREATE CONSTANT Module.ConstantName")
 	}
 
 	// Find or auto-create module
@@ -290,13 +291,13 @@ func (e *Executor) createConstant(stmt *ast.CreateConstantStmt) error {
 					c.DefaultValue = defaultValue
 					c.ExposedToClient = stmt.ExposedToClient
 					if err := e.writer.UpdateConstant(c); err != nil {
-						return fmt.Errorf("failed to update constant: %w", err)
+						return mdlerrors.NewBackend("update constant", err)
 					}
 					e.invalidateHierarchy()
 					fmt.Fprintf(e.output, "Modified constant: %s.%s\n", modName, c.Name)
 					return nil
 				}
-				return fmt.Errorf("constant already exists: %s.%s (use CREATE OR MODIFY to update)", modName, c.Name)
+				return mdlerrors.NewAlreadyExistsMsg("constant", modName+"."+c.Name, fmt.Sprintf("constant already exists: %s.%s (use CREATE OR MODIFY to update)", modName, c.Name))
 			}
 		}
 	}
@@ -311,7 +312,7 @@ func (e *Executor) createConstant(stmt *ast.CreateConstantStmt) error {
 	if stmt.Folder != "" {
 		folderID, err := e.resolveFolder(module.ID, stmt.Folder)
 		if err != nil {
-			return fmt.Errorf("failed to resolve folder %s: %w", stmt.Folder, err)
+			return mdlerrors.NewBackend(fmt.Sprintf("resolve folder %s", stmt.Folder), err)
 		}
 		containerID = folderID
 	}
@@ -326,7 +327,7 @@ func (e *Executor) createConstant(stmt *ast.CreateConstantStmt) error {
 	}
 
 	if err := e.writer.CreateConstant(constant); err != nil {
-		return fmt.Errorf("failed to create constant: %w", err)
+		return mdlerrors.NewBackend("create constant", err)
 	}
 	e.invalidateHierarchy()
 	fmt.Fprintf(e.output, "Created constant: %s.%s\n", stmt.Name.Module, stmt.Name.Name)
@@ -338,17 +339,17 @@ func (e *Executor) createConstant(stmt *ast.CreateConstantStmt) error {
 func (e *Executor) showConstantValues(moduleName string) error {
 	constants, err := e.reader.ListConstants()
 	if err != nil {
-		return fmt.Errorf("failed to list constants: %w", err)
+		return mdlerrors.NewBackend("list constants", err)
 	}
 
 	ps, err := e.reader.GetProjectSettings()
 	if err != nil {
-		return fmt.Errorf("failed to read project settings: %w", err)
+		return mdlerrors.NewBackend("read project settings", err)
 	}
 
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	// Build constant list with qualified names
@@ -431,18 +432,18 @@ func (e *Executor) showConstantValues(moduleName string) error {
 // dropConstant handles DROP CONSTANT command.
 func (e *Executor) dropConstant(stmt *ast.DropConstantStmt) error {
 	if e.writer == nil {
-		return fmt.Errorf("not connected in write mode")
+		return mdlerrors.NewNotConnectedWrite()
 	}
 
 	constants, err := e.reader.ListConstants()
 	if err != nil {
-		return fmt.Errorf("failed to list constants: %w", err)
+		return mdlerrors.NewBackend("list constants", err)
 	}
 
 	// Use hierarchy for proper module resolution
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	// Find the constant
@@ -451,7 +452,7 @@ func (e *Executor) dropConstant(stmt *ast.DropConstantStmt) error {
 		modName := h.GetModuleName(modID)
 		if strings.EqualFold(modName, stmt.Name.Module) && strings.EqualFold(c.Name, stmt.Name.Name) {
 			if err := e.writer.DeleteConstant(c.ID); err != nil {
-				return fmt.Errorf("failed to drop constant: %w", err)
+				return mdlerrors.NewBackend("drop constant", err)
 			}
 			e.invalidateHierarchy()
 			fmt.Fprintf(e.output, "Dropped constant: %s.%s\n", modName, c.Name)
@@ -459,7 +460,7 @@ func (e *Executor) dropConstant(stmt *ast.DropConstantStmt) error {
 		}
 	}
 
-	return fmt.Errorf("constant not found: %s", stmt.Name)
+	return mdlerrors.NewNotFound("constant", stmt.Name.String())
 }
 
 // astDataTypeToConstantDataType converts AST DataType to model.ConstantDataType.

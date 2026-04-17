@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/sdk/mpr"
 )
 
@@ -16,7 +17,7 @@ func (e *Executor) execConnect(s *ast.ConnectStmt) error {
 
 	writer, err := mpr.NewWriter(s.Path)
 	if err != nil {
-		return fmt.Errorf("failed to connect: %w", err)
+		return mdlerrors.NewBackend("connect", err)
 	}
 
 	e.writer = writer
@@ -39,7 +40,7 @@ func (e *Executor) execConnect(s *ast.ConnectStmt) error {
 // This is needed when the project file has been modified externally.
 func (e *Executor) reconnect() error {
 	if e.mprPath == "" {
-		return fmt.Errorf("no project path to reconnect to")
+		return mdlerrors.NewNotConnected()
 	}
 
 	// Close existing connection
@@ -50,7 +51,7 @@ func (e *Executor) reconnect() error {
 	// Reopen connection
 	writer, err := mpr.NewWriter(e.mprPath)
 	if err != nil {
-		return fmt.Errorf("failed to reconnect: %w", err)
+		return mdlerrors.NewBackend("reconnect", err)
 	}
 
 	e.writer = writer

@@ -8,17 +8,18 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/model"
 )
 
 // createDatabaseConnection handles CREATE DATABASE CONNECTION command.
 func (e *Executor) createDatabaseConnection(stmt *ast.CreateDatabaseConnectionStmt) error {
 	if e.writer == nil {
-		return fmt.Errorf("not connected in write mode")
+		return mdlerrors.NewNotConnectedWrite()
 	}
 
 	if stmt.Name.Module == "" {
-		return fmt.Errorf("module name required: use CREATE DATABASE CONNECTION Module.ConnectionName")
+		return mdlerrors.NewValidation("module name required: use CREATE DATABASE CONNECTION Module.ConnectionName")
 	}
 
 	module, err := e.findModule(stmt.Name.Module)
@@ -36,11 +37,10 @@ func (e *Executor) createDatabaseConnection(stmt *ast.CreateDatabaseConnectionSt
 		if strings.EqualFold(modName, stmt.Name.Module) && strings.EqualFold(ex.Name, stmt.Name.Name) {
 			if stmt.CreateOrModify {
 				if err := e.writer.DeleteDatabaseConnection(ex.ID); err != nil {
-					return fmt.Errorf("failed to delete existing connection: %w", err)
+					return mdlerrors.NewBackend("delete existing connection", err)
 				}
 			} else {
-				return fmt.Errorf("database connection already exists: %s.%s (use CREATE OR MODIFY to update)",
-					modName, ex.Name)
+				return mdlerrors.NewAlreadyExistsMsg("database connection", modName+"."+ex.Name, "use CREATE OR MODIFY to update")
 			}
 		}
 	}
@@ -112,7 +112,7 @@ func (e *Executor) createDatabaseConnection(stmt *ast.CreateDatabaseConnectionSt
 	}
 
 	if err := e.writer.CreateDatabaseConnection(conn); err != nil {
-		return fmt.Errorf("failed to create database connection: %w", err)
+		return mdlerrors.NewBackend("create database connection", err)
 	}
 
 	e.invalidateHierarchy()
@@ -124,12 +124,12 @@ func (e *Executor) createDatabaseConnection(stmt *ast.CreateDatabaseConnectionSt
 func (e *Executor) showDatabaseConnections(moduleName string) error {
 	connections, err := e.reader.ListDatabaseConnections()
 	if err != nil {
-		return fmt.Errorf("failed to list database connections: %w", err)
+		return mdlerrors.NewBackend("list database connections", err)
 	}
 
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	type row struct {
@@ -178,12 +178,12 @@ func (e *Executor) showDatabaseConnections(moduleName string) error {
 func (e *Executor) describeDatabaseConnection(name ast.QualifiedName) error {
 	connections, err := e.reader.ListDatabaseConnections()
 	if err != nil {
-		return fmt.Errorf("failed to list database connections: %w", err)
+		return mdlerrors.NewBackend("list database connections", err)
 	}
 
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	for _, conn := range connections {
@@ -194,7 +194,7 @@ func (e *Executor) describeDatabaseConnection(name ast.QualifiedName) error {
 		}
 	}
 
-	return fmt.Errorf("database connection not found: %s", name)
+	return mdlerrors.NewNotFound("database connection", name.String())
 }
 
 // outputDatabaseConnectionMDL outputs a database connection definition in MDL format.

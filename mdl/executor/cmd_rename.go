@@ -8,13 +8,14 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/sdk/mpr"
 )
 
 // execRename handles RENAME statements for all document types.
 func (e *Executor) execRename(s *ast.RenameStmt) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	switch s.ObjectType {
@@ -35,7 +36,7 @@ func (e *Executor) execRename(s *ast.RenameStmt) error {
 	case "MODULE":
 		return e.execRenameModule(s)
 	default:
-		return fmt.Errorf("RENAME not supported for %s", s.ObjectType)
+		return mdlerrors.NewUnsupported(fmt.Sprintf("RENAME not supported for %s", s.ObjectType))
 	}
 }
 
@@ -49,7 +50,7 @@ func (e *Executor) execRenameEntity(s *ast.RenameStmt) error {
 
 	dm, err := e.reader.GetDomainModel(module.ID)
 	if err != nil {
-		return fmt.Errorf("failed to get domain model: %w", err)
+		return mdlerrors.NewBackend("get domain model", err)
 	}
 
 	found := false
@@ -60,7 +61,7 @@ func (e *Executor) execRenameEntity(s *ast.RenameStmt) error {
 		}
 	}
 	if !found {
-		return fmt.Errorf("entity not found: %s", s.Name)
+		return mdlerrors.NewNotFound("entity", s.Name.String())
 	}
 
 	oldQualifiedName := s.Name.Module + "." + s.Name.Name
@@ -69,7 +70,7 @@ func (e *Executor) execRenameEntity(s *ast.RenameStmt) error {
 	// Scan for references
 	hits, err := e.writer.RenameReferences(oldQualifiedName, newQualifiedName, s.DryRun)
 	if err != nil {
-		return fmt.Errorf("failed to scan references: %w", err)
+		return mdlerrors.NewBackend("scan references", err)
 	}
 
 	if s.DryRun {
@@ -85,7 +86,7 @@ func (e *Executor) execRenameEntity(s *ast.RenameStmt) error {
 		}
 	}
 	if err := e.writer.UpdateDomainModel(dm); err != nil {
-		return fmt.Errorf("failed to update entity name: %w", err)
+		return mdlerrors.NewBackend("update entity name", err)
 	}
 
 	e.invalidateHierarchy()
@@ -112,13 +113,13 @@ func (e *Executor) execRenameModule(s *ast.RenameStmt) error {
 	// Module rename replaces "OldModule." with "NewModule." in all qualified names
 	hits, err := e.writer.RenameReferences(oldModuleName+".", newModuleName+".", s.DryRun)
 	if err != nil {
-		return fmt.Errorf("failed to scan references: %w", err)
+		return mdlerrors.NewBackend("scan references", err)
 	}
 
 	// Also scan for exact module name matches (e.g., in navigation, security role refs)
 	exactHits, err := e.writer.RenameReferences(oldModuleName, newModuleName, s.DryRun)
 	if err != nil {
-		return fmt.Errorf("failed to scan exact module references: %w", err)
+		return mdlerrors.NewBackend("scan exact module references", err)
 	}
 
 	// Merge hit lists (deduplicate by unit ID)
@@ -132,7 +133,7 @@ func (e *Executor) execRenameModule(s *ast.RenameStmt) error {
 	// Update the module name
 	module.Name = newModuleName
 	if err := e.writer.UpdateModule(module); err != nil {
-		return fmt.Errorf("failed to update module name: %w", err)
+		return mdlerrors.NewBackend("update module name", err)
 	}
 
 	e.invalidateHierarchy()
@@ -200,7 +201,7 @@ func (e *Executor) execRenameDocument(s *ast.RenameStmt, docType string) error {
 	}
 
 	if !found {
-		return fmt.Errorf("%s not found: %s", s.ObjectType, oldQualifiedName)
+		return mdlerrors.NewNotFound(s.ObjectType, oldQualifiedName)
 	}
 
 	// The reference scanner will also update the document's own Name field
@@ -210,7 +211,7 @@ func (e *Executor) execRenameDocument(s *ast.RenameStmt, docType string) error {
 	// update the Name field directly.
 	hits, err := e.writer.RenameReferences(oldQualifiedName, newQualifiedName, s.DryRun)
 	if err != nil {
-		return fmt.Errorf("failed to scan references: %w", err)
+		return mdlerrors.NewBackend("scan references", err)
 	}
 
 	if s.DryRun {
@@ -220,7 +221,7 @@ func (e *Executor) execRenameDocument(s *ast.RenameStmt, docType string) error {
 
 	// Update the document's own Name field via the raw BSON name updater
 	if err := e.writer.RenameDocumentByName(s.Name.Module, s.Name.Name, s.NewName); err != nil {
-		return fmt.Errorf("failed to rename %s: %w", docType, err)
+		return mdlerrors.NewBackend(fmt.Sprintf("rename %s", docType), err)
 	}
 
 	e.invalidateHierarchy()
@@ -240,7 +241,7 @@ func (e *Executor) execRenameEnumeration(s *ast.RenameStmt) error {
 	// Verify it exists
 	enums, err := e.reader.ListEnumerations()
 	if err != nil {
-		return fmt.Errorf("failed to list enumerations: %w", err)
+		return mdlerrors.NewBackend("list enumerations", err)
 	}
 	h, err := e.getHierarchy()
 	if err != nil {
@@ -255,12 +256,12 @@ func (e *Executor) execRenameEnumeration(s *ast.RenameStmt) error {
 		}
 	}
 	if !found {
-		return fmt.Errorf("enumeration not found: %s", oldQualifiedName)
+		return mdlerrors.NewNotFound("enumeration", oldQualifiedName)
 	}
 
 	hits, err := e.writer.RenameReferences(oldQualifiedName, newQualifiedName, s.DryRun)
 	if err != nil {
-		return fmt.Errorf("failed to scan references: %w", err)
+		return mdlerrors.NewBackend("scan references", err)
 	}
 
 	if s.DryRun {
@@ -270,7 +271,7 @@ func (e *Executor) execRenameEnumeration(s *ast.RenameStmt) error {
 
 	// Update enumeration name via raw BSON
 	if err := e.writer.RenameDocumentByName(s.Name.Module, s.Name.Name, s.NewName); err != nil {
-		return fmt.Errorf("failed to rename enumeration: %w", err)
+		return mdlerrors.NewBackend("rename enumeration", err)
 	}
 
 	// Also update enumeration refs in domain models (attribute types store qualified enum names)
@@ -298,7 +299,7 @@ func (e *Executor) execRenameAssociation(s *ast.RenameStmt) error {
 
 	dm, err := e.reader.GetDomainModel(module.ID)
 	if err != nil {
-		return fmt.Errorf("failed to get domain model: %w", err)
+		return mdlerrors.NewBackend("get domain model", err)
 	}
 
 	found := false
@@ -309,12 +310,12 @@ func (e *Executor) execRenameAssociation(s *ast.RenameStmt) error {
 		}
 	}
 	if !found {
-		return fmt.Errorf("association not found: %s", oldQualifiedName)
+		return mdlerrors.NewNotFound("association", oldQualifiedName)
 	}
 
 	hits, err := e.writer.RenameReferences(oldQualifiedName, newQualifiedName, s.DryRun)
 	if err != nil {
-		return fmt.Errorf("failed to scan references: %w", err)
+		return mdlerrors.NewBackend("scan references", err)
 	}
 
 	if s.DryRun {
@@ -330,7 +331,7 @@ func (e *Executor) execRenameAssociation(s *ast.RenameStmt) error {
 		}
 	}
 	if err := e.writer.UpdateDomainModel(dm); err != nil {
-		return fmt.Errorf("failed to update association name: %w", err)
+		return mdlerrors.NewBackend("update association name", err)
 	}
 
 	e.invalidateHierarchy()

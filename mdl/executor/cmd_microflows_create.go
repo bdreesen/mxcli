@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/model"
 	"github.com/mendixlabs/mxcli/sdk/microflows"
 	"github.com/mendixlabs/mxcli/sdk/mpr"
@@ -33,7 +34,7 @@ func (e *Executor) loadRestServices() ([]*model.ConsumedRestService, error) {
 
 func (e *Executor) execCreateMicroflow(s *ast.CreateMicroflowStmt) error {
 	if e.writer == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	// Find or auto-create module
@@ -47,7 +48,7 @@ func (e *Executor) execCreateMicroflow(s *ast.CreateMicroflowStmt) error {
 	if s.Folder != "" {
 		folderID, err := e.resolveFolder(module.ID, s.Folder)
 		if err != nil {
-			return fmt.Errorf("failed to resolve folder %s: %w", s.Folder, err)
+			return mdlerrors.NewBackend("resolve folder "+s.Folder, err)
 		}
 		containerID = folderID
 	}
@@ -57,12 +58,12 @@ func (e *Executor) execCreateMicroflow(s *ast.CreateMicroflowStmt) error {
 	var existingContainerID model.ID
 	existingMicroflows, err := e.reader.ListMicroflows()
 	if err != nil {
-		return fmt.Errorf("failed to check existing microflows: %w", err)
+		return mdlerrors.NewBackend("check existing microflows", err)
 	}
 	for _, existing := range existingMicroflows {
 		if existing.Name == s.Name.Name && e.getModuleID(existing.ContainerID) == module.ID {
 			if !s.CreateOrModify {
-				return fmt.Errorf("microflow '%s.%s' already exists (use CREATE OR REPLACE to overwrite)", s.Name.Module, s.Name.Name)
+				return mdlerrors.NewAlreadyExistsMsg("microflow", s.Name.Module+"."+s.Name.Name, "microflow '"+s.Name.Module+"."+s.Name.Name+"' already exists (use CREATE OR REPLACE to overwrite)")
 			}
 			existingID = existing.ID
 			existingContainerID = existing.ContainerID
@@ -128,15 +129,13 @@ func (e *Executor) execCreateMicroflow(s *ast.CreateMicroflowStmt) error {
 		if p.Type.EntityRef != nil && !isBuiltinModuleEntity(p.Type.EntityRef.Module) {
 			entityID := entityResolver(*p.Type.EntityRef)
 			if entityID == "" {
-				return fmt.Errorf("entity '%s.%s' not found for parameter '%s'",
-					p.Type.EntityRef.Module, p.Type.EntityRef.Name, p.Name)
+				return mdlerrors.NewNotFound("entity", p.Type.EntityRef.Module+"."+p.Type.EntityRef.Name)
 			}
 		}
 		// Validate enumeration references for Enumeration types
 		if p.Type.Kind == ast.TypeEnumeration && p.Type.EnumRef != nil {
 			if found := e.findEnumeration(p.Type.EnumRef.Module, p.Type.EnumRef.Name); found == nil {
-				return fmt.Errorf("enumeration '%s.%s' not found for parameter '%s'",
-					p.Type.EnumRef.Module, p.Type.EnumRef.Name, p.Name)
+				return mdlerrors.NewNotFound("enumeration", p.Type.EnumRef.Module+"."+p.Type.EnumRef.Name)
 			}
 		}
 		param := &microflows.MicroflowParameter{
@@ -158,15 +157,13 @@ func (e *Executor) execCreateMicroflow(s *ast.CreateMicroflowStmt) error {
 		if s.ReturnType.Type.EntityRef != nil && !isBuiltinModuleEntity(s.ReturnType.Type.EntityRef.Module) {
 			entityID := entityResolver(*s.ReturnType.Type.EntityRef)
 			if entityID == "" {
-				return fmt.Errorf("entity '%s.%s' not found for return type",
-					s.ReturnType.Type.EntityRef.Module, s.ReturnType.Type.EntityRef.Name)
+				return mdlerrors.NewNotFound("entity", s.ReturnType.Type.EntityRef.Module+"."+s.ReturnType.Type.EntityRef.Name)
 			}
 		}
 		// Validate enumeration references for return type
 		if s.ReturnType.Type.Kind == ast.TypeEnumeration && s.ReturnType.Type.EnumRef != nil {
 			if found := e.findEnumeration(s.ReturnType.Type.EnumRef.Module, s.ReturnType.Type.EnumRef.Name); found == nil {
-				return fmt.Errorf("enumeration '%s.%s' not found for return type",
-					s.ReturnType.Type.EnumRef.Module, s.ReturnType.Type.EnumRef.Name)
+				return mdlerrors.NewNotFound("enumeration", s.ReturnType.Type.EnumRef.Module+"."+s.ReturnType.Type.EnumRef.Name)
 			}
 		}
 		mf.ReturnType = convertASTToMicroflowDataType(s.ReturnType.Type, entityResolver)
@@ -232,12 +229,12 @@ func (e *Executor) execCreateMicroflow(s *ast.CreateMicroflowStmt) error {
 	// Create or update the microflow
 	if existingID != "" {
 		if err := e.writer.UpdateMicroflow(mf); err != nil {
-			return fmt.Errorf("failed to update microflow: %w", err)
+			return mdlerrors.NewBackend("update microflow", err)
 		}
 		fmt.Fprintf(e.output, "Replaced microflow: %s.%s\n", s.Name.Module, s.Name.Name)
 	} else {
 		if err := e.writer.CreateMicroflow(mf); err != nil {
-			return fmt.Errorf("failed to create microflow: %w", err)
+			return mdlerrors.NewBackend("create microflow", err)
 		}
 		fmt.Fprintf(e.output, "Created microflow: %s.%s\n", s.Name.Module, s.Name.Name)
 	}

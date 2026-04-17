@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/model"
 	"github.com/mendixlabs/mxcli/sdk/microflows"
 )
@@ -61,19 +62,19 @@ type microflowELKEdge struct {
 // MicroflowELK generates a JSON graph of a microflow for rendering with ELK.js.
 func (e *Executor) MicroflowELK(name string) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	parts := strings.SplitN(name, ".", 2)
 	if len(parts) != 2 {
-		return fmt.Errorf("expected qualified name Module.Microflow, got: %s", name)
+		return mdlerrors.NewValidationf("expected qualified name Module.Microflow, got: %s", name)
 	}
 
 	qn := ast.QualifiedName{Module: parts[0], Name: parts[1]}
 
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	// Build entity name lookup
@@ -89,7 +90,7 @@ func (e *Executor) MicroflowELK(name string) error {
 	// Find the microflow
 	allMicroflows, err := e.reader.ListMicroflows()
 	if err != nil {
-		return fmt.Errorf("failed to list microflows: %w", err)
+		return mdlerrors.NewBackend("list microflows", err)
 	}
 
 	var targetMf *microflows.Microflow
@@ -103,7 +104,7 @@ func (e *Executor) MicroflowELK(name string) error {
 	}
 
 	if targetMf == nil {
-		return fmt.Errorf("microflow not found: %s", name)
+		return mdlerrors.NewNotFound("microflow", name)
 	}
 
 	// Generate MDL source with source map
@@ -405,7 +406,7 @@ func collectAllObjectsAndFlows(oc *microflows.MicroflowObjectCollection) ([]micr
 func (e *Executor) emitMicroflowELK(data microflowELKData) error {
 	out, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
-		return fmt.Errorf("failed to marshal JSON: %w", err)
+		return mdlerrors.NewBackend("marshal JSON", err)
 	}
 	fmt.Fprint(e.output, string(out))
 	return nil

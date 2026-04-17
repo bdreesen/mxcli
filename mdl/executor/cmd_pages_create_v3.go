@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/model"
 )
 
@@ -16,7 +17,7 @@ import (
 // execCreatePageV3 handles CREATE PAGE statement with V3 syntax.
 func (e *Executor) execCreatePageV3(s *ast.CreatePageStmtV3) error {
 	if e.writer == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	// Version pre-check: page parameters require 11.0+
@@ -31,7 +32,7 @@ func (e *Executor) execCreatePageV3(s *ast.CreatePageStmtV3) error {
 	// Find or auto-create module
 	module, err := e.findOrCreateModule(s.Name.Module)
 	if err != nil {
-		return fmt.Errorf("failed to find module %s: %w", s.Name.Module, err)
+		return mdlerrors.NewBackend(fmt.Sprintf("find module %s", s.Name.Module), err)
 	}
 	moduleID := module.ID
 
@@ -43,7 +44,7 @@ func (e *Executor) execCreatePageV3(s *ast.CreatePageStmtV3) error {
 		modName := e.getModuleName(modID)
 		if modName == s.Name.Module && p.Name == s.Name.Name {
 			if !s.IsReplace && !s.IsModify && len(pagesToDelete) == 0 {
-				return fmt.Errorf("page %s already exists", s.Name.String())
+				return mdlerrors.NewAlreadyExists("page", s.Name.String())
 			}
 			pagesToDelete = append(pagesToDelete, p.ID)
 		}
@@ -65,7 +66,7 @@ func (e *Executor) execCreatePageV3(s *ast.CreatePageStmtV3) error {
 
 	page, err := pb.buildPageV3(s)
 	if err != nil {
-		return fmt.Errorf("failed to build page: %w", err)
+		return mdlerrors.NewBackend("build page", err)
 	}
 
 	// Replace or create the page in the MPR
@@ -73,17 +74,17 @@ func (e *Executor) execCreatePageV3(s *ast.CreatePageStmtV3) error {
 		// Reuse first existing page's UUID to avoid git delete+add (which crashes Studio Pro RevStatusCache)
 		page.ID = pagesToDelete[0]
 		if err := e.writer.UpdatePage(page); err != nil {
-			return fmt.Errorf("failed to update page: %w", err)
+			return mdlerrors.NewBackend("update page", err)
 		}
 		// Delete any additional duplicates
 		for _, id := range pagesToDelete[1:] {
 			if err := e.writer.DeletePage(id); err != nil {
-				return fmt.Errorf("failed to delete duplicate page: %w", err)
+				return mdlerrors.NewBackend("delete duplicate page", err)
 			}
 		}
 	} else {
 		if err := e.writer.CreatePage(page); err != nil {
-			return fmt.Errorf("failed to create page: %w", err)
+			return mdlerrors.NewBackend("create page", err)
 		}
 	}
 
@@ -100,13 +101,13 @@ func (e *Executor) execCreatePageV3(s *ast.CreatePageStmtV3) error {
 // execCreateSnippetV3 handles CREATE SNIPPET statement with V3 syntax.
 func (e *Executor) execCreateSnippetV3(s *ast.CreateSnippetStmtV3) error {
 	if e.writer == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	// Find or auto-create module
 	module, err := e.findOrCreateModule(s.Name.Module)
 	if err != nil {
-		return fmt.Errorf("failed to find module %s: %w", s.Name.Module, err)
+		return mdlerrors.NewBackend(fmt.Sprintf("find module %s", s.Name.Module), err)
 	}
 	moduleID := module.ID
 
@@ -118,7 +119,7 @@ func (e *Executor) execCreateSnippetV3(s *ast.CreateSnippetStmtV3) error {
 		modName := e.getModuleName(modID)
 		if modName == s.Name.Module && snip.Name == s.Name.Name {
 			if !s.IsReplace && !s.IsModify && len(snippetsToDelete) == 0 {
-				return fmt.Errorf("snippet %s already exists", s.Name.String())
+				return mdlerrors.NewAlreadyExists("snippet", s.Name.String())
 			}
 			snippetsToDelete = append(snippetsToDelete, snip.ID)
 		}
@@ -140,19 +141,19 @@ func (e *Executor) execCreateSnippetV3(s *ast.CreateSnippetStmtV3) error {
 
 	snippet, err := pb.buildSnippetV3(s)
 	if err != nil {
-		return fmt.Errorf("failed to build snippet: %w", err)
+		return mdlerrors.NewBackend("build snippet", err)
 	}
 
 	// Delete old snippets only after successful build
 	for _, id := range snippetsToDelete {
 		if err := e.writer.DeleteSnippet(id); err != nil {
-			return fmt.Errorf("failed to delete existing snippet: %w", err)
+			return mdlerrors.NewBackend("delete existing snippet", err)
 		}
 	}
 
 	// Create the snippet in the MPR
 	if err := e.writer.CreateSnippet(snippet); err != nil {
-		return fmt.Errorf("failed to create snippet: %w", err)
+		return mdlerrors.NewBackend("create snippet", err)
 	}
 
 	// Track the created snippet so it can be resolved by subsequent snippet references

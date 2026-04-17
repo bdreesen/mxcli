@@ -10,6 +10,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/model"
 	"github.com/mendixlabs/mxcli/sdk/mpr"
 	"github.com/mendixlabs/mxcli/sdk/pages"
@@ -31,7 +32,7 @@ func (pb *pageBuilder) buildDataViewV3(w *ast.WidgetV3) (*pages.DataView, error)
 	if ds := w.GetDataSource(); ds != nil {
 		dataSource, entityName, err := pb.buildDataSourceV3(ds)
 		if err != nil {
-			return nil, fmt.Errorf("failed to build datasource: %w", err)
+			return nil, mdlerrors.NewBackend("build datasource", err)
 		}
 		dv.DataSource = dataSource
 
@@ -95,10 +96,10 @@ func (pb *pageBuilder) buildDataGridV3(w *ast.WidgetV3) (*pages.CustomWidget, er
 	// Load embedded template (required for pluggable widgets to work)
 	embeddedType, embeddedObject, embeddedIDs, embeddedObjectTypeID, err := widgets.GetTemplateFullBSON(pages.WidgetIDDataGrid2, mpr.GenerateID, pb.reader.Path())
 	if err != nil {
-		return nil, fmt.Errorf("failed to load DataGrid2 template: %w", err)
+		return nil, mdlerrors.NewBackend("load DataGrid2 template", err)
 	}
 	if embeddedType == nil || embeddedObject == nil {
-		return nil, fmt.Errorf("DataGrid2 template not found")
+		return nil, mdlerrors.NewNotFound("widget template", "DataGrid2")
 	}
 
 	// Convert widget IDs to pages.PropertyTypeIDEntry format
@@ -109,7 +110,7 @@ func (pb *pageBuilder) buildDataGridV3(w *ast.WidgetV3) (*pages.CustomWidget, er
 	if ds := w.GetDataSource(); ds != nil {
 		dataSource, entityName, err := pb.buildDataSourceV3(ds)
 		if err != nil {
-			return nil, fmt.Errorf("failed to build datasource: %w", err)
+			return nil, mdlerrors.NewBackend("build datasource", err)
 		}
 		datasource = dataSource
 
@@ -145,7 +146,7 @@ func (pb *pageBuilder) buildDataGridV3(w *ast.WidgetV3) (*pages.CustomWidget, er
 			for _, controlBarChild := range child.Children {
 				widgetBSON, err := pb.buildWidgetV3ToBSON(controlBarChild)
 				if err != nil {
-					return nil, fmt.Errorf("failed to build controlbar widget: %w", err)
+					return nil, mdlerrors.NewBackend("build controlbar widget", err)
 				}
 				if widgetBSON != nil {
 					headerWidgets = append(headerWidgets, widgetBSON)
@@ -239,7 +240,7 @@ func (pb *pageBuilder) buildListViewV3(w *ast.WidgetV3) (*pages.ListView, error)
 	if ds := w.GetDataSource(); ds != nil {
 		dataSource, entityName, err := pb.buildDataSourceV3(ds)
 		if err != nil {
-			return nil, fmt.Errorf("failed to build datasource: %w", err)
+			return nil, mdlerrors.NewBackend("build datasource", err)
 		}
 		lv.DataSource = dataSource
 
@@ -674,7 +675,7 @@ func (pb *pageBuilder) buildButtonV3(w *ast.WidgetV3) (*pages.ActionButton, erro
 	if action := w.GetAction(); action != nil {
 		act, err := pb.buildClientActionV3(action)
 		if err != nil {
-			return nil, fmt.Errorf("failed to build action: %w", err)
+			return nil, mdlerrors.NewBackend("build action", err)
 		}
 		btn.Action = act
 	}
@@ -719,7 +720,7 @@ func (pb *pageBuilder) buildNavigationListV3(w *ast.WidgetV3) (*pages.Navigation
 // buildNavigationListItemV3 creates a NavigationListItem from V3 syntax.
 func (pb *pageBuilder) buildNavigationListItemV3(w *ast.WidgetV3) (*pages.NavigationListItem, error) {
 	if w.Name == "" {
-		return nil, fmt.Errorf("ITEM inside NAVIGATIONLIST requires a name")
+		return nil, mdlerrors.NewValidation("ITEM inside NAVIGATIONLIST requires a name")
 	}
 
 	item := &pages.NavigationListItem{
@@ -782,7 +783,7 @@ func (pb *pageBuilder) buildSnippetCallV3(w *ast.WidgetV3) (*pages.SnippetCallWi
 	if snippetName := w.GetSnippet(); snippetName != "" {
 		snippetID, err := pb.resolveSnippetRef(snippetName)
 		if err != nil {
-			return nil, fmt.Errorf("failed to resolve snippet %s: %w", snippetName, err)
+			return nil, mdlerrors.NewBackend(fmt.Sprintf("resolve snippet %s", snippetName), err)
 		}
 		sc.SnippetID = snippetID
 		sc.SnippetName = snippetName // Store qualified name for BY_NAME_REFERENCE serialization

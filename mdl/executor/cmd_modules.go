@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/model"
 	"github.com/mendixlabs/mxcli/sdk/domainmodel"
 )
@@ -16,13 +17,13 @@ import (
 // execCreateModule handles CREATE MODULE statements.
 func (e *Executor) execCreateModule(s *ast.CreateModuleStmt) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	// Check if module already exists
 	modules, err := e.reader.ListModules()
 	if err != nil {
-		return fmt.Errorf("failed to list modules: %w", err)
+		return mdlerrors.NewBackend("list modules", err)
 	}
 
 	for _, m := range modules {
@@ -38,7 +39,7 @@ func (e *Executor) execCreateModule(s *ast.CreateModuleStmt) error {
 	}
 
 	if err := e.writer.CreateModule(module); err != nil {
-		return fmt.Errorf("failed to create module: %w", err)
+		return mdlerrors.NewBackend("create module", err)
 	}
 
 	// Invalidate cache so new module is visible
@@ -59,13 +60,13 @@ func (e *Executor) execCreateModule(s *ast.CreateModuleStmt) error {
 // - Constants
 func (e *Executor) execDropModule(s *ast.DropModuleStmt) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	// Find the module
 	modules, err := e.reader.ListModules()
 	if err != nil {
-		return fmt.Errorf("failed to list modules: %w", err)
+		return mdlerrors.NewBackend("list modules", err)
 	}
 
 	var targetModule *model.Module
@@ -77,7 +78,7 @@ func (e *Executor) execDropModule(s *ast.DropModuleStmt) error {
 	}
 
 	if targetModule == nil {
-		return fmt.Errorf("module not found: %s", s.Name)
+		return mdlerrors.NewNotFound("module", s.Name)
 	}
 
 	// Build set of all container IDs belonging to this module (including nested folders)
@@ -280,7 +281,7 @@ func (e *Executor) execDropModule(s *ast.DropModuleStmt) error {
 
 	// Delete the module itself (and clean up themesource directory)
 	if err := e.writer.DeleteModuleWithCleanup(targetModule.ID, s.Name); err != nil {
-		return fmt.Errorf("failed to delete module: %w", err)
+		return mdlerrors.NewBackend("delete module", err)
 	}
 
 	// Build summary of what was removed
@@ -375,26 +376,26 @@ func (e *Executor) getModuleContainers(moduleID model.ID) map[model.ID]bool {
 // showModules handles SHOW MODULES command.
 func (e *Executor) showModules() error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	// Always get fresh module list and update cache
 	e.invalidateModuleCache()
 	modules, err := e.getModulesFromCache()
 	if err != nil {
-		return fmt.Errorf("failed to list modules: %w", err)
+		return mdlerrors.NewBackend("list modules", err)
 	}
 
 	// Get hierarchy for module resolution
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	// Get units for type-based counting
 	units, err := e.reader.ListUnits()
 	if err != nil {
-		return fmt.Errorf("failed to list units: %w", err)
+		return mdlerrors.NewBackend("list units", err)
 	}
 
 	// Count elements per module using unit types
@@ -568,13 +569,13 @@ func (e *Executor) showModules() error {
 // describeModule handles DESCRIBE MODULE [WITH ALL] command.
 func (e *Executor) describeModule(moduleName string, withAll bool) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	// Find the module
 	modules, err := e.reader.ListModules()
 	if err != nil {
-		return fmt.Errorf("failed to list modules: %w", err)
+		return mdlerrors.NewBackend("list modules", err)
 	}
 
 	var targetModule *model.Module
@@ -586,7 +587,7 @@ func (e *Executor) describeModule(moduleName string, withAll bool) error {
 	}
 
 	if targetModule == nil {
-		return fmt.Errorf("module not found: %s", moduleName)
+		return mdlerrors.NewNotFound("module", moduleName)
 	}
 
 	// Output basic CREATE MODULE statement

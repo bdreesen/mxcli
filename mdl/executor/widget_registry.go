@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/sdk/widgets/definitions"
 )
 
@@ -38,7 +39,7 @@ func NewWidgetRegistryWithOps(opReg *OperationRegistry) (*WidgetRegistry, error)
 
 	entries, err := definitions.EmbeddedFS.ReadDir(".")
 	if err != nil {
-		return nil, fmt.Errorf("read embedded definitions: %w", err)
+		return nil, mdlerrors.NewBackend("read embedded definitions", err)
 	}
 
 	for _, entry := range entries {
@@ -48,12 +49,12 @@ func NewWidgetRegistryWithOps(opReg *OperationRegistry) (*WidgetRegistry, error)
 
 		data, err := definitions.EmbeddedFS.ReadFile(entry.Name())
 		if err != nil {
-			return nil, fmt.Errorf("read definition %s: %w", entry.Name(), err)
+			return nil, mdlerrors.NewBackend(fmt.Sprintf("read definition %s", entry.Name()), err)
 		}
 
 		var def WidgetDefinition
 		if err := json.Unmarshal(data, &def); err != nil {
-			return nil, fmt.Errorf("parse definition %s: %w", entry.Name(), err)
+			return nil, mdlerrors.NewBackend(fmt.Sprintf("parse definition %s", entry.Name()), err)
 		}
 
 		if err := validateDefinitionOperations(&def, entry.Name(), opReg); err != nil {
@@ -139,16 +140,16 @@ func (r *WidgetRegistry) loadDefinitionsFromDir(dir string) error {
 		filePath := filepath.Join(dir, entry.Name())
 		data, err := os.ReadFile(filePath)
 		if err != nil {
-			return fmt.Errorf("read %s: %w", filePath, err)
+			return mdlerrors.NewBackend(fmt.Sprintf("read %s", filePath), err)
 		}
 
 		var def WidgetDefinition
 		if err := json.Unmarshal(data, &def); err != nil {
-			return fmt.Errorf("parse %s: %w", filePath, err)
+			return mdlerrors.NewBackend(fmt.Sprintf("parse %s", filePath), err)
 		}
 
 		if def.WidgetID == "" || def.MDLName == "" {
-			return fmt.Errorf("invalid definition %s: widgetId and mdlName are required", entry.Name())
+			return mdlerrors.NewValidationf("invalid definition %s: widgetId and mdlName are required", entry.Name())
 		}
 
 		if err := validateDefinitionOperations(&def, entry.Name(), r.opReg); err != nil {
@@ -181,7 +182,7 @@ func validateDefinitionOperations(def *WidgetDefinition, source string, opReg *O
 	}
 	for _, s := range def.ChildSlots {
 		if !opReg.Has(s.Operation) {
-			return fmt.Errorf("%s: unknown operation %q in childSlots for key %q", source, s.Operation, s.PropertyKey)
+			return mdlerrors.NewValidationf("%s: unknown operation %q in childSlots for key %q", source, s.Operation, s.PropertyKey)
 		}
 	}
 	for _, mode := range def.Modes {
@@ -191,7 +192,7 @@ func validateDefinitionOperations(def *WidgetDefinition, source string, opReg *O
 		}
 		for _, s := range mode.ChildSlots {
 			if !opReg.Has(s.Operation) {
-				return fmt.Errorf("%s: unknown operation %q in %schildSlots for key %q", source, s.Operation, ctx, s.PropertyKey)
+				return mdlerrors.NewValidationf("%s: unknown operation %q in %schildSlots for key %q", source, s.Operation, ctx, s.PropertyKey)
 			}
 		}
 	}
@@ -212,12 +213,12 @@ func validateMappings(mappings []PropertyMapping, source, modeCtx string, opReg 
 	hasDataSource := false
 	for _, m := range mappings {
 		if !opReg.Has(m.Operation) {
-			return fmt.Errorf("%s: unknown operation %q in %spropertyMappings for key %q", source, m.Operation, modeCtx, m.PropertyKey)
+			return mdlerrors.NewValidationf("%s: unknown operation %q in %spropertyMappings for key %q", source, m.Operation, modeCtx, m.PropertyKey)
 		}
 		// Check source/operation compatibility
 		if incompatible, ok := incompatibleSourceOps[m.Source]; ok {
 			if incompatible[m.Operation] {
-				return fmt.Errorf("%s: incompatible source %q with operation %q in %spropertyMappings for key %q",
+				return mdlerrors.NewValidationf("%s: incompatible source %q with operation %q in %spropertyMappings for key %q",
 					source, m.Source, m.Operation, modeCtx, m.PropertyKey)
 			}
 		}
@@ -227,7 +228,7 @@ func validateMappings(mappings []PropertyMapping, source, modeCtx string, opReg 
 		}
 		// Association depends on entityContext set by a prior DataSource mapping
 		if m.Source == "Association" && !hasDataSource {
-			return fmt.Errorf("%s: %spropertyMappings key %q uses source 'Association' before any 'DataSource' mapping — entityContext will be stale",
+			return mdlerrors.NewValidationf("%s: %spropertyMappings key %q uses source 'Association' before any 'DataSource' mapping — entityContext will be stale",
 				source, modeCtx, m.PropertyKey)
 		}
 	}

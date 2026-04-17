@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/model"
 	"github.com/mendixlabs/mxcli/sdk/pages"
 )
@@ -20,13 +21,13 @@ import (
 
 func (e *Executor) execShowDesignProperties(s *ast.ShowDesignPropertiesStmt) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	projectDir := filepath.Dir(e.mprPath)
 	registry, err := loadThemeRegistry(projectDir)
 	if err != nil {
-		return fmt.Errorf("failed to load theme registry: %w", err)
+		return mdlerrors.NewBackend("load theme registry", err)
 	}
 
 	if len(registry.WidgetProperties) == 0 {
@@ -111,12 +112,12 @@ func (e *Executor) printOneProperty(p ThemeProperty) {
 
 func (e *Executor) execDescribeStyling(s *ast.DescribeStylingStmt) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	var rawWidgets []rawWidget
@@ -125,7 +126,7 @@ func (e *Executor) execDescribeStyling(s *ast.DescribeStylingStmt) error {
 		// Find page
 		allPages, err := e.reader.ListPages()
 		if err != nil {
-			return fmt.Errorf("failed to list pages: %w", err)
+			return mdlerrors.NewBackend("list pages", err)
 		}
 
 		var foundPage *pages.Page
@@ -138,14 +139,14 @@ func (e *Executor) execDescribeStyling(s *ast.DescribeStylingStmt) error {
 			}
 		}
 		if foundPage == nil {
-			return fmt.Errorf("page %s not found", s.ContainerName.String())
+			return mdlerrors.NewNotFound("page", s.ContainerName.String())
 		}
 		rawWidgets = e.getPageWidgetsFromRaw(foundPage.ID)
 	} else if s.ContainerType == "SNIPPET" {
 		// Find snippet
 		allSnippets, err := e.reader.ListSnippets()
 		if err != nil {
-			return fmt.Errorf("failed to list snippets: %w", err)
+			return mdlerrors.NewBackend("list snippets", err)
 		}
 
 		var foundSnippet *pages.Snippet
@@ -158,7 +159,7 @@ func (e *Executor) execDescribeStyling(s *ast.DescribeStylingStmt) error {
 			}
 		}
 		if foundSnippet == nil {
-			return fmt.Errorf("snippet %s not found", s.ContainerName.String())
+			return mdlerrors.NewNotFound("snippet", s.ContainerName.String())
 		}
 		rawWidgets = e.getSnippetWidgetsFromRaw(foundSnippet.ID)
 	}
@@ -173,7 +174,7 @@ func (e *Executor) execDescribeStyling(s *ast.DescribeStylingStmt) error {
 
 	if len(styledWidgets) == 0 {
 		if s.WidgetName != "" {
-			return fmt.Errorf("widget %q not found in %s %s", s.WidgetName, s.ContainerType, s.ContainerName.String())
+			return mdlerrors.NewNotFoundMsg("widget", s.WidgetName, fmt.Sprintf("widget %q not found in %s %s", s.WidgetName, s.ContainerType, s.ContainerName.String()))
 		}
 		fmt.Fprintf(e.output, "No styled widgets found in %s %s\n", s.ContainerType, s.ContainerName.String())
 		return nil
@@ -253,15 +254,15 @@ func collectStyledWidgets(widgets []rawWidget, widgetName string) []rawWidget {
 
 func (e *Executor) execAlterStyling(s *ast.AlterStylingStmt) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 	if e.writer == nil {
-		return fmt.Errorf("project not opened for writing")
+		return mdlerrors.NewNotConnectedWrite()
 	}
 
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	if s.ContainerType == "PAGE" {
@@ -270,14 +271,14 @@ func (e *Executor) execAlterStyling(s *ast.AlterStylingStmt) error {
 		return e.alterStylingOnSnippet(s, h)
 	}
 
-	return fmt.Errorf("unsupported container type: %s", s.ContainerType)
+	return mdlerrors.NewUnsupported("unsupported container type: " + s.ContainerType)
 }
 
 func (e *Executor) alterStylingOnPage(s *ast.AlterStylingStmt, h *ContainerHierarchy) error {
 	// Find page
 	allPages, err := e.reader.ListPages()
 	if err != nil {
-		return fmt.Errorf("failed to list pages: %w", err)
+		return mdlerrors.NewBackend("list pages", err)
 	}
 
 	var page *pages.Page
@@ -290,7 +291,7 @@ func (e *Executor) alterStylingOnPage(s *ast.AlterStylingStmt, h *ContainerHiera
 		}
 	}
 	if page == nil {
-		return fmt.Errorf("page %s not found", s.ContainerName.String())
+		return mdlerrors.NewNotFound("page", s.ContainerName.String())
 	}
 
 	// Walk the page to find the widget by name
@@ -308,12 +309,12 @@ func (e *Executor) alterStylingOnPage(s *ast.AlterStylingStmt, h *ContainerHiera
 	}
 
 	if !found {
-		return fmt.Errorf("widget %q not found in page %s", s.WidgetName, s.ContainerName.String())
+		return mdlerrors.NewNotFoundMsg("widget", s.WidgetName, fmt.Sprintf("widget %q not found in page %s", s.WidgetName, s.ContainerName.String()))
 	}
 
 	// Save the page
 	if err := e.writer.UpdatePage(page); err != nil {
-		return fmt.Errorf("failed to save page: %w", err)
+		return mdlerrors.NewBackend("save page", err)
 	}
 
 	fmt.Fprintf(e.output, "Updated styling on widget %q in page %s\n", s.WidgetName, s.ContainerName.String())
@@ -324,7 +325,7 @@ func (e *Executor) alterStylingOnSnippet(s *ast.AlterStylingStmt, h *ContainerHi
 	// Find snippet
 	allSnippets, err := e.reader.ListSnippets()
 	if err != nil {
-		return fmt.Errorf("failed to list snippets: %w", err)
+		return mdlerrors.NewBackend("list snippets", err)
 	}
 
 	var snippet *pages.Snippet
@@ -337,7 +338,7 @@ func (e *Executor) alterStylingOnSnippet(s *ast.AlterStylingStmt, h *ContainerHi
 		}
 	}
 	if snippet == nil {
-		return fmt.Errorf("snippet %s not found", s.ContainerName.String())
+		return mdlerrors.NewNotFound("snippet", s.ContainerName.String())
 	}
 
 	// Walk the snippet to find the widget by name
@@ -355,12 +356,12 @@ func (e *Executor) alterStylingOnSnippet(s *ast.AlterStylingStmt, h *ContainerHi
 	}
 
 	if !found {
-		return fmt.Errorf("widget %q not found in snippet %s", s.WidgetName, s.ContainerName.String())
+		return mdlerrors.NewNotFoundMsg("widget", s.WidgetName, fmt.Sprintf("widget %q not found in snippet %s", s.WidgetName, s.ContainerName.String()))
 	}
 
 	// Save the snippet
 	if err := e.writer.UpdateSnippet(snippet); err != nil {
-		return fmt.Errorf("failed to save snippet: %w", err)
+		return mdlerrors.NewBackend("save snippet", err)
 	}
 
 	fmt.Fprintf(e.output, "Updated styling on widget %q in snippet %s\n", s.WidgetName, s.ContainerName.String())
@@ -409,13 +410,13 @@ func applyStylingAssignments(widget any, assignments []ast.StylingAssignment, cl
 		v = v.Elem()
 	}
 	if v.Kind() != reflect.Struct {
-		return fmt.Errorf("widget is not a struct")
+		return mdlerrors.NewValidation("widget is not a struct")
 	}
 
 	// Get BaseWidget
 	baseWidget := v.FieldByName("BaseWidget")
 	if !baseWidget.IsValid() {
-		return fmt.Errorf("widget has no BaseWidget field")
+		return mdlerrors.NewValidation("widget has no BaseWidget field")
 	}
 
 	// Clear design properties if requested
@@ -453,7 +454,7 @@ func applyStylingAssignments(widget any, assignments []ast.StylingAssignment, cl
 func setDesignProperty(baseWidget reflect.Value, a ast.StylingAssignment) error {
 	dpField := baseWidget.FieldByName("DesignProperties")
 	if !dpField.IsValid() || !dpField.CanSet() {
-		return fmt.Errorf("widget does not support design properties")
+		return mdlerrors.NewUnsupported("widget does not support design properties")
 	}
 
 	// Get existing design properties
@@ -511,7 +512,7 @@ func setDesignProperty(baseWidget reflect.Value, a ast.StylingAssignment) error 
 func (e *Executor) findPageByName(name ast.QualifiedName, h *ContainerHierarchy) (*pages.Page, error) {
 	allPages, err := e.reader.ListPages()
 	if err != nil {
-		return nil, fmt.Errorf("failed to list pages: %w", err)
+		return nil, mdlerrors.NewBackend("list pages", err)
 	}
 	for _, p := range allPages {
 		modID := h.FindModuleID(p.ContainerID)
@@ -520,14 +521,14 @@ func (e *Executor) findPageByName(name ast.QualifiedName, h *ContainerHierarchy)
 			return p, nil
 		}
 	}
-	return nil, fmt.Errorf("page %s not found", name.String())
+	return nil, mdlerrors.NewNotFound("page", name.String())
 }
 
 // findSnippetByName looks up a snippet by qualified name.
 func (e *Executor) findSnippetByName(name ast.QualifiedName, h *ContainerHierarchy) (*pages.Snippet, model.ID, error) {
 	allSnippets, err := e.reader.ListSnippets()
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to list snippets: %w", err)
+		return nil, "", mdlerrors.NewBackend("list snippets", err)
 	}
 	for _, s := range allSnippets {
 		modID := h.FindModuleID(s.ContainerID)
@@ -536,5 +537,5 @@ func (e *Executor) findSnippetByName(name ast.QualifiedName, h *ContainerHierarc
 			return s, modID, nil
 		}
 	}
-	return nil, "", fmt.Errorf("snippet %s not found", name.String())
+	return nil, "", mdlerrors.NewNotFound("snippet", name.String())
 }

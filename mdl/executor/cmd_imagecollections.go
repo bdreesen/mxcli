@@ -10,13 +10,14 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/sdk/mpr"
 )
 
 // execCreateImageCollection handles CREATE IMAGE COLLECTION statements.
 func (e *Executor) execCreateImageCollection(s *ast.CreateImageCollectionStmt) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	// Find or auto-create module
@@ -28,7 +29,7 @@ func (e *Executor) execCreateImageCollection(s *ast.CreateImageCollectionStmt) e
 	// Check if image collection already exists
 	existing := e.findImageCollection(s.Name.Module, s.Name.Name)
 	if existing != nil {
-		return fmt.Errorf("image collection already exists: %s.%s", s.Name.Module, s.Name.Name)
+		return mdlerrors.NewAlreadyExists("image collection", s.Name.Module+"."+s.Name.Name)
 	}
 
 	// Build ImageCollection
@@ -45,13 +46,13 @@ func (e *Executor) execCreateImageCollection(s *ast.CreateImageCollectionStmt) e
 		if !filepath.IsAbs(filePath) {
 			cwd, err := os.Getwd()
 			if err != nil {
-				return fmt.Errorf("failed to get working directory: %w", err)
+				return mdlerrors.NewBackend("get working directory", err)
 			}
 			filePath = filepath.Join(cwd, filePath)
 		}
 		data, err := os.ReadFile(filePath)
 		if err != nil {
-			return fmt.Errorf("failed to read image file %q: %w", item.FilePath, err)
+			return mdlerrors.NewBackend(fmt.Sprintf("read image file %q", item.FilePath), err)
 		}
 		format := extToImageFormat(filepath.Ext(filePath))
 		ic.Images = append(ic.Images, mpr.Image{
@@ -62,7 +63,7 @@ func (e *Executor) execCreateImageCollection(s *ast.CreateImageCollectionStmt) e
 	}
 
 	if err := e.writer.CreateImageCollection(ic); err != nil {
-		return fmt.Errorf("failed to create image collection: %w", err)
+		return mdlerrors.NewBackend("create image collection", err)
 	}
 
 	// Invalidate hierarchy cache so the new collection's container is visible
@@ -75,16 +76,16 @@ func (e *Executor) execCreateImageCollection(s *ast.CreateImageCollectionStmt) e
 // execDropImageCollection handles DROP IMAGE COLLECTION statements.
 func (e *Executor) execDropImageCollection(s *ast.DropImageCollectionStmt) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	ic := e.findImageCollection(s.Name.Module, s.Name.Name)
 	if ic == nil {
-		return fmt.Errorf("image collection not found: %s", s.Name)
+		return mdlerrors.NewNotFound("image collection", s.Name.String())
 	}
 
 	if err := e.writer.DeleteImageCollection(string(ic.ID)); err != nil {
-		return fmt.Errorf("failed to delete image collection: %w", err)
+		return mdlerrors.NewBackend("delete image collection", err)
 	}
 
 	fmt.Fprintf(e.output, "Dropped image collection: %s\n", s.Name)
@@ -95,7 +96,7 @@ func (e *Executor) execDropImageCollection(s *ast.DropImageCollectionStmt) error
 func (e *Executor) describeImageCollection(name ast.QualifiedName) error {
 	ic := e.findImageCollection(name.Module, name.Name)
 	if ic == nil {
-		return fmt.Errorf("image collection not found: %s", name)
+		return mdlerrors.NewNotFound("image collection", name.String())
 	}
 
 	h, err := e.getHierarchy()
@@ -129,7 +130,7 @@ func (e *Executor) describeImageCollection(name ast.QualifiedName) error {
 	// Write image data to temp files and output CREATE statement with IMAGE lines
 	previewDir := filepath.Join("/tmp/mxcli-preview", qualifiedName)
 	if err := os.MkdirAll(previewDir, 0o755); err != nil {
-		return fmt.Errorf("failed to create preview directory: %w", err)
+		return mdlerrors.NewBackend("create preview directory", err)
 	}
 
 	fmt.Fprintf(e.output, "CREATE OR REPLACE IMAGE COLLECTION %s", qualifiedName)
@@ -143,7 +144,7 @@ func (e *Executor) describeImageCollection(name ast.QualifiedName) error {
 		filePath := filepath.Join(previewDir, img.Name+ext)
 		if len(img.Data) > 0 {
 			if err := os.WriteFile(filePath, img.Data, 0o644); err != nil {
-				return fmt.Errorf("failed to write image %s: %w", img.Name, err)
+				return mdlerrors.NewBackend(fmt.Sprintf("write image %s", img.Name), err)
 			}
 		}
 
@@ -199,7 +200,7 @@ func extToImageFormat(ext string) string {
 func (e *Executor) showImageCollections(moduleName string) error {
 	collections, err := e.reader.ListImageCollections()
 	if err != nil {
-		return fmt.Errorf("failed to list image collections: %w", err)
+		return mdlerrors.NewBackend("list image collections", err)
 	}
 
 	h, err := e.getHierarchy()

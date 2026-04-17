@@ -12,18 +12,19 @@ import (
 	"fmt"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/sdk/agenteditor"
 )
 
 // showAgentEditorModels handles SHOW MODELS [IN module].
 func (e *Executor) showAgentEditorModels(moduleName string) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	models, err := e.reader.ListAgentEditorModels()
 	if err != nil {
-		return fmt.Errorf("failed to list models: %w", err)
+		return mdlerrors.NewBackend("list models", err)
 	}
 
 	h, err := e.getHierarchy()
@@ -65,12 +66,12 @@ func (e *Executor) showAgentEditorModels(moduleName string) error {
 // Emits a round-trippable CREATE MODEL statement.
 func (e *Executor) describeAgentEditorModel(name ast.QualifiedName) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	m := e.findAgentEditorModel(name.Module, name.Name)
 	if m == nil {
-		return fmt.Errorf("model not found: %s", name)
+		return mdlerrors.NewNotFound("model", name.String())
 	}
 
 	h, err := e.getHierarchy()

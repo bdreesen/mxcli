@@ -7,6 +7,7 @@ import (
 	"log"
 	"strings"
 
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/model"
 	"github.com/mendixlabs/mxcli/sdk/mpr"
 	"github.com/mendixlabs/mxcli/sdk/pages"
@@ -262,7 +263,7 @@ func convertPropertyTypeIDs(src map[string]widgets.PropertyTypeIDEntry) map[stri
 // resolveSnippetRef resolves a snippet qualified name to its ID.
 func (pb *pageBuilder) resolveSnippetRef(snippetRef string) (model.ID, error) {
 	if snippetRef == "" {
-		return "", fmt.Errorf("empty snippet reference")
+		return "", mdlerrors.NewValidation("empty snippet reference")
 	}
 
 	snippetRef = unquoteQualifiedName(snippetRef)
@@ -282,7 +283,7 @@ func (pb *pageBuilder) resolveSnippetRef(snippetRef string) (model.ID, error) {
 
 	h, err := pb.getHierarchy()
 	if err != nil {
-		return "", fmt.Errorf("failed to build hierarchy: %w", err)
+		return "", mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	for _, s := range snippets {
@@ -293,7 +294,7 @@ func (pb *pageBuilder) resolveSnippetRef(snippetRef string) (model.ID, error) {
 		}
 	}
 
-	return "", fmt.Errorf("snippet %s not found", snippetRef)
+	return "", mdlerrors.NewNotFound("snippet", snippetRef)
 }
 
 func (pb *pageBuilder) resolveMicroflow(qualifiedName string) (model.ID, error) {
@@ -301,7 +302,7 @@ func (pb *pageBuilder) resolveMicroflow(qualifiedName string) (model.ID, error) 
 	// Parse qualified name
 	parts := strings.Split(qualifiedName, ".")
 	if len(parts) < 2 {
-		return "", fmt.Errorf("invalid microflow name: %s", qualifiedName)
+		return "", mdlerrors.NewValidationf("invalid microflow name: %s", qualifiedName)
 	}
 	moduleName := parts[0]
 	mfName := strings.Join(parts[1:], ".")
@@ -317,13 +318,13 @@ func (pb *pageBuilder) resolveMicroflow(qualifiedName string) (model.ID, error) 
 	// Get microflows from reader cache
 	mfs, err := pb.getMicroflows()
 	if err != nil {
-		return "", fmt.Errorf("failed to list microflows: %w", err)
+		return "", mdlerrors.NewBackend("list microflows", err)
 	}
 
 	// Use hierarchy to resolve module names (handles microflows in folders)
 	h, err := pb.getHierarchy()
 	if err != nil {
-		return "", fmt.Errorf("failed to build hierarchy: %w", err)
+		return "", mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	// Find matching microflow
@@ -335,12 +336,12 @@ func (pb *pageBuilder) resolveMicroflow(qualifiedName string) (model.ID, error) 
 		}
 	}
 
-	return "", fmt.Errorf("microflow not found: %s", qualifiedName)
+	return "", mdlerrors.NewNotFound("microflow", qualifiedName)
 }
 
 func (pb *pageBuilder) resolvePageRef(pageRef string) (model.ID, error) {
 	if pageRef == "" {
-		return "", fmt.Errorf("empty page reference")
+		return "", mdlerrors.NewValidation("empty page reference")
 	}
 
 	pageRef = unquoteQualifiedName(pageRef)
@@ -374,7 +375,7 @@ func (pb *pageBuilder) resolvePageRef(pageRef string) (model.ID, error) {
 
 	h, err := pb.getHierarchy()
 	if err != nil {
-		return "", fmt.Errorf("failed to build hierarchy: %w", err)
+		return "", mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	for _, p := range pgs {
@@ -385,5 +386,5 @@ func (pb *pageBuilder) resolvePageRef(pageRef string) (model.ID, error) {
 		}
 	}
 
-	return "", fmt.Errorf("page %s not found", pageRef)
+	return "", mdlerrors.NewNotFound("page", pageRef)
 }

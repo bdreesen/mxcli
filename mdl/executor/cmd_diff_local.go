@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/model"
 	"github.com/mendixlabs/mxcli/sdk/mpr"
 	"go.mongodb.org/mongo-driver/bson"
@@ -29,17 +30,17 @@ import (
 //   - A range "base..target" — compares two revisions (no working tree)
 func (e *Executor) DiffLocal(ref string, opts DiffOptions) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	// Check MPR version
 	if e.reader.Version() != 2 {
-		return fmt.Errorf("diff-local only supports MPR v2 format (Mendix 10.18+)")
+		return mdlerrors.NewUnsupported("diff-local only supports MPR v2 format (Mendix 10.18+)")
 	}
 
 	contentsDir := e.reader.ContentsDir()
 	if contentsDir == "" {
-		return fmt.Errorf("mprcontents directory not found")
+		return mdlerrors.NewValidation("mprcontents directory not found")
 	}
 
 	// Set defaults
@@ -53,7 +54,7 @@ func (e *Executor) DiffLocal(ref string, opts DiffOptions) error {
 	// Find changed mxunit files using git
 	changedFiles, err := e.findChangedMxunitFiles(contentsDir, ref)
 	if err != nil {
-		return fmt.Errorf("failed to find changed files: %w", err)
+		return mdlerrors.NewBackend("find changed files", err)
 	}
 
 	if len(changedFiles) == 0 {
@@ -114,7 +115,7 @@ func (e *Executor) findChangedMxunitFiles(contentsDir, ref string) ([]gitChange,
 	cmd := execCommand("git", "diff", "--name-status", ref, "--", contentsDir)
 	output, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("git diff failed: %w", err)
+		return nil, mdlerrors.NewBackend("git diff", err)
 	}
 
 	var changes []gitChange
@@ -163,14 +164,14 @@ func (e *Executor) diffMxunitFile(change gitChange, contentsDir, ref string) (*D
 			cmd := execCommand("git", "show", targetRef+":"+change.FilePath)
 			currentContent, err = cmd.Output()
 			if err != nil {
-				return nil, fmt.Errorf("failed to read %s version of %s: %w", targetRef, change.FilePath, err)
+				return nil, mdlerrors.NewBackend(fmt.Sprintf("read %s version of %s", targetRef, change.FilePath), err)
 			}
 		}
 		if change.Status != "A" {
 			cmd := execCommand("git", "show", baseRef+":"+change.FilePath)
 			gitContent, err = cmd.Output()
 			if err != nil {
-				return nil, fmt.Errorf("failed to read %s version of %s: %w", baseRef, change.FilePath, err)
+				return nil, mdlerrors.NewBackend(fmt.Sprintf("read %s version of %s", baseRef, change.FilePath), err)
 			}
 		}
 	} else {
@@ -178,14 +179,14 @@ func (e *Executor) diffMxunitFile(change gitChange, contentsDir, ref string) (*D
 		if change.Status != "D" {
 			currentContent, err = readFile(change.FilePath)
 			if err != nil {
-				return nil, fmt.Errorf("failed to read current file %s: %w", change.FilePath, err)
+				return nil, mdlerrors.NewBackend(fmt.Sprintf("read current file %s", change.FilePath), err)
 			}
 		}
 		if change.Status != "A" {
 			cmd := execCommand("git", "show", ref+":"+change.FilePath)
 			gitContent, err = cmd.Output()
 			if err != nil {
-				return nil, fmt.Errorf("failed to read git version of %s: %w", change.FilePath, err)
+				return nil, mdlerrors.NewBackend(fmt.Sprintf("read git version of %s", change.FilePath), err)
 			}
 		}
 	}

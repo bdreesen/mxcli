@@ -5,6 +5,8 @@ package executor
 import (
 	"encoding/json"
 	"fmt"
+
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 )
 
 // moduleOverviewData is the JSON output schema for the module overview ELK diagram.
@@ -46,18 +48,18 @@ var systemModuleNames = map[string]bool{
 // cross-module dependencies, suitable for rendering with ELK.js.
 func (e *Executor) ModuleOverview() error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	// Ensure catalog is built with full mode for refs
 	if err := e.ensureCatalog(true); err != nil {
-		return fmt.Errorf("failed to build catalog: %w", err)
+		return mdlerrors.NewBackend("build catalog", err)
 	}
 
 	// Get all module names
 	moduleResult, err := e.catalog.Query("SELECT Name FROM modules")
 	if err != nil {
-		return fmt.Errorf("failed to query modules: %w", err)
+		return mdlerrors.NewBackend("query modules", err)
 	}
 
 	moduleNames := make(map[string]bool)
@@ -129,7 +131,7 @@ func (e *Executor) ModuleOverview() error {
 		HAVING SourceModule != TargetModule
 	`)
 	if err != nil {
-		return fmt.Errorf("failed to query refs: %w", err)
+		return mdlerrors.NewBackend("query refs", err)
 	}
 
 	// Aggregate edges by source/target pair
@@ -181,7 +183,7 @@ func (e *Executor) ModuleOverview() error {
 
 	out, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
-		return fmt.Errorf("failed to marshal JSON: %w", err)
+		return mdlerrors.NewBackend("marshal JSON", err)
 	}
 
 	fmt.Fprint(e.output, string(out))

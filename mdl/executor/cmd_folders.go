@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/model"
 	"github.com/mendixlabs/mxcli/sdk/mpr"
 )
@@ -36,12 +37,12 @@ func (e *Executor) findFolderByPath(moduleID model.ID, folderPath string, folder
 		}
 
 		if !found {
-			return "", fmt.Errorf("folder not found: '%s'", folderPath)
+			return "", mdlerrors.NewNotFound("folder", folderPath)
 		}
 	}
 
 	if targetFolderID == "" {
-		return "", fmt.Errorf("folder not found: '%s'", folderPath)
+		return "", mdlerrors.NewNotFound("folder", folderPath)
 	}
 
 	return targetFolderID, nil
@@ -51,17 +52,17 @@ func (e *Executor) findFolderByPath(moduleID model.ID, folderPath string, folder
 // The folder must be empty (no child documents or sub-folders).
 func (e *Executor) execDropFolder(s *ast.DropFolderStmt) error {
 	if e.writer == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	module, err := e.findModule(s.Module)
 	if err != nil {
-		return fmt.Errorf("module not found: %s", s.Module)
+		return mdlerrors.NewNotFound("module", s.Module)
 	}
 
 	folders, err := e.reader.ListFolders()
 	if err != nil {
-		return fmt.Errorf("failed to list folders: %w", err)
+		return mdlerrors.NewBackend("list folders", err)
 	}
 
 	folderID, err := e.findFolderByPath(module.ID, s.FolderPath, folders)
@@ -70,7 +71,7 @@ func (e *Executor) execDropFolder(s *ast.DropFolderStmt) error {
 	}
 
 	if err := e.writer.DeleteFolder(folderID); err != nil {
-		return fmt.Errorf("failed to delete folder '%s': %w", s.FolderPath, err)
+		return mdlerrors.NewBackend(fmt.Sprintf("delete folder '%s'", s.FolderPath), err)
 	}
 
 	e.invalidateHierarchy()
@@ -81,19 +82,19 @@ func (e *Executor) execDropFolder(s *ast.DropFolderStmt) error {
 // execMoveFolder handles MOVE FOLDER Module.FolderName TO ... statements.
 func (e *Executor) execMoveFolder(s *ast.MoveFolderStmt) error {
 	if e.writer == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	// Find the source module
 	sourceModule, err := e.findModule(s.Name.Module)
 	if err != nil {
-		return fmt.Errorf("source module not found: %s", s.Name.Module)
+		return mdlerrors.NewNotFound("source module", s.Name.Module)
 	}
 
 	// Find the source folder
 	folders, err := e.reader.ListFolders()
 	if err != nil {
-		return fmt.Errorf("failed to list folders: %w", err)
+		return mdlerrors.NewBackend("list folders", err)
 	}
 
 	folderID, err := e.findFolderByPath(sourceModule.ID, s.Name.Name, folders)
@@ -106,7 +107,7 @@ func (e *Executor) execMoveFolder(s *ast.MoveFolderStmt) error {
 	if s.TargetModule != "" {
 		targetModule, err = e.findModule(s.TargetModule)
 		if err != nil {
-			return fmt.Errorf("target module not found: %s", s.TargetModule)
+			return mdlerrors.NewNotFound("target module", s.TargetModule)
 		}
 	} else {
 		targetModule = sourceModule
@@ -117,7 +118,7 @@ func (e *Executor) execMoveFolder(s *ast.MoveFolderStmt) error {
 	if s.TargetFolder != "" {
 		targetContainerID, err = e.resolveFolder(targetModule.ID, s.TargetFolder)
 		if err != nil {
-			return fmt.Errorf("failed to resolve target folder: %w", err)
+			return mdlerrors.NewBackend("resolve target folder", err)
 		}
 	} else {
 		targetContainerID = targetModule.ID
@@ -125,7 +126,7 @@ func (e *Executor) execMoveFolder(s *ast.MoveFolderStmt) error {
 
 	// Move the folder
 	if err := e.writer.MoveFolder(folderID, targetContainerID); err != nil {
-		return fmt.Errorf("failed to move folder: %w", err)
+		return mdlerrors.NewBackend("move folder", err)
 	}
 
 	e.invalidateHierarchy()

@@ -4,13 +4,15 @@ package executor
 
 import (
 	"fmt"
+
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 )
 
 // showLanguages lists all languages found in the project's translatable strings.
 // Requires REFRESH CATALOG FULL to populate the strings table.
 func (e *Executor) showLanguages() error {
 	if e.catalog == nil {
-		return fmt.Errorf("no catalog available — run REFRESH CATALOG FULL first")
+		return mdlerrors.NewValidation("no catalog available — run REFRESH CATALOG FULL first")
 	}
 
 	result, err := e.catalog.Query(`
@@ -21,7 +23,7 @@ func (e *Executor) showLanguages() error {
 		ORDER BY StringCount DESC
 	`)
 	if err != nil {
-		return fmt.Errorf("failed to query languages: %w", err)
+		return mdlerrors.NewBackend("query languages", err)
 	}
 
 	if len(result.Rows) == 0 {

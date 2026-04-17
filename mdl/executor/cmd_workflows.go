@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/sdk/workflows"
 )
 
@@ -16,12 +17,12 @@ import (
 func (e *Executor) showWorkflows(moduleName string) error {
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	wfs, err := e.reader.ListWorkflows()
 	if err != nil {
-		return fmt.Errorf("failed to list workflows: %w", err)
+		return mdlerrors.NewBackend("list workflows", err)
 	}
 
 	type row struct {
@@ -143,12 +144,12 @@ func (e *Executor) describeWorkflow(name ast.QualifiedName) error {
 func (e *Executor) describeWorkflowToString(name ast.QualifiedName) (string, map[string]elkSourceRange, error) {
 	h, err := e.getHierarchy()
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to build hierarchy: %w", err)
+		return "", nil, mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	allWorkflows, err := e.reader.ListWorkflows()
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to list workflows: %w", err)
+		return "", nil, mdlerrors.NewBackend("list workflows", err)
 	}
 
 	var targetWf *workflows.Workflow
@@ -162,7 +163,7 @@ func (e *Executor) describeWorkflowToString(name ast.QualifiedName) (string, map
 	}
 
 	if targetWf == nil {
-		return "", nil, fmt.Errorf("workflow not found: %s", name)
+		return "", nil, mdlerrors.NewNotFound("workflow", name.String())
 	}
 
 	var lines []string

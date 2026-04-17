@@ -9,6 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/sdk/mpr"
 )
 
@@ -97,7 +98,7 @@ func (pb *pageBuilder) buildWidgetV3ToBSON(w *ast.WidgetV3) (bson.D, error) {
 // TypePointers reference the Type's PropertyType IDs (not regenerated).
 func (pb *pageBuilder) createAttributeObject(attributePath string, objectTypeID, propertyTypeID, valueTypeID string) (bson.D, error) {
 	if strings.Count(attributePath, ".") < 2 {
-		return nil, fmt.Errorf("invalid attribute path %q: expected Module.Entity.Attribute format", attributePath)
+		return nil, mdlerrors.NewValidationf("invalid attribute path %q: expected Module.Entity.Attribute format", attributePath)
 	}
 	return bson.D{
 		{Key: "$ID", Value: hexToBytes(mpr.GenerateID())},

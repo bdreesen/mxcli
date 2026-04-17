@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/sdk/javaactions"
 )
 
@@ -18,12 +19,12 @@ import (
 func (e *Executor) showJavaScriptActions(moduleName string) error {
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	jsActions, err := e.reader.ListJavaScriptActions()
 	if err != nil {
-		return fmt.Errorf("failed to list javascript actions: %w", err)
+		return mdlerrors.NewBackend("list javascript actions", err)
 	}
 
 	type row struct {
@@ -68,7 +69,7 @@ func (e *Executor) describeJavaScriptAction(name ast.QualifiedName) error {
 	qualifiedName := name.Module + "." + name.Name
 	jsa, err := e.reader.ReadJavaScriptActionByName(qualifiedName)
 	if err != nil {
-		return fmt.Errorf("javascript action not found: %s", qualifiedName)
+		return mdlerrors.NewNotFound("javascript action", qualifiedName)
 	}
 
 	var sb strings.Builder

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/sdk/mpr"
 )
 
@@ -15,12 +16,12 @@ import (
 // It fully replaces the profile's home pages, login page, not-found page, and menu tree.
 func (e *Executor) execAlterNavigation(s *ast.AlterNavigationStmt) error {
 	if e.writer == nil {
-		return fmt.Errorf("not connected to a project (read-write required)")
+		return mdlerrors.NewNotConnectedWrite()
 	}
 
 	nav, err := e.reader.GetNavigation()
 	if err != nil {
-		return fmt.Errorf("failed to get navigation: %w", err)
+		return mdlerrors.NewBackend("get navigation", err)
 	}
 
 	// Verify the profile exists
@@ -32,8 +33,7 @@ func (e *Executor) execAlterNavigation(s *ast.AlterNavigationStmt) error {
 		}
 	}
 	if !profileFound {
-		return fmt.Errorf("navigation profile not found: %s (available: %s)",
-			s.ProfileName, profileNames(nav))
+		return mdlerrors.NewNotFoundMsg("navigation profile", s.ProfileName, fmt.Sprintf("available: %s", profileNames(nav)))
 	}
 
 	// Convert AST types to writer spec
@@ -64,7 +64,7 @@ func (e *Executor) execAlterNavigation(s *ast.AlterNavigationStmt) error {
 	}
 
 	if err := e.writer.UpdateNavigationProfile(nav.ID, s.ProfileName, spec); err != nil {
-		return fmt.Errorf("failed to update navigation profile: %w", err)
+		return mdlerrors.NewBackend("update navigation profile", err)
 	}
 
 	fmt.Fprintf(e.output, "Navigation profile '%s' updated.\n", s.ProfileName)
@@ -102,7 +102,7 @@ func profileNames(nav *mpr.NavigationDocument) string {
 func (e *Executor) showNavigation() error {
 	nav, err := e.reader.GetNavigation()
 	if err != nil {
-		return fmt.Errorf("failed to get navigation: %w", err)
+		return mdlerrors.NewBackend("get navigation", err)
 	}
 
 	if len(nav.Profiles) == 0 {
@@ -160,7 +160,7 @@ func (e *Executor) showNavigation() error {
 func (e *Executor) showNavigationMenu(profileName *ast.QualifiedName) error {
 	nav, err := e.reader.GetNavigation()
 	if err != nil {
-		return fmt.Errorf("failed to get navigation: %w", err)
+		return mdlerrors.NewBackend("get navigation", err)
 	}
 
 	for _, p := range nav.Profiles {
@@ -185,7 +185,7 @@ func (e *Executor) showNavigationMenu(profileName *ast.QualifiedName) error {
 func (e *Executor) showNavigationHomes() error {
 	nav, err := e.reader.GetNavigation()
 	if err != nil {
-		return fmt.Errorf("failed to get navigation: %w", err)
+		return mdlerrors.NewBackend("get navigation", err)
 	}
 
 	for _, p := range nav.Profiles {
@@ -227,7 +227,7 @@ func (e *Executor) showNavigationHomes() error {
 func (e *Executor) describeNavigation(name ast.QualifiedName) error {
 	nav, err := e.reader.GetNavigation()
 	if err != nil {
-		return fmt.Errorf("failed to get navigation: %w", err)
+		return mdlerrors.NewBackend("get navigation", err)
 	}
 
 	// If no profile name, describe all profiles
@@ -246,7 +246,7 @@ func (e *Executor) describeNavigation(name ast.QualifiedName) error {
 		}
 	}
 
-	return fmt.Errorf("navigation profile not found: %s", name.Name)
+	return mdlerrors.NewNotFound("navigation profile", name.Name)
 }
 
 // outputNavigationProfile outputs a single profile in round-trippable CREATE OR REPLACE NAVIGATION format.

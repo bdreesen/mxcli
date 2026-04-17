@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/sdk/domainmodel"
 	sqllib "github.com/mendixlabs/mxcli/sql"
 )
@@ -16,7 +17,7 @@ import (
 // execImport handles IMPORT FROM <alias> QUERY '<sql>' INTO Module.Entity MAP (...) [LINK (...)] [BATCH n] [LIMIT n]
 func (e *Executor) execImport(s *ast.ImportStmt) error {
 	if e.reader == nil {
-		return fmt.Errorf("no project connected (use CONNECT LOCAL '<path>' first)")
+		return mdlerrors.NewNotConnected()
 	}
 
 	// Validate entity exists
@@ -73,7 +74,7 @@ func (e *Executor) execImport(s *ast.ImportStmt) error {
 		fmt.Fprintf(e.output, "  batch %d: %d rows imported\n", batch, rows)
 	})
 	if err != nil {
-		return fmt.Errorf("import failed: %w", err)
+		return mdlerrors.NewBackend("import", err)
 	}
 
 	elapsed := time.Since(start)
@@ -107,19 +108,19 @@ func (e *Executor) resolveImportLinks(ctx context.Context, mendixConn *sqllib.Co
 	// Parse target entity module
 	targetParts := strings.SplitN(s.TargetEntity, ".", 2)
 	if len(targetParts) != 2 {
-		return nil, fmt.Errorf("invalid target entity %q", s.TargetEntity)
+		return nil, mdlerrors.NewValidationf("invalid target entity %q", s.TargetEntity)
 	}
 	targetModule := targetParts[0]
 
 	// Load domain models to find associations
 	dms, err := e.reader.ListDomainModels()
 	if err != nil {
-		return nil, fmt.Errorf("failed to list domain models: %w", err)
+		return nil, mdlerrors.NewBackend("list domain models", err)
 	}
 
 	h, err := e.getHierarchy()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get hierarchy: %w", err)
+		return nil, mdlerrors.NewBackend("get hierarchy", err)
 	}
 
 	// Build entity ID → qualified name map
@@ -196,7 +197,7 @@ func (e *Executor) resolveOneLink(
 	}
 
 	if foundAssoc == nil && foundCross == nil {
-		return nil, fmt.Errorf("association %q not found in module %q", link.AssociationName, targetModule)
+		return nil, mdlerrors.NewNotFoundMsg("association", link.AssociationName, fmt.Sprintf("not found in module %q", targetModule))
 	}
 
 	// Extract association info
@@ -222,11 +223,11 @@ func (e *Executor) resolveOneLink(
 
 	// Reject ReferenceSet associations (not supported in MVP)
 	if assocType == string(domainmodel.AssociationTypeReferenceSet) {
-		return nil, fmt.Errorf("association %q is ReferenceSet — not supported in IMPORT LINK (use manual SQL)", assocQualName)
+		return nil, mdlerrors.NewUnsupported(fmt.Sprintf("association %q is ReferenceSet — not supported in IMPORT LINK (use manual SQL)", assocQualName))
 	}
 
 	if childEntity == "" {
-		return nil, fmt.Errorf("could not resolve child entity for association %q", assocQualName)
+		return nil, mdlerrors.NewValidationf("could not resolve child entity for association %q", assocQualName)
 	}
 
 	info := &sqllib.AssocInfo{
@@ -277,12 +278,13 @@ func (e *Executor) resolveOneLink(
 	if link.LookupAttr != "" {
 		childTable, err := sqllib.EntityToTableName(childEntity)
 		if err != nil {
+			// Kept as fmt.Errorf: wraps a cause with entity-specific context, not a standard "failed to" pattern.
 			return nil, fmt.Errorf("invalid child entity %q: %w", childEntity, err)
 		}
 		lookupCol := sqllib.AttributeToColumnName(link.LookupAttr)
 		cache, err := sqllib.BuildLookupCache(ctx, mendixConn, childTable, lookupCol)
 		if err != nil {
-			return nil, fmt.Errorf("failed to build lookup cache for %s: %w", assocQualName, err)
+			return nil, mdlerrors.NewBackend(fmt.Sprintf("build lookup cache for %s", assocQualName), err)
 		}
 		info.LookupCache = cache
 		if len(cache) == 0 {
@@ -323,11 +325,11 @@ func (e *Executor) ensureMendixDBConnection() (*sqllib.Connection, error) {
 	// Read project settings to get DB configuration
 	ps, err := e.reader.GetProjectSettings()
 	if err != nil {
-		return nil, fmt.Errorf("failed to read project settings: %w", err)
+		return nil, mdlerrors.NewBackend("read project settings", err)
 	}
 
 	if ps.Configuration == nil || len(ps.Configuration.Configurations) == 0 {
-		return nil, fmt.Errorf("no server configurations found in project settings")
+		return nil, mdlerrors.NewValidation("no server configurations found in project settings")
 	}
 
 	// Use the first configuration (typically "default")
@@ -340,7 +342,7 @@ func (e *Executor) ensureMendixDBConnection() (*sqllib.Connection, error) {
 	}
 
 	if err := mgr.Connect(sqllib.DriverPostgres, dsn, sqllib.MendixDBAlias); err != nil {
-		return nil, fmt.Errorf("failed to connect to Mendix app database: %w", err)
+		return nil, mdlerrors.NewBackend("connect to Mendix app database", err)
 	}
 
 	fmt.Fprintf(e.output, "Auto-connected to Mendix app database as '%s'\n", sqllib.MendixDBAlias)

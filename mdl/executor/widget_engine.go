@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/model"
 	"github.com/mendixlabs/mxcli/sdk/mpr"
 	"github.com/mendixlabs/mxcli/sdk/pages"
@@ -95,10 +96,10 @@ func (e *PluggableWidgetEngine) Build(def *WidgetDefinition, w *ast.WidgetV3) (*
 	embeddedType, embeddedObject, embeddedIDs, embeddedObjectTypeID, err :=
 		widgets.GetTemplateFullBSON(def.WidgetID, mpr.GenerateID, e.pageBuilder.reader.Path())
 	if err != nil {
-		return nil, fmt.Errorf("failed to load %s template: %w", def.MDLName, err)
+		return nil, mdlerrors.NewBackend("load "+def.MDLName+" template", err)
 	}
 	if embeddedType == nil || embeddedObject == nil {
-		return nil, fmt.Errorf("%s template not found", def.MDLName)
+		return nil, mdlerrors.NewNotFound("template", def.MDLName)
 	}
 
 	propertyTypeIDs := convertPropertyTypeIDs(embeddedIDs)
@@ -114,12 +115,12 @@ func (e *PluggableWidgetEngine) Build(def *WidgetDefinition, w *ast.WidgetV3) (*
 	for _, mapping := range mappings {
 		ctx, err := e.resolveMapping(mapping, w)
 		if err != nil {
-			return nil, fmt.Errorf("failed to resolve mapping for %s: %w", mapping.PropertyKey, err)
+			return nil, mdlerrors.NewBackend("resolve mapping for "+mapping.PropertyKey, err)
 		}
 
 		op := e.operations.Lookup(mapping.Operation)
 		if op == nil {
-			return nil, fmt.Errorf("unknown operation %q for property %s", mapping.Operation, mapping.PropertyKey)
+			return nil, mdlerrors.NewValidationf("unknown operation %q for property %s", mapping.Operation, mapping.PropertyKey)
 		}
 
 		updatedObject = op(updatedObject, propertyTypeIDs, mapping.PropertyKey, ctx)
@@ -145,7 +146,7 @@ func (e *PluggableWidgetEngine) Build(def *WidgetDefinition, w *ast.WidgetV3) (*
 				if entry.ValueType == "DataSource" {
 					dataSource, entityName, err := e.pageBuilder.buildDataSourceV3(ds)
 					if err != nil {
-						return nil, fmt.Errorf("auto datasource for %s: %w", propKey, err)
+						return nil, mdlerrors.NewBackend("auto datasource for "+propKey, err)
 					}
 					ctx := &BuildContext{DataSource: dataSource, EntityName: entityName}
 					updatedObject = opDatasource(updatedObject, propertyTypeIDs, propKey, ctx)
@@ -380,12 +381,12 @@ func (e *PluggableWidgetEngine) selectMappings(def *WidgetDefinition, w *ast.Wid
 	// Use fallback mode
 	if fallback != nil {
 		if fallbackCount > 1 {
-			return nil, nil, fmt.Errorf("widget %s has %d modes without conditions; only one default mode is allowed", def.MDLName, fallbackCount)
+			return nil, nil, mdlerrors.NewValidationf("widget %s has %d modes without conditions; only one default mode is allowed", def.MDLName, fallbackCount)
 		}
 		return fallback.PropertyMappings, fallback.ChildSlots, nil
 	}
 
-	return nil, nil, fmt.Errorf("no matching mode for widget %s", def.MDLName)
+	return nil, nil, mdlerrors.NewValidationf("no matching mode for widget %s", def.MDLName)
 }
 
 // evaluateCondition checks a built-in condition string against the AST widget.
@@ -436,7 +437,7 @@ func (e *PluggableWidgetEngine) resolveMapping(mapping PropertyMapping, w *ast.W
 		if ds := w.GetDataSource(); ds != nil {
 			dataSource, entityName, err := e.pageBuilder.buildDataSourceV3(ds)
 			if err != nil {
-				return nil, fmt.Errorf("failed to build datasource: %w", err)
+				return nil, mdlerrors.NewBackend("build datasource", err)
 			}
 			ctx.DataSource = dataSource
 			ctx.EntityName = entityName
@@ -472,7 +473,7 @@ func (e *PluggableWidgetEngine) resolveMapping(mapping PropertyMapping, w *ast.W
 		// Entity name comes from DataSource context (must be resolved first by a DataSource mapping)
 		ctx.EntityName = e.pageBuilder.entityContext
 		if ctx.AssocPath != "" && ctx.EntityName == "" {
-			return nil, fmt.Errorf("association %q requires an entity context (add a DataSource mapping before Association)", ctx.AssocPath)
+			return nil, mdlerrors.NewValidationf("association %q requires an entity context (add a DataSource mapping before Association)", ctx.AssocPath)
 		}
 
 	case "OnClick":
@@ -480,7 +481,7 @@ func (e *PluggableWidgetEngine) resolveMapping(mapping PropertyMapping, w *ast.W
 		if action := w.GetAction(); action != nil {
 			act, err := e.pageBuilder.buildClientActionV3(action)
 			if err != nil {
-				return nil, fmt.Errorf("failed to build action: %w", err)
+				return nil, mdlerrors.NewBackend("build action", err)
 			}
 			ctx.ActionBSON = mpr.SerializeClientAction(act)
 		}
@@ -552,7 +553,7 @@ func (e *PluggableWidgetEngine) applyChildSlots(slots []ChildSlotMapping, w *ast
 
 		op := e.operations.Lookup(slot.Operation)
 		if op == nil {
-			return fmt.Errorf("unknown operation %q for child slot %s", slot.Operation, slot.PropertyKey)
+			return mdlerrors.NewValidationf("unknown operation %q for child slot %s", slot.Operation, slot.PropertyKey)
 		}
 
 		ctx := &BuildContext{ChildWidgets: childBSONs}

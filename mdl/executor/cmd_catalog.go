@@ -13,6 +13,7 @@ import (
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
 	"github.com/mendixlabs/mxcli/mdl/catalog"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/model"
 )
 
@@ -131,7 +132,7 @@ func (e *Executor) execCatalogQuery(query string) error {
 	// Execute query
 	result, err := e.catalog.Query(query)
 	if err != nil {
-		return fmt.Errorf("failed to execute catalog query\n%v", err)
+		return mdlerrors.NewBackend("execute catalog query", err)
 	}
 
 	// Output results
@@ -170,7 +171,7 @@ func (e *Executor) execDescribeCatalogTable(stmt *ast.DescribeCatalogTableStmt) 
 	// Query column info using PRAGMA
 	result, err := e.catalog.Query(fmt.Sprintf("PRAGMA table_info(%s)", tableName))
 	if err != nil || result.Count == 0 {
-		return fmt.Errorf("unknown catalog table: CATALOG.%s", strings.ToUpper(tableName))
+		return mdlerrors.NewNotFoundMsg("catalog table", strings.ToUpper(tableName), "unknown catalog table: CATALOG."+strings.ToUpper(tableName))
 	}
 
 	// Print table header
@@ -334,7 +335,7 @@ func (e *Executor) buildCatalog(full bool, source ...bool) error {
 	// Create new catalog
 	cat, err := catalog.New()
 	if err != nil {
-		return fmt.Errorf("failed to create catalog: %w", err)
+		return mdlerrors.NewBackend("create catalog", err)
 	}
 
 	// Set project metadata
@@ -354,7 +355,7 @@ func (e *Executor) buildCatalog(full bool, source ...bool) error {
 	})
 	if err != nil {
 		cat.Close()
-		return fmt.Errorf("failed to build catalog: %w", err)
+		return mdlerrors.NewBackend("build catalog", err)
 	}
 
 	elapsed := time.Since(start)
@@ -396,7 +397,7 @@ func (e *Executor) buildCatalog(full bool, source ...bool) error {
 // execRefreshCatalogStmt handles REFRESH CATALOG [FULL] [SOURCE] [FORCE] [BACKGROUND] command.
 func (e *Executor) execRefreshCatalogStmt(stmt *ast.RefreshCatalogStmt) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	requiredMode := "fast"
@@ -425,7 +426,7 @@ func (e *Executor) execRefreshCatalogStmt(stmt *ast.RefreshCatalogStmt) error {
 				// If project file was modified, reconnect to get fresh database connection
 				if reason == "project file modified" {
 					if err := e.reconnect(); err != nil {
-						return fmt.Errorf("failed to reconnect after project modification: %w", err)
+						return mdlerrors.NewBackend("reconnect after project modification", err)
 					}
 				}
 			}
@@ -628,7 +629,7 @@ func (e *Executor) captureDescribe(objectType string, qualifiedName string) (str
 	// Parse qualified name into ast.QualifiedName
 	parts := strings.SplitN(qualifiedName, ".", 2)
 	if len(parts) != 2 {
-		return "", fmt.Errorf("invalid qualified name: %s", qualifiedName)
+		return "", mdlerrors.NewValidationf("invalid qualified name: %s", qualifiedName)
 	}
 	qn := ast.QualifiedName{Module: parts[0], Name: parts[1]}
 
@@ -653,7 +654,7 @@ func (e *Executor) captureDescribe(objectType string, qualifiedName string) (str
 	case "WORKFLOW":
 		err = e.describeWorkflow(qn)
 	default:
-		return "", fmt.Errorf("unsupported object type for describe: %s", objectType)
+		return "", mdlerrors.NewUnsupported("object type for describe: " + objectType)
 	}
 
 	if err != nil {
@@ -669,7 +670,7 @@ func (e *Executor) captureDescribe(objectType string, qualifiedName string) (str
 func (e *Executor) captureDescribeParallel(objectType string, qualifiedName string) (string, error) {
 	parts := strings.SplitN(qualifiedName, ".", 2)
 	if len(parts) != 2 {
-		return "", fmt.Errorf("invalid qualified name: %s", qualifiedName)
+		return "", mdlerrors.NewValidationf("invalid qualified name: %s", qualifiedName)
 	}
 	qn := ast.QualifiedName{Module: parts[0], Name: parts[1]}
 
@@ -696,7 +697,7 @@ func (e *Executor) captureDescribeParallel(objectType string, qualifiedName stri
 	case "WORKFLOW":
 		err = local.describeWorkflow(qn)
 	default:
-		return "", fmt.Errorf("unsupported object type for describe: %s", objectType)
+		return "", mdlerrors.NewUnsupported("object type for describe: " + objectType)
 	}
 
 	if err != nil {
@@ -743,7 +744,7 @@ func (e *Executor) PreWarmCache() {
 // execSearch handles SEARCH 'query' command.
 func (e *Executor) execSearch(stmt *ast.SearchStmt) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	// Ensure catalog is built (at least full mode for strings table)
@@ -805,7 +806,7 @@ func escapeFTSQuery(q string) string {
 // Format can be: "table" (default), "names" (just qualified names), "json"
 func (e *Executor) Search(query, format string) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	// Ensure catalog is built (at least full mode for strings table)

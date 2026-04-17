@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/model"
 	"github.com/mendixlabs/mxcli/sdk/mpr"
 )
@@ -15,12 +16,12 @@ import (
 // showImportMappings prints a table of all import mapping documents.
 func (e *Executor) showImportMappings(inModule string) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	all, err := e.reader.ListImportMappings()
 	if err != nil {
-		return fmt.Errorf("failed to list import mappings: %w", err)
+		return mdlerrors.NewBackend("list import mappings", err)
 	}
 
 	h, err := e.getHierarchy()
@@ -78,12 +79,12 @@ func (e *Executor) showImportMappings(inModule string) error {
 // describeImportMapping prints the MDL representation of an import mapping.
 func (e *Executor) describeImportMapping(name ast.QualifiedName) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	im, err := e.reader.GetImportMappingByQualifiedName(name.Module, name.Name)
 	if err != nil {
-		return fmt.Errorf("import mapping %s not found", name)
+		return mdlerrors.NewNotFoundMsg("import mapping", name.String(), err.Error())
 	}
 
 	if im.Documentation != "" {
@@ -186,12 +187,12 @@ func printImportMappingElement(e *Executor, elem *model.ImportMappingElement, de
 // execCreateImportMapping creates a new import mapping.
 func (e *Executor) execCreateImportMapping(s *ast.CreateImportMappingStmt) error {
 	if e.writer == nil {
-		return fmt.Errorf("not connected to a project in write mode")
+		return mdlerrors.NewNotConnectedWrite()
 	}
 
 	module, err := e.findModule(s.Name.Module)
 	if err != nil {
-		return fmt.Errorf("module %s not found", s.Name.Module)
+		return mdlerrors.NewNotFound("module", s.Name.Module)
 	}
 	containerID := module.ID
 
@@ -224,7 +225,7 @@ func (e *Executor) execCreateImportMapping(s *ast.CreateImportMappingStmt) error
 	}
 
 	if err := e.writer.CreateImportMapping(im); err != nil {
-		return fmt.Errorf("failed to create import mapping: %w", err)
+		return mdlerrors.NewBackend("create import mapping", err)
 	}
 
 	if !e.quiet {
@@ -371,16 +372,16 @@ func resolveAttributeType(entityQN, attrName string, reader *mpr.Reader) string 
 // execDropImportMapping deletes an import mapping.
 func (e *Executor) execDropImportMapping(s *ast.DropImportMappingStmt) error {
 	if e.writer == nil {
-		return fmt.Errorf("not connected to a project in write mode")
+		return mdlerrors.NewNotConnectedWrite()
 	}
 
 	im, err := e.reader.GetImportMappingByQualifiedName(s.Name.Module, s.Name.Name)
 	if err != nil {
-		return fmt.Errorf("import mapping %s not found", s.Name)
+		return mdlerrors.NewNotFoundMsg("import mapping", s.Name.String(), err.Error())
 	}
 
 	if err := e.writer.DeleteImportMapping(im.ID); err != nil {
-		return fmt.Errorf("failed to drop import mapping: %w", err)
+		return mdlerrors.NewBackend("drop import mapping", err)
 	}
 
 	if !e.quiet {

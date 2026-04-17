@@ -10,6 +10,7 @@ import (
 	"unicode"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/sdk/mpr"
 )
 
@@ -17,7 +18,7 @@ import (
 func (e *Executor) showJsonStructures(moduleName string) error {
 	structures, err := e.reader.ListJsonStructures()
 	if err != nil {
-		return fmt.Errorf("failed to list JSON structures: %w", err)
+		return mdlerrors.NewBackend("list JSON structures", err)
 	}
 
 	h, err := e.getHierarchy()
@@ -72,7 +73,7 @@ func (e *Executor) showJsonStructures(moduleName string) error {
 func (e *Executor) describeJsonStructure(name ast.QualifiedName) error {
 	js := e.findJsonStructure(name.Module, name.Name)
 	if js == nil {
-		return fmt.Errorf("JSON structure not found: %s", name)
+		return mdlerrors.NewNotFound("JSON structure", name.String())
 	}
 
 	h, err := e.getHierarchy()
@@ -173,7 +174,7 @@ func capitalizeFirstRune(s string) string {
 // execCreateJsonStructure handles CREATE [OR REPLACE] JSON STRUCTURE statements.
 func (e *Executor) execCreateJsonStructure(s *ast.CreateJsonStructureStmt) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	// Find or auto-create module
@@ -187,7 +188,7 @@ func (e *Executor) execCreateJsonStructure(s *ast.CreateJsonStructureStmt) error
 	if s.Folder != "" {
 		folderID, err := e.resolveFolder(module.ID, s.Folder)
 		if err != nil {
-			return fmt.Errorf("failed to resolve folder %s: %w", s.Folder, err)
+			return mdlerrors.NewBackend("resolve folder "+s.Folder, err)
 		}
 		containerID = folderID
 	}
@@ -198,17 +199,17 @@ func (e *Executor) execCreateJsonStructure(s *ast.CreateJsonStructureStmt) error
 		if s.CreateOrReplace {
 			// Delete existing before recreating
 			if err := e.writer.DeleteJsonStructure(string(existing.ID)); err != nil {
-				return fmt.Errorf("failed to delete existing JSON structure: %w", err)
+				return mdlerrors.NewBackend("delete existing JSON structure", err)
 			}
 		} else {
-			return fmt.Errorf("JSON structure already exists: %s.%s", s.Name.Module, s.Name.Name)
+			return mdlerrors.NewAlreadyExists("JSON structure", s.Name.Module+"."+s.Name.Name)
 		}
 	}
 
 	// Build element tree from JSON snippet, applying custom name mappings
 	elements, err := mpr.BuildJsonElementsFromSnippet(s.JsonSnippet, s.CustomNameMap)
 	if err != nil {
-		return fmt.Errorf("failed to build element tree: %w", err)
+		return mdlerrors.NewBackend("build element tree", err)
 	}
 
 	// For CREATE OR REPLACE, keep original folder unless a new one is specified
@@ -225,7 +226,7 @@ func (e *Executor) execCreateJsonStructure(s *ast.CreateJsonStructureStmt) error
 	}
 
 	if err := e.writer.CreateJsonStructure(js); err != nil {
-		return fmt.Errorf("failed to create JSON structure: %w", err)
+		return mdlerrors.NewBackend("create JSON structure", err)
 	}
 
 	// Invalidate hierarchy cache
@@ -242,16 +243,16 @@ func (e *Executor) execCreateJsonStructure(s *ast.CreateJsonStructureStmt) error
 // execDropJsonStructure handles DROP JSON STRUCTURE statements.
 func (e *Executor) execDropJsonStructure(s *ast.DropJsonStructureStmt) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	js := e.findJsonStructure(s.Name.Module, s.Name.Name)
 	if js == nil {
-		return fmt.Errorf("JSON structure not found: %s", s.Name)
+		return mdlerrors.NewNotFound("JSON structure", s.Name.String())
 	}
 
 	if err := e.writer.DeleteJsonStructure(string(js.ID)); err != nil {
-		return fmt.Errorf("failed to delete JSON structure: %w", err)
+		return mdlerrors.NewBackend("delete JSON structure", err)
 	}
 
 	fmt.Fprintf(e.output, "Dropped JSON structure: %s\n", s.Name)

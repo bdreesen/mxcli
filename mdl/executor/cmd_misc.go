@@ -11,17 +11,18 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/mdl/visitor"
 )
 
 // ErrExit is a sentinel error indicating clean script/session termination.
 // Use errors.Is(err, ErrExit) to detect exit requests.
-var ErrExit = errors.New("exit")
+var ErrExit = mdlerrors.ErrExit
 
 // execUpdate handles UPDATE statements (refresh from disk).
 func (e *Executor) execUpdate() error {
 	if e.mprPath == "" {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	// Reconnect to refresh
@@ -323,7 +324,7 @@ Statement Terminator:
 // showVersion displays Mendix project version information.
 func (e *Executor) showVersion() error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	pv := e.reader.ProjectVersion()
@@ -352,7 +353,7 @@ func (e *Executor) execExecuteScript(s *ast.ExecuteScriptStmt) error {
 	if !filepath.IsAbs(scriptPath) {
 		cwd, err := os.Getwd()
 		if err != nil {
-			return fmt.Errorf("failed to get current directory: %w", err)
+			return mdlerrors.NewBackend("get current directory", err)
 		}
 		scriptPath = filepath.Join(cwd, scriptPath)
 	}
@@ -360,7 +361,7 @@ func (e *Executor) execExecuteScript(s *ast.ExecuteScriptStmt) error {
 	// Read the script file
 	content, err := os.ReadFile(scriptPath)
 	if err != nil {
-		return fmt.Errorf("failed to read script file '%s': %w", s.Path, err)
+		return mdlerrors.NewBackend("read script file '"+s.Path+"'", err)
 	}
 
 	// Pre-process: remove "/" statement separators (SQL*Plus style)
@@ -373,7 +374,7 @@ func (e *Executor) execExecuteScript(s *ast.ExecuteScriptStmt) error {
 		for _, err := range errs {
 			fmt.Fprintf(e.output, "Parse error in %s: %v\n", s.Path, err)
 		}
-		return fmt.Errorf("script '%s' has parse errors", s.Path)
+		return mdlerrors.NewValidationf("script '%s' has parse errors", s.Path)
 	}
 
 	// Execute all statements in the script

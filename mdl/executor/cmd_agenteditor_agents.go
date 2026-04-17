@@ -12,18 +12,19 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/sdk/agenteditor"
 )
 
 // showAgentEditorAgents handles SHOW AGENTS [IN module].
 func (e *Executor) showAgentEditorAgents(moduleName string) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	agents, err := e.reader.ListAgentEditorAgents()
 	if err != nil {
-		return fmt.Errorf("failed to list agents: %w", err)
+		return mdlerrors.NewBackend("list agents", err)
 	}
 
 	h, err := e.getHierarchy()
@@ -64,12 +65,12 @@ func (e *Executor) showAgentEditorAgents(moduleName string) error {
 // round-trippable CREATE AGENT statement reflecting the Contents JSON.
 func (e *Executor) describeAgentEditorAgent(name ast.QualifiedName) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	a := e.findAgentEditorAgent(name.Module, name.Name)
 	if a == nil {
-		return fmt.Errorf("agent not found: %s", name)
+		return mdlerrors.NewNotFound("agent", name.String())
 	}
 
 	h, err := e.getHierarchy()

@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/model"
 	"github.com/mendixlabs/mxcli/sdk/javaactions"
 	"github.com/mendixlabs/mxcli/sdk/mpr"
@@ -21,13 +22,13 @@ func (e *Executor) showJavaActions(moduleName string) error {
 	// Get hierarchy for module/folder resolution
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	// Get all Java actions
 	javaActions, err := e.reader.ListJavaActions()
 	if err != nil {
-		return fmt.Errorf("failed to list java actions: %w", err)
+		return mdlerrors.NewBackend("list java actions", err)
 	}
 
 	// Collect rows
@@ -69,7 +70,7 @@ func (e *Executor) describeJavaAction(name ast.QualifiedName) error {
 	qualifiedName := name.Module + "." + name.Name
 	ja, err := e.reader.ReadJavaActionByName(qualifiedName)
 	if err != nil {
-		return fmt.Errorf("java action not found: %s", qualifiedName)
+		return mdlerrors.NewNotFound("java action", qualifiedName)
 	}
 
 	// Generate MDL-style output for CREATE JAVA ACTION format
@@ -247,19 +248,19 @@ func formatJavaActionReturnType(t javaactions.CodeActionReturnType) string {
 // execDropJavaAction handles DROP JAVA ACTION statements.
 func (e *Executor) execDropJavaAction(s *ast.DropJavaActionStmt) error {
 	if e.writer == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	// Get hierarchy for module/folder resolution
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	// Find and delete the Java action
 	jas, err := e.reader.ListJavaActions()
 	if err != nil {
-		return fmt.Errorf("failed to list java actions: %w", err)
+		return mdlerrors.NewBackend("list java actions", err)
 	}
 
 	for _, ja := range jas {
@@ -267,32 +268,32 @@ func (e *Executor) execDropJavaAction(s *ast.DropJavaActionStmt) error {
 		modName := h.GetModuleName(modID)
 		if modName == s.Name.Module && ja.Name == s.Name.Name {
 			if err := e.writer.DeleteJavaAction(ja.ID); err != nil {
-				return fmt.Errorf("failed to delete java action: %w", err)
+				return mdlerrors.NewBackend("delete java action", err)
 			}
 			fmt.Fprintf(e.output, "Dropped java action: %s.%s\n", s.Name.Module, s.Name.Name)
 			return nil
 		}
 	}
 
-	return fmt.Errorf("java action not found: %s.%s", s.Name.Module, s.Name.Name)
+	return mdlerrors.NewNotFound("java action", s.Name.Module+"."+s.Name.Name)
 }
 
 // execCreateJavaAction handles CREATE JAVA ACTION statements.
 func (e *Executor) execCreateJavaAction(s *ast.CreateJavaActionStmt) error {
 	if e.writer == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	// Get hierarchy for module/folder resolution
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	// Find the module
 	modules, err := e.reader.ListModules()
 	if err != nil {
-		return fmt.Errorf("failed to get modules: %w", err)
+		return mdlerrors.NewBackend("get modules", err)
 	}
 
 	var containerID model.ID
@@ -305,19 +306,19 @@ func (e *Executor) execCreateJavaAction(s *ast.CreateJavaActionStmt) error {
 		}
 	}
 	if containerID == "" {
-		return fmt.Errorf("module not found: %s", s.Name.Module)
+		return mdlerrors.NewNotFound("module", s.Name.Module)
 	}
 
 	// Check if Java action already exists
 	jas, err := e.reader.ListJavaActions()
 	if err != nil {
-		return fmt.Errorf("failed to list java actions: %w", err)
+		return mdlerrors.NewBackend("list java actions", err)
 	}
 	for _, existing := range jas {
 		existingModID := h.FindModuleID(existing.ContainerID)
 		existingModName := h.GetModuleName(existingModID)
 		if existingModName == s.Name.Module && existing.Name == s.Name.Name {
-			return fmt.Errorf("java action already exists: %s.%s", s.Name.Module, s.Name.Name)
+			return mdlerrors.NewAlreadyExists("java action", s.Name.Module+"."+s.Name.Name)
 		}
 	}
 
@@ -410,13 +411,13 @@ func (e *Executor) execCreateJavaAction(s *ast.CreateJavaActionStmt) error {
 
 	// Create in MPR
 	if err := e.writer.CreateJavaAction(ja); err != nil {
-		return fmt.Errorf("failed to create java action: %w", err)
+		return mdlerrors.NewBackend("create java action", err)
 	}
 
 	// Write Java source file if code is provided
 	if s.JavaCode != "" {
 		if err := e.writer.WriteJavaSourceFile(moduleName, s.Name.Name, s.JavaCode, ja.Parameters, ja.ReturnType); err != nil {
-			return fmt.Errorf("failed to write java source file: %w", err)
+			return mdlerrors.NewBackend("write java source file", err)
 		}
 	}
 

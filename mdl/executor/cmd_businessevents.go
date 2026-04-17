@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/model"
 	"github.com/mendixlabs/mxcli/sdk/mpr"
 )
@@ -14,12 +15,12 @@ import (
 // showBusinessEventServices displays a table of all business event service documents.
 func (e *Executor) showBusinessEventServices(inModule string) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	services, err := e.reader.ListBusinessEventServices()
 	if err != nil {
-		return fmt.Errorf("failed to list business event services: %w", err)
+		return mdlerrors.NewBackend("list business event services", err)
 	}
 
 	h, err := e.getHierarchy()
@@ -94,12 +95,12 @@ func (e *Executor) showBusinessEventClients(inModule string) error {
 // showBusinessEvents displays a table of individual messages across all business event services.
 func (e *Executor) showBusinessEvents(inModule string) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	services, err := e.reader.ListBusinessEventServices()
 	if err != nil {
-		return fmt.Errorf("failed to list business event services: %w", err)
+		return mdlerrors.NewBackend("list business event services", err)
 	}
 
 	h, err := e.getHierarchy()
@@ -171,12 +172,12 @@ func (e *Executor) showBusinessEvents(inModule string) error {
 // describeBusinessEventService outputs the full MDL description of a business event service.
 func (e *Executor) describeBusinessEventService(name ast.QualifiedName) error {
 	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+		return mdlerrors.NewNotConnected()
 	}
 
 	services, err := e.reader.ListBusinessEventServices()
 	if err != nil {
-		return fmt.Errorf("failed to list business event services: %w", err)
+		return mdlerrors.NewBackend("list business event services", err)
 	}
 
 	// Use hierarchy to resolve container IDs to module names
@@ -199,7 +200,7 @@ func (e *Executor) describeBusinessEventService(name ast.QualifiedName) error {
 	}
 
 	if found == nil {
-		return fmt.Errorf("business event service not found: %s", name)
+		return mdlerrors.NewNotFound("business event service", name.String())
 	}
 
 	// Output MDL CREATE statement
@@ -261,20 +262,20 @@ func (e *Executor) describeBusinessEventService(name ast.QualifiedName) error {
 // createBusinessEventService creates a new business event service from an AST statement.
 func (e *Executor) createBusinessEventService(stmt *ast.CreateBusinessEventServiceStmt) error {
 	if e.writer == nil {
-		return fmt.Errorf("not connected to a project (read-only mode)")
+		return mdlerrors.NewNotConnectedWrite()
 	}
 
 	moduleName := stmt.Name.Module
 	module, err := e.findModule(moduleName)
 	if err != nil {
-		return fmt.Errorf("module not found: %s", moduleName)
+		return mdlerrors.NewNotFound("module", moduleName)
 	}
 
 	// Check for existing service with same name (if not CREATE OR REPLACE)
 	existingServices, _ := e.reader.ListBusinessEventServices()
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	for _, existing := range existingServices {
@@ -284,10 +285,10 @@ func (e *Executor) createBusinessEventService(stmt *ast.CreateBusinessEventServi
 			if stmt.CreateOrReplace {
 				// Delete existing
 				if err := e.writer.DeleteBusinessEventService(existing.ID); err != nil {
-					return fmt.Errorf("failed to delete existing service: %w", err)
+					return mdlerrors.NewBackend("delete existing service", err)
 				}
 			} else {
-				return fmt.Errorf("business event service already exists: %s.%s (use CREATE OR REPLACE to overwrite)", moduleName, stmt.Name.Name)
+				return mdlerrors.NewAlreadyExistsMsg("business event service", moduleName+"."+stmt.Name.Name, fmt.Sprintf("business event service already exists: %s.%s (use CREATE OR REPLACE to overwrite)", moduleName, stmt.Name.Name))
 			}
 		}
 	}
@@ -297,7 +298,7 @@ func (e *Executor) createBusinessEventService(stmt *ast.CreateBusinessEventServi
 	if stmt.Folder != "" {
 		folderID, err := e.resolveFolder(module.ID, stmt.Folder)
 		if err != nil {
-			return fmt.Errorf("failed to resolve folder '%s': %w", stmt.Folder, err)
+			return mdlerrors.NewBackend(fmt.Sprintf("resolve folder '%s'", stmt.Folder), err)
 		}
 		containerID = folderID
 	}
@@ -365,7 +366,7 @@ func (e *Executor) createBusinessEventService(stmt *ast.CreateBusinessEventServi
 
 	// Write to project
 	if err := e.writer.CreateBusinessEventService(svc); err != nil {
-		return fmt.Errorf("failed to create business event service: %w", err)
+		return mdlerrors.NewBackend("create business event service", err)
 	}
 
 	fmt.Fprintf(e.output, "Created business event service: %s.%s\n", moduleName, stmt.Name.Name)
@@ -375,17 +376,17 @@ func (e *Executor) createBusinessEventService(stmt *ast.CreateBusinessEventServi
 // dropBusinessEventService deletes a business event service.
 func (e *Executor) dropBusinessEventService(stmt *ast.DropBusinessEventServiceStmt) error {
 	if e.writer == nil {
-		return fmt.Errorf("not connected to a project (read-only mode)")
+		return mdlerrors.NewNotConnectedWrite()
 	}
 
 	services, err := e.reader.ListBusinessEventServices()
 	if err != nil {
-		return fmt.Errorf("failed to list business event services: %w", err)
+		return mdlerrors.NewBackend("list business event services", err)
 	}
 
 	h, err := e.getHierarchy()
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
 	for _, svc := range services {
@@ -393,14 +394,14 @@ func (e *Executor) dropBusinessEventService(stmt *ast.DropBusinessEventServiceSt
 		moduleName := h.GetModuleName(modID)
 		if strings.EqualFold(moduleName, stmt.Name.Module) && strings.EqualFold(svc.Name, stmt.Name.Name) {
 			if err := e.writer.DeleteBusinessEventService(svc.ID); err != nil {
-				return fmt.Errorf("failed to delete business event service: %w", err)
+				return mdlerrors.NewBackend("delete business event service", err)
 			}
 			fmt.Fprintf(e.output, "Dropped business event service: %s.%s\n", moduleName, svc.Name)
 			return nil
 		}
 	}
 
-	return fmt.Errorf("business event service not found: %s", stmt.Name)
+	return mdlerrors.NewNotFound("business event service", stmt.Name.String())
 }
 
 // generateChannelName generates a hex channel name (similar to Mendix Studio Pro).

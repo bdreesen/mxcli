@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/sdk/versions"
 )
 
@@ -41,7 +42,7 @@ func (e *Executor) checkFeature(area, name, statement, hint string) error {
 	if hint != "" {
 		msg += "\n  hint: " + hint
 	}
-	return fmt.Errorf("%s", msg)
+	return mdlerrors.NewUnsupported(msg)
 }
 
 // execShowFeatures handles SHOW FEATURES, SHOW FEATURES FOR VERSION, and
@@ -49,7 +50,7 @@ func (e *Executor) checkFeature(area, name, statement, hint string) error {
 func (e *Executor) execShowFeatures(s *ast.ShowFeaturesStmt) error {
 	reg, err := versions.Load()
 	if err != nil {
-		return fmt.Errorf("failed to load version registry: %w", err)
+		return mdlerrors.NewBackend("load version registry", err)
 	}
 
 	// Determine the project version to use.
@@ -60,7 +61,7 @@ func (e *Executor) execShowFeatures(s *ast.ShowFeaturesStmt) error {
 		// SHOW FEATURES ADDED SINCE x.y
 		sinceV, err := versions.ParseSemVer(s.AddedSince)
 		if err != nil {
-			return fmt.Errorf("invalid version %q: %w", s.AddedSince, err)
+			return mdlerrors.NewBackend("parse version "+s.AddedSince, err)
 		}
 		return e.showFeaturesAddedSince(reg, sinceV)
 
@@ -68,13 +69,13 @@ func (e *Executor) execShowFeatures(s *ast.ShowFeaturesStmt) error {
 		// SHOW FEATURES FOR VERSION x.y — no project connection needed
 		pv, err = versions.ParseSemVer(s.ForVersion)
 		if err != nil {
-			return fmt.Errorf("invalid version %q: %w", s.ForVersion, err)
+			return mdlerrors.NewBackend("parse version "+s.ForVersion, err)
 		}
 
 	default:
 		// SHOW FEATURES [IN area] — requires project connection
 		if e.reader == nil {
-			return fmt.Errorf("not connected to a project\n  hint: use SHOW FEATURES FOR VERSION x.y without a project connection")
+			return mdlerrors.NewNotConnected()
 		}
 		rpv := e.reader.ProjectVersion()
 		pv = versions.SemVer{Major: rpv.MajorVersion, Minor: rpv.MinorVersion, Patch: rpv.PatchVersion}
