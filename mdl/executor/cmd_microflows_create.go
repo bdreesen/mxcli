@@ -24,7 +24,8 @@ func isBuiltinModuleEntity(moduleName string) bool {
 
 // execCreateMicroflow handles CREATE MICROFLOW statements.
 // loadRestServices returns all consumed REST services, or nil if no reader.
-func (e *Executor) loadRestServices() ([]*model.ConsumedRestService, error) {
+func loadRestServices(ctx *ExecContext) ([]*model.ConsumedRestService, error) {
+	e := ctx.executor
 	if e.reader == nil {
 		return nil, nil
 	}
@@ -32,7 +33,8 @@ func (e *Executor) loadRestServices() ([]*model.ConsumedRestService, error) {
 	return svcs, err
 }
 
-func (e *Executor) execCreateMicroflow(s *ast.CreateMicroflowStmt) error {
+func execCreateMicroflow(ctx *ExecContext, s *ast.CreateMicroflowStmt) error {
+	e := ctx.executor
 	if e.writer == nil {
 		return mdlerrors.NewNotConnectedWrite()
 	}
@@ -202,7 +204,7 @@ func (e *Executor) execCreateMicroflow(s *ast.CreateMicroflowStmt) error {
 	// Get hierarchy for resolving page/microflow references
 	hierarchy, _ := e.getHierarchy()
 
-	restServices, _ := e.loadRestServices()
+	restServices, _ := loadRestServices(ctx)
 
 	builder := &flowBuilder{
 		posX:         200,
@@ -235,12 +237,12 @@ func (e *Executor) execCreateMicroflow(s *ast.CreateMicroflowStmt) error {
 		if err := e.writer.UpdateMicroflow(mf); err != nil {
 			return mdlerrors.NewBackend("update microflow", err)
 		}
-		fmt.Fprintf(e.output, "Replaced microflow: %s.%s\n", s.Name.Module, s.Name.Name)
+		fmt.Fprintf(ctx.Output, "Replaced microflow: %s.%s\n", s.Name.Module, s.Name.Name)
 	} else {
 		if err := e.writer.CreateMicroflow(mf); err != nil {
 			return mdlerrors.NewBackend("create microflow", err)
 		}
-		fmt.Fprintf(e.output, "Created microflow: %s.%s\n", s.Name.Module, s.Name.Name)
+		fmt.Fprintf(ctx.Output, "Created microflow: %s.%s\n", s.Name.Module, s.Name.Name)
 	}
 
 	// Track the created microflow so it can be resolved by subsequent page creations

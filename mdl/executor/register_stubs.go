@@ -86,10 +86,10 @@ func registerAssociationHandlers(r *Registry) {
 
 func registerMicroflowHandlers(r *Registry) {
 	r.Register(&ast.CreateMicroflowStmt{}, func(ctx *ExecContext, stmt ast.Statement) error {
-		return ctx.executor.execCreateMicroflow(stmt.(*ast.CreateMicroflowStmt))
+		return execCreateMicroflow(ctx, stmt.(*ast.CreateMicroflowStmt))
 	})
 	r.Register(&ast.DropMicroflowStmt{}, func(ctx *ExecContext, stmt ast.Statement) error {
-		return ctx.executor.execDropMicroflow(stmt.(*ast.DropMicroflowStmt))
+		return execDropMicroflow(ctx, stmt.(*ast.DropMicroflowStmt))
 	})
 }
 
