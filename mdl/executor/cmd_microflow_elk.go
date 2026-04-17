@@ -63,7 +63,7 @@ type microflowELKEdge struct {
 // microflowELK generates a JSON graph of a microflow for rendering with ELK.js.
 func microflowELK(ctx *ExecContext, name string) error {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 

@@ -22,7 +22,7 @@ import (
 func execShowDesignProperties(ctx *ExecContext, s *ast.ShowDesignPropertiesStmt) error {
 	e := ctx.executor
 
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 
@@ -115,7 +115,7 @@ func printOneProperty(ctx *ExecContext, p ThemeProperty) {
 func execDescribeStyling(ctx *ExecContext, s *ast.DescribeStylingStmt) error {
 	e := ctx.executor
 
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 
@@ -257,12 +257,11 @@ func collectStyledWidgets(widgets []rawWidget, widgetName string) []rawWidget {
 // ============================================================================
 
 func execAlterStyling(ctx *ExecContext, s *ast.AlterStylingStmt) error {
-	e := ctx.executor
 
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 

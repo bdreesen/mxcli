@@ -110,7 +110,7 @@ func describeDataTransformer(ctx *ExecContext, name ast.QualifiedName) error {
 func execCreateDataTransformer(ctx *ExecContext, s *ast.CreateDataTransformerStmt) error {
 	e := ctx.executor
 
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
@@ -154,7 +154,7 @@ func execCreateDataTransformer(ctx *ExecContext, s *ast.CreateDataTransformerStm
 func execDropDataTransformer(ctx *ExecContext, s *ast.DropDataTransformerStmt) error {
 	e := ctx.executor
 
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 

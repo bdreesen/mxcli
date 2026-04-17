@@ -17,7 +17,7 @@ import (
 // showExportMappings prints a table of all export mapping documents.
 func showExportMappings(ctx *ExecContext, inModule string) error {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 
@@ -81,7 +81,7 @@ func showExportMappings(ctx *ExecContext, inModule string) error {
 // describeExportMapping prints the MDL representation of an export mapping.
 func describeExportMapping(ctx *ExecContext, name ast.QualifiedName) error {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 
@@ -180,7 +180,7 @@ func printExportMappingElement(w io.Writer, elem *model.ExportMappingElement, de
 // execCreateExportMapping creates a new export mapping.
 func execCreateExportMapping(ctx *ExecContext, s *ast.CreateExportMappingStmt) error {
 	e := ctx.executor
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
@@ -365,7 +365,7 @@ func buildExportMappingElementModel(moduleName string, def *ast.ExportMappingEle
 // execDropExportMapping deletes an export mapping.
 func execDropExportMapping(ctx *ExecContext, s *ast.DropExportMappingStmt) error {
 	e := ctx.executor
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 

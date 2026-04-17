@@ -19,7 +19,7 @@ import (
 // showAgentEditorAgents handles SHOW AGENTS [IN module].
 func showAgentEditorAgents(ctx *ExecContext, moduleName string) error {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 
@@ -65,8 +65,7 @@ func showAgentEditorAgents(ctx *ExecContext, moduleName string) error {
 // describeAgentEditorAgent handles DESCRIBE AGENT Module.Name. Emits a
 // round-trippable CREATE AGENT statement reflecting the Contents JSON.
 func describeAgentEditorAgent(ctx *ExecContext, name ast.QualifiedName) error {
-	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 

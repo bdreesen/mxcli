@@ -18,8 +18,7 @@ import (
 // describeMermaid generates a Mermaid diagram for the given object type and name.
 // Supported types: entity (renders full domain model), microflow, page.
 func describeMermaid(ctx *ExecContext, objectType, name string) error {
-	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 

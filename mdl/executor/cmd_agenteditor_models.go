@@ -19,7 +19,7 @@ import (
 // showAgentEditorModels handles SHOW MODELS [IN module].
 func showAgentEditorModels(ctx *ExecContext, moduleName string) error {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 
@@ -66,8 +66,7 @@ func showAgentEditorModels(ctx *ExecContext, moduleName string) error {
 // describeAgentEditorModel handles DESCRIBE MODEL Module.Name.
 // Emits a round-trippable CREATE MODEL statement.
 func describeAgentEditorModel(ctx *ExecContext, name ast.QualifiedName) error {
-	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 

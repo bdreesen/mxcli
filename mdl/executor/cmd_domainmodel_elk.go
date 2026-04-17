@@ -69,7 +69,7 @@ const (
 // If name contains a dot (e.g. "Module.Entity"), it delegates to entityFocusELK for a focused view.
 func domainModelELK(ctx *ExecContext, name string) error {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 
@@ -158,7 +158,7 @@ func domainModelELK(ctx *ExecContext, name string) error {
 // and entities directly connected to it via associations or generalization.
 func entityFocusELK(ctx *ExecContext, qualifiedName string) error {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 

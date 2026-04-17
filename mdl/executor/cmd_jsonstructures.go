@@ -175,7 +175,7 @@ func capitalizeFirstRune(s string) string {
 // execCreateJsonStructure handles CREATE [OR REPLACE] JSON STRUCTURE statements.
 func execCreateJsonStructure(ctx *ExecContext, s *ast.CreateJsonStructureStmt) error {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 
@@ -245,7 +245,7 @@ func execCreateJsonStructure(ctx *ExecContext, s *ast.CreateJsonStructureStmt) e
 // execDropJsonStructure handles DROP JSON STRUCTURE statements.
 func execDropJsonStructure(ctx *ExecContext, s *ast.DropJsonStructureStmt) error {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 

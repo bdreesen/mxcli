@@ -114,7 +114,7 @@ func (h *ContainerHierarchy) GetQualifiedName(containerID model.ID, name string)
 func getHierarchy(ctx *ExecContext) (*ContainerHierarchy, error) {
 	e := ctx.executor
 	// Ensure cache exists
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return nil, nil
 	}
 	if ctx.Cache == nil {

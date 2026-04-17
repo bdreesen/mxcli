@@ -16,9 +16,8 @@ import (
 
 // execShowWidgets handles the SHOW WIDGETS statement.
 func execShowWidgets(ctx *ExecContext, s *ast.ShowWidgetsStmt) error {
-	e := ctx.executor
 
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 
@@ -81,12 +80,10 @@ func execShowWidgets(ctx *ExecContext, s *ast.ShowWidgetsStmt) error {
 
 // execUpdateWidgets handles the UPDATE WIDGETS statement.
 func execUpdateWidgets(ctx *ExecContext, s *ast.UpdateWidgetsStmt) error {
-	e := ctx.executor
-
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 

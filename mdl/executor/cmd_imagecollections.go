@@ -17,7 +17,7 @@ import (
 // execCreateImageCollection handles CREATE IMAGE COLLECTION statements.
 func execCreateImageCollection(ctx *ExecContext, s *ast.CreateImageCollectionStmt) error {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 
@@ -77,7 +77,7 @@ func execCreateImageCollection(ctx *ExecContext, s *ast.CreateImageCollectionStm
 // execDropImageCollection handles DROP IMAGE COLLECTION statements.
 func execDropImageCollection(ctx *ExecContext, s *ast.DropImageCollectionStmt) error {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 

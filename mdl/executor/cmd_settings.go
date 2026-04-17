@@ -15,7 +15,7 @@ import (
 // showSettings displays an overview table of all settings parts.
 func showSettings(ctx *ExecContext) error {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 
@@ -86,7 +86,7 @@ func showSettings(ctx *ExecContext) error {
 // describeSettings outputs the full MDL description of all settings.
 func describeSettings(ctx *ExecContext) error {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 
@@ -172,7 +172,7 @@ func describeSettings(ctx *ExecContext) error {
 // alterSettings modifies project settings based on ALTER SETTINGS statement.
 func alterSettings(ctx *ExecContext, stmt *ast.AlterSettingsStmt) error {
 	e := ctx.executor
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
@@ -398,7 +398,7 @@ func alterSettingsConstant(ctx *ExecContext, ps *model.ProjectSettings, stmt *as
 // createConfiguration handles CREATE CONFIGURATION 'name' [properties...].
 func createConfiguration(ctx *ExecContext, stmt *ast.CreateConfigurationStmt) error {
 	e := ctx.executor
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
@@ -468,7 +468,7 @@ func createConfiguration(ctx *ExecContext, stmt *ast.CreateConfigurationStmt) er
 // dropConfiguration handles DROP CONFIGURATION 'name'.
 func dropConfiguration(ctx *ExecContext, stmt *ast.DropConfigurationStmt) error {
 	e := ctx.executor
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 

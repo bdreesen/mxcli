@@ -31,7 +31,7 @@ import (
 //   - A range "base..target" — compares two revisions (no working tree)
 func diffLocal(ctx *ExecContext, ref string, opts DiffOptions) error {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 
@@ -521,7 +521,7 @@ func buildNameLookups(ctx *ExecContext) (map[model.ID]string, map[model.ID]strin
 	e := ctx.executor
 	entityNames := make(map[model.ID]string)
 	microflowNames := make(map[model.ID]string)
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return entityNames, microflowNames
 	}
 	h, err := getHierarchy(ctx)

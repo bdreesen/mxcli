@@ -68,8 +68,7 @@ const (
 
 // DiffProgram compares an MDL program against the current project state
 func diffProgram(ctx *ExecContext, prog *ast.Program, opts DiffOptions) error {
-	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 

@@ -91,7 +91,7 @@ func (c *wireframeCounter) next() string {
 // PageWireframeJSON generates wireframe JSON for a page.
 func PageWireframeJSON(ctx *ExecContext, name string) error {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 
@@ -205,7 +205,7 @@ func PageWireframeJSON(ctx *ExecContext, name string) error {
 // SnippetWireframeJSON generates wireframe JSON for a snippet.
 func SnippetWireframeJSON(ctx *ExecContext, name string) error {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 

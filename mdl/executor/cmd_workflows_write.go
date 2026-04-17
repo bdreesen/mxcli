@@ -18,7 +18,7 @@ import (
 // execCreateWorkflow handles CREATE WORKFLOW statements.
 func execCreateWorkflow(ctx *ExecContext, s *ast.CreateWorkflowStmt) error {
 	e := ctx.executor
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
@@ -131,7 +131,7 @@ func execCreateWorkflow(ctx *ExecContext, s *ast.CreateWorkflowStmt) error {
 // execDropWorkflow handles DROP WORKFLOW statements.
 func execDropWorkflow(ctx *ExecContext, s *ast.DropWorkflowStmt) error {
 	e := ctx.executor
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 

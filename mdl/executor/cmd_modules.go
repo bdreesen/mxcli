@@ -17,7 +17,7 @@ import (
 // execCreateModule handles CREATE MODULE statements.
 func execCreateModule(ctx *ExecContext, s *ast.CreateModuleStmt) error {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 
@@ -61,7 +61,7 @@ func execCreateModule(ctx *ExecContext, s *ast.CreateModuleStmt) error {
 // - Constants
 func execDropModule(ctx *ExecContext, s *ast.DropModuleStmt) error {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 
@@ -381,7 +381,7 @@ func getModuleContainers(ctx *ExecContext, moduleID model.ID) map[model.ID]bool 
 // showModules handles SHOW MODULES command.
 func showModules(ctx *ExecContext) error {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 
@@ -575,7 +575,7 @@ func showModules(ctx *ExecContext) error {
 // describeModule handles DESCRIBE MODULE [WITH ALL] command.
 func describeModule(ctx *ExecContext, moduleName string, withAll bool) error {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 

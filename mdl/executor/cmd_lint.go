@@ -16,7 +16,7 @@ import (
 // execLint executes a LINT statement.
 func execLint(ctx *ExecContext, s *ast.LintStmt) error {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 

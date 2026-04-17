@@ -757,7 +757,7 @@ func outputExternalEntityMDL(ctx *ExecContext, entity *domainmodel.Entity, modul
 func execCreateExternalEntity(ctx *ExecContext, s *ast.CreateExternalEntityStmt) error {
 	e := ctx.executor
 
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
@@ -862,7 +862,7 @@ func execCreateExternalEntity(ctx *ExecContext, s *ast.CreateExternalEntityStmt)
 func createODataClient(ctx *ExecContext, stmt *ast.CreateODataClientStmt) error {
 	e := ctx.executor
 
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
@@ -1055,7 +1055,7 @@ func createODataClient(ctx *ExecContext, stmt *ast.CreateODataClientStmt) error 
 func alterODataClient(ctx *ExecContext, stmt *ast.AlterODataClientStmt) error {
 	e := ctx.executor
 
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
@@ -1146,7 +1146,7 @@ func alterODataClient(ctx *ExecContext, stmt *ast.AlterODataClientStmt) error {
 func dropODataClient(ctx *ExecContext, stmt *ast.DropODataClientStmt) error {
 	e := ctx.executor
 
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
@@ -1180,7 +1180,7 @@ func dropODataClient(ctx *ExecContext, stmt *ast.DropODataClientStmt) error {
 func createODataService(ctx *ExecContext, stmt *ast.CreateODataServiceStmt) error {
 	e := ctx.executor
 
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
@@ -1284,7 +1284,7 @@ func createODataService(ctx *ExecContext, stmt *ast.CreateODataServiceStmt) erro
 func alterODataService(ctx *ExecContext, stmt *ast.AlterODataServiceStmt) error {
 	e := ctx.executor
 
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
@@ -1341,7 +1341,7 @@ func alterODataService(ctx *ExecContext, stmt *ast.AlterODataServiceStmt) error 
 func dropODataService(ctx *ExecContext, stmt *ast.DropODataServiceStmt) error {
 	e := ctx.executor
 
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 

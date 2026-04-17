@@ -17,7 +17,7 @@ import (
 // execCreateAssociation handles CREATE ASSOCIATION statements.
 func execCreateAssociation(ctx *ExecContext, s *ast.CreateAssociationStmt) error {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 
@@ -146,7 +146,7 @@ func execCreateAssociation(ctx *ExecContext, s *ast.CreateAssociationStmt) error
 // execAlterAssociation handles ALTER ASSOCIATION statements.
 func execAlterAssociation(ctx *ExecContext, s *ast.AlterAssociationStmt) error {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 
@@ -212,7 +212,7 @@ func execAlterAssociation(ctx *ExecContext, s *ast.AlterAssociationStmt) error {
 // execDropAssociation handles DROP ASSOCIATION statements.
 func execDropAssociation(ctx *ExecContext, s *ast.DropAssociationStmt) error {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 

@@ -18,10 +18,10 @@ import (
 // execAlterPage handles ALTER PAGE/SNIPPET Module.Name { operations }.
 func execAlterPage(ctx *ExecContext, s *ast.AlterPageStmt) error {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 

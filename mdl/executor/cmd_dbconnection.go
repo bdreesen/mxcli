@@ -16,7 +16,7 @@ import (
 func createDatabaseConnection(ctx *ExecContext, stmt *ast.CreateDatabaseConnectionStmt) error {
 	e := ctx.executor
 
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 

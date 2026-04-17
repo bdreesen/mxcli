@@ -326,7 +326,7 @@ Statement Terminator:
 // showVersion displays Mendix project version information.
 func showVersion(ctx *ExecContext) error {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 

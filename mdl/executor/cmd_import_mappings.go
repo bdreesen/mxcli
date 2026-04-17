@@ -17,7 +17,7 @@ import (
 // showImportMappings prints a table of all import mapping documents.
 func showImportMappings(ctx *ExecContext, inModule string) error {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 
@@ -81,7 +81,7 @@ func showImportMappings(ctx *ExecContext, inModule string) error {
 // describeImportMapping prints the MDL representation of an import mapping.
 func describeImportMapping(ctx *ExecContext, name ast.QualifiedName) error {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 
@@ -193,7 +193,7 @@ func printImportMappingElement(w io.Writer, elem *model.ImportMappingElement, de
 // execCreateImportMapping creates a new import mapping.
 func execCreateImportMapping(ctx *ExecContext, s *ast.CreateImportMappingStmt) error {
 	e := ctx.executor
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
@@ -379,7 +379,7 @@ func resolveAttributeType(entityQN, attrName string, reader *mpr.Reader) string 
 // execDropImportMapping deletes an import mapping.
 func execDropImportMapping(ctx *ExecContext, s *ast.DropImportMappingStmt) error {
 	e := ctx.executor
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 

@@ -16,7 +16,7 @@ import (
 func showBusinessEventServices(ctx *ExecContext, inModule string) error {
 	e := ctx.executor
 
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 
@@ -98,7 +98,7 @@ func showBusinessEventClients(ctx *ExecContext, inModule string) error {
 func showBusinessEvents(ctx *ExecContext, inModule string) error {
 	e := ctx.executor
 
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 
@@ -177,7 +177,7 @@ func showBusinessEvents(ctx *ExecContext, inModule string) error {
 func describeBusinessEventService(ctx *ExecContext, name ast.QualifiedName) error {
 	e := ctx.executor
 
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 
@@ -269,7 +269,7 @@ func describeBusinessEventService(ctx *ExecContext, name ast.QualifiedName) erro
 func createBusinessEventService(ctx *ExecContext, stmt *ast.CreateBusinessEventServiceStmt) error {
 	e := ctx.executor
 
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
@@ -385,7 +385,7 @@ func createBusinessEventService(ctx *ExecContext, stmt *ast.CreateBusinessEventS
 func dropBusinessEventService(ctx *ExecContext, stmt *ast.DropBusinessEventServiceStmt) error {
 	e := ctx.executor
 
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 

@@ -18,8 +18,7 @@ import (
 
 // execShowStructure handles SHOW STRUCTURE [DEPTH n] [IN module] [ALL].
 func execShowStructure(ctx *ExecContext, s *ast.ShowStmt) error {
-	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 

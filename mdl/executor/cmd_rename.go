@@ -14,8 +14,7 @@ import (
 
 // execRename handles RENAME statements for all document types.
 func execRename(ctx *ExecContext, s *ast.RenameStmt) error {
-	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 

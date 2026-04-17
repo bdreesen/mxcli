@@ -22,10 +22,10 @@ const bsonArrayMarker = int32(3)
 // execAlterWorkflow handles ALTER WORKFLOW Module.Name { operations }.
 func execAlterWorkflow(ctx *ExecContext, s *ast.AlterWorkflowStmt) error {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 

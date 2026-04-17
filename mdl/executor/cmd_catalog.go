@@ -411,7 +411,7 @@ func buildCatalog(ctx *ExecContext, full bool, source ...bool) error {
 // execRefreshCatalogStmt handles REFRESH CATALOG [FULL] [SOURCE] [FORCE] [BACKGROUND] command.
 func execRefreshCatalogStmt(ctx *ExecContext, stmt *ast.RefreshCatalogStmt) error {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 
@@ -767,8 +767,7 @@ func preWarmCache(ctx *ExecContext) {
 
 // execSearch handles SEARCH 'query' command.
 func execSearch(ctx *ExecContext, stmt *ast.SearchStmt) error {
-	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 
@@ -830,8 +829,7 @@ func escapeFTSQuery(q string) string {
 // search performs a full-text search with the specified output format.
 // Format can be: "table" (default), "names" (just qualified names), "json"
 func search(ctx *ExecContext, query, format string) error {
-	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 

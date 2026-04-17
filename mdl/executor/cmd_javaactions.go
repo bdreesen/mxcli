@@ -250,7 +250,7 @@ func formatJavaActionReturnType(t javaactions.CodeActionReturnType) string {
 // execDropJavaAction handles DROP JAVA ACTION statements.
 func execDropJavaAction(ctx *ExecContext, s *ast.DropJavaActionStmt) error {
 	e := ctx.executor
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
@@ -284,7 +284,7 @@ func execDropJavaAction(ctx *ExecContext, s *ast.DropJavaActionStmt) error {
 // execCreateJavaAction handles CREATE JAVA ACTION statements.
 func execCreateJavaAction(ctx *ExecContext, s *ast.CreateJavaActionStmt) error {
 	e := ctx.executor
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 

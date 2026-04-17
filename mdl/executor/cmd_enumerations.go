@@ -18,7 +18,7 @@ import (
 func execCreateEnumeration(ctx *ExecContext, s *ast.CreateEnumerationStmt) error {
 	e := ctx.executor
 
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 
@@ -115,7 +115,7 @@ func execAlterEnumeration(ctx *ExecContext, s *ast.AlterEnumerationStmt) error {
 func execDropEnumeration(ctx *ExecContext, s *ast.DropEnumerationStmt) error {
 	e := ctx.executor
 
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 

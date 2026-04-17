@@ -9,7 +9,7 @@ import "context"
 // getModuleNames returns a list of all module names for autocomplete.
 func getModuleNames(ctx *ExecContext) []string {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return nil
 	}
 	modules, err := e.reader.ListModules()
@@ -26,7 +26,7 @@ func getModuleNames(ctx *ExecContext) []string {
 // getMicroflowNamesAC returns qualified microflow names, optionally filtered by module.
 func getMicroflowNamesAC(ctx *ExecContext, moduleFilter string) []string {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return nil
 	}
 	h, err := getHierarchy(ctx)
@@ -51,7 +51,7 @@ func getMicroflowNamesAC(ctx *ExecContext, moduleFilter string) []string {
 // getEntityNamesAC returns qualified entity names, optionally filtered by module.
 func getEntityNamesAC(ctx *ExecContext, moduleFilter string) []string {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return nil
 	}
 	h, err := getHierarchy(ctx)
@@ -78,7 +78,7 @@ func getEntityNamesAC(ctx *ExecContext, moduleFilter string) []string {
 // getPageNamesAC returns qualified page names, optionally filtered by module.
 func getPageNamesAC(ctx *ExecContext, moduleFilter string) []string {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return nil
 	}
 	h, err := getHierarchy(ctx)
@@ -103,7 +103,7 @@ func getPageNamesAC(ctx *ExecContext, moduleFilter string) []string {
 // getSnippetNamesAC returns qualified snippet names, optionally filtered by module.
 func getSnippetNamesAC(ctx *ExecContext, moduleFilter string) []string {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return nil
 	}
 	h, err := getHierarchy(ctx)
@@ -128,7 +128,7 @@ func getSnippetNamesAC(ctx *ExecContext, moduleFilter string) []string {
 // getAssociationNamesAC returns qualified association names, optionally filtered by module.
 func getAssociationNamesAC(ctx *ExecContext, moduleFilter string) []string {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return nil
 	}
 	h, err := getHierarchy(ctx)
@@ -155,7 +155,7 @@ func getAssociationNamesAC(ctx *ExecContext, moduleFilter string) []string {
 // getEnumerationNamesAC returns qualified enumeration names, optionally filtered by module.
 func getEnumerationNamesAC(ctx *ExecContext, moduleFilter string) []string {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return nil
 	}
 	h, err := getHierarchy(ctx)
@@ -180,7 +180,7 @@ func getEnumerationNamesAC(ctx *ExecContext, moduleFilter string) []string {
 // getLayoutNamesAC returns qualified layout names, optionally filtered by module.
 func getLayoutNamesAC(ctx *ExecContext, moduleFilter string) []string {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return nil
 	}
 	h, err := getHierarchy(ctx)
@@ -205,7 +205,7 @@ func getLayoutNamesAC(ctx *ExecContext, moduleFilter string) []string {
 // getJavaActionNamesAC returns qualified Java action names, optionally filtered by module.
 func getJavaActionNamesAC(ctx *ExecContext, moduleFilter string) []string {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return nil
 	}
 	h, err := getHierarchy(ctx)
@@ -230,7 +230,7 @@ func getJavaActionNamesAC(ctx *ExecContext, moduleFilter string) []string {
 // getODataClientNamesAC returns qualified consumed OData service names, optionally filtered by module.
 func getODataClientNamesAC(ctx *ExecContext, moduleFilter string) []string {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return nil
 	}
 	h, err := getHierarchy(ctx)
@@ -255,7 +255,7 @@ func getODataClientNamesAC(ctx *ExecContext, moduleFilter string) []string {
 // getODataServiceNamesAC returns qualified published OData service names, optionally filtered by module.
 func getODataServiceNamesAC(ctx *ExecContext, moduleFilter string) []string {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return nil
 	}
 	h, err := getHierarchy(ctx)
@@ -280,7 +280,7 @@ func getODataServiceNamesAC(ctx *ExecContext, moduleFilter string) []string {
 // getRestClientNamesAC returns qualified consumed REST service names, optionally filtered by module.
 func getRestClientNamesAC(ctx *ExecContext, moduleFilter string) []string {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return nil
 	}
 	h, err := getHierarchy(ctx)
@@ -305,7 +305,7 @@ func getRestClientNamesAC(ctx *ExecContext, moduleFilter string) []string {
 // getDatabaseConnectionNamesAC returns qualified database connection names, optionally filtered by module.
 func getDatabaseConnectionNamesAC(ctx *ExecContext, moduleFilter string) []string {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return nil
 	}
 	h, err := getHierarchy(ctx)
@@ -330,7 +330,7 @@ func getDatabaseConnectionNamesAC(ctx *ExecContext, moduleFilter string) []strin
 // getBusinessEventServiceNamesAC returns qualified business event service names, optionally filtered by module.
 func getBusinessEventServiceNamesAC(ctx *ExecContext, moduleFilter string) []string {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return nil
 	}
 	h, err := getHierarchy(ctx)
@@ -355,7 +355,7 @@ func getBusinessEventServiceNamesAC(ctx *ExecContext, moduleFilter string) []str
 // getJsonStructureNamesAC returns qualified JSON structure names, optionally filtered by module.
 func getJsonStructureNamesAC(ctx *ExecContext, moduleFilter string) []string {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return nil
 	}
 	h, err := getHierarchy(ctx)

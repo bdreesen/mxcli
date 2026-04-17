@@ -14,8 +14,7 @@ import (
 
 // execMove handles MOVE PAGE/MICROFLOW/SNIPPET/NANOFLOW/ENTITY/ENUMERATION statements.
 func execMove(ctx *ExecContext, s *ast.MoveStmt) error {
-	e := ctx.executor
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnected()
 	}
 

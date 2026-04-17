@@ -337,7 +337,7 @@ func (pb *pageBuilder) createFolder(name string, containerID model.ID) (model.ID
 // execDropPage handles DROP PAGE statement.
 func execDropPage(ctx *ExecContext, s *ast.DropPageStmt) error {
 	e := ctx.executor
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
@@ -364,7 +364,7 @@ func execDropPage(ctx *ExecContext, s *ast.DropPageStmt) error {
 // execDropSnippet handles DROP SNIPPET statement.
 func execDropSnippet(ctx *ExecContext, s *ast.DropSnippetStmt) error {
 	e := ctx.executor
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 

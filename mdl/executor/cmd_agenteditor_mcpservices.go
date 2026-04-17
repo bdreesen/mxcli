@@ -19,7 +19,7 @@ import (
 // showAgentEditorConsumedMCPServices handles SHOW CONSUMED MCP SERVICES [IN module].
 func showAgentEditorConsumedMCPServices(ctx *ExecContext, moduleName string) error {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 
@@ -59,8 +59,7 @@ func showAgentEditorConsumedMCPServices(ctx *ExecContext, moduleName string) err
 
 // describeAgentEditorConsumedMCPService handles DESCRIBE CONSUMED MCP SERVICE Module.Name.
 func describeAgentEditorConsumedMCPService(ctx *ExecContext, name ast.QualifiedName) error {
-	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 

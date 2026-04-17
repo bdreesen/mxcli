@@ -19,7 +19,7 @@ import (
 // showAgentEditorKnowledgeBases handles SHOW KNOWLEDGE BASES [IN module].
 func showAgentEditorKnowledgeBases(ctx *ExecContext, moduleName string) error {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 
@@ -63,8 +63,7 @@ func showAgentEditorKnowledgeBases(ctx *ExecContext, moduleName string) error {
 
 // describeAgentEditorKnowledgeBase handles DESCRIBE KNOWLEDGE BASE Module.Name.
 func describeAgentEditorKnowledgeBase(ctx *ExecContext, name ast.QualifiedName) error {
-	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 

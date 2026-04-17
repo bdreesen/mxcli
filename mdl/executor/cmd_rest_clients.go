@@ -283,7 +283,7 @@ func writeExportMappings(w io.Writer, mappings []*model.RestResponseMapping, ind
 func createRestClient(ctx *ExecContext, stmt *ast.CreateRestClientStmt) error {
 	e := ctx.executor
 
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
@@ -464,7 +464,7 @@ func convertMappingEntries(entries []ast.RestMappingEntry, importDirection bool)
 func dropRestClient(ctx *ExecContext, stmt *ast.DropRestClientStmt) error {
 	e := ctx.executor
 
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 

@@ -73,7 +73,7 @@ func describeFragment(ctx *ExecContext, name ast.QualifiedName) error {
 // It finds a named widget in a page or snippet and outputs it as MDL.
 func describeFragmentFrom(ctx *ExecContext, s *ast.DescribeFragmentFromStmt) error {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 

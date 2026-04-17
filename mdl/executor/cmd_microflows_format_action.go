@@ -498,7 +498,7 @@ func formatAction(
 	case *microflows.ShowPageAction:
 		// Get page name from action (PageName is BY_NAME_REFERENCE, PageID is legacy BY_ID_REFERENCE)
 		pageName := a.PageName
-		if pageName == "" && a.PageID != "" && e.reader != nil {
+		if pageName == "" && a.PageID != "" && ctx.Connected() {
 			// Fall back to looking up by ID (legacy format)
 			pages, _ := e.reader.ListPages()
 			for _, p := range pages {

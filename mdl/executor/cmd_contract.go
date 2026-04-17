@@ -448,7 +448,7 @@ var reservedEntityAttrNames = map[string]bool{
 // what Studio Pro produces.
 func createExternalEntities(ctx *ExecContext, s *ast.CreateExternalEntitiesStmt) error {
 	e := ctx.executor
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 

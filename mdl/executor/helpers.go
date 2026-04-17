@@ -68,12 +68,11 @@ func findModule(ctx *ExecContext, name string) (*model.Module, error) {
 // and the executor has write access. Used by CREATE operations to avoid requiring
 // manual module creation.
 func findOrCreateModule(ctx *ExecContext, name string) (*model.Module, error) {
-	e := ctx.executor
 	m, err := findModule(ctx, name)
 	if err == nil {
 		return m, nil
 	}
-	if e.writer == nil || name == "" {
+	if !ctx.ConnectedForWrite() || name == "" {
 		return nil, err
 	}
 	// Auto-create the module
@@ -178,7 +177,7 @@ func createFolder(ctx *ExecContext, name string, containerID model.ID) (model.ID
 // enumerationExists checks if an enumeration exists in the project.
 func enumerationExists(ctx *ExecContext, qualifiedName string) bool {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return false
 	}
 
@@ -217,8 +216,7 @@ func enumerationExists(ctx *ExecContext, qualifiedName string) bool {
 // It checks DataSource (microflow/nanoflow/entity), Action (page/microflow/nanoflow),
 // and Snippet references.
 func validateWidgetReferences(ctx *ExecContext, widgets []*ast.WidgetV3, sc *scriptContext) []string {
-	e := ctx.executor
-	if e.reader == nil || len(widgets) == 0 {
+	if !ctx.Connected() || len(widgets) == 0 {
 		return nil
 	}
 

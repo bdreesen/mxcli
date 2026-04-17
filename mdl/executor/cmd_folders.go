@@ -52,7 +52,7 @@ func findFolderByPath(ctx *ExecContext, moduleID model.ID, folderPath string, fo
 // The folder must be empty (no child documents or sub-folders).
 func execDropFolder(ctx *ExecContext, s *ast.DropFolderStmt) error {
 	e := ctx.executor
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnected()
 	}
 
@@ -83,7 +83,7 @@ func execDropFolder(ctx *ExecContext, s *ast.DropFolderStmt) error {
 // execMoveFolder handles MOVE FOLDER Module.FolderName TO ... statements.
 func execMoveFolder(ctx *ExecContext, s *ast.MoveFolderStmt) error {
 	e := ctx.executor
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnected()
 	}
 

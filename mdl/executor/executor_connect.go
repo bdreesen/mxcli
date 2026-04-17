@@ -13,7 +13,7 @@ import (
 
 func execConnect(ctx *ExecContext, s *ast.ConnectStmt) error {
 	e := ctx.executor
-	if e.writer != nil {
+	if ctx.ConnectedForWrite() {
 		e.writer.Close()
 	}
 
@@ -50,7 +50,7 @@ func reconnect(ctx *ExecContext) error {
 	}
 
 	// Close existing connection
-	if e.writer != nil {
+	if ctx.ConnectedForWrite() {
 		e.writer.Close()
 	}
 
@@ -69,7 +69,7 @@ func reconnect(ctx *ExecContext) error {
 
 func execDisconnect(ctx *ExecContext) error {
 	e := ctx.executor
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		fmt.Fprintln(ctx.Output, "Not connected")
 		return nil
 	}
@@ -94,7 +94,7 @@ func execDisconnect(ctx *ExecContext) error {
 
 func execStatus(ctx *ExecContext) error {
 	e := ctx.executor
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		fmt.Fprintln(ctx.Output, "Status: Not connected")
 		return nil
 	}

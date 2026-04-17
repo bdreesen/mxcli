@@ -17,7 +17,7 @@ import (
 // execCreateModuleRole handles CREATE MODULE ROLE Module.RoleName [DESCRIPTION '...'].
 func execCreateModuleRole(ctx *ExecContext, s *ast.CreateModuleRoleStmt) error {
 	e := ctx.executor
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
@@ -51,7 +51,7 @@ func execCreateModuleRole(ctx *ExecContext, s *ast.CreateModuleRoleStmt) error {
 // allowed roles, and OData service allowed roles before deleting the role itself.
 func execDropModuleRole(ctx *ExecContext, s *ast.DropModuleRoleStmt) error {
 	e := ctx.executor
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
@@ -164,7 +164,7 @@ func execDropModuleRole(ctx *ExecContext, s *ast.DropModuleRoleStmt) error {
 // execCreateUserRole handles CREATE [OR MODIFY] USER ROLE Name (ModuleRoles) [MANAGE ALL ROLES].
 func execCreateUserRole(ctx *ExecContext, s *ast.CreateUserRoleStmt) error {
 	e := ctx.executor
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
@@ -206,7 +206,7 @@ func execCreateUserRole(ctx *ExecContext, s *ast.CreateUserRoleStmt) error {
 // execAlterUserRole handles ALTER USER ROLE Name ADD/REMOVE MODULE ROLES (...).
 func execAlterUserRole(ctx *ExecContext, s *ast.AlterUserRoleStmt) error {
 	e := ctx.executor
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
@@ -250,7 +250,7 @@ func execAlterUserRole(ctx *ExecContext, s *ast.AlterUserRoleStmt) error {
 // execDropUserRole handles DROP USER ROLE Name.
 func execDropUserRole(ctx *ExecContext, s *ast.DropUserRoleStmt) error {
 	e := ctx.executor
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
@@ -282,7 +282,7 @@ func execDropUserRole(ctx *ExecContext, s *ast.DropUserRoleStmt) error {
 // execGrantEntityAccess handles GRANT roles ON Module.Entity (rights) [WHERE '...'].
 func execGrantEntityAccess(ctx *ExecContext, s *ast.GrantEntityAccessStmt) error {
 	e := ctx.executor
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
@@ -439,7 +439,7 @@ func execGrantEntityAccess(ctx *ExecContext, s *ast.GrantEntityAccessStmt) error
 // execRevokeEntityAccess handles REVOKE roles ON Module.Entity [(rights...)].
 func execRevokeEntityAccess(ctx *ExecContext, s *ast.RevokeEntityAccessStmt) error {
 	e := ctx.executor
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
@@ -527,7 +527,7 @@ func execRevokeEntityAccess(ctx *ExecContext, s *ast.RevokeEntityAccessStmt) err
 // execGrantMicroflowAccess handles GRANT EXECUTE ON MICROFLOW Module.MF TO roles.
 func execGrantMicroflowAccess(ctx *ExecContext, s *ast.GrantMicroflowAccessStmt) error {
 	e := ctx.executor
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
@@ -590,7 +590,7 @@ func execGrantMicroflowAccess(ctx *ExecContext, s *ast.GrantMicroflowAccessStmt)
 // execRevokeMicroflowAccess handles REVOKE EXECUTE ON MICROFLOW Module.MF FROM roles.
 func execRevokeMicroflowAccess(ctx *ExecContext, s *ast.RevokeMicroflowAccessStmt) error {
 	e := ctx.executor
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
@@ -647,7 +647,7 @@ func execRevokeMicroflowAccess(ctx *ExecContext, s *ast.RevokeMicroflowAccessStm
 // execGrantPageAccess handles GRANT VIEW ON PAGE Module.Page TO roles.
 func execGrantPageAccess(ctx *ExecContext, s *ast.GrantPageAccessStmt) error {
 	e := ctx.executor
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
@@ -710,7 +710,7 @@ func execGrantPageAccess(ctx *ExecContext, s *ast.GrantPageAccessStmt) error {
 // execRevokePageAccess handles REVOKE VIEW ON PAGE Module.Page FROM roles.
 func execRevokePageAccess(ctx *ExecContext, s *ast.RevokePageAccessStmt) error {
 	e := ctx.executor
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
@@ -803,7 +803,7 @@ func validateModuleRole(ctx *ExecContext, role ast.QualifiedName) error {
 // execAlterProjectSecurity handles ALTER PROJECT SECURITY LEVEL/DEMO USERS.
 func execAlterProjectSecurity(ctx *ExecContext, s *ast.AlterProjectSecurityStmt) error {
 	e := ctx.executor
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
@@ -849,7 +849,7 @@ func execAlterProjectSecurity(ctx *ExecContext, s *ast.AlterProjectSecurityStmt)
 // execCreateDemoUser handles CREATE [OR MODIFY] DEMO USER 'name' PASSWORD 'pw' [ENTITY Module.Entity] (Roles).
 func execCreateDemoUser(ctx *ExecContext, s *ast.CreateDemoUserStmt) error {
 	e := ctx.executor
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
@@ -961,7 +961,7 @@ func joinCandidates(candidates []string) string {
 // execDropDemoUser handles DROP DEMO USER 'name'.
 func execDropDemoUser(ctx *ExecContext, s *ast.DropDemoUserStmt) error {
 	e := ctx.executor
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
@@ -997,7 +997,7 @@ func execDropDemoUser(ctx *ExecContext, s *ast.DropDemoUserStmt) error {
 // execGrantODataServiceAccess handles GRANT ACCESS ON ODATA SERVICE Module.Svc TO roles.
 func execGrantODataServiceAccess(ctx *ExecContext, s *ast.GrantODataServiceAccessStmt) error {
 	e := ctx.executor
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
@@ -1060,7 +1060,7 @@ func execGrantODataServiceAccess(ctx *ExecContext, s *ast.GrantODataServiceAcces
 // execRevokeODataServiceAccess handles REVOKE ACCESS ON ODATA SERVICE Module.Svc FROM roles.
 func execRevokeODataServiceAccess(ctx *ExecContext, s *ast.RevokeODataServiceAccessStmt) error {
 	e := ctx.executor
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
@@ -1121,7 +1121,7 @@ func execRevokeODataServiceAccess(ctx *ExecContext, s *ast.RevokeODataServiceAcc
 // execGrantPublishedRestServiceAccess handles GRANT ACCESS ON PUBLISHED REST SERVICE Module.Svc TO roles.
 func execGrantPublishedRestServiceAccess(ctx *ExecContext, s *ast.GrantPublishedRestServiceAccessStmt) error {
 	e := ctx.executor
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
@@ -1189,7 +1189,7 @@ func execGrantPublishedRestServiceAccess(ctx *ExecContext, s *ast.GrantPublished
 // execRevokePublishedRestServiceAccess handles REVOKE ACCESS ON PUBLISHED REST SERVICE Module.Svc FROM roles.
 func execRevokePublishedRestServiceAccess(ctx *ExecContext, s *ast.RevokePublishedRestServiceAccessStmt) error {
 	e := ctx.executor
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
@@ -1245,7 +1245,7 @@ func execRevokePublishedRestServiceAccess(ctx *ExecContext, s *ast.RevokePublish
 // execUpdateSecurity handles UPDATE SECURITY [IN Module].
 func execUpdateSecurity(ctx *ExecContext, s *ast.UpdateSecurityStmt) error {
 	e := ctx.executor
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 

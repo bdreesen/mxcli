@@ -47,7 +47,7 @@ func buildEventHandlers(ctx *ExecContext, defs []ast.EventHandlerDef) ([]*domain
 
 func execCreateEntity(ctx *ExecContext, s *ast.CreateEntityStmt) error {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 
@@ -295,7 +295,7 @@ func execCreateEntity(ctx *ExecContext, s *ast.CreateEntityStmt) error {
 // execCreateViewEntity handles CREATE VIEW ENTITY statements.
 func execCreateViewEntity(ctx *ExecContext, s *ast.CreateViewEntityStmt) error {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 
@@ -465,7 +465,7 @@ func execCreateViewEntity(ctx *ExecContext, s *ast.CreateViewEntityStmt) error {
 // execAlterEntity handles ALTER ENTITY statements.
 func execAlterEntity(ctx *ExecContext, s *ast.AlterEntityStmt) error {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 
@@ -919,7 +919,7 @@ func execAlterEntity(ctx *ExecContext, s *ast.AlterEntityStmt) error {
 // execDropEntity handles DROP ENTITY statements.
 func execDropEntity(ctx *ExecContext, s *ast.DropEntityStmt) error {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
 

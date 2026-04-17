@@ -154,8 +154,7 @@ func (sc *scriptContext) has(name string) bool {
 // validateProgram validates all statements in a program, skipping references
 // to objects that are defined within the script itself.
 func validateProgram(ctx *ExecContext, prog *ast.Program) []error {
-	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return []error{mdlerrors.NewNotConnected()}
 	}
 
@@ -396,8 +395,7 @@ func (e *Executor) Validate(stmt ast.Statement) error {
 // validateMicroflowReferences validates that all qualified name references in a
 // microflow body (pages, microflows, java actions, entities) point to existing objects.
 func validateMicroflowReferences(ctx *ExecContext, s *ast.CreateMicroflowStmt, sc *scriptContext) []string {
-	e := ctx.executor
-	if e.reader == nil || len(s.Body) == 0 {
+	if !ctx.Connected() || len(s.Body) == 0 {
 		return nil
 	}
 

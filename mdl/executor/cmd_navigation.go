@@ -16,7 +16,7 @@ import (
 // It fully replaces the profile's home pages, login page, not-found page, and menu tree.
 func execAlterNavigation(ctx *ExecContext, s *ast.AlterNavigationStmt) error {
 	e := ctx.executor
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 

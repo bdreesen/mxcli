@@ -26,7 +26,7 @@ func isBuiltinModuleEntity(moduleName string) bool {
 // loadRestServices returns all consumed REST services, or nil if no reader.
 func loadRestServices(ctx *ExecContext) ([]*model.ConsumedRestService, error) {
 	e := ctx.executor
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return nil, nil
 	}
 	svcs, err := e.reader.ListConsumedRestServices()
@@ -35,7 +35,7 @@ func loadRestServices(ctx *ExecContext) ([]*model.ConsumedRestService, error) {
 
 func execCreateMicroflow(ctx *ExecContext, s *ast.CreateMicroflowStmt) error {
 	e := ctx.executor
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 

@@ -260,7 +260,7 @@ func formatDefaultValue(dt model.ConstantDataType, value string) string {
 func createConstant(ctx *ExecContext, stmt *ast.CreateConstantStmt) error {
 	e := ctx.executor
 
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
@@ -447,7 +447,7 @@ func showConstantValues(ctx *ExecContext, moduleName string) error {
 func dropConstant(ctx *ExecContext, stmt *ast.DropConstantStmt) error {
 	e := ctx.executor
 
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 

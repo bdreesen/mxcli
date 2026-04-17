@@ -13,7 +13,7 @@ import (
 // execDropMicroflow handles DROP MICROFLOW statements.
 func execDropMicroflow(ctx *ExecContext, s *ast.DropMicroflowStmt) error {
 	e := ctx.executor
-	if e.writer == nil {
+	if !ctx.ConnectedForWrite() {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 

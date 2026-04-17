@@ -17,7 +17,7 @@ import (
 func checkFeature(ctx *ExecContext, area, name, statement, hint string) error {
 	e := ctx.executor
 
-	if e.reader == nil {
+	if !ctx.Connected() {
 		return nil // No project connected; skip check
 	}
 	reg, err := versions.Load()
@@ -78,7 +78,7 @@ func execShowFeatures(ctx *ExecContext, s *ast.ShowFeaturesStmt) error {
 
 	default:
 		// SHOW FEATURES [IN area] — requires project connection
-		if e.reader == nil {
+		if !ctx.Connected() {
 			return mdlerrors.NewNotConnectedMsg("not connected to a project\n  hint: use SHOW FEATURES FOR VERSION x.y without a project connection")
 		}
 		rpv := e.reader.ProjectVersion()
