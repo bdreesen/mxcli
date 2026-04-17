@@ -224,6 +224,11 @@ Available namespaces: `DomainModels`, `Enumerations`, `Microflows`, `Pages`, `Mo
 
 When reviewing pull requests or validating work before commit, verify these items:
 
+### Bug fixes
+- [ ] **Fix-issue skill consulted** — read `.claude/skills/fix-issue.md` before diagnosing; match symptom to table before opening files
+- [ ] **Symptom table updated** — new symptom/layer/file mapping added to `.claude/skills/fix-issue.md` if not already covered
+- [ ] **Test written first** — failing test exists before implementation (parser test in `sdk/mpr/`, formatter test in `mdl/executor/`)
+
 ### Overlap & duplication
 - [ ] Check `docs/11-proposals/` for existing proposals covering the same functionality
 - [ ] Search the codebase for existing implementations (grep for key function names, command names, types)
@@ -356,11 +361,22 @@ mxcli new MyApp --version 10.24.0 --output-dir ./projects/my-app
 
 Steps performed: downloads MxBuild → `mx create-project` → `mxcli init` → downloads correct Linux mxcli binary for devcontainer. The result is a ready-to-open project with `.devcontainer/`, AI tooling, and a working `./mxcli` binary.
 
+### Slash Command Namespaces
+
+Commands in `.claude/commands/` are organised by audience:
+
+| Namespace | Folder | Invoked as | Purpose |
+|-----------|--------|------------|---------|
+| `mendix:` | `.claude/commands/mendix/` | `/mendix:lint` | mxcli **user** commands — synced to Mendix projects via `mxcli init` |
+| `mxcli-dev:` | `.claude/commands/mxcli-dev/` | `/mxcli-dev:review` | **Contributor** commands — this repo only, never synced to user projects |
+
+Both namespaces are discoverable by typing `/mxcli` in Claude Code. Add new contributor tooling (review workflows, debugging helpers, etc.) under `mxcli-dev/`. Add commands intended for Mendix project users under `mendix/`.
+
 ### mxcli init
 
 `mxcli init` creates a `.claude/` folder with skills, commands, CLAUDE.md, and VS Code MDL extension in a target Mendix project. Source of truth for synced assets:
 - Skills: `reference/mendix-repl/templates/.claude/skills/`
-- Commands: `.claude/commands/mendix/`
+- Commands: `.claude/commands/mendix/` (the `mxcli-dev/` folder is **not** synced)
 - VS Code extension: `vscode-mdl/vscode-mdl-*.vsix`
 
 Build-time sync: `make build` syncs everything automatically. Individual targets: `make sync-skills`, `make sync-commands`, `make sync-vsix`.

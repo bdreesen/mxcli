@@ -22,6 +22,15 @@ func isBuiltinModuleEntity(moduleName string) bool {
 }
 
 // execCreateMicroflow handles CREATE MICROFLOW statements.
+// loadRestServices returns all consumed REST services, or nil if no reader.
+func (e *Executor) loadRestServices() ([]*model.ConsumedRestService, error) {
+	if e.reader == nil {
+		return nil, nil
+	}
+	svcs, err := e.reader.ListConsumedRestServices()
+	return svcs, err
+}
+
 func (e *Executor) execCreateMicroflow(s *ast.CreateMicroflowStmt) error {
 	if e.writer == nil {
 		return fmt.Errorf("not connected to a project")
@@ -192,6 +201,8 @@ func (e *Executor) execCreateMicroflow(s *ast.CreateMicroflowStmt) error {
 	// Get hierarchy for resolving page/microflow references
 	hierarchy, _ := e.getHierarchy()
 
+	restServices, _ := e.loadRestServices()
+
 	builder := &flowBuilder{
 		posX:         200,
 		posY:         200,
@@ -202,6 +213,7 @@ func (e *Executor) execCreateMicroflow(s *ast.CreateMicroflowStmt) error {
 		measurer:     &layoutMeasurer{varTypes: varTypes},
 		reader:       e.reader,
 		hierarchy:    hierarchy,
+		restServices: restServices,
 	}
 
 	mf.ObjectCollection = builder.buildFlowGraph(s.Body, s.ReturnType)

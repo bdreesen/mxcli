@@ -66,6 +66,7 @@ func (fb *flowBuilder) addErrorHandlerFlow(sourceActivityID model.ID, sourceX in
 		measurer:     fb.measurer,
 		reader:       fb.reader,
 		hierarchy:    fb.hierarchy,
+		restServices: fb.restServices,
 	}
 
 	var lastErrID model.ID

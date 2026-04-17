@@ -769,6 +769,16 @@ func (fb *flowBuilder) addSendRestRequestAction(s *ast.SendRestRequestStmt) mode
 	// Build operation reference: Module.Service.Operation
 	operationQN := s.Operation.String()
 
+	// Look up the operation definition to classify parameters and body kind.
+	// s.Operation.Module = "MfTest", s.Operation.Name = "RC_TestApi.PostJsonTemplate"
+	var opDef *model.RestClientOperation
+	if fb.restServices != nil && s.Operation.Module != "" && strings.Contains(s.Operation.Name, ".") {
+		dotIdx := strings.Index(s.Operation.Name, ".")
+		serviceName := s.Operation.Name[:dotIdx]
+		opName := s.Operation.Name[dotIdx+1:]
+		opDef = lookupRestOperation(fb.restServices, serviceName, opName)
+	}
+
 	// Build OutputVariable
 	var outputVar *microflows.RestOutputVar
 	if s.OutputVariable != "" {
@@ -778,29 +788,20 @@ func (fb *flowBuilder) addSendRestRequestAction(s *ast.SendRestRequestStmt) mode
 		}
 	}
 
-	// Build BodyVariable
+	// Build BodyVariable only for EXPORT_MAPPING body kind.
+	// For JSON / TEMPLATE / FILE bodies, the body expression lives on the
+	// operation definition itself and must NOT be set here (CE7067).
 	var bodyVar *microflows.RestBodyVar
-	if s.BodyVariable != "" {
+	if s.BodyVariable != "" && shouldSetBodyVariable(opDef) {
 		bodyVar = &microflows.RestBodyVar{
 			BaseElement:  model.BaseElement{ID: model.ID(mpr.GenerateID())},
 			VariableName: s.BodyVariable,
 		}
 	}
 
-	// Build parameter mappings from WITH clause
-	var paramMappings []*microflows.RestParameterMapping
-	var queryParamMappings []*microflows.RestQueryParameterMapping
-	for _, p := range s.Parameters {
-		// Determine if path or query param by convention:
-		// the executor can't distinguish at this level, so we emit both
-		// and let the BSON field names sort it out. For now, emit as
-		// query parameter mappings (most common use case).
-		queryParamMappings = append(queryParamMappings, &microflows.RestQueryParameterMapping{
-			Parameter: operationQN + "." + p.Name,
-			Value:     p.Expression,
-			Included:  "Yes",
-		})
-	}
+	// Build parameter mappings, routing to ParameterMappings (path) or
+	// QueryParameterMappings (query) based on the operation definition.
+	paramMappings, queryParamMappings := buildRestParameterMappings(s.Parameters, opDef, operationQN)
 
 	// RestOperationCallAction does not support custom error handling (CE6035).
 	// ON ERROR clauses in the MDL are silently ignored for this action type.
@@ -829,6 +830,84 @@ func (fb *flowBuilder) addSendRestRequestAction(s *ast.SendRestRequestStmt) mode
 	fb.posX += fb.spacing
 
 	return activity.ID
+}
+
+// lookupRestOperation finds a specific operation in a consumed REST service list.
+func lookupRestOperation(services []*model.ConsumedRestService, serviceName, opName string) *model.RestClientOperation {
+	for _, svc := range services {
+		if svc.Name != serviceName {
+			continue
+		}
+		for _, op := range svc.Operations {
+			if op.Name == opName {
+				return op
+			}
+		}
+	}
+	return nil
+}
+
+// shouldSetBodyVariable returns true if a BodyVariable BSON field should be
+// emitted for a call to the given operation.
+// For JSON, TEMPLATE, and FILE body kinds, the body expression lives on the
+// operation definition and must not be overridden by a BodyVariable (CE7067).
+// For EXPORT_MAPPING, the caller provides an entity to export via BodyVariable.
+// When the operation definition is unknown (nil), we preserve old behaviour and
+// set BodyVariable so the caller's intent is not silently dropped.
+func shouldSetBodyVariable(op *model.RestClientOperation) bool {
+	if op == nil {
+		return true // unknown operation — preserve caller intent
+	}
+	switch op.BodyType {
+	case "JSON", "TEMPLATE", "FILE":
+		return false
+	default:
+		// EXPORT_MAPPING or empty (no body) — only set if EXPORT_MAPPING
+		return op.BodyType == "EXPORT_MAPPING"
+	}
+}
+
+// buildRestParameterMappings splits parameter bindings from a SEND REST REQUEST
+// WITH clause into path parameter mappings and query parameter mappings,
+// using the operation definition to determine which is which.
+// When op is nil (operation not found), all parameters fall back to query
+// parameter mappings (preserves old behaviour).
+func buildRestParameterMappings(
+	params []ast.SendRestParamDef,
+	op *model.RestClientOperation,
+	operationQN string,
+) ([]*microflows.RestParameterMapping, []*microflows.RestQueryParameterMapping) {
+	if len(params) == 0 {
+		return nil, nil
+	}
+
+	// Build lookup sets from the operation definition.
+	pathParamSet := map[string]bool{}
+	if op != nil {
+		for _, p := range op.Parameters {
+			pathParamSet[p.Name] = true
+		}
+	}
+
+	var pathMappings []*microflows.RestParameterMapping
+	var queryMappings []*microflows.RestQueryParameterMapping
+
+	for _, p := range params {
+		if pathParamSet[p.Name] {
+			pathMappings = append(pathMappings, &microflows.RestParameterMapping{
+				Parameter: operationQN + "." + p.Name,
+				Value:     p.Expression,
+			})
+		} else {
+			queryMappings = append(queryMappings, &microflows.RestQueryParameterMapping{
+				Parameter: operationQN + "." + p.Name,
+				Value:     p.Expression,
+				Included:  "Yes",
+			})
+		}
+	}
+
+	return pathMappings, queryMappings
 }
 
 // addExecuteDatabaseQueryAction creates an EXECUTE DATABASE QUERY statement.
