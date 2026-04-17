@@ -320,7 +320,7 @@ func registerDataTransformerHandlers(r *Registry) {
 
 func registerQueryHandlers(r *Registry) {
 	r.Register(&ast.ShowStmt{}, func(ctx *ExecContext, stmt ast.Statement) error {
-		return ctx.executor.execShow(stmt.(*ast.ShowStmt))
+		return execShow(ctx, stmt.(*ast.ShowStmt))
 	})
 	r.Register(&ast.ShowWidgetsStmt{}, func(ctx *ExecContext, stmt ast.Statement) error {
 		return execShowWidgets(ctx, stmt.(*ast.ShowWidgetsStmt))
@@ -329,13 +329,13 @@ func registerQueryHandlers(r *Registry) {
 		return execUpdateWidgets(ctx, stmt.(*ast.UpdateWidgetsStmt))
 	})
 	r.Register(&ast.SelectStmt{}, func(ctx *ExecContext, stmt ast.Statement) error {
-		return ctx.executor.execCatalogQuery(stmt.(*ast.SelectStmt).Query)
+		return execCatalogQuery(ctx, stmt.(*ast.SelectStmt).Query)
 	})
 	r.Register(&ast.DescribeStmt{}, func(ctx *ExecContext, stmt ast.Statement) error {
-		return ctx.executor.execDescribe(stmt.(*ast.DescribeStmt))
+		return execDescribe(ctx, stmt.(*ast.DescribeStmt))
 	})
 	r.Register(&ast.DescribeCatalogTableStmt{}, func(ctx *ExecContext, stmt ast.Statement) error {
-		return ctx.executor.execDescribeCatalogTable(stmt.(*ast.DescribeCatalogTableStmt))
+		return execDescribeCatalogTable(ctx, stmt.(*ast.DescribeCatalogTableStmt))
 	})
 	// NOTE: ShowFeaturesStmt was missing from the original type-switch
 	// (pre-existing bug). Adding it here to fix the dead-code path.
@@ -364,10 +364,10 @@ func registerRepositoryHandlers(r *Registry) {
 		return execRefresh(ctx)
 	})
 	r.Register(&ast.RefreshCatalogStmt{}, func(ctx *ExecContext, stmt ast.Statement) error {
-		return ctx.executor.execRefreshCatalogStmt(stmt.(*ast.RefreshCatalogStmt))
+		return execRefreshCatalogStmt(ctx, stmt.(*ast.RefreshCatalogStmt))
 	})
 	r.Register(&ast.SearchStmt{}, func(ctx *ExecContext, stmt ast.Statement) error {
-		return ctx.executor.execSearch(stmt.(*ast.SearchStmt))
+		return execSearch(ctx, stmt.(*ast.SearchStmt))
 	})
 }
 

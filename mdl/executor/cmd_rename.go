@@ -45,7 +45,7 @@ func execRename(ctx *ExecContext, s *ast.RenameStmt) error {
 func execRenameEntity(ctx *ExecContext, s *ast.RenameStmt) error {
 	e := ctx.executor
 	// Find the entity
-	module, err := e.findModule(s.Name.Module)
+	module, err := findModule(ctx, s.Name.Module)
 	if err != nil {
 		return err
 	}
@@ -91,8 +91,8 @@ func execRenameEntity(ctx *ExecContext, s *ast.RenameStmt) error {
 		return mdlerrors.NewBackend("update entity name", err)
 	}
 
-	e.invalidateHierarchy()
-	e.invalidateDomainModelsCache()
+	invalidateHierarchy(ctx)
+	invalidateDomainModelsCache(ctx)
 
 	fmt.Fprintf(ctx.Output, "Renamed entity: %s → %s\n", oldQualifiedName, newQualifiedName)
 	if len(hits) > 0 {
@@ -107,7 +107,7 @@ func execRenameModule(ctx *ExecContext, s *ast.RenameStmt) error {
 	oldModuleName := s.Name.Module
 	newModuleName := s.NewName
 
-	module, err := e.findModule(oldModuleName)
+	module, err := findModule(ctx, oldModuleName)
 	if err != nil {
 		return err
 	}
@@ -139,8 +139,8 @@ func execRenameModule(ctx *ExecContext, s *ast.RenameStmt) error {
 		return mdlerrors.NewBackend("update module name", err)
 	}
 
-	e.invalidateHierarchy()
-	e.invalidateDomainModelsCache()
+	invalidateHierarchy(ctx)
+	invalidateDomainModelsCache(ctx)
 
 	fmt.Fprintf(ctx.Output, "Renamed module: %s → %s\n", oldModuleName, newModuleName)
 	if len(allHits) > 0 {
@@ -159,7 +159,7 @@ func execRenameDocument(ctx *ExecContext, s *ast.RenameStmt, docType string) err
 	newQualifiedName := s.Name.Module + "." + s.NewName
 
 	// Verify the document exists
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return err
 	}
@@ -228,7 +228,7 @@ func execRenameDocument(ctx *ExecContext, s *ast.RenameStmt, docType string) err
 		return mdlerrors.NewBackend(fmt.Sprintf("rename %s", docType), err)
 	}
 
-	e.invalidateHierarchy()
+	invalidateHierarchy(ctx)
 
 	fmt.Fprintf(ctx.Output, "Renamed %s: %s → %s\n", docType, oldQualifiedName, newQualifiedName)
 	if len(hits) > 0 {
@@ -248,7 +248,7 @@ func execRenameEnumeration(ctx *ExecContext, s *ast.RenameStmt) error {
 	if err != nil {
 		return mdlerrors.NewBackend("list enumerations", err)
 	}
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return err
 	}
@@ -282,8 +282,8 @@ func execRenameEnumeration(ctx *ExecContext, s *ast.RenameStmt) error {
 	// Also update enumeration refs in domain models (attribute types store qualified enum names)
 	e.writer.UpdateEnumerationRefsInAllDomainModels(oldQualifiedName, newQualifiedName)
 
-	e.invalidateHierarchy()
-	e.invalidateDomainModelsCache()
+	invalidateHierarchy(ctx)
+	invalidateDomainModelsCache(ctx)
 
 	fmt.Fprintf(ctx.Output, "Renamed enumeration: %s → %s\n", oldQualifiedName, newQualifiedName)
 	if len(hits) > 0 {
@@ -298,7 +298,7 @@ func execRenameAssociation(ctx *ExecContext, s *ast.RenameStmt) error {
 	oldQualifiedName := s.Name.Module + "." + s.Name.Name
 	newQualifiedName := s.Name.Module + "." + s.NewName
 
-	module, err := e.findModule(s.Name.Module)
+	module, err := findModule(ctx, s.Name.Module)
 	if err != nil {
 		return err
 	}
@@ -340,8 +340,8 @@ func execRenameAssociation(ctx *ExecContext, s *ast.RenameStmt) error {
 		return mdlerrors.NewBackend("update association name", err)
 	}
 
-	e.invalidateHierarchy()
-	e.invalidateDomainModelsCache()
+	invalidateHierarchy(ctx)
+	invalidateDomainModelsCache(ctx)
 
 	fmt.Fprintf(ctx.Output, "Renamed association: %s → %s\n", oldQualifiedName, newQualifiedName)
 	if len(hits) > 0 {

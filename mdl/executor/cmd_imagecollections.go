@@ -23,7 +23,7 @@ func execCreateImageCollection(ctx *ExecContext, s *ast.CreateImageCollectionStm
 	}
 
 	// Find or auto-create module
-	module, err := e.findOrCreateModule(s.Name.Module)
+	module, err := findOrCreateModule(ctx, s.Name.Module)
 	if err != nil {
 		return err
 	}
@@ -69,7 +69,7 @@ func execCreateImageCollection(ctx *ExecContext, s *ast.CreateImageCollectionStm
 	}
 
 	// Invalidate hierarchy cache so the new collection's container is visible
-	e.invalidateHierarchy()
+	invalidateHierarchy(ctx)
 
 	fmt.Fprintf(ctx.Output, "Created image collection: %s\n", s.Name)
 	return nil
@@ -113,7 +113,7 @@ func describeImageCollection(ctx *ExecContext, name ast.QualifiedName) error {
 		return mdlerrors.NewNotFound("image collection", name.String())
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return err
 	}
@@ -223,7 +223,7 @@ func showImageCollections(ctx *ExecContext, moduleName string) error {
 		return mdlerrors.NewBackend("list image collections", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return err
 	}
@@ -248,7 +248,7 @@ func showImageCollections(ctx *ExecContext, moduleName string) error {
 	}
 
 	result.Summary = fmt.Sprintf("(%d image collection(s))", len(result.Rows))
-	return e.writeResult(result)
+	return writeResult(ctx, result)
 }
 
 // Executor wrapper for unmigrated callers.

@@ -125,7 +125,7 @@ func resolveImportLinks(ctx *ExecContext, goCtx context.Context, mendixConn *sql
 		return nil, mdlerrors.NewBackend("list domain models", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return nil, mdlerrors.NewBackend("get hierarchy", err)
 	}

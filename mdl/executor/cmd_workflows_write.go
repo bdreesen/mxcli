@@ -23,13 +23,13 @@ func execCreateWorkflow(ctx *ExecContext, s *ast.CreateWorkflowStmt) error {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
-	module, err := e.findOrCreateModule(s.Name.Module)
+	module, err := findOrCreateModule(ctx, s.Name.Module)
 	if err != nil {
 		return err
 	}
 
 	// Check if workflow already exists
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -124,7 +124,7 @@ func execCreateWorkflow(ctx *ExecContext, s *ast.CreateWorkflowStmt) error {
 		return mdlerrors.NewBackend("create workflow", err)
 	}
 
-	e.invalidateHierarchy()
+	invalidateHierarchy(ctx)
 	fmt.Fprintf(ctx.Output, "Created workflow: %s.%s\n", s.Name.Module, s.Name.Name)
 	return nil
 }
@@ -141,7 +141,7 @@ func execDropWorkflow(ctx *ExecContext, s *ast.DropWorkflowStmt) error {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -158,7 +158,7 @@ func execDropWorkflow(ctx *ExecContext, s *ast.DropWorkflowStmt) error {
 			if err := e.writer.DeleteWorkflow(wf.ID); err != nil {
 				return mdlerrors.NewBackend("delete workflow", err)
 			}
-			e.invalidateHierarchy()
+			invalidateHierarchy(ctx)
 			fmt.Fprintf(ctx.Output, "Dropped workflow: %s.%s\n", s.Name.Module, s.Name.Name)
 			return nil
 		}

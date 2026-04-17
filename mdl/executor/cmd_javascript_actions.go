@@ -19,7 +19,7 @@ import (
 // showJavaScriptActions handles SHOW JAVASCRIPT ACTIONS command.
 func showJavaScriptActions(ctx *ExecContext, moduleName string) error {
 	e := ctx.executor
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -63,7 +63,7 @@ func showJavaScriptActions(ctx *ExecContext, moduleName string) error {
 	for _, r := range rows {
 		result.Rows = append(result.Rows, []any{r.qualifiedName, r.module, r.name, r.platform, r.folderPath})
 	}
-	return e.writeResult(result)
+	return writeResult(ctx, result)
 }
 
 // showJavaScriptActions is a wrapper for callers that still use an Executor receiver.

@@ -23,7 +23,7 @@ func showJsonStructures(ctx *ExecContext, moduleName string) error {
 		return mdlerrors.NewBackend("list JSON structures", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return err
 	}
@@ -67,7 +67,7 @@ func showJsonStructures(ctx *ExecContext, moduleName string) error {
 	for _, r := range rows {
 		tr.Rows = append(tr.Rows, []any{r.qualifiedName, r.elemCount, r.source})
 	}
-	return e.writeResult(tr)
+	return writeResult(ctx, tr)
 }
 
 // showJsonStructures is a wrapper for callers that still use an Executor receiver.
@@ -78,13 +78,12 @@ func (e *Executor) showJsonStructures(moduleName string) error {
 // describeJsonStructure handles DESCRIBE JSON STRUCTURE Module.Name.
 // Output is re-executable CREATE OR REPLACE MDL followed by the element tree as comments.
 func describeJsonStructure(ctx *ExecContext, name ast.QualifiedName) error {
-	e := ctx.executor
 	js := findJsonStructure(ctx, name.Module, name.Name)
 	if js == nil {
 		return mdlerrors.NewNotFound("JSON structure", name.String())
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return err
 	}
@@ -192,7 +191,7 @@ func execCreateJsonStructure(ctx *ExecContext, s *ast.CreateJsonStructureStmt) e
 	}
 
 	// Find or auto-create module
-	module, err := e.findOrCreateModule(s.Name.Module)
+	module, err := findOrCreateModule(ctx, s.Name.Module)
 	if err != nil {
 		return err
 	}
@@ -200,7 +199,7 @@ func execCreateJsonStructure(ctx *ExecContext, s *ast.CreateJsonStructureStmt) e
 	// Resolve folder if specified
 	containerID := module.ID
 	if s.Folder != "" {
-		folderID, err := e.resolveFolder(module.ID, s.Folder)
+		folderID, err := resolveFolder(ctx, module.ID, s.Folder)
 		if err != nil {
 			return mdlerrors.NewBackend("resolve folder "+s.Folder, err)
 		}
@@ -244,7 +243,7 @@ func execCreateJsonStructure(ctx *ExecContext, s *ast.CreateJsonStructureStmt) e
 	}
 
 	// Invalidate hierarchy cache
-	e.invalidateHierarchy()
+	invalidateHierarchy(ctx)
 
 	action := "Created"
 	if existing != nil {
@@ -282,7 +281,7 @@ func findJsonStructure(ctx *ExecContext, moduleName, structName string) *mpr.Jso
 		return nil
 	}
 
-	h, _ := e.getHierarchy()
+	h, _ := getHierarchy(ctx)
 	if h == nil {
 		return nil
 	}

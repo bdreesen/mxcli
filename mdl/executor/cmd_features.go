@@ -103,8 +103,6 @@ func (e *Executor) execShowFeatures(s *ast.ShowFeaturesStmt) error {
 }
 
 func showFeaturesAll(ctx *ExecContext, reg *versions.Registry, pv versions.SemVer) error {
-	e := ctx.executor
-
 	features := reg.FeaturesForVersion(pv)
 	if len(features) == 0 {
 		fmt.Fprintf(ctx.Output, "No features found for version %s\n", pv)
@@ -135,12 +133,10 @@ func showFeaturesAll(ctx *ExecContext, reg *versions.Registry, pv versions.SemVe
 		tr.Rows = append(tr.Rows, []any{f.DisplayName(), avail, fmt.Sprintf("%s", f.MinVersion), notes})
 	}
 	tr.Summary = fmt.Sprintf("(%d available, %d not available in %s)", available, unavailable, pv)
-	return e.writeResult(tr)
+	return writeResult(ctx, tr)
 }
 
 func showFeaturesInArea(ctx *ExecContext, reg *versions.Registry, pv versions.SemVer, area string) error {
-	e := ctx.executor
-
 	features := reg.FeaturesInArea(area, pv)
 	if len(features) == 0 {
 		// Check if the area exists at all.
@@ -169,12 +165,10 @@ func showFeaturesInArea(ctx *ExecContext, reg *versions.Registry, pv versions.Se
 		}
 		tr.Rows = append(tr.Rows, []any{f.DisplayName(), avail, fmt.Sprintf("%s", f.MinVersion), notes})
 	}
-	return e.writeResult(tr)
+	return writeResult(ctx, tr)
 }
 
 func showFeaturesAddedSince(ctx *ExecContext, reg *versions.Registry, sinceV versions.SemVer) error {
-	e := ctx.executor
-
 	added := reg.FeaturesAddedSince(sinceV)
 	if len(added) == 0 {
 		fmt.Fprintf(ctx.Output, "No new features found since %s\n", sinceV)
@@ -197,5 +191,5 @@ func showFeaturesAddedSince(ctx *ExecContext, reg *versions.Registry, sinceV ver
 		}
 		tr.Rows = append(tr.Rows, []any{f.DisplayName(), f.Area, fmt.Sprintf("%s", f.MinVersion), notes})
 	}
-	return e.writeResult(tr)
+	return writeResult(ctx, tr)
 }

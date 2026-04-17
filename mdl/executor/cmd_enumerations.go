@@ -34,7 +34,7 @@ func execCreateEnumeration(ctx *ExecContext, s *ast.CreateEnumerationStmt) error
 	}
 
 	// Find or auto-create module
-	module, err := e.findOrCreateModule(s.Name.Module)
+	module, err := findOrCreateModule(ctx, s.Name.Module)
 	if err != nil {
 		return err
 	}
@@ -76,7 +76,7 @@ func execCreateEnumeration(ctx *ExecContext, s *ast.CreateEnumerationStmt) error
 	}
 
 	// Invalidate hierarchy cache so the new enumeration's container is visible
-	e.invalidateHierarchy()
+	invalidateHierarchy(ctx)
 
 	fmt.Fprintf(ctx.Output, "Created enumeration: %s\n", s.Name)
 	return nil
@@ -91,7 +91,7 @@ func findEnumeration(ctx *ExecContext, moduleName, enumName string) *model.Enume
 		return nil
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return nil
 	}
@@ -134,7 +134,7 @@ func execDropEnumeration(ctx *ExecContext, s *ast.DropEnumerationStmt) error {
 	for _, enum := range enums {
 		if enum.Name == s.Name.Name {
 			// Check module matches
-			module, err := e.findModuleByID(enum.ContainerID)
+			module, err := findModuleByID(ctx, enum.ContainerID)
 			if err == nil && (s.Name.Module == "" || module.Name == s.Name.Module) {
 				if err := e.writer.DeleteEnumeration(enum.ID); err != nil {
 					return mdlerrors.NewBackend("delete enumeration", err)
@@ -158,7 +158,7 @@ func showEnumerations(ctx *ExecContext, moduleName string) error {
 	}
 
 	// Get hierarchy for module/folder resolution
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -197,7 +197,7 @@ func showEnumerations(ctx *ExecContext, moduleName string) error {
 	for _, r := range rows {
 		result.Rows = append(result.Rows, []any{r.qualifiedName, r.module, r.name, r.folderPath, r.values})
 	}
-	return e.writeResult(result)
+	return writeResult(ctx, result)
 }
 
 // showEnumerations is an Executor method wrapper for callers not yet migrated.
@@ -214,7 +214,7 @@ func describeEnumeration(ctx *ExecContext, name ast.QualifiedName) error {
 		return mdlerrors.NewBackend("list enumerations", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}

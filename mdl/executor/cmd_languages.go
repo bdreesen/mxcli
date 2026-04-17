@@ -12,7 +12,6 @@ import (
 // showLanguages lists all languages found in the project's translatable strings.
 // Requires REFRESH CATALOG FULL to populate the strings table.
 func showLanguages(ctx *ExecContext) error {
-	e := ctx.executor
 	if ctx.Catalog == nil {
 		return mdlerrors.NewValidation("no catalog available — run REFRESH CATALOG FULL first")
 	}
@@ -48,7 +47,7 @@ func showLanguages(ctx *ExecContext) error {
 		}
 		tr.Rows = append(tr.Rows, []any{lang, count})
 	}
-	return e.writeResult(tr)
+	return writeResult(ctx, tr)
 }
 
 // --- Executor method wrapper for backward compatibility ---

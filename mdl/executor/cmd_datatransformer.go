@@ -21,7 +21,7 @@ func listDataTransformers(ctx *ExecContext, moduleName string) error {
 		return mdlerrors.NewBackend("list data transformers", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -54,7 +54,7 @@ func listDataTransformers(ctx *ExecContext, moduleName string) error {
 		Rows:    rows,
 		Summary: fmt.Sprintf("(%d data transformers)", len(rows)),
 	}
-	return e.writeResult(result)
+	return writeResult(ctx, result)
 }
 
 // describeDataTransformer handles DESCRIBE DATA TRANSFORMER Module.Name.
@@ -66,7 +66,7 @@ func describeDataTransformer(ctx *ExecContext, name ast.QualifiedName) error {
 		return mdlerrors.NewBackend("list data transformers", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -121,7 +121,7 @@ func execCreateDataTransformer(ctx *ExecContext, s *ast.CreateDataTransformerStm
 		return err
 	}
 
-	module, err := e.findModule(s.Name.Module)
+	module, err := findModule(ctx, s.Name.Module)
 	if err != nil {
 		return mdlerrors.NewNotFound("module", s.Name.Module)
 	}
@@ -164,7 +164,7 @@ func execDropDataTransformer(ctx *ExecContext, s *ast.DropDataTransformerStmt) e
 		return mdlerrors.NewBackend("list data transformers", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return err
 	}

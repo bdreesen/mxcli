@@ -19,7 +19,7 @@ import (
 func showMicroflows(ctx *ExecContext, moduleName string) error {
 	e := ctx.executor
 	// Get hierarchy for module/folder resolution
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -77,14 +77,14 @@ func showMicroflows(ctx *ExecContext, moduleName string) error {
 	for _, r := range rows {
 		result.Rows = append(result.Rows, []any{r.qualifiedName, r.module, r.name, r.excluded, r.folderPath, r.params, r.activities, r.complexity, r.returnType})
 	}
-	return e.writeResult(result)
+	return writeResult(ctx, result)
 }
 
 // showNanoflows handles SHOW NANOFLOWS command.
 func showNanoflows(ctx *ExecContext, moduleName string) error {
 	e := ctx.executor
 	// Get hierarchy for module/folder resolution
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -142,7 +142,7 @@ func showNanoflows(ctx *ExecContext, moduleName string) error {
 	for _, r := range rows {
 		result.Rows = append(result.Rows, []any{r.qualifiedName, r.module, r.name, r.excluded, r.folderPath, r.params, r.activities, r.complexity, r.returnType})
 	}
-	return e.writeResult(result)
+	return writeResult(ctx, result)
 }
 
 // countNanoflowActivities counts meaningful activities in a nanoflow.
@@ -183,7 +183,7 @@ func calculateNanoflowComplexity(nf *microflows.Nanoflow) int {
 func describeMicroflow(ctx *ExecContext, name ast.QualifiedName) error {
 	e := ctx.executor
 	// Get hierarchy for module/folder resolution
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -311,7 +311,7 @@ func describeMicroflow(ctx *ExecContext, name ast.QualifiedName) error {
 // with activities and control flows listed as comments.
 func describeNanoflow(ctx *ExecContext, name ast.QualifiedName) error {
 	e := ctx.executor
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -428,7 +428,7 @@ func describeNanoflow(ctx *ExecContext, name ast.QualifiedName) error {
 // along with a source map mapping node IDs to line ranges.
 func describeMicroflowToString(ctx *ExecContext, name ast.QualifiedName) (string, map[string]elkSourceRange, error) {
 	e := ctx.executor
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return "", nil, mdlerrors.NewBackend("build hierarchy", err)
 	}

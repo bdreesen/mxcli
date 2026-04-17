@@ -79,7 +79,7 @@ func domainModelELK(ctx *ExecContext, name string) error {
 	}
 
 	moduleName := name
-	module, err := e.findModule(moduleName)
+	module, err := findModule(ctx, moduleName)
 	if err != nil {
 		return err
 	}
@@ -168,7 +168,7 @@ func entityFocusELK(ctx *ExecContext, qualifiedName string) error {
 	}
 	moduleName, entityName := parts[0], parts[1]
 
-	module, err := e.findModule(moduleName)
+	module, err := findModule(ctx, moduleName)
 	if err != nil {
 		return err
 	}
@@ -328,7 +328,7 @@ func buildAllEntityNames(ctx *ExecContext) (map[model.ID]string, map[model.ID]st
 	e := ctx.executor
 	allEntityNames := make(map[model.ID]string)
 	allEntityModules := make(map[model.ID]string)
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return allEntityNames, allEntityModules
 	}

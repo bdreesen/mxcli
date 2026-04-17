@@ -5,6 +5,7 @@
 package executor
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -20,36 +21,37 @@ import (
 // ----------------------------------------------------------------------------
 
 // getModulesFromCache returns cached modules or loads them.
-func (e *Executor) getModulesFromCache() ([]*model.Module, error) {
-	if e.cache != nil && e.cache.modules != nil {
-		return e.cache.modules, nil
+func getModulesFromCache(ctx *ExecContext) ([]*model.Module, error) {
+	e := ctx.executor
+	if ctx.Cache != nil && ctx.Cache.modules != nil {
+		return ctx.Cache.modules, nil
 	}
 	modules, err := e.reader.ListModules()
 	if err != nil {
 		return nil, err
 	}
-	if e.cache != nil {
-		e.cache.modules = modules
+	if ctx.Cache != nil {
+		ctx.Cache.modules = modules
 	}
 	return modules, nil
 }
 
 // invalidateModuleCache clears the module cache so next lookup gets fresh data.
 // Also invalidates the hierarchy cache since new modules affect hierarchy.
-func (e *Executor) invalidateModuleCache() {
-	if e.cache != nil {
-		e.cache.modules = nil
-		e.cache.hierarchy = nil
+func invalidateModuleCache(ctx *ExecContext) {
+	if ctx.Cache != nil {
+		ctx.Cache.modules = nil
+		ctx.Cache.hierarchy = nil
 	}
 }
 
-func (e *Executor) findModule(name string) (*model.Module, error) {
+func findModule(ctx *ExecContext, name string) (*model.Module, error) {
 	// Module name is required - objects must always belong to a module
 	if name == "" {
 		return nil, mdlerrors.NewValidation("module name is required: objects must be created within a module (use ModuleName.ObjectName syntax)")
 	}
 
-	modules, err := e.getModulesFromCache()
+	modules, err := getModulesFromCache(ctx)
 	if err != nil {
 		return nil, mdlerrors.NewBackend("list modules", err)
 	}
@@ -66,8 +68,9 @@ func (e *Executor) findModule(name string) (*model.Module, error) {
 // findOrCreateModule looks up a module by name, auto-creating it if it doesn't exist
 // and the executor has write access. Used by CREATE operations to avoid requiring
 // manual module creation.
-func (e *Executor) findOrCreateModule(name string) (*model.Module, error) {
-	m, err := e.findModule(name)
+func findOrCreateModule(ctx *ExecContext, name string) (*model.Module, error) {
+	e := ctx.executor
+	m, err := findModule(ctx, name)
 	if err == nil {
 		return m, nil
 	}
@@ -78,11 +81,11 @@ func (e *Executor) findOrCreateModule(name string) (*model.Module, error) {
 	if createErr := e.execCreateModule(&ast.CreateModuleStmt{Name: name}); createErr != nil {
 		return nil, mdlerrors.NewBackend("auto-create module "+name, createErr)
 	}
-	return e.findModule(name)
+	return findModule(ctx, name)
 }
 
-func (e *Executor) findModuleByID(id model.ID) (*model.Module, error) {
-	modules, err := e.getModulesFromCache()
+func findModuleByID(ctx *ExecContext, id model.ID) (*model.Module, error) {
+	modules, err := getModulesFromCache(ctx)
 	if err != nil {
 		return nil, mdlerrors.NewBackend("list modules", err)
 	}
@@ -98,7 +101,8 @@ func (e *Executor) findModuleByID(id model.ID) (*model.Module, error) {
 
 // resolveFolder resolves a folder path (e.g., "Resources/Images") to a folder ID.
 // The path is relative to the given module. If the folder doesn't exist, it creates it.
-func (e *Executor) resolveFolder(moduleID model.ID, folderPath string) (model.ID, error) {
+func resolveFolder(ctx *ExecContext, moduleID model.ID, folderPath string) (model.ID, error) {
+	e := ctx.executor
 	if folderPath == "" {
 		return moduleID, nil
 	}
@@ -131,7 +135,7 @@ func (e *Executor) resolveFolder(moduleID model.ID, folderPath string) (model.ID
 		} else {
 			// Create the folder
 			parentID := currentContainerID
-			newFolderID, err := e.createFolder(part, parentID)
+			newFolderID, err := createFolder(ctx, part, parentID)
 			if err != nil {
 				return "", mdlerrors.NewBackend("create folder "+part, err)
 			}
@@ -150,7 +154,8 @@ func (e *Executor) resolveFolder(moduleID model.ID, folderPath string) (model.ID
 }
 
 // createFolder creates a new folder in the project.
-func (e *Executor) createFolder(name string, containerID model.ID) (model.ID, error) {
+func createFolder(ctx *ExecContext, name string, containerID model.ID) (model.ID, error) {
+	e := ctx.executor
 	folder := &model.Folder{
 		BaseElement: model.BaseElement{
 			ID:       model.ID(mpr.GenerateID()),
@@ -172,7 +177,8 @@ func (e *Executor) createFolder(name string, containerID model.ID) (model.ID, er
 // ----------------------------------------------------------------------------
 
 // enumerationExists checks if an enumeration exists in the project.
-func (e *Executor) enumerationExists(qualifiedName string) bool {
+func enumerationExists(ctx *ExecContext, qualifiedName string) bool {
+	e := ctx.executor
 	if e.reader == nil {
 		return false
 	}
@@ -185,7 +191,7 @@ func (e *Executor) enumerationExists(qualifiedName string) bool {
 	moduleName, enumName := parts[0], parts[1]
 
 	// Find the module to get its ID
-	module, err := e.findModule(moduleName)
+	module, err := findModule(ctx, moduleName)
 	if err != nil {
 		return false
 	}
@@ -211,7 +217,8 @@ func (e *Executor) enumerationExists(qualifiedName string) bool {
 // validateWidgetReferences validates all qualified name references in a widget tree.
 // It checks DataSource (microflow/nanoflow/entity), Action (page/microflow/nanoflow),
 // and Snippet references.
-func (e *Executor) validateWidgetReferences(widgets []*ast.WidgetV3, sc *scriptContext) []string {
+func validateWidgetReferences(ctx *ExecContext, widgets []*ast.WidgetV3, sc *scriptContext) []string {
+	e := ctx.executor
 	if e.reader == nil || len(widgets) == 0 {
 		return nil
 	}
@@ -228,7 +235,7 @@ func (e *Executor) validateWidgetReferences(widgets []*ast.WidgetV3, sc *scriptC
 	var errors []string
 
 	if len(refs.microflows) > 0 {
-		known := e.buildMicroflowQualifiedNames()
+		known := buildMicroflowQualifiedNames(ctx)
 		for _, ref := range refs.microflows {
 			if !known[ref] && !sc.microflows[ref] {
 				errors = append(errors, fmt.Sprintf("microflow not found: %s", ref))
@@ -237,7 +244,7 @@ func (e *Executor) validateWidgetReferences(widgets []*ast.WidgetV3, sc *scriptC
 	}
 
 	if len(refs.nanoflows) > 0 {
-		known := e.buildNanoflowQualifiedNames()
+		known := buildNanoflowQualifiedNames(ctx)
 		for _, ref := range refs.nanoflows {
 			if !known[ref] {
 				errors = append(errors, fmt.Sprintf("nanoflow not found: %s", ref))
@@ -246,7 +253,7 @@ func (e *Executor) validateWidgetReferences(widgets []*ast.WidgetV3, sc *scriptC
 	}
 
 	if len(refs.pages) > 0 {
-		known := e.buildPageQualifiedNames()
+		known := buildPageQualifiedNames(ctx)
 		for _, ref := range refs.pages {
 			if !known[ref] && !sc.pages[ref] {
 				errors = append(errors, fmt.Sprintf("page not found: %s", ref))
@@ -255,7 +262,7 @@ func (e *Executor) validateWidgetReferences(widgets []*ast.WidgetV3, sc *scriptC
 	}
 
 	if len(refs.snippets) > 0 {
-		known := e.buildSnippetQualifiedNames()
+		known := buildSnippetQualifiedNames(ctx)
 		for _, ref := range refs.snippets {
 			if !known[ref] && !sc.snippets[ref] {
 				errors = append(errors, fmt.Sprintf("snippet not found: %s", ref))
@@ -264,7 +271,7 @@ func (e *Executor) validateWidgetReferences(widgets []*ast.WidgetV3, sc *scriptC
 	}
 
 	if len(refs.entities) > 0 {
-		known := e.buildEntityQualifiedNames()
+		known := buildEntityQualifiedNames(ctx)
 		for _, ref := range refs.entities {
 			if !known[ref] && !sc.entities[ref] {
 				errors = append(errors, fmt.Sprintf("entity not found: %s", ref))
@@ -358,9 +365,10 @@ func (c *widgetRefCollector) collectFromAction(action *ast.ActionV3) {
 // ----------------------------------------------------------------------------
 
 // buildMicroflowQualifiedNames returns a set of all microflow qualified names in the project.
-func (e *Executor) buildMicroflowQualifiedNames() map[string]bool {
+func buildMicroflowQualifiedNames(ctx *ExecContext) map[string]bool {
+	e := ctx.executor
 	result := make(map[string]bool)
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return result
 	}
@@ -376,9 +384,10 @@ func (e *Executor) buildMicroflowQualifiedNames() map[string]bool {
 }
 
 // buildNanoflowQualifiedNames returns a set of all nanoflow qualified names in the project.
-func (e *Executor) buildNanoflowQualifiedNames() map[string]bool {
+func buildNanoflowQualifiedNames(ctx *ExecContext) map[string]bool {
+	e := ctx.executor
 	result := make(map[string]bool)
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return result
 	}
@@ -394,9 +403,10 @@ func (e *Executor) buildNanoflowQualifiedNames() map[string]bool {
 }
 
 // buildPageQualifiedNames returns a set of all page qualified names in the project.
-func (e *Executor) buildPageQualifiedNames() map[string]bool {
+func buildPageQualifiedNames(ctx *ExecContext) map[string]bool {
+	e := ctx.executor
 	result := make(map[string]bool)
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return result
 	}
@@ -412,9 +422,10 @@ func (e *Executor) buildPageQualifiedNames() map[string]bool {
 }
 
 // buildSnippetQualifiedNames returns a set of all snippet qualified names in the project.
-func (e *Executor) buildSnippetQualifiedNames() map[string]bool {
+func buildSnippetQualifiedNames(ctx *ExecContext) map[string]bool {
+	e := ctx.executor
 	result := make(map[string]bool)
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return result
 	}
@@ -430,12 +441,13 @@ func (e *Executor) buildSnippetQualifiedNames() map[string]bool {
 }
 
 // buildEntityQualifiedNames returns a set of all entity qualified names in the project.
-func (e *Executor) buildEntityQualifiedNames() map[string]bool {
+func buildEntityQualifiedNames(ctx *ExecContext) map[string]bool {
 	result := make(map[string]bool)
-	modules, err := e.getModulesFromCache()
+	modules, err := getModulesFromCache(ctx)
 	if err != nil {
 		return result
 	}
+	e := ctx.executor
 	moduleNames := make(map[model.ID]string)
 	for _, m := range modules {
 		moduleNames[m.ID] = m.Name
@@ -457,9 +469,10 @@ func (e *Executor) buildEntityQualifiedNames() map[string]bool {
 }
 
 // buildJavaActionQualifiedNames returns a set of all java action qualified names in the project.
-func (e *Executor) buildJavaActionQualifiedNames() map[string]bool {
+func buildJavaActionQualifiedNames(ctx *ExecContext) map[string]bool {
+	e := ctx.executor
 	result := make(map[string]bool)
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return result
 	}
@@ -472,6 +485,70 @@ func (e *Executor) buildJavaActionQualifiedNames() map[string]bool {
 		result[qn] = true
 	}
 	return result
+}
+
+// ----------------------------------------------------------------------------
+// Executor method wrappers (for callers in unmigrated files)
+// ----------------------------------------------------------------------------
+
+func (e *Executor) getModulesFromCache() ([]*model.Module, error) {
+	return getModulesFromCache(e.newExecContext(context.Background()))
+}
+
+func (e *Executor) invalidateModuleCache() {
+	invalidateModuleCache(e.newExecContext(context.Background()))
+}
+
+func (e *Executor) findModule(name string) (*model.Module, error) {
+	return findModule(e.newExecContext(context.Background()), name)
+}
+
+func (e *Executor) findOrCreateModule(name string) (*model.Module, error) {
+	return findOrCreateModule(e.newExecContext(context.Background()), name)
+}
+
+func (e *Executor) findModuleByID(id model.ID) (*model.Module, error) {
+	return findModuleByID(e.newExecContext(context.Background()), id)
+}
+
+func (e *Executor) resolveFolder(moduleID model.ID, folderPath string) (model.ID, error) {
+	return resolveFolder(e.newExecContext(context.Background()), moduleID, folderPath)
+}
+
+func (e *Executor) createFolder(name string, containerID model.ID) (model.ID, error) {
+	return createFolder(e.newExecContext(context.Background()), name, containerID)
+}
+
+func (e *Executor) enumerationExists(qualifiedName string) bool {
+	return enumerationExists(e.newExecContext(context.Background()), qualifiedName)
+}
+
+func (e *Executor) validateWidgetReferences(widgets []*ast.WidgetV3, sc *scriptContext) []string {
+	return validateWidgetReferences(e.newExecContext(context.Background()), widgets, sc)
+}
+
+func (e *Executor) buildMicroflowQualifiedNames() map[string]bool {
+	return buildMicroflowQualifiedNames(e.newExecContext(context.Background()))
+}
+
+func (e *Executor) buildNanoflowQualifiedNames() map[string]bool {
+	return buildNanoflowQualifiedNames(e.newExecContext(context.Background()))
+}
+
+func (e *Executor) buildPageQualifiedNames() map[string]bool {
+	return buildPageQualifiedNames(e.newExecContext(context.Background()))
+}
+
+func (e *Executor) buildSnippetQualifiedNames() map[string]bool {
+	return buildSnippetQualifiedNames(e.newExecContext(context.Background()))
+}
+
+func (e *Executor) buildEntityQualifiedNames() map[string]bool {
+	return buildEntityQualifiedNames(e.newExecContext(context.Background()))
+}
+
+func (e *Executor) buildJavaActionQualifiedNames() map[string]bool {
+	return buildJavaActionQualifiedNames(e.newExecContext(context.Background()))
 }
 
 // ----------------------------------------------------------------------------

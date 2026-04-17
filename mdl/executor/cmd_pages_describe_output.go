@@ -976,7 +976,7 @@ func getPageQualifiedName(ctx *ExecContext, pageID model.ID) string {
 	if err != nil {
 		return ""
 	}
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return ""
 	}

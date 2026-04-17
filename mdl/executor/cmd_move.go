@@ -20,7 +20,7 @@ func execMove(ctx *ExecContext, s *ast.MoveStmt) error {
 	}
 
 	// Find the source module
-	sourceModule, err := e.findModule(s.Name.Module)
+	sourceModule, err := findModule(ctx, s.Name.Module)
 	if err != nil {
 		return mdlerrors.NewBackend("find source module", err)
 	}
@@ -29,7 +29,7 @@ func execMove(ctx *ExecContext, s *ast.MoveStmt) error {
 	var targetModule *model.Module
 	isCrossModuleMove := false
 	if s.TargetModule != "" {
-		targetModule, err = e.findModule(s.TargetModule)
+		targetModule, err = findModule(ctx, s.TargetModule)
 		if err != nil {
 			return mdlerrors.NewBackend("find target module", err)
 		}
@@ -46,7 +46,7 @@ func execMove(ctx *ExecContext, s *ast.MoveStmt) error {
 	// Resolve target container (folder or module root)
 	var targetContainerID model.ID
 	if s.Folder != "" {
-		targetContainerID, err = e.resolveFolder(targetModule.ID, s.Folder)
+		targetContainerID, err = resolveFolder(ctx, targetModule.ID, s.Folder)
 		if err != nil {
 			return mdlerrors.NewBackend("resolve target folder", err)
 		}
@@ -120,7 +120,7 @@ func movePage(ctx *ExecContext, name ast.QualifiedName, targetContainerID model.
 		return mdlerrors.NewBackend("list pages", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -151,7 +151,7 @@ func moveMicroflow(ctx *ExecContext, name ast.QualifiedName, targetContainerID m
 		return mdlerrors.NewBackend("list microflows", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -182,7 +182,7 @@ func moveSnippet(ctx *ExecContext, name ast.QualifiedName, targetContainerID mod
 		return mdlerrors.NewBackend("list snippets", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -213,7 +213,7 @@ func moveNanoflow(ctx *ExecContext, name ast.QualifiedName, targetContainerID mo
 		return mdlerrors.NewBackend("list nanoflows", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -337,7 +337,7 @@ func moveConstant(ctx *ExecContext, name ast.QualifiedName, targetContainerID mo
 		return mdlerrors.NewBackend("list constants", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -366,7 +366,7 @@ func moveDatabaseConnection(ctx *ExecContext, name ast.QualifiedName, targetCont
 		return mdlerrors.NewBackend("list database connections", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}

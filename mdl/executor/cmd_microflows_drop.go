@@ -18,7 +18,7 @@ func execDropMicroflow(ctx *ExecContext, s *ast.DropMicroflowStmt) error {
 	}
 
 	// Get hierarchy for module/folder resolution
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -41,7 +41,7 @@ func execDropMicroflow(ctx *ExecContext, s *ast.DropMicroflowStmt) error {
 			if e.cache != nil && e.cache.createdMicroflows != nil {
 				delete(e.cache.createdMicroflows, qualifiedName)
 			}
-			e.invalidateHierarchy()
+			invalidateHierarchy(ctx)
 			fmt.Fprintf(ctx.Output, "Dropped microflow: %s.%s\n", s.Name.Module, s.Name.Name)
 			return nil
 		}

@@ -16,7 +16,7 @@ import (
 func showLayouts(ctx *ExecContext, moduleName string) error {
 	e := ctx.executor
 	// Get hierarchy for module/folder resolution
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -61,7 +61,7 @@ func showLayouts(ctx *ExecContext, moduleName string) error {
 	for _, r := range rows {
 		result.Rows = append(result.Rows, []any{r.qualifiedName, r.module, r.name, r.folderPath, r.layoutType})
 	}
-	return e.writeResult(result)
+	return writeResult(ctx, result)
 }
 
 func (e *Executor) showLayouts(moduleName string) error {

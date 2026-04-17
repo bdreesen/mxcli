@@ -51,7 +51,7 @@ func showProjectSecurity(ctx *ExecContext) error {
 // showModuleRoles handles SHOW MODULE ROLES [IN module].
 func showModuleRoles(ctx *ExecContext, moduleName string) error {
 	e := ctx.executor
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -80,7 +80,7 @@ func showModuleRoles(ctx *ExecContext, moduleName string) error {
 	}
 
 	result.Summary = fmt.Sprintf("(%d module roles)", len(result.Rows))
-	return e.writeResult(result)
+	return writeResult(ctx, result)
 }
 
 // showUserRoles handles SHOW USER ROLES.
@@ -108,7 +108,7 @@ func showUserRoles(ctx *ExecContext) error {
 	}
 
 	result.Summary = fmt.Sprintf("(%d user roles)", len(result.Rows))
-	return e.writeResult(result)
+	return writeResult(ctx, result)
 }
 
 // showDemoUsers handles SHOW DEMO USERS.
@@ -135,7 +135,7 @@ func showDemoUsers(ctx *ExecContext) error {
 	}
 
 	result.Summary = fmt.Sprintf("(%d demo users)", len(result.Rows))
-	return e.writeResult(result)
+	return writeResult(ctx, result)
 }
 
 // showAccessOnEntity handles SHOW ACCESS ON Module.Entity.
@@ -145,7 +145,7 @@ func showAccessOnEntity(ctx *ExecContext, name *ast.QualifiedName) error {
 		return mdlerrors.NewValidation("entity name required")
 	}
 
-	module, err := e.findModule(name.Module)
+	module, err := findModule(ctx, name.Module)
 	if err != nil {
 		return err
 	}
@@ -257,7 +257,7 @@ func showAccessOnMicroflow(ctx *ExecContext, name *ast.QualifiedName) error {
 		return mdlerrors.NewValidation("microflow name required")
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -292,7 +292,7 @@ func showAccessOnPage(ctx *ExecContext, name *ast.QualifiedName) error {
 		return mdlerrors.NewValidation("page name required")
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -332,7 +332,7 @@ func showSecurityMatrix(ctx *ExecContext, moduleName string) error {
 		return showSecurityMatrixJSON(ctx, moduleName)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -530,7 +530,7 @@ func showSecurityMatrix(ctx *ExecContext, moduleName string) error {
 // with one row per access rule across entities, microflows, pages, and workflows.
 func showSecurityMatrixJSON(ctx *ExecContext, moduleName string) error {
 	e := ctx.executor
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -640,13 +640,13 @@ func showSecurityMatrixJSON(ctx *ExecContext, moduleName string) error {
 		})
 	}
 
-	return e.writeResult(tr)
+	return writeResult(ctx, tr)
 }
 
 // describeModuleRole handles DESCRIBE MODULE ROLE Module.RoleName.
 func describeModuleRole(ctx *ExecContext, name ast.QualifiedName) error {
 	e := ctx.executor
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}

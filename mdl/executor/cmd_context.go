@@ -14,13 +14,12 @@ import (
 // execShowContext handles SHOW CONTEXT OF <name> [DEPTH n] command.
 // It assembles relevant context information for LLM consumption.
 func execShowContext(ctx *ExecContext, s *ast.ShowStmt) error {
-	e := ctx.executor
 	if s.Name == nil {
 		return mdlerrors.NewValidation("SHOW CONTEXT requires a qualified name")
 	}
 
 	// Ensure catalog is built with full mode for refs
-	if err := e.ensureCatalog(true); err != nil {
+	if err := ensureCatalog(ctx, true); err != nil {
 		return mdlerrors.NewBackend("build catalog", err)
 	}
 
@@ -376,7 +375,6 @@ func assembleEnumerationContext(ctx *ExecContext, out *strings.Builder, name str
 
 // assembleSnippetContext assembles context for a snippet.
 func assembleSnippetContext(ctx *ExecContext, out *strings.Builder, name string, depth int) {
-	e := ctx.executor
 	out.WriteString("### Snippet Definition\n\n")
 	result, err := ctx.Catalog.Query(fmt.Sprintf(
 		"SELECT Name, ParameterCount, WidgetCount FROM snippets WHERE QualifiedName = '%s'", name))
@@ -396,10 +394,10 @@ func assembleSnippetContext(ctx *ExecContext, out *strings.Builder, name string,
 			ObjectType: ast.DescribeSnippet,
 			Name:       ast.QualifiedName{Module: parts[0], Name: parts[1]},
 		}
-		savedOutput := e.output
-		e.output = out
-		e.execDescribe(descStmt)
-		e.output = savedOutput
+		savedOutput := ctx.Output
+		ctx.Output = out
+		execDescribe(ctx, descStmt)
+		ctx.Output = savedOutput
 	}
 	out.WriteString("```\n\n")
 
@@ -420,7 +418,6 @@ func assembleSnippetContext(ctx *ExecContext, out *strings.Builder, name string,
 
 // assembleJavaActionContext assembles context for a java action.
 func assembleJavaActionContext(ctx *ExecContext, out *strings.Builder, name string) {
-	e := ctx.executor
 	out.WriteString("### Java Action Definition\n\n```sql\n")
 	parts := strings.SplitN(name, ".", 2)
 	if len(parts) == 2 {
@@ -428,10 +425,10 @@ func assembleJavaActionContext(ctx *ExecContext, out *strings.Builder, name stri
 			ObjectType: ast.DescribeJavaAction,
 			Name:       ast.QualifiedName{Module: parts[0], Name: parts[1]},
 		}
-		savedOutput := e.output
-		e.output = out
-		e.execDescribe(descStmt)
-		e.output = savedOutput
+		savedOutput := ctx.Output
+		ctx.Output = out
+		execDescribe(ctx, descStmt)
+		ctx.Output = savedOutput
 	}
 	out.WriteString("```\n\n")
 
@@ -481,7 +478,6 @@ func assembleODataClientContext(ctx *ExecContext, out *strings.Builder, name str
 
 // assembleWorkflowContext assembles context for a workflow.
 func assembleWorkflowContext(ctx *ExecContext, out *strings.Builder, name string, depth int) {
-	e := ctx.executor
 	// Get workflow basic info
 	out.WriteString("### Workflow Definition\n\n")
 	result, err := ctx.Catalog.Query(fmt.Sprintf(
@@ -510,10 +506,10 @@ func assembleWorkflowContext(ctx *ExecContext, out *strings.Builder, name string
 			ObjectType: ast.DescribeWorkflow,
 			Name:       ast.QualifiedName{Module: parts[0], Name: parts[1]},
 		}
-		savedOutput := e.output
-		e.output = out
-		e.execDescribe(descStmt)
-		e.output = savedOutput
+		savedOutput := ctx.Output
+		ctx.Output = out
+		execDescribe(ctx, descStmt)
+		ctx.Output = savedOutput
 	}
 	out.WriteString("```\n\n")
 

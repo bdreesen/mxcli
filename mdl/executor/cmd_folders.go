@@ -56,7 +56,7 @@ func execDropFolder(ctx *ExecContext, s *ast.DropFolderStmt) error {
 		return mdlerrors.NewNotConnected()
 	}
 
-	module, err := e.findModule(s.Module)
+	module, err := findModule(ctx, s.Module)
 	if err != nil {
 		return mdlerrors.NewNotFound("module", s.Module)
 	}
@@ -75,7 +75,7 @@ func execDropFolder(ctx *ExecContext, s *ast.DropFolderStmt) error {
 		return mdlerrors.NewBackend(fmt.Sprintf("delete folder '%s'", s.FolderPath), err)
 	}
 
-	e.invalidateHierarchy()
+	invalidateHierarchy(ctx)
 	fmt.Fprintf(ctx.Output, "Dropped folder: '%s' in %s\n", s.FolderPath, s.Module)
 	return nil
 }
@@ -88,7 +88,7 @@ func execMoveFolder(ctx *ExecContext, s *ast.MoveFolderStmt) error {
 	}
 
 	// Find the source module
-	sourceModule, err := e.findModule(s.Name.Module)
+	sourceModule, err := findModule(ctx, s.Name.Module)
 	if err != nil {
 		return mdlerrors.NewNotFound("source module", s.Name.Module)
 	}
@@ -107,7 +107,7 @@ func execMoveFolder(ctx *ExecContext, s *ast.MoveFolderStmt) error {
 	// Determine target module
 	var targetModule *model.Module
 	if s.TargetModule != "" {
-		targetModule, err = e.findModule(s.TargetModule)
+		targetModule, err = findModule(ctx, s.TargetModule)
 		if err != nil {
 			return mdlerrors.NewNotFound("target module", s.TargetModule)
 		}
@@ -118,7 +118,7 @@ func execMoveFolder(ctx *ExecContext, s *ast.MoveFolderStmt) error {
 	// Resolve target container
 	var targetContainerID model.ID
 	if s.TargetFolder != "" {
-		targetContainerID, err = e.resolveFolder(targetModule.ID, s.TargetFolder)
+		targetContainerID, err = resolveFolder(ctx, targetModule.ID, s.TargetFolder)
 		if err != nil {
 			return mdlerrors.NewBackend("resolve target folder", err)
 		}
@@ -131,7 +131,7 @@ func execMoveFolder(ctx *ExecContext, s *ast.MoveFolderStmt) error {
 		return mdlerrors.NewBackend("move folder", err)
 	}
 
-	e.invalidateHierarchy()
+	invalidateHierarchy(ctx)
 
 	target := targetModule.Name
 	if s.TargetFolder != "" {

@@ -22,7 +22,7 @@ func execCreateModuleRole(ctx *ExecContext, s *ast.CreateModuleRoleStmt) error {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
-	module, err := e.findModule(s.Name.Module)
+	module, err := findModule(ctx, s.Name.Module)
 	if err != nil {
 		return err
 	}
@@ -56,7 +56,7 @@ func execDropModuleRole(ctx *ExecContext, s *ast.DropModuleRoleStmt) error {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
-	module, err := e.findModule(s.Name.Module)
+	module, err := findModule(ctx, s.Name.Module)
 	if err != nil {
 		return err
 	}
@@ -91,7 +91,7 @@ func execDropModuleRole(ctx *ExecContext, s *ast.DropModuleRoleStmt) error {
 	}
 
 	// Cascade: remove role from microflow/nanoflow/page allowed roles
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err == nil {
 		// Microflows
 		if mfs, err := e.reader.ListMicroflows(); err == nil {
@@ -287,7 +287,7 @@ func execGrantEntityAccess(ctx *ExecContext, s *ast.GrantEntityAccessStmt) error
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
-	module, err := e.findModule(s.Entity.Module)
+	module, err := findModule(ctx, s.Entity.Module)
 	if err != nil {
 		return err
 	}
@@ -444,7 +444,7 @@ func execRevokeEntityAccess(ctx *ExecContext, s *ast.RevokeEntityAccessStmt) err
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
-	module, err := e.findModule(s.Entity.Module)
+	module, err := findModule(ctx, s.Entity.Module)
 	if err != nil {
 		return err
 	}
@@ -532,7 +532,7 @@ func execGrantMicroflowAccess(ctx *ExecContext, s *ast.GrantMicroflowAccessStmt)
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -595,7 +595,7 @@ func execRevokeMicroflowAccess(ctx *ExecContext, s *ast.RevokeMicroflowAccessStm
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -652,7 +652,7 @@ func execGrantPageAccess(ctx *ExecContext, s *ast.GrantPageAccessStmt) error {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -715,7 +715,7 @@ func execRevokePageAccess(ctx *ExecContext, s *ast.RevokePageAccessStmt) error {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -782,7 +782,7 @@ func execRevokeWorkflowAccess(ctx *ExecContext, s *ast.RevokeWorkflowAccessStmt)
 // validateModuleRole checks that a module role exists in the project.
 func validateModuleRole(ctx *ExecContext, role ast.QualifiedName) error {
 	e := ctx.executor
-	module, err := e.findModule(role.Module)
+	module, err := findModule(ctx, role.Module)
 	if err != nil {
 		return fmt.Errorf("module not found for role %s.%s: %w", role.Module, role.Name, err)
 	}
@@ -1002,7 +1002,7 @@ func execGrantODataServiceAccess(ctx *ExecContext, s *ast.GrantODataServiceAcces
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -1065,7 +1065,7 @@ func execRevokeODataServiceAccess(ctx *ExecContext, s *ast.RevokeODataServiceAcc
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -1132,7 +1132,7 @@ func execGrantPublishedRestServiceAccess(ctx *ExecContext, s *ast.GrantPublished
 		return err
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -1194,7 +1194,7 @@ func execRevokePublishedRestServiceAccess(ctx *ExecContext, s *ast.RevokePublish
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -1250,7 +1250,7 @@ func execUpdateSecurity(ctx *ExecContext, s *ast.UpdateSecurityStmt) error {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
-	modules, err := e.getModulesFromCache()
+	modules, err := getModulesFromCache(ctx)
 	if err != nil {
 		return err
 	}

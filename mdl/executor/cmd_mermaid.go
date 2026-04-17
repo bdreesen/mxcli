@@ -51,7 +51,7 @@ func (e *Executor) DescribeMermaid(objectType, name string) error {
 // domainModelToMermaid generates a Mermaid erDiagram for a module's domain model.
 func domainModelToMermaid(ctx *ExecContext, moduleName string) error {
 	e := ctx.executor
-	module, err := e.findModule(moduleName)
+	module, err := findModule(ctx, moduleName)
 	if err != nil {
 		return err
 	}
@@ -69,7 +69,7 @@ func domainModelToMermaid(ctx *ExecContext, moduleName string) error {
 
 	// Also load entities from all modules for cross-module associations
 	allEntityNames := make(map[model.ID]string)
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err == nil {
 		domainModels, _ := e.reader.ListDomainModels()
 		for _, otherDM := range domainModels {
@@ -191,7 +191,7 @@ func domainModelToMermaid(ctx *ExecContext, moduleName string) error {
 // microflowToMermaid generates a Mermaid flowchart for a microflow.
 func microflowToMermaid(ctx *ExecContext, name ast.QualifiedName) error {
 	e := ctx.executor
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -370,7 +370,7 @@ func renderMicroflowMermaid(ctx *ExecContext, mf *microflows.Microflow, entityNa
 // pageToMermaid generates a Mermaid block diagram for a page's widget structure.
 func pageToMermaid(ctx *ExecContext, name ast.QualifiedName) error {
 	e := ctx.executor
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}

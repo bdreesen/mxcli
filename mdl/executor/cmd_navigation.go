@@ -161,7 +161,7 @@ func showNavigation(ctx *ExecContext) error {
 	for _, r := range rows {
 		result.Rows = append(result.Rows, []any{r.name, r.kind, r.homePage, r.loginPage, r.menuItems, r.roleHomes})
 	}
-	return e.writeResult(result)
+	return writeResult(ctx, result)
 }
 
 // Executor wrapper for unmigrated callers.

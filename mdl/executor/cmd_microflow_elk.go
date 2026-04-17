@@ -74,7 +74,7 @@ func microflowELK(ctx *ExecContext, name string) error {
 
 	qn := ast.QualifiedName{Module: parts[0], Name: parts[1]}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}

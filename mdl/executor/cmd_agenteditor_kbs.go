@@ -29,7 +29,7 @@ func showAgentEditorKnowledgeBases(ctx *ExecContext, moduleName string) error {
 		return mdlerrors.NewBackend("list knowledge bases", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return err
 	}
@@ -59,7 +59,7 @@ func showAgentEditorKnowledgeBases(ctx *ExecContext, moduleName string) error {
 	}
 
 	result.Summary = fmt.Sprintf("(%d knowledge base(s))", len(result.Rows))
-	return e.writeResult(result)
+	return writeResult(ctx, result)
 }
 
 // describeAgentEditorKnowledgeBase handles DESCRIBE KNOWLEDGE BASE Module.Name.
@@ -74,7 +74,7 @@ func describeAgentEditorKnowledgeBase(ctx *ExecContext, name ast.QualifiedName) 
 		return mdlerrors.NewNotFound("knowledge base", name.String())
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return err
 	}
@@ -134,7 +134,7 @@ func findAgentEditorKnowledgeBase(ctx *ExecContext, moduleName, kbName string) *
 	if err != nil {
 		return nil
 	}
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return nil
 	}

@@ -29,7 +29,7 @@ func showAgentEditorModels(ctx *ExecContext, moduleName string) error {
 		return mdlerrors.NewBackend("list models", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return err
 	}
@@ -61,7 +61,7 @@ func showAgentEditorModels(ctx *ExecContext, moduleName string) error {
 	}
 
 	result.Summary = fmt.Sprintf("(%d model(s))", len(result.Rows))
-	return e.writeResult(result)
+	return writeResult(ctx, result)
 }
 
 // describeAgentEditorModel handles DESCRIBE MODEL Module.Name.
@@ -77,7 +77,7 @@ func describeAgentEditorModel(ctx *ExecContext, name ast.QualifiedName) error {
 		return mdlerrors.NewNotFound("model", name.String())
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return err
 	}
@@ -140,7 +140,7 @@ func findAgentEditorModel(ctx *ExecContext, moduleName, modelName string) *agent
 	if err != nil {
 		return nil
 	}
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return nil
 	}

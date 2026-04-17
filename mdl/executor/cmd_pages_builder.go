@@ -224,8 +224,7 @@ func (pb *pageBuilder) resolveEntity(entityRef ast.QualifiedName) (model.ID, err
 // getModuleID returns the module ID for any container by using the hierarchy.
 // Deprecated: prefer using getHierarchy().FindModuleID() directly.
 func getModuleID(ctx *ExecContext, containerID model.ID) model.ID {
-	e := ctx.executor
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return containerID
 	}
@@ -235,8 +234,7 @@ func getModuleID(ctx *ExecContext, containerID model.ID) model.ID {
 // getModuleName returns the module name for a module ID.
 // Deprecated: prefer using getHierarchy().GetModuleName() directly.
 func getModuleName(ctx *ExecContext, moduleID model.ID) string {
-	e := ctx.executor
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return ""
 	}

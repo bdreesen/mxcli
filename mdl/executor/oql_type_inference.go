@@ -3,6 +3,7 @@
 package executor
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 	"strings"
@@ -24,8 +25,8 @@ type OQLColumnInfo struct {
 	AggregateFunc string       // The aggregate function name (COUNT, SUM, AVG, etc.)
 }
 
-// InferOQLTypes analyzes an OQL query and returns the expected types for each column.
-func (e *Executor) InferOQLTypes(oqlQuery string, declaredAttrs []ast.ViewAttribute) ([]OQLColumnInfo, []string) {
+// inferOQLTypes analyzes an OQL query and returns the expected types for each column.
+func inferOQLTypes(ctx *ExecContext, oqlQuery string, declaredAttrs []ast.ViewAttribute) ([]OQLColumnInfo, []string) {
 	var warnings []string
 	var columns []OQLColumnInfo
 
@@ -64,12 +65,17 @@ func (e *Executor) InferOQLTypes(oqlQuery string, declaredAttrs []ast.ViewAttrib
 		}
 
 		// Infer type from expression
-		col.InferredType = e.inferTypeFromExpression(expr, &col, aliasMap)
+		col.InferredType = inferTypeFromExpression(ctx, expr, &col, aliasMap)
 
 		columns = append(columns, col)
 	}
 
 	return columns, warnings
+}
+
+// InferOQLTypes analyzes an OQL query and returns the expected types for each column.
+func (e *Executor) InferOQLTypes(oqlQuery string, declaredAttrs []ast.ViewAttribute) ([]OQLColumnInfo, []string) {
+	return inferOQLTypes(e.newExecContext(context.Background()), oqlQuery, declaredAttrs)
 }
 
 // extractAliasMap parses the FROM clause to build a map of alias -> qualified entity name.
@@ -279,8 +285,8 @@ func inferCaseType(expr string) ast.DataType {
 	return ast.DataType{Kind: ast.TypeUnknown}
 }
 
-// ValidateViewEntityTypes validates that declared attribute types match inferred OQL types.
-func (e *Executor) ValidateViewEntityTypes(stmt *ast.CreateViewEntityStmt) []string {
+// validateViewEntityTypes validates that declared attribute types match inferred OQL types.
+func validateViewEntityTypes(ctx *ExecContext, stmt *ast.CreateViewEntityStmt) []string {
 	var errors []string
 
 	// First validate OQL syntax for common mistakes
@@ -295,7 +301,7 @@ func (e *Executor) ValidateViewEntityTypes(stmt *ast.CreateViewEntityStmt) []str
 		errors = append(errors, v.Message)
 	}
 
-	columns, warnings := e.InferOQLTypes(stmt.Query.RawQuery, stmt.Attributes)
+	columns, warnings := inferOQLTypes(ctx, stmt.Query.RawQuery, stmt.Attributes)
 	errors = append(errors, warnings...)
 
 	// Match columns to declared attributes by position (OQL columns map 1:1 to attributes)
@@ -324,6 +330,11 @@ func (e *Executor) ValidateViewEntityTypes(stmt *ast.CreateViewEntityStmt) []str
 	}
 
 	return errors
+}
+
+// ValidateViewEntityTypes validates that declared attribute types match inferred OQL types.
+func (e *Executor) ValidateViewEntityTypes(stmt *ast.CreateViewEntityStmt) []string {
+	return validateViewEntityTypes(e.newExecContext(context.Background()), stmt)
 }
 
 // extractSelectClause extracts the SELECT clause from an OQL query.
@@ -481,18 +492,18 @@ func parseSelectColumns(selectClause string) []string {
 }
 
 // inferTypeFromExpression infers the data type from an OQL expression.
-func (e *Executor) inferTypeFromExpression(expr string, col *OQLColumnInfo, aliasMap map[string]string) ast.DataType {
+func inferTypeFromExpression(ctx *ExecContext, expr string, col *OQLColumnInfo, aliasMap map[string]string) ast.DataType {
 	expr = strings.TrimSpace(expr)
 
 	// Check for aggregate functions
-	if aggType := e.inferAggregateType(expr, col, aliasMap); aggType.Kind != ast.TypeUnknown {
+	if aggType := inferAggregateType(ctx, expr, col, aliasMap); aggType.Kind != ast.TypeUnknown {
 		return aggType
 	}
 
 	// Check for attribute reference: [Entity/Attribute] or [Module.Entity/Attribute]
 	attrPattern := regexp.MustCompile(`^\[([^\]]+)\]$`)
 	if match := attrPattern.FindStringSubmatch(expr); match != nil {
-		return e.inferAttributeType(match[1], col)
+		return inferAttributeType(ctx, match[1], col)
 	}
 
 	// Check for MDL-style alias.attribute reference (e.g., p.Name, o.OrderDate)
@@ -504,7 +515,7 @@ func (e *Executor) inferTypeFromExpression(expr string, col *OQLColumnInfo, alia
 			// Resolve alias to entity and look up attribute
 			col.SourceEntity = entityName
 			col.SourceAttr = attrName
-			return e.inferAttributeTypeFromEntity(entityName, attrName)
+			return inferAttributeTypeFromEntity(ctx, entityName, attrName)
 		}
 	}
 
@@ -531,7 +542,7 @@ func (e *Executor) inferTypeFromExpression(expr string, col *OQLColumnInfo, alia
 }
 
 // inferAttributeTypeFromEntity looks up an attribute's type from a qualified entity name.
-func (e *Executor) inferAttributeTypeFromEntity(entityQualifiedName, attrName string) ast.DataType {
+func inferAttributeTypeFromEntity(ctx *ExecContext, entityQualifiedName, attrName string) ast.DataType {
 	parts := strings.Split(entityQualifiedName, ".")
 	if len(parts) != 2 {
 		return ast.DataType{Kind: ast.TypeUnknown}
@@ -540,7 +551,7 @@ func (e *Executor) inferAttributeTypeFromEntity(entityQualifiedName, attrName st
 	moduleName := parts[0]
 	entityName := parts[1]
 
-	entity, err := e.findEntity(moduleName, entityName)
+	entity, err := findEntity(ctx, moduleName, entityName)
 	if err != nil {
 		return ast.DataType{Kind: ast.TypeUnknown}
 	}
@@ -555,7 +566,7 @@ func (e *Executor) inferAttributeTypeFromEntity(entityQualifiedName, attrName st
 }
 
 // inferAggregateType infers the return type of aggregate functions.
-func (e *Executor) inferAggregateType(expr string, col *OQLColumnInfo, aliasMap map[string]string) ast.DataType {
+func inferAggregateType(ctx *ExecContext, expr string, col *OQLColumnInfo, aliasMap map[string]string) ast.DataType {
 	upperExpr := strings.ToUpper(strings.TrimSpace(expr))
 
 	// COUNT(*) or COUNT(expression) → Integer (Mendix OQL COUNT returns Integer)
@@ -571,7 +582,7 @@ func (e *Executor) inferAggregateType(expr string, col *OQLColumnInfo, aliasMap 
 		col.AggregateFunc = "SUM"
 		innerArg := extractFunctionArg(expr)
 		if innerArg != "" {
-			innerType := e.inferTypeFromExpression(innerArg, &OQLColumnInfo{}, aliasMap)
+			innerType := inferTypeFromExpression(ctx, innerArg, &OQLColumnInfo{}, aliasMap)
 			if innerType.Kind == ast.TypeInteger || innerType.Kind == ast.TypeLong {
 				return innerType
 			}
@@ -592,7 +603,7 @@ func (e *Executor) inferAggregateType(expr string, col *OQLColumnInfo, aliasMap 
 		col.AggregateFunc = strings.Split(upperExpr, "(")[0]
 		innerArg := extractFunctionArg(expr)
 		if innerArg != "" {
-			innerType := e.inferTypeFromExpression(innerArg, &OQLColumnInfo{}, aliasMap)
+			innerType := inferTypeFromExpression(ctx, innerArg, &OQLColumnInfo{}, aliasMap)
 			if innerType.Kind != ast.TypeUnknown {
 				return innerType
 			}
@@ -614,7 +625,7 @@ func (e *Executor) inferAggregateType(expr string, col *OQLColumnInfo, aliasMap 
 }
 
 // inferAttributeType looks up an attribute's type from the referenced entity.
-func (e *Executor) inferAttributeType(attrPath string, col *OQLColumnInfo) ast.DataType {
+func inferAttributeType(ctx *ExecContext, attrPath string, col *OQLColumnInfo) ast.DataType {
 	// Parse [Module.Entity/Attribute] or [Entity/Attribute]
 	parts := strings.Split(attrPath, "/")
 	if len(parts) != 2 {
@@ -641,7 +652,7 @@ func (e *Executor) inferAttributeType(attrPath string, col *OQLColumnInfo) ast.D
 	}
 
 	// Look up the entity in the project
-	entity, err := e.findEntity(moduleName, entityName)
+	entity, err := findEntity(ctx, moduleName, entityName)
 	if err != nil {
 		return ast.DataType{Kind: ast.TypeUnknown}
 	}
@@ -656,15 +667,16 @@ func (e *Executor) inferAttributeType(attrPath string, col *OQLColumnInfo) ast.D
 	return ast.DataType{Kind: ast.TypeUnknown}
 }
 
-// findEntity looks up an entity by module and name.
-func (e *Executor) findEntity(moduleName, entityName string) (*domainmodel.Entity, error) {
+// oqlFindEntity looks up an entity by module and name.
+func findEntity(ctx *ExecContext, moduleName, entityName string) (*domainmodel.Entity, error) {
+	e := ctx.executor
 	// Get all entities
 	dms, err := e.reader.ListDomainModels()
 	if err != nil {
 		return nil, err
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return nil, err
 	}

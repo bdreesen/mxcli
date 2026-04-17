@@ -25,7 +25,7 @@ func execAlterPage(ctx *ExecContext, s *ast.AlterPageStmt) error {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}

@@ -31,7 +31,7 @@ func showRestClients(ctx *ExecContext, moduleName string) error {
 		return mdlerrors.NewBackend("list consumed REST services", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -82,7 +82,7 @@ func showRestClients(ctx *ExecContext, moduleName string) error {
 	for _, r := range rows {
 		result.Rows = append(result.Rows, []any{r.module, r.qualifiedName, r.baseUrl, r.auth, r.ops})
 	}
-	return e.writeResult(result)
+	return writeResult(ctx, result)
 }
 
 // describeRestClient handles DESCRIBE REST CLIENT command.
@@ -94,7 +94,7 @@ func describeRestClient(ctx *ExecContext, name ast.QualifiedName) error {
 		return mdlerrors.NewBackend("list consumed REST services", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -296,14 +296,14 @@ func createRestClient(ctx *ExecContext, stmt *ast.CreateRestClientStmt) error {
 	}
 
 	moduleName := stmt.Name.Module
-	module, err := e.findModule(moduleName)
+	module, err := findModule(ctx, moduleName)
 	if err != nil {
 		return mdlerrors.NewNotFound("module", moduleName)
 	}
 
 	// Check for existing service with same name
 	existingServices, _ := e.reader.ListConsumedRestServices()
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -326,7 +326,7 @@ func createRestClient(ctx *ExecContext, stmt *ast.CreateRestClientStmt) error {
 	// Resolve folder if specified
 	containerID := module.ID
 	if stmt.Folder != "" {
-		folderID, err := e.resolveFolder(module.ID, stmt.Folder)
+		folderID, err := resolveFolder(ctx, module.ID, stmt.Folder)
 		if err != nil {
 			return mdlerrors.NewBackend(fmt.Sprintf("resolve folder '%s'", stmt.Folder), err)
 		}
@@ -474,7 +474,7 @@ func dropRestClient(ctx *ExecContext, stmt *ast.DropRestClientStmt) error {
 		return mdlerrors.NewBackend("list consumed REST services", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}

@@ -23,7 +23,7 @@ func showPublishedRestServices(ctx *ExecContext, moduleName string) error {
 		return mdlerrors.NewBackend("list published REST services", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -75,7 +75,7 @@ func showPublishedRestServices(ctx *ExecContext, moduleName string) error {
 	for _, r := range rows {
 		result.Rows = append(result.Rows, []any{r.module, r.qualifiedName, r.path, r.version, r.resources, r.operations})
 	}
-	return e.writeResult(result)
+	return writeResult(ctx, result)
 }
 
 // describePublishedRestService handles DESCRIBE PUBLISHED REST SERVICE command.
@@ -87,7 +87,7 @@ func describePublishedRestService(ctx *ExecContext, name ast.QualifiedName) erro
 		return mdlerrors.NewBackend("list published REST services", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -168,7 +168,7 @@ func findPublishedRestService(ctx *ExecContext, moduleName, name string) (*model
 	if err != nil {
 		return nil, err
 	}
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -210,14 +210,14 @@ func execCreatePublishedRestService(ctx *ExecContext, s *ast.CreatePublishedRest
 		}
 	}
 
-	module, err := e.findModule(s.Name.Module)
+	module, err := findModule(ctx, s.Name.Module)
 	if err != nil {
 		return mdlerrors.NewNotFound("module", s.Name.Module)
 	}
 
 	containerID := module.ID
 	if s.Folder != "" {
-		folderID, err := e.resolveFolder(module.ID, s.Folder)
+		folderID, err := resolveFolder(ctx, module.ID, s.Folder)
 		if err != nil {
 			return mdlerrors.NewBackend(fmt.Sprintf("resolve folder '%s'", s.Folder), err)
 		}
@@ -272,7 +272,7 @@ func execDropPublishedRestService(ctx *ExecContext, s *ast.DropPublishedRestServ
 		return mdlerrors.NewBackend("list published REST services", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return err
 	}

@@ -54,7 +54,7 @@ func ModuleOverview(ctx *ExecContext) error {
 	}
 
 	// Ensure catalog is built with full mode for refs
-	if err := e.ensureCatalog(true); err != nil {
+	if err := ensureCatalog(ctx, true); err != nil {
 		return mdlerrors.NewBackend("build catalog", err)
 	}
 

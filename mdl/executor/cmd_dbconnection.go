@@ -25,14 +25,14 @@ func createDatabaseConnection(ctx *ExecContext, stmt *ast.CreateDatabaseConnecti
 		return mdlerrors.NewValidation("module name required: use CREATE DATABASE CONNECTION Module.ConnectionName")
 	}
 
-	module, err := e.findModule(stmt.Name.Module)
+	module, err := findModule(ctx, stmt.Name.Module)
 	if err != nil {
 		return err
 	}
 
 	// Check for existing connection
 	existing, _ := e.reader.ListDatabaseConnections()
-	h, _ := e.getHierarchy()
+	h, _ := getHierarchy(ctx)
 
 	for _, ex := range existing {
 		modID := h.FindModuleID(ex.ContainerID)
@@ -118,7 +118,7 @@ func createDatabaseConnection(ctx *ExecContext, stmt *ast.CreateDatabaseConnecti
 		return mdlerrors.NewBackend("create database connection", err)
 	}
 
-	e.invalidateHierarchy()
+	invalidateHierarchy(ctx)
 	fmt.Fprintf(ctx.Output, "Created database connection: %s.%s\n", stmt.Name.Module, stmt.Name.Name)
 	return nil
 }
@@ -132,7 +132,7 @@ func showDatabaseConnections(ctx *ExecContext, moduleName string) error {
 		return mdlerrors.NewBackend("list database connections", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -176,7 +176,7 @@ func showDatabaseConnections(ctx *ExecContext, moduleName string) error {
 	for _, r := range rows {
 		result.Rows = append(result.Rows, []any{r.qualifiedName, r.module, r.name, r.folderPath, r.dbType, r.queries})
 	}
-	return e.writeResult(result)
+	return writeResult(ctx, result)
 }
 
 // describeDatabaseConnection handles DESCRIBE DATABASE CONNECTION command.
@@ -188,7 +188,7 @@ func describeDatabaseConnection(ctx *ExecContext, name ast.QualifiedName) error 
 		return mdlerrors.NewBackend("list database connections", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -285,7 +285,7 @@ func resolveConstantDefault(ctx *ExecContext, qualifiedName string) string {
 	if err != nil {
 		return ""
 	}
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return ""
 	}

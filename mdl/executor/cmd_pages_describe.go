@@ -24,7 +24,7 @@ import (
 func describePage(ctx *ExecContext, name ast.QualifiedName) error {
 	e := ctx.executor
 	// Get hierarchy for module/folder resolution
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -180,7 +180,7 @@ func formatParametersV3(params []string) []string {
 func describeSnippet(ctx *ExecContext, name ast.QualifiedName) error {
 	e := ctx.executor
 	// Get hierarchy for module/folder resolution
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -264,7 +264,7 @@ func describeSnippet(ctx *ExecContext, name ast.QualifiedName) error {
 func describeLayout(ctx *ExecContext, name ast.QualifiedName) error {
 	e := ctx.executor
 	// Get hierarchy for module/folder resolution
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -445,7 +445,7 @@ func resolveLayoutName(ctx *ExecContext, layoutID model.ID) string {
 		return string(layoutID)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return string(layoutID)
 	}

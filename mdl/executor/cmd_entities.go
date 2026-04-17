@@ -53,7 +53,7 @@ func execCreateEntity(ctx *ExecContext, s *ast.CreateEntityStmt) error {
 	}
 
 	// Find or auto-create module
-	module, err := e.findOrCreateModule(s.Name.Module)
+	module, err := findOrCreateModule(ctx, s.Name.Module)
 	if err != nil {
 		return err
 	}
@@ -275,8 +275,8 @@ func execCreateEntity(ctx *ExecContext, s *ast.CreateEntityStmt) error {
 			return mdlerrors.NewBackend("update entity", err)
 		}
 		// Invalidate caches so updated entity is visible
-		e.invalidateHierarchy()
-		e.invalidateDomainModelsCache()
+		invalidateHierarchy(ctx)
+		invalidateDomainModelsCache(ctx)
 		fmt.Fprintf(ctx.Output, "Modified entity: %s\n", s.Name)
 	} else {
 		// Create new entity
@@ -284,8 +284,8 @@ func execCreateEntity(ctx *ExecContext, s *ast.CreateEntityStmt) error {
 			return mdlerrors.NewBackend("create entity", err)
 		}
 		// Invalidate caches so new entity is visible
-		e.invalidateHierarchy()
-		e.invalidateDomainModelsCache()
+		invalidateHierarchy(ctx)
+		invalidateDomainModelsCache(ctx)
 		fmt.Fprintf(ctx.Output, "Created entity: %s\n", s.Name)
 	}
 
@@ -321,7 +321,7 @@ func execCreateViewEntity(ctx *ExecContext, s *ast.CreateViewEntityStmt) error {
 	}
 
 	// Find module
-	module, err := e.findModule(s.Name.Module)
+	module, err := findModule(ctx, s.Name.Module)
 	if err != nil {
 		return err
 	}
@@ -446,8 +446,8 @@ func execCreateViewEntity(ctx *ExecContext, s *ast.CreateViewEntityStmt) error {
 			return mdlerrors.NewBackend("update view entity", err)
 		}
 		// Invalidate caches so updated entity is visible
-		e.invalidateHierarchy()
-		e.invalidateDomainModelsCache()
+		invalidateHierarchy(ctx)
+		invalidateDomainModelsCache(ctx)
 		fmt.Fprintf(ctx.Output, "Modified view entity: %s\n", s.Name)
 	} else {
 		// Create new entity
@@ -455,8 +455,8 @@ func execCreateViewEntity(ctx *ExecContext, s *ast.CreateViewEntityStmt) error {
 			return mdlerrors.NewBackend("create view entity", err)
 		}
 		// Invalidate caches so new entity is visible
-		e.invalidateHierarchy()
-		e.invalidateDomainModelsCache()
+		invalidateHierarchy(ctx)
+		invalidateDomainModelsCache(ctx)
 		fmt.Fprintf(ctx.Output, "Created view entity: %s\n", s.Name)
 	}
 
@@ -471,7 +471,7 @@ func execAlterEntity(ctx *ExecContext, s *ast.AlterEntityStmt) error {
 	}
 
 	// Find module
-	module, err := e.findModule(s.Name.Module)
+	module, err := findModule(ctx, s.Name.Module)
 	if err != nil {
 		return err
 	}
@@ -598,8 +598,8 @@ func execAlterEntity(ctx *ExecContext, s *ast.AlterEntityStmt) error {
 		if err := e.writer.UpdateEntity(dm.ID, entity); err != nil {
 			return mdlerrors.NewBackend("add attribute", err)
 		}
-		e.invalidateHierarchy()
-		e.invalidateDomainModelsCache()
+		invalidateHierarchy(ctx)
+		invalidateDomainModelsCache(ctx)
 		fmt.Fprintf(ctx.Output, "Added attribute '%s' to entity %s\n", a.Name, s.Name)
 
 	case ast.AlterEntityRenameAttribute:
@@ -617,8 +617,8 @@ func execAlterEntity(ctx *ExecContext, s *ast.AlterEntityStmt) error {
 		if err := e.writer.UpdateEntity(dm.ID, entity); err != nil {
 			return mdlerrors.NewBackend("rename attribute", err)
 		}
-		e.invalidateHierarchy()
-		e.invalidateDomainModelsCache()
+		invalidateHierarchy(ctx)
+		invalidateDomainModelsCache(ctx)
 		fmt.Fprintf(ctx.Output, "Renamed attribute '%s' to '%s' on entity %s\n", s.AttributeName, s.NewName, s.Name)
 
 	case ast.AlterEntityModifyAttribute:
@@ -654,8 +654,8 @@ func execAlterEntity(ctx *ExecContext, s *ast.AlterEntityStmt) error {
 		if err := e.writer.UpdateEntity(dm.ID, entity); err != nil {
 			return mdlerrors.NewBackend("modify attribute", err)
 		}
-		e.invalidateHierarchy()
-		e.invalidateDomainModelsCache()
+		invalidateHierarchy(ctx)
+		invalidateDomainModelsCache(ctx)
 		fmt.Fprintf(ctx.Output, "Modified attribute '%s' on entity %s\n", s.AttributeName, s.Name)
 
 	case ast.AlterEntityDropAttribute:
@@ -753,8 +753,8 @@ func execAlterEntity(ctx *ExecContext, s *ast.AlterEntityStmt) error {
 		if err := e.writer.UpdateEntity(dm.ID, entity); err != nil {
 			return mdlerrors.NewBackend("drop attribute", err)
 		}
-		e.invalidateHierarchy()
-		e.invalidateDomainModelsCache()
+		invalidateHierarchy(ctx)
+		invalidateDomainModelsCache(ctx)
 		fmt.Fprintf(ctx.Output, "Dropped attribute '%s' from entity %s\n", s.AttributeName, s.Name)
 
 		// Report what was cleaned up on the entity itself
@@ -778,7 +778,7 @@ func execAlterEntity(ctx *ExecContext, s *ast.AlterEntityStmt) error {
 		if err := e.writer.UpdateEntity(dm.ID, entity); err != nil {
 			return mdlerrors.NewBackend("set documentation", err)
 		}
-		e.invalidateDomainModelsCache()
+		invalidateDomainModelsCache(ctx)
 		fmt.Fprintf(ctx.Output, "Set documentation on entity %s\n", s.Name)
 
 	case ast.AlterEntitySetComment:
@@ -787,7 +787,7 @@ func execAlterEntity(ctx *ExecContext, s *ast.AlterEntityStmt) error {
 		if err := e.writer.UpdateEntity(dm.ID, entity); err != nil {
 			return mdlerrors.NewBackend("set comment", err)
 		}
-		e.invalidateDomainModelsCache()
+		invalidateDomainModelsCache(ctx)
 		fmt.Fprintf(ctx.Output, "Set comment on entity %s\n", s.Name)
 
 	case ast.AlterEntitySetPosition:
@@ -798,7 +798,7 @@ func execAlterEntity(ctx *ExecContext, s *ast.AlterEntityStmt) error {
 		if err := e.writer.UpdateEntity(dm.ID, entity); err != nil {
 			return mdlerrors.NewBackend("set position", err)
 		}
-		e.invalidateDomainModelsCache()
+		invalidateDomainModelsCache(ctx)
 		fmt.Fprintf(ctx.Output, "Set position of entity %s to (%d, %d)\n", s.Name, s.Position.X, s.Position.Y)
 
 	case ast.AlterEntityAddIndex:
@@ -832,7 +832,7 @@ func execAlterEntity(ctx *ExecContext, s *ast.AlterEntityStmt) error {
 		if err := e.writer.UpdateEntity(dm.ID, entity); err != nil {
 			return mdlerrors.NewBackend("add index", err)
 		}
-		e.invalidateDomainModelsCache()
+		invalidateDomainModelsCache(ctx)
 		fmt.Fprintf(ctx.Output, "Added index to entity %s\n", s.Name)
 
 	case ast.AlterEntityDropIndex:
@@ -856,7 +856,7 @@ func execAlterEntity(ctx *ExecContext, s *ast.AlterEntityStmt) error {
 		if err := e.writer.UpdateEntity(dm.ID, entity); err != nil {
 			return mdlerrors.NewBackend("drop index", err)
 		}
-		e.invalidateDomainModelsCache()
+		invalidateDomainModelsCache(ctx)
 		fmt.Fprintf(ctx.Output, "Dropped index '%s' from entity %s\n", s.IndexName, s.Name)
 
 	case ast.AlterEntityAddEventHandler:
@@ -879,7 +879,7 @@ func execAlterEntity(ctx *ExecContext, s *ast.AlterEntityStmt) error {
 		if err := e.writer.UpdateEntity(dm.ID, entity); err != nil {
 			return mdlerrors.NewBackend("add event handler", err)
 		}
-		e.invalidateDomainModelsCache()
+		invalidateDomainModelsCache(ctx)
 		fmt.Fprintf(ctx.Output, "Added event handler %s %s on %s\n",
 			s.EventHandler.Moment, s.EventHandler.Event, s.Name)
 
@@ -905,7 +905,7 @@ func execAlterEntity(ctx *ExecContext, s *ast.AlterEntityStmt) error {
 		if err := e.writer.UpdateEntity(dm.ID, entity); err != nil {
 			return mdlerrors.NewBackend("drop event handler", err)
 		}
-		e.invalidateDomainModelsCache()
+		invalidateDomainModelsCache(ctx)
 		fmt.Fprintf(ctx.Output, "Dropped event handler %s %s from %s\n",
 			s.EventHandler.Moment, s.EventHandler.Event, s.Name)
 
@@ -925,7 +925,7 @@ func execDropEntity(ctx *ExecContext, s *ast.DropEntityStmt) error {
 	}
 
 	// Find module and entity
-	module, err := e.findModule(s.Name.Module)
+	module, err := findModule(ctx, s.Name.Module)
 	if err != nil {
 		return err
 	}
@@ -949,7 +949,7 @@ func execDropEntity(ctx *ExecContext, s *ast.DropEntityStmt) error {
 			if err := e.writer.DeleteEntity(dm.ID, entity.ID); err != nil {
 				return mdlerrors.NewBackend("delete entity", err)
 			}
-			e.invalidateDomainModelsCache()
+			invalidateDomainModelsCache(ctx)
 			fmt.Fprintf(ctx.Output, "Dropped entity: %s\n", s.Name)
 			return nil
 		}

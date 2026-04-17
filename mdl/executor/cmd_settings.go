@@ -81,7 +81,7 @@ func showSettings(ctx *ExecContext) error {
 		tr.Rows = append(tr.Rows, []any{"Web UI Settings", "OptimizedClient: " + ps.WebUI.UseOptimizedClient})
 	}
 
-	return e.writeResult(tr)
+	return writeResult(ctx, tr)
 }
 
 // Executor wrapper for unmigrated callers.

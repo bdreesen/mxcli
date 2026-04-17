@@ -173,7 +173,7 @@ func diffEntity(ctx *ExecContext, s *ast.CreateEntityStmt) (*DiffResult, error) 
 	}
 
 	// Try to find existing entity
-	module, err := e.findModule(s.Name.Module)
+	module, err := findModule(ctx, s.Name.Module)
 	if err != nil {
 		result.IsNew = true
 		return result, nil
@@ -207,7 +207,7 @@ func diffViewEntity(ctx *ExecContext, s *ast.CreateViewEntityStmt) (*DiffResult,
 		Proposed:   viewEntityStmtToMDL(ctx, s),
 	}
 
-	module, err := e.findModule(s.Name.Module)
+	module, err := findModule(ctx, s.Name.Module)
 	if err != nil {
 		result.IsNew = true
 		return result, nil
@@ -246,7 +246,7 @@ func diffEnumeration(ctx *ExecContext, s *ast.CreateEnumerationStmt) (*DiffResul
 		return result, nil
 	}
 
-	h, _ := e.getHierarchy()
+	h, _ := getHierarchy(ctx)
 	modName := h.GetModuleName(existingEnum.ContainerID)
 	result.Current = enumerationToMDL(ctx, modName, existingEnum)
 	result.Changes = compareEnumerations(ctx, result.Current, result.Proposed)
@@ -263,7 +263,7 @@ func diffAssociation(ctx *ExecContext, s *ast.CreateAssociationStmt) (*DiffResul
 		Proposed:   associationStmtToMDL(ctx, s),
 	}
 
-	module, err := e.findModule(s.Name.Module)
+	module, err := findModule(ctx, s.Name.Module)
 	if err != nil {
 		result.IsNew = true
 		return result, nil
@@ -296,7 +296,7 @@ func diffMicroflow(ctx *ExecContext, s *ast.CreateMicroflowStmt) (*DiffResult, e
 	}
 
 	// Try to find existing microflow
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		result.IsNew = true
 		return result, nil

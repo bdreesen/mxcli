@@ -31,7 +31,7 @@ func execCreatePageV3(ctx *ExecContext, s *ast.CreatePageStmtV3) error {
 	}
 
 	// Find or auto-create module
-	module, err := e.findOrCreateModule(s.Name.Module)
+	module, err := findOrCreateModule(ctx, s.Name.Module)
 	if err != nil {
 		return mdlerrors.NewBackend(fmt.Sprintf("find module %s", s.Name.Module), err)
 	}
@@ -93,7 +93,7 @@ func execCreatePageV3(ctx *ExecContext, s *ast.CreatePageStmtV3) error {
 	e.trackCreatedPage(s.Name.Module, s.Name.Name, page.ID, moduleID)
 
 	// Invalidate hierarchy cache so the new page's container is visible
-	e.invalidateHierarchy()
+	invalidateHierarchy(ctx)
 
 	fmt.Fprintf(ctx.Output, "Created page %s\n", s.Name.String())
 	return nil
@@ -107,7 +107,7 @@ func execCreateSnippetV3(ctx *ExecContext, s *ast.CreateSnippetStmtV3) error {
 	}
 
 	// Find or auto-create module
-	module, err := e.findOrCreateModule(s.Name.Module)
+	module, err := findOrCreateModule(ctx, s.Name.Module)
 	if err != nil {
 		return mdlerrors.NewBackend(fmt.Sprintf("find module %s", s.Name.Module), err)
 	}
@@ -162,7 +162,7 @@ func execCreateSnippetV3(ctx *ExecContext, s *ast.CreateSnippetStmtV3) error {
 	e.trackCreatedSnippet(s.Name.Module, s.Name.Name, snippet.ID, moduleID)
 
 	// Invalidate hierarchy cache so the new snippet's container is visible
-	e.invalidateHierarchy()
+	invalidateHierarchy(ctx)
 
 	fmt.Fprintf(ctx.Output, "Created snippet %s\n", s.Name.String())
 	return nil

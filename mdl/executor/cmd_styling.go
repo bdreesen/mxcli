@@ -125,7 +125,7 @@ func execDescribeStyling(ctx *ExecContext, s *ast.DescribeStylingStmt) error {
 		return mdlerrors.NewNotConnected()
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -277,7 +277,7 @@ func execAlterStyling(ctx *ExecContext, s *ast.AlterStylingStmt) error {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}

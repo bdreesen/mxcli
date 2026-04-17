@@ -267,7 +267,6 @@ func extractUUIDFromPath(path string) string {
 
 // bsonToMDL converts BSON content to MDL representation based on type
 func bsonToMDL(ctx *ExecContext, unitType, unitID string, content []byte) string {
-	e := ctx.executor
 	var raw map[string]any
 	if err := bson.Unmarshal(content, &raw); err != nil {
 		return fmt.Sprintf("-- Error parsing BSON: %v", err)
@@ -283,7 +282,7 @@ func bsonToMDL(ctx *ExecContext, unitType, unitID string, content []byte) string
 	qualifiedName := name
 	if containerID := extractBsonID(raw["$Container"]); containerID != "" {
 		// Try to resolve module name from container
-		if h, err := e.getHierarchy(); err == nil {
+		if h, err := getHierarchy(ctx); err == nil {
 			if modName := h.GetModuleName(model.ID(containerID)); modName != "" {
 				qualifiedName = modName + "." + name
 			} else if modName := h.GetModuleName(h.FindModuleID(model.ID(containerID))); modName != "" {
@@ -526,7 +525,7 @@ func buildNameLookups(ctx *ExecContext) (map[model.ID]string, map[model.ID]strin
 	if e.reader == nil {
 		return entityNames, microflowNames
 	}
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return entityNames, microflowNames
 	}

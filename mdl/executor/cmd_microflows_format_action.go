@@ -503,7 +503,7 @@ func formatAction(
 			pages, _ := e.reader.ListPages()
 			for _, p := range pages {
 				if p.ID == a.PageID {
-					h, _ := e.getHierarchy()
+					h, _ := getHierarchy(ctx)
 					if h != nil {
 						pageName = h.GetQualifiedName(p.ContainerID, p.Name)
 					}

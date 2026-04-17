@@ -155,7 +155,7 @@ func showEntities(ctx *ExecContext, moduleName string) error {
 		}
 		result.Rows = append(result.Rows, rowData)
 	}
-	return e.writeResult(result)
+	return writeResult(ctx, result)
 }
 
 // showEntity handles SHOW ENTITY command.
@@ -165,7 +165,7 @@ func showEntity(ctx *ExecContext, name *ast.QualifiedName) error {
 		return mdlerrors.NewValidation("entity name required")
 	}
 
-	module, err := e.findModule(name.Module)
+	module, err := findModule(ctx, name.Module)
 	if err != nil {
 		return err
 	}
@@ -219,7 +219,7 @@ func showEntity(ctx *ExecContext, name *ast.QualifiedName) error {
 // describeEntity handles DESCRIBE ENTITY command.
 func describeEntity(ctx *ExecContext, name ast.QualifiedName) error {
 	e := ctx.executor
-	module, err := e.findModule(name.Module)
+	module, err := findModule(ctx, name.Module)
 	if err != nil {
 		return err
 	}
@@ -487,7 +487,7 @@ func resolveMicroflowByName(ctx *ExecContext, qualifiedName string) (model.ID, e
 		return "", mdlerrors.NewBackend("list microflows", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return "", mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -511,7 +511,7 @@ func lookupMicroflowName(ctx *ExecContext, mfID model.ID) string {
 		return ""
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return ""
 	}

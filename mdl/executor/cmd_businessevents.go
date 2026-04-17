@@ -26,7 +26,7 @@ func showBusinessEventServices(ctx *ExecContext, inModule string) error {
 		return mdlerrors.NewBackend("list business event services", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return err
 	}
@@ -86,7 +86,7 @@ func showBusinessEventServices(ctx *ExecContext, inModule string) error {
 	for _, r := range rows {
 		result.Rows = append(result.Rows, []any{r.module, r.qualifiedName, r.name, r.msgCount, r.publishCount, r.subscribeCount})
 	}
-	return e.writeResult(result)
+	return writeResult(ctx, result)
 }
 
 // showBusinessEventClients displays a table of all business event client documents.
@@ -108,7 +108,7 @@ func showBusinessEvents(ctx *ExecContext, inModule string) error {
 		return mdlerrors.NewBackend("list business event services", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return err
 	}
@@ -171,7 +171,7 @@ func showBusinessEvents(ctx *ExecContext, inModule string) error {
 	for _, r := range rows {
 		result.Rows = append(result.Rows, []any{r.service, r.message, r.operation, r.entity, r.attrs})
 	}
-	return e.writeResult(result)
+	return writeResult(ctx, result)
 }
 
 // describeBusinessEventService outputs the full MDL description of a business event service.
@@ -188,7 +188,7 @@ func describeBusinessEventService(ctx *ExecContext, name ast.QualifiedName) erro
 	}
 
 	// Use hierarchy to resolve container IDs to module names
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return err
 	}
@@ -275,14 +275,14 @@ func createBusinessEventService(ctx *ExecContext, stmt *ast.CreateBusinessEventS
 	}
 
 	moduleName := stmt.Name.Module
-	module, err := e.findModule(moduleName)
+	module, err := findModule(ctx, moduleName)
 	if err != nil {
 		return mdlerrors.NewNotFound("module", moduleName)
 	}
 
 	// Check for existing service with same name (if not CREATE OR REPLACE)
 	existingServices, _ := e.reader.ListBusinessEventServices()
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -305,7 +305,7 @@ func createBusinessEventService(ctx *ExecContext, stmt *ast.CreateBusinessEventS
 	// Resolve folder if specified
 	containerID := module.ID
 	if stmt.Folder != "" {
-		folderID, err := e.resolveFolder(module.ID, stmt.Folder)
+		folderID, err := resolveFolder(ctx, module.ID, stmt.Folder)
 		if err != nil {
 			return mdlerrors.NewBackend(fmt.Sprintf("resolve folder '%s'", stmt.Folder), err)
 		}
@@ -395,7 +395,7 @@ func dropBusinessEventService(ctx *ExecContext, stmt *ast.DropBusinessEventServi
 		return mdlerrors.NewBackend("list business event services", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}

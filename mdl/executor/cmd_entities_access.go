@@ -166,9 +166,9 @@ func formatAccessRuleRights(ctx *ExecContext, rule *domainmodel.AccessRule, attr
 // for the given roles. Returns a string like "  Result: CREATE, READ (Name, Price)\n".
 func formatAccessRuleResult(ctx *ExecContext, moduleName, entityName string, roleNames []string) string {
 	e := ctx.executor
-	e.invalidateDomainModelsCache()
+	invalidateDomainModelsCache(ctx)
 
-	module, err := e.findModule(moduleName)
+	module, err := findModule(ctx, moduleName)
 	if err != nil {
 		return ""
 	}

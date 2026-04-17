@@ -27,7 +27,7 @@ func execShowStructure(ctx *ExecContext, s *ast.ShowStmt) error {
 	depth := min(max(s.Depth, 1), 3)
 
 	// Ensure catalog is built (fast mode is sufficient)
-	if err := e.ensureCatalog(false); err != nil {
+	if err := ensureCatalog(ctx, false); err != nil {
 		return mdlerrors.NewBackend("build catalog", err)
 	}
 
@@ -71,7 +71,6 @@ func (e *Executor) execShowStructure(s *ast.ShowStmt) error {
 // structureDepth1JSON emits structure as a JSON table with one row per module
 // and columns for each element type count.
 func structureDepth1JSON(ctx *ExecContext, modules []structureModule) error {
-	e := ctx.executor
 	entityCounts := queryCountByModule(ctx, "entities")
 	mfCounts := queryCountByModule(ctx, "microflows WHERE MicroflowType = 'MICROFLOW'")
 	nfCounts := queryCountByModule(ctx, "microflows WHERE MicroflowType = 'NANOFLOW'")
@@ -111,7 +110,7 @@ func structureDepth1JSON(ctx *ExecContext, modules []structureModule) error {
 			beServiceCounts[m.Name],
 		})
 	}
-	return e.writeResult(tr)
+	return writeResult(ctx, tr)
 }
 
 // structureModule holds module info for structure output.
@@ -284,7 +283,7 @@ func queryCountByModule(ctx *ExecContext, tableAndWhere string) map[string]int {
 func countByModuleFromReader(ctx *ExecContext, kind string) map[string]int {
 	e := ctx.executor
 	counts := make(map[string]int)
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return counts
 	}
@@ -325,7 +324,7 @@ func pluralize(count int, singular, plural string) string {
 func structureDepth2(ctx *ExecContext, modules []structureModule) error {
 	e := ctx.executor
 	// Pre-load data that needs the reader
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -487,7 +486,7 @@ func structureDepth2(ctx *ExecContext, modules []structureModule) error {
 func structureDepth3(ctx *ExecContext, modules []structureModule) error {
 	e := ctx.executor
 	// Same data loading as depth 2
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}

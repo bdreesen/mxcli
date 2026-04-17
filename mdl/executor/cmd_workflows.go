@@ -17,7 +17,7 @@ import (
 // showWorkflows handles SHOW WORKFLOWS command.
 func showWorkflows(ctx *ExecContext, moduleName string) error {
 	e := ctx.executor
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -68,7 +68,7 @@ func showWorkflows(ctx *ExecContext, moduleName string) error {
 	for _, r := range rows {
 		result.Rows = append(result.Rows, []any{r.qualifiedName, r.activities, r.userTasks, r.decisions, r.paramEntity})
 	}
-	return e.writeResult(result)
+	return writeResult(ctx, result)
 }
 
 // Executor wrapper for unmigrated callers.
@@ -155,7 +155,7 @@ func (e *Executor) describeWorkflow(name ast.QualifiedName) error {
 // describeWorkflowToString generates MDL-like output for a workflow and returns it as a string.
 func describeWorkflowToString(ctx *ExecContext, name ast.QualifiedName) (string, map[string]elkSourceRange, error) {
 	e := ctx.executor
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return "", nil, mdlerrors.NewBackend("build hierarchy", err)
 	}

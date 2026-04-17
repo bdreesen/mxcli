@@ -44,7 +44,7 @@ func showODataClients(ctx *ExecContext, moduleName string) error {
 		return mdlerrors.NewBackend("list consumed OData services", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -97,7 +97,7 @@ func showODataClients(ctx *ExecContext, moduleName string) error {
 	for _, r := range rows {
 		result.Rows = append(result.Rows, []any{r.module, r.qualifiedName, r.version, r.odataVer, r.url, r.validated})
 	}
-	return e.writeResult(result)
+	return writeResult(ctx, result)
 }
 
 // describeODataClient handles DESCRIBE ODATA CLIENT command.
@@ -109,7 +109,7 @@ func describeODataClient(ctx *ExecContext, name ast.QualifiedName) error {
 		return mdlerrors.NewBackend("list consumed OData services", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -228,7 +228,7 @@ func showODataServices(ctx *ExecContext, moduleName string) error {
 		return mdlerrors.NewBackend("list published OData services", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -278,7 +278,7 @@ func showODataServices(ctx *ExecContext, moduleName string) error {
 	for _, r := range rows {
 		result.Rows = append(result.Rows, []any{r.module, r.qualifiedName, r.path, r.version, r.odataVer, r.entitySets, r.authTypes})
 	}
-	return e.writeResult(result)
+	return writeResult(ctx, result)
 }
 
 // describeODataService handles DESCRIBE ODATA SERVICE command.
@@ -290,7 +290,7 @@ func describeODataService(ctx *ExecContext, name ast.QualifiedName) error {
 		return mdlerrors.NewBackend("list published OData services", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -468,7 +468,7 @@ func showExternalEntities(ctx *ExecContext, moduleName string) error {
 		return mdlerrors.NewBackend("list domain models", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -522,7 +522,7 @@ func showExternalEntities(ctx *ExecContext, moduleName string) error {
 	for _, r := range rows {
 		result.Rows = append(result.Rows, []any{r.module, r.qualifiedName, r.service, r.entitySet, r.remoteName, r.countable})
 	}
-	return e.writeResult(result)
+	return writeResult(ctx, result)
 }
 
 // showExternalActions handles SHOW EXTERNAL ACTIONS [IN module] command.
@@ -540,7 +540,7 @@ func showExternalActions(ctx *ExecContext, moduleName string) error {
 		return mdlerrors.NewBackend("list nanoflows", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -657,7 +657,7 @@ func showExternalActions(ctx *ExecContext, moduleName string) error {
 	for _, r := range rows {
 		result.Rows = append(result.Rows, []any{r.service, r.actionName, r.params, r.usedBy})
 	}
-	return e.writeResult(result)
+	return writeResult(ctx, result)
 }
 
 // describeExternalEntity handles DESCRIBE EXTERNAL ENTITY command.
@@ -669,7 +669,7 @@ func describeExternalEntity(ctx *ExecContext, name ast.QualifiedName) error {
 		return mdlerrors.NewBackend("list domain models", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -767,7 +767,7 @@ func execCreateExternalEntity(ctx *ExecContext, s *ast.CreateExternalEntityStmt)
 	}
 
 	// Find module
-	module, err := e.findModule(s.Name.Module)
+	module, err := findModule(ctx, s.Name.Module)
 	if err != nil {
 		return err
 	}
@@ -871,7 +871,7 @@ func createODataClient(ctx *ExecContext, stmt *ast.CreateODataClientStmt) error 
 		return mdlerrors.NewValidation("module name required: use CREATE ODATA CLIENT Module.Name (...)")
 	}
 
-	module, err := e.findModule(stmt.Name.Module)
+	module, err := findModule(ctx, stmt.Name.Module)
 	if err != nil {
 		return err
 	}
@@ -879,7 +879,7 @@ func createODataClient(ctx *ExecContext, stmt *ast.CreateODataClientStmt) error 
 	// Check if client already exists
 	services, err := e.reader.ListConsumedODataServices()
 	if err == nil {
-		h, _ := e.getHierarchy()
+		h, _ := getHierarchy(ctx)
 		for _, svc := range services {
 			modID := h.FindModuleID(svc.ContainerID)
 			modName := h.GetModuleName(modID)
@@ -955,7 +955,7 @@ func createODataClient(ctx *ExecContext, stmt *ast.CreateODataClientStmt) error 
 					if err := e.writer.UpdateConsumedODataService(svc); err != nil {
 						return mdlerrors.NewBackend("update OData client", err)
 					}
-					e.invalidateHierarchy()
+					invalidateHierarchy(ctx)
 					fmt.Fprintf(ctx.Output, "Modified OData client: %s.%s\n", modName, svc.Name)
 					return nil
 				}
@@ -967,7 +967,7 @@ func createODataClient(ctx *ExecContext, stmt *ast.CreateODataClientStmt) error 
 	// Resolve folder if specified
 	containerID := module.ID
 	if stmt.Folder != "" {
-		folderID, err := e.resolveFolder(module.ID, stmt.Folder)
+		folderID, err := resolveFolder(ctx, module.ID, stmt.Folder)
 		if err != nil {
 			return mdlerrors.NewBackend(fmt.Sprintf("resolve folder %s", stmt.Folder), err)
 		}
@@ -1035,7 +1035,7 @@ func createODataClient(ctx *ExecContext, stmt *ast.CreateODataClientStmt) error 
 	if err := e.writer.CreateConsumedODataService(newSvc); err != nil {
 		return mdlerrors.NewBackend("create OData client", err)
 	}
-	e.invalidateHierarchy()
+	invalidateHierarchy(ctx)
 	fmt.Fprintf(ctx.Output, "Created OData client: %s.%s\n", stmt.Name.Module, stmt.Name.Name)
 	if newSvc.Metadata != "" {
 		// Parse to show summary
@@ -1065,7 +1065,7 @@ func alterODataClient(ctx *ExecContext, stmt *ast.AlterODataClientStmt) error {
 		return mdlerrors.NewBackend("list consumed OData services", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -1134,7 +1134,7 @@ func alterODataClient(ctx *ExecContext, stmt *ast.AlterODataClientStmt) error {
 			if err := e.writer.UpdateConsumedODataService(svc); err != nil {
 				return mdlerrors.NewBackend("alter OData client", err)
 			}
-			e.invalidateHierarchy()
+			invalidateHierarchy(ctx)
 			fmt.Fprintf(ctx.Output, "Altered OData client: %s.%s\n", modName, svc.Name)
 			return nil
 		}
@@ -1156,7 +1156,7 @@ func dropODataClient(ctx *ExecContext, stmt *ast.DropODataClientStmt) error {
 		return mdlerrors.NewBackend("list consumed OData services", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -1168,7 +1168,7 @@ func dropODataClient(ctx *ExecContext, stmt *ast.DropODataClientStmt) error {
 			if err := e.writer.DeleteConsumedODataService(svc.ID); err != nil {
 				return mdlerrors.NewBackend("drop OData client", err)
 			}
-			e.invalidateHierarchy()
+			invalidateHierarchy(ctx)
 			fmt.Fprintf(ctx.Output, "Dropped OData client: %s.%s\n", modName, svc.Name)
 			return nil
 		}
@@ -1189,7 +1189,7 @@ func createODataService(ctx *ExecContext, stmt *ast.CreateODataServiceStmt) erro
 		return mdlerrors.NewValidation("module name required: use CREATE ODATA SERVICE Module.Name (...)")
 	}
 
-	module, err := e.findModule(stmt.Name.Module)
+	module, err := findModule(ctx, stmt.Name.Module)
 	if err != nil {
 		return err
 	}
@@ -1197,7 +1197,7 @@ func createODataService(ctx *ExecContext, stmt *ast.CreateODataServiceStmt) erro
 	// Check if service already exists
 	services, err := e.reader.ListPublishedODataServices()
 	if err == nil {
-		h, _ := e.getHierarchy()
+		h, _ := getHierarchy(ctx)
 		for _, svc := range services {
 			modID := h.FindModuleID(svc.ContainerID)
 			modName := h.GetModuleName(modID)
@@ -1232,7 +1232,7 @@ func createODataService(ctx *ExecContext, stmt *ast.CreateODataServiceStmt) erro
 					if err := e.writer.UpdatePublishedODataService(svc); err != nil {
 						return mdlerrors.NewBackend("update OData service", err)
 					}
-					e.invalidateHierarchy()
+					invalidateHierarchy(ctx)
 					fmt.Fprintf(ctx.Output, "Modified OData service: %s.%s\n", modName, svc.Name)
 					return nil
 				}
@@ -1244,7 +1244,7 @@ func createODataService(ctx *ExecContext, stmt *ast.CreateODataServiceStmt) erro
 	// Resolve folder if specified
 	containerID := module.ID
 	if stmt.Folder != "" {
-		folderID, err := e.resolveFolder(module.ID, stmt.Folder)
+		folderID, err := resolveFolder(ctx, module.ID, stmt.Folder)
 		if err != nil {
 			return mdlerrors.NewBackend(fmt.Sprintf("resolve folder %s", stmt.Folder), err)
 		}
@@ -1276,7 +1276,7 @@ func createODataService(ctx *ExecContext, stmt *ast.CreateODataServiceStmt) erro
 	if err := e.writer.CreatePublishedODataService(newSvc); err != nil {
 		return mdlerrors.NewBackend("create OData service", err)
 	}
-	e.invalidateHierarchy()
+	invalidateHierarchy(ctx)
 	fmt.Fprintf(ctx.Output, "Created OData service: %s.%s\n", stmt.Name.Module, stmt.Name.Name)
 	return nil
 }
@@ -1294,7 +1294,7 @@ func alterODataService(ctx *ExecContext, stmt *ast.AlterODataServiceStmt) error 
 		return mdlerrors.NewBackend("list published OData services", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -1329,7 +1329,7 @@ func alterODataService(ctx *ExecContext, stmt *ast.AlterODataServiceStmt) error 
 			if err := e.writer.UpdatePublishedODataService(svc); err != nil {
 				return mdlerrors.NewBackend("alter OData service", err)
 			}
-			e.invalidateHierarchy()
+			invalidateHierarchy(ctx)
 			fmt.Fprintf(ctx.Output, "Altered OData service: %s.%s\n", modName, svc.Name)
 			return nil
 		}
@@ -1351,7 +1351,7 @@ func dropODataService(ctx *ExecContext, stmt *ast.DropODataServiceStmt) error {
 		return mdlerrors.NewBackend("list published OData services", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -1363,7 +1363,7 @@ func dropODataService(ctx *ExecContext, stmt *ast.DropODataServiceStmt) error {
 			if err := e.writer.DeletePublishedODataService(svc.ID); err != nil {
 				return mdlerrors.NewBackend("drop OData service", err)
 			}
-			e.invalidateHierarchy()
+			invalidateHierarchy(ctx)
 			fmt.Fprintf(ctx.Output, "Dropped OData service: %s.%s\n", modName, svc.Name)
 			return nil
 		}

@@ -17,7 +17,6 @@ import (
 
 // showContractEntities handles SHOW CONTRACT ENTITIES FROM Module.Service.
 func showContractEntities(ctx *ExecContext, name *ast.QualifiedName) error {
-	e := ctx.executor
 	if name == nil {
 		return mdlerrors.NewValidation("service name required: SHOW CONTRACT ENTITIES FROM Module.Service")
 	}
@@ -73,12 +72,11 @@ func showContractEntities(ctx *ExecContext, name *ast.QualifiedName) error {
 	for _, r := range rows {
 		result.Rows = append(result.Rows, []any{r.entitySet, r.entityType, r.key, r.props, r.navs, r.summary})
 	}
-	return e.writeResult(result)
+	return writeResult(ctx, result)
 }
 
 // showContractActions handles SHOW CONTRACT ACTIONS FROM Module.Service.
 func showContractActions(ctx *ExecContext, name *ast.QualifiedName) error {
-	e := ctx.executor
 	if name == nil {
 		return mdlerrors.NewValidation("service name required: SHOW CONTRACT ACTIONS FROM Module.Service")
 	}
@@ -138,7 +136,7 @@ func showContractActions(ctx *ExecContext, name *ast.QualifiedName) error {
 	for _, r := range rows {
 		result.Rows = append(result.Rows, []any{r.name, r.params, r.returnType, r.bound})
 	}
-	return e.writeResult(result)
+	return writeResult(ctx, result)
 }
 
 // describeContractEntity handles DESCRIBE CONTRACT ENTITY Service.EntityName [FORMAT mdl].
@@ -325,7 +323,7 @@ func parseServiceContract(ctx *ExecContext, name ast.QualifiedName) (*mpr.EdmxDo
 		return nil, "", mdlerrors.NewBackend("list consumed OData services", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return nil, "", mdlerrors.NewBackend("build hierarchy", err)
 	}
@@ -480,7 +478,7 @@ func createExternalEntities(ctx *ExecContext, s *ast.CreateExternalEntitiesStmt)
 		targetModule = s.ServiceRef.Module
 	}
 
-	module, err := e.findModule(targetModule)
+	module, err := findModule(ctx, targetModule)
 	if err != nil {
 		return err
 	}
@@ -1254,7 +1252,6 @@ func edmToAstDataType(p *mpr.EdmProperty) ast.DataType {
 
 // showContractChannels handles SHOW CONTRACT CHANNELS FROM Module.Service.
 func showContractChannels(ctx *ExecContext, name *ast.QualifiedName) error {
-	e := ctx.executor
 	if name == nil {
 		return mdlerrors.NewValidation("service name required: SHOW CONTRACT CHANNELS FROM Module.Service")
 	}
@@ -1289,12 +1286,11 @@ func showContractChannels(ctx *ExecContext, name *ast.QualifiedName) error {
 	for _, r := range rows {
 		result.Rows = append(result.Rows, []any{r.channel, r.operation, r.opID, r.message})
 	}
-	return e.writeResult(result)
+	return writeResult(ctx, result)
 }
 
 // showContractMessages handles SHOW CONTRACT MESSAGES FROM Module.Service.
 func showContractMessages(ctx *ExecContext, name *ast.QualifiedName) error {
-	e := ctx.executor
 	if name == nil {
 		return mdlerrors.NewValidation("service name required: SHOW CONTRACT MESSAGES FROM Module.Service")
 	}
@@ -1333,7 +1329,7 @@ func showContractMessages(ctx *ExecContext, name *ast.QualifiedName) error {
 	for _, r := range rows {
 		result.Rows = append(result.Rows, []any{r.name, r.title, r.contentType, r.props})
 	}
-	return e.writeResult(result)
+	return writeResult(ctx, result)
 }
 
 // describeContractMessage handles DESCRIBE CONTRACT MESSAGE Module.Service.MessageName.
@@ -1396,7 +1392,7 @@ func parseAsyncAPIContract(ctx *ExecContext, name ast.QualifiedName) (*mpr.Async
 		return nil, "", mdlerrors.NewBackend("list business event services", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return nil, "", mdlerrors.NewBackend("build hierarchy", err)
 	}

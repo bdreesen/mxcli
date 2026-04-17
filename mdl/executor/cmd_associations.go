@@ -23,7 +23,7 @@ func execCreateAssociation(ctx *ExecContext, s *ast.CreateAssociationStmt) error
 	}
 
 	// Find or auto-create module
-	module, err := e.findOrCreateModule(s.Name.Module)
+	module, err := findOrCreateModule(ctx, s.Name.Module)
 	if err != nil {
 		return err
 	}
@@ -38,7 +38,7 @@ func execCreateAssociation(ctx *ExecContext, s *ast.CreateAssociationStmt) error
 	if parentModule == "" {
 		parentModule = s.Name.Module
 	}
-	parentEntity, err := e.findEntity(parentModule, s.Parent.Name)
+	parentEntity, err := findEntity(ctx, parentModule, s.Parent.Name)
 	if err != nil {
 		return mdlerrors.NewNotFound("parent entity", s.Parent.String())
 	}
@@ -48,7 +48,7 @@ func execCreateAssociation(ctx *ExecContext, s *ast.CreateAssociationStmt) error
 	if childModule == "" {
 		childModule = s.Name.Module
 	}
-	childEntity, err := e.findEntity(childModule, s.Child.Name)
+	childEntity, err := findEntity(ctx, childModule, s.Child.Name)
 	if err != nil {
 		return mdlerrors.NewNotFound("child entity", s.Child.String())
 	}
@@ -128,8 +128,8 @@ func execCreateAssociation(ctx *ExecContext, s *ast.CreateAssociationStmt) error
 	}
 
 	// Invalidate hierarchy cache so the new association's container is visible
-	e.invalidateHierarchy()
-	e.invalidateDomainModelsCache()
+	invalidateHierarchy(ctx)
+	invalidateDomainModelsCache(ctx)
 
 	// Reconcile MemberAccesses immediately — existing access rules on entities
 	// in this DM need MemberAccess entries for the new association (CE0066).
@@ -151,7 +151,7 @@ func execAlterAssociation(ctx *ExecContext, s *ast.AlterAssociationStmt) error {
 		return mdlerrors.NewNotConnected()
 	}
 
-	module, err := e.findModule(s.Name.Module)
+	module, err := findModule(ctx, s.Name.Module)
 	if err != nil {
 		return err
 	}
@@ -218,7 +218,7 @@ func execDropAssociation(ctx *ExecContext, s *ast.DropAssociationStmt) error {
 	}
 
 	// Find module
-	module, err := e.findModule(s.Name.Module)
+	module, err := findModule(ctx, s.Name.Module)
 	if err != nil {
 		return err
 	}
@@ -334,7 +334,7 @@ func showAssociations(ctx *ExecContext, moduleName string) error {
 	for _, r := range rows {
 		result.Rows = append(result.Rows, []any{r.qualifiedName, r.module, r.name, r.parent, r.child, r.assocType, r.owner, r.storage})
 	}
-	return e.writeResult(result)
+	return writeResult(ctx, result)
 }
 
 // showAssociation handles SHOW ASSOCIATION command.
@@ -344,7 +344,7 @@ func showAssociation(ctx *ExecContext, name *ast.QualifiedName) error {
 		return mdlerrors.NewValidation("association name required")
 	}
 
-	module, err := e.findModule(name.Module)
+	module, err := findModule(ctx, name.Module)
 	if err != nil {
 		return err
 	}
@@ -380,7 +380,7 @@ func showAssociation(ctx *ExecContext, name *ast.QualifiedName) error {
 // describeAssociation handles DESCRIBE ASSOCIATION command.
 func describeAssociation(ctx *ExecContext, name ast.QualifiedName) error {
 	e := ctx.executor
-	module, err := e.findModule(name.Module)
+	module, err := findModule(ctx, name.Module)
 	if err != nil {
 		return err
 	}
@@ -396,7 +396,7 @@ func describeAssociation(ctx *ExecContext, name ast.QualifiedName) error {
 	if err != nil {
 		return mdlerrors.NewBackend("list domain models", err)
 	}
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}

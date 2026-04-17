@@ -93,7 +93,7 @@ func describeFragmentFrom(ctx *ExecContext, s *ast.DescribeFragmentFromStmt) err
 		return mdlerrors.NewNotConnected()
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}

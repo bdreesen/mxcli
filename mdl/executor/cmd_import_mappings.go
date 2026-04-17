@@ -27,7 +27,7 @@ func showImportMappings(ctx *ExecContext, inModule string) error {
 		return mdlerrors.NewBackend("list import mappings", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return err
 	}
@@ -76,7 +76,7 @@ func showImportMappings(ctx *ExecContext, inModule string) error {
 	for _, r := range rows {
 		result.Rows = append(result.Rows, []any{r.qualifiedName, r.name, r.schemaSource, r.elementCount})
 	}
-	return e.writeResult(result)
+	return writeResult(ctx, result)
 }
 
 // showImportMappings is a wrapper for callers that still use an Executor receiver.
@@ -103,7 +103,7 @@ func describeImportMapping(ctx *ExecContext, name ast.QualifiedName) error {
 		fmt.Fprintf(ctx.Output, "/**\n * %s\n */\n", strings.ReplaceAll(im.Documentation, "\n", "\n * "))
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return err
 	}
@@ -208,7 +208,7 @@ func execCreateImportMapping(ctx *ExecContext, s *ast.CreateImportMappingStmt) e
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
-	module, err := e.findModule(s.Name.Module)
+	module, err := findModule(ctx, s.Name.Module)
 	if err != nil {
 		return mdlerrors.NewNotFound("module", s.Name.Module)
 	}

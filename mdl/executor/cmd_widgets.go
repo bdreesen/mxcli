@@ -24,7 +24,7 @@ func execShowWidgets(ctx *ExecContext, s *ast.ShowWidgetsStmt) error {
 	}
 
 	// Ensure catalog is built (full mode for widgets)
-	if err := e.ensureCatalog(true); err != nil {
+	if err := ensureCatalog(ctx, true); err != nil {
 		return mdlerrors.NewBackend("build catalog", err)
 	}
 
@@ -97,7 +97,7 @@ func execUpdateWidgets(ctx *ExecContext, s *ast.UpdateWidgetsStmt) error {
 	}
 
 	// Ensure catalog is built (full mode for widgets)
-	if err := e.ensureCatalog(true); err != nil {
+	if err := ensureCatalog(ctx, true); err != nil {
 		return mdlerrors.NewBackend("build catalog", err)
 	}
 

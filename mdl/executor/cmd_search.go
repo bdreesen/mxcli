@@ -13,13 +13,12 @@ import (
 
 // execShowCallers handles SHOW CALLERS OF Module.Microflow [TRANSITIVE].
 func execShowCallers(ctx *ExecContext, s *ast.ShowStmt) error {
-	e := ctx.executor
 	if s.Name == nil {
 		return mdlerrors.NewValidation("target name required for SHOW CALLERS")
 	}
 
 	// Ensure catalog is available with full mode for refs
-	if err := e.ensureCatalog(true); err != nil {
+	if err := ensureCatalog(ctx, true); err != nil {
 		return err
 	}
 
@@ -71,19 +70,18 @@ func execShowCallers(ctx *ExecContext, s *ast.ShowStmt) error {
 	}
 
 	fmt.Fprintf(ctx.Output, "Found %d caller(s)\n", result.Count)
-	e.outputCatalogResults(result)
+	outputCatalogResults(ctx, result)
 	return nil
 }
 
 // execShowCallees handles SHOW CALLEES OF Module.Microflow [TRANSITIVE].
 func execShowCallees(ctx *ExecContext, s *ast.ShowStmt) error {
-	e := ctx.executor
 	if s.Name == nil {
 		return mdlerrors.NewValidation("target name required for SHOW CALLEES")
 	}
 
 	// Ensure catalog is available with full mode for refs
-	if err := e.ensureCatalog(true); err != nil {
+	if err := ensureCatalog(ctx, true); err != nil {
 		return err
 	}
 
@@ -135,19 +133,18 @@ func execShowCallees(ctx *ExecContext, s *ast.ShowStmt) error {
 	}
 
 	fmt.Fprintf(ctx.Output, "Found %d callee(s)\n", result.Count)
-	e.outputCatalogResults(result)
+	outputCatalogResults(ctx, result)
 	return nil
 }
 
 // execShowReferences handles SHOW REFERENCES TO Module.Entity.
 func execShowReferences(ctx *ExecContext, s *ast.ShowStmt) error {
-	e := ctx.executor
 	if s.Name == nil {
 		return mdlerrors.NewValidation("target name required for SHOW REFERENCES")
 	}
 
 	// Ensure catalog is available with full mode for refs
-	if err := e.ensureCatalog(true); err != nil {
+	if err := ensureCatalog(ctx, true); err != nil {
 		return err
 	}
 
@@ -173,20 +170,19 @@ func execShowReferences(ctx *ExecContext, s *ast.ShowStmt) error {
 	}
 
 	fmt.Fprintf(ctx.Output, "Found %d reference(s)\n", result.Count)
-	e.outputCatalogResults(result)
+	outputCatalogResults(ctx, result)
 	return nil
 }
 
 // execShowImpact handles SHOW IMPACT OF Module.Entity.
 // This shows all elements that would be affected by changing the target.
 func execShowImpact(ctx *ExecContext, s *ast.ShowStmt) error {
-	e := ctx.executor
 	if s.Name == nil {
 		return mdlerrors.NewValidation("target name required for SHOW IMPACT")
 	}
 
 	// Ensure catalog is available with full mode for refs
-	if err := e.ensureCatalog(true); err != nil {
+	if err := ensureCatalog(ctx, true); err != nil {
 		return err
 	}
 
@@ -228,7 +224,7 @@ func execShowImpact(ctx *ExecContext, s *ast.ShowStmt) error {
 	fmt.Fprintln(ctx.Output)
 
 	fmt.Fprintf(ctx.Output, "Found %d affected element(s)\n", result.Count)
-	e.outputCatalogResults(result)
+	outputCatalogResults(ctx, result)
 
 	return nil
 }

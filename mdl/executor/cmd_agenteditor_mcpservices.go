@@ -29,7 +29,7 @@ func showAgentEditorConsumedMCPServices(ctx *ExecContext, moduleName string) err
 		return mdlerrors.NewBackend("list consumed MCP services", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return err
 	}
@@ -55,7 +55,7 @@ func showAgentEditorConsumedMCPServices(ctx *ExecContext, moduleName string) err
 	}
 
 	result.Summary = fmt.Sprintf("(%d consumed MCP service(s))", len(result.Rows))
-	return e.writeResult(result)
+	return writeResult(ctx, result)
 }
 
 // describeAgentEditorConsumedMCPService handles DESCRIBE CONSUMED MCP SERVICE Module.Name.
@@ -70,7 +70,7 @@ func describeAgentEditorConsumedMCPService(ctx *ExecContext, name ast.QualifiedN
 		return mdlerrors.NewNotFound("consumed MCP service", name.String())
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return err
 	}
@@ -118,7 +118,7 @@ func findAgentEditorConsumedMCPService(ctx *ExecContext, moduleName, svcName str
 	if err != nil {
 		return nil
 	}
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return nil
 	}
