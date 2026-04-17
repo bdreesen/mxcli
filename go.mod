@@ -17,7 +17,7 @@ require (
 	github.com/sergi/go-diff v1.4.0
 	github.com/sijms/go-ora/v2 v2.9.0
 	github.com/spf13/cobra v1.10.2
-	github.com/spf13/pflag v1.0.9
+	github.com/spf13/pflag v1.0.10
 	go.lsp.dev/jsonrpc2 v0.10.0
 	go.lsp.dev/protocol v0.12.0
 	go.lsp.dev/uri v0.3.0
