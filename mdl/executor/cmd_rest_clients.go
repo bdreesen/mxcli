@@ -120,8 +120,10 @@ func outputConsumedRestServiceMDL(ctx *ExecContext, svc *model.ConsumedRestServi
 	if svc.Authentication == nil {
 		fmt.Fprintln(w, "  Authentication: NONE")
 	} else {
-		fmt.Fprintf(w, "  Authentication: BASIC (Username: '%s', Password: '%s')\n",
-			svc.Authentication.Username, svc.Authentication.Password)
+		username := formatRestAuthValue(svc.Authentication.Username)
+		password := formatRestAuthValue(svc.Authentication.Password)
+		fmt.Fprintf(w, "  Authentication: BASIC (Username: %s, Password: %s)\n",
+			username, password)
 	}
 	fmt.Fprintln(w, ")")
 	fmt.Fprintln(w, "{")
@@ -545,9 +547,10 @@ func dropRestClient(ctx *ExecContext, stmt *ast.DropRestClientStmt) error {
 }
 
 // formatRestAuthValue formats an authentication value for MDL output.
+// Constant references (stored with $ prefix internally) are emitted as @Module.Constant.
 func formatRestAuthValue(value string) string {
 	if strings.HasPrefix(value, "$") {
-		return value
+		return "@" + strings.TrimPrefix(value, "$")
 	}
 	return "'" + value + "'"
 }

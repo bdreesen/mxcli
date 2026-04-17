@@ -2427,7 +2427,8 @@ createRestClientStatement
 
 restClientProperty
     : identifierOrKeyword COLON STRING_LITERAL                       // BaseUrl: '...', Username: '...'
-    | identifierOrKeyword COLON VARIABLE                             // Username: $Constant (stored as Rest$ConstantValue)
+    | identifierOrKeyword COLON VARIABLE                             // Username: $Constant (legacy, stored as Rest$ConstantValue)
+    | identifierOrKeyword COLON AT qualifiedName                     // Username: @Module.Constant (preferred Mendix convention)
     | identifierOrKeyword COLON NONE                                 // Authentication: NONE
     | identifierOrKeyword COLON BASIC LPAREN restClientProperty (COMMA restClientProperty)* RPAREN
     ;

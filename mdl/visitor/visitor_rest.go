@@ -53,9 +53,14 @@ func (b *Builder) ExitCreateRestClientStatement(ctx *parser.CreateRestClientStat
 					if sl := sp.STRING_LITERAL(); sl != nil {
 						val = unquoteString(sl.GetText())
 					} else if v := sp.VARIABLE(); v != nil {
-						// $Constant reference — keep the $ prefix so writer knows
-						// to serialize as Rest$ConstantValue
+						// $Constant reference (legacy) — keep $ prefix
 						val = v.GetText()
+					} else if sp.AT() != nil {
+						// @Module.Constant reference (preferred Mendix convention)
+						// Store with $ prefix so the writer serializes as Rest$ConstantValue
+						if qn := sp.QualifiedName(); qn != nil {
+							val = "$" + getQualifiedNameText(qn)
+						}
 					}
 					switch subKey {
 					case "username":

@@ -42,7 +42,7 @@ CREATE CONSTANT AuthTest.ApiPass TYPE String DEFAULT 'testpass123!';
 
 CREATE REST CLIENT AuthTest.HttpBinAuthAPI (
   BaseUrl: 'https://httpbin.org',
-  Authentication: BASIC (Username: $ApiUser, Password: $ApiPass)
+  Authentication: BASIC (Username: @AuthTest.ApiUser, Password: @AuthTest.ApiPass)
 )
 {
   /** Calls /basic-auth/testuser/testpass123! — returns 200 if auth header sent */
