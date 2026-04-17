@@ -4,6 +4,7 @@
 package executor
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strings"
@@ -12,7 +13,8 @@ import (
 )
 
 // showSnippets handles SHOW SNIPPETS command.
-func (e *Executor) showSnippets(moduleName string) error {
+func showSnippets(ctx *ExecContext, moduleName string) error {
+	e := ctx.executor
 	// Get hierarchy for module/folder resolution
 	h, err := e.getHierarchy()
 	if err != nil {
@@ -59,4 +61,8 @@ func (e *Executor) showSnippets(moduleName string) error {
 		result.Rows = append(result.Rows, []any{r.qualifiedName, r.module, r.name, r.folderPath, r.params})
 	}
 	return e.writeResult(result)
+}
+
+func (e *Executor) showSnippets(moduleName string) error {
+	return showSnippets(e.newExecContext(context.Background()), moduleName)
 }

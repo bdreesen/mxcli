@@ -3,6 +3,7 @@
 package executor
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strings"
@@ -11,7 +12,8 @@ import (
 )
 
 // showPages handles SHOW PAGES command.
-func (e *Executor) showPages(moduleName string) error {
+func showPages(ctx *ExecContext, moduleName string) error {
+	e := ctx.executor
 	// Get hierarchy for module/folder resolution
 	h, err := e.getHierarchy()
 	if err != nil {
@@ -73,4 +75,8 @@ func (e *Executor) showPages(moduleName string) error {
 		result.Rows = append(result.Rows, []any{r.qualifiedName, r.module, r.name, r.excluded, r.folderPath, r.title, r.url, r.params})
 	}
 	return e.writeResult(result)
+}
+
+func (e *Executor) showPages(moduleName string) error {
+	return showPages(e.newExecContext(context.Background()), moduleName)
 }

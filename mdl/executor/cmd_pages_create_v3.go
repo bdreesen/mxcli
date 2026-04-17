@@ -15,7 +15,8 @@ import (
 // ============================================================================
 
 // execCreatePageV3 handles CREATE PAGE statement with V3 syntax.
-func (e *Executor) execCreatePageV3(s *ast.CreatePageStmtV3) error {
+func execCreatePageV3(ctx *ExecContext, s *ast.CreatePageStmtV3) error {
+	e := ctx.executor
 	if e.writer == nil {
 		return mdlerrors.NewNotConnectedWrite()
 	}
@@ -40,8 +41,8 @@ func (e *Executor) execCreatePageV3(s *ast.CreatePageStmtV3) error {
 	existingPages, _ := e.reader.ListPages()
 	var pagesToDelete []model.ID
 	for _, p := range existingPages {
-		modID := e.getModuleID(p.ContainerID)
-		modName := e.getModuleName(modID)
+		modID := getModuleID(ctx, p.ContainerID)
+		modName := getModuleName(ctx, modID)
 		if modName == s.Name.Module && p.Name == s.Name.Name {
 			if !s.IsReplace && !s.IsModify && len(pagesToDelete) == 0 {
 				return mdlerrors.NewAlreadyExists("page", s.Name.String())
@@ -94,12 +95,13 @@ func (e *Executor) execCreatePageV3(s *ast.CreatePageStmtV3) error {
 	// Invalidate hierarchy cache so the new page's container is visible
 	e.invalidateHierarchy()
 
-	fmt.Fprintf(e.output, "Created page %s\n", s.Name.String())
+	fmt.Fprintf(ctx.Output, "Created page %s\n", s.Name.String())
 	return nil
 }
 
 // execCreateSnippetV3 handles CREATE SNIPPET statement with V3 syntax.
-func (e *Executor) execCreateSnippetV3(s *ast.CreateSnippetStmtV3) error {
+func execCreateSnippetV3(ctx *ExecContext, s *ast.CreateSnippetStmtV3) error {
+	e := ctx.executor
 	if e.writer == nil {
 		return mdlerrors.NewNotConnectedWrite()
 	}
@@ -115,8 +117,8 @@ func (e *Executor) execCreateSnippetV3(s *ast.CreateSnippetStmtV3) error {
 	existingSnippets, _ := e.reader.ListSnippets()
 	var snippetsToDelete []model.ID
 	for _, snip := range existingSnippets {
-		modID := e.getModuleID(snip.ContainerID)
-		modName := e.getModuleName(modID)
+		modID := getModuleID(ctx, snip.ContainerID)
+		modName := getModuleName(ctx, modID)
 		if modName == s.Name.Module && snip.Name == s.Name.Name {
 			if !s.IsReplace && !s.IsModify && len(snippetsToDelete) == 0 {
 				return mdlerrors.NewAlreadyExists("snippet", s.Name.String())
@@ -162,6 +164,6 @@ func (e *Executor) execCreateSnippetV3(s *ast.CreateSnippetStmtV3) error {
 	// Invalidate hierarchy cache so the new snippet's container is visible
 	e.invalidateHierarchy()
 
-	fmt.Fprintf(e.output, "Created snippet %s\n", s.Name.String())
+	fmt.Fprintf(ctx.Output, "Created snippet %s\n", s.Name.String())
 	return nil
 }

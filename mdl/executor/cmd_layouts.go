@@ -4,6 +4,7 @@
 package executor
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strings"
@@ -12,7 +13,8 @@ import (
 )
 
 // showLayouts handles SHOW LAYOUTS command.
-func (e *Executor) showLayouts(moduleName string) error {
+func showLayouts(ctx *ExecContext, moduleName string) error {
+	e := ctx.executor
 	// Get hierarchy for module/folder resolution
 	h, err := e.getHierarchy()
 	if err != nil {
@@ -60,4 +62,8 @@ func (e *Executor) showLayouts(moduleName string) error {
 		result.Rows = append(result.Rows, []any{r.qualifiedName, r.module, r.name, r.folderPath, r.layoutType})
 	}
 	return e.writeResult(result)
+}
+
+func (e *Executor) showLayouts(moduleName string) error {
+	return showLayouts(e.newExecContext(context.Background()), moduleName)
 }

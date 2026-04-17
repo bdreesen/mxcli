@@ -95,16 +95,16 @@ func registerMicroflowHandlers(r *Registry) {
 
 func registerPageHandlers(r *Registry) {
 	r.Register(&ast.CreatePageStmtV3{}, func(ctx *ExecContext, stmt ast.Statement) error {
-		return ctx.executor.execCreatePageV3(stmt.(*ast.CreatePageStmtV3))
+		return execCreatePageV3(ctx, stmt.(*ast.CreatePageStmtV3))
 	})
 	r.Register(&ast.DropPageStmt{}, func(ctx *ExecContext, stmt ast.Statement) error {
-		return ctx.executor.execDropPage(stmt.(*ast.DropPageStmt))
+		return execDropPage(ctx, stmt.(*ast.DropPageStmt))
 	})
 	r.Register(&ast.CreateSnippetStmtV3{}, func(ctx *ExecContext, stmt ast.Statement) error {
-		return ctx.executor.execCreateSnippetV3(stmt.(*ast.CreateSnippetStmtV3))
+		return execCreateSnippetV3(ctx, stmt.(*ast.CreateSnippetStmtV3))
 	})
 	r.Register(&ast.DropSnippetStmt{}, func(ctx *ExecContext, stmt ast.Statement) error {
-		return ctx.executor.execDropSnippet(stmt.(*ast.DropSnippetStmt))
+		return execDropSnippet(ctx, stmt.(*ast.DropSnippetStmt))
 	})
 	r.Register(&ast.DropJavaActionStmt{}, func(ctx *ExecContext, stmt ast.Statement) error {
 		return ctx.executor.execDropJavaAction(stmt.(*ast.DropJavaActionStmt))
@@ -394,7 +394,7 @@ func registerLintHandlers(r *Registry) {
 
 func registerAlterPageHandlers(r *Registry) {
 	r.Register(&ast.AlterPageStmt{}, func(ctx *ExecContext, stmt ast.Statement) error {
-		return ctx.executor.execAlterPage(stmt.(*ast.AlterPageStmt))
+		return execAlterPage(ctx, stmt.(*ast.AlterPageStmt))
 	})
 }
 
