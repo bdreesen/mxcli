@@ -63,7 +63,7 @@ func NewRegistry() *Registry {
 func (r *Registry) Register(stmt ast.Statement, handler StmtHandler) {
 	t := reflect.TypeOf(stmt)
 	if _, exists := r.handlers[t]; exists {
-		panic(fmt.Sprintf("backend: duplicate handler registration for %s", t))
+		panic(fmt.Sprintf("registry: duplicate handler registration for %s", t))
 	}
 	r.handlers[t] = handler
 }
@@ -79,7 +79,7 @@ func (r *Registry) Lookup(stmt ast.Statement) StmtHandler {
 func (r *Registry) Dispatch(e *Executor, stmt ast.Statement) error {
 	h := r.Lookup(stmt)
 	if h == nil {
-		return mdlerrors.NewUnsupported(fmt.Sprintf("statement type %T", stmt))
+		return mdlerrors.NewUnsupported(fmt.Sprintf("unhandled statement type %T", stmt))
 	}
 	return h(e, stmt)
 }
@@ -96,7 +96,7 @@ func (r *Registry) Validate(knownTypes []ast.Statement) error {
 		}
 	}
 	if len(missing) > 0 {
-		return fmt.Errorf("registry: %d unregistered statement type(s): %v", len(missing), missing)
+		return mdlerrors.NewValidationf("registry: %d unregistered statement type(s): %v", len(missing), missing)
 	}
 	return nil
 }

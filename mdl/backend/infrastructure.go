@@ -19,7 +19,7 @@ type RenameBackend interface {
 // manipulate raw BSON (e.g. widget patching, alter page/workflow).
 type RawUnitBackend interface {
 	GetRawUnit(id model.ID) (map[string]any, error)
-	GetRawUnitBytes(id string) ([]byte, error)
+	GetRawUnitBytes(id model.ID) ([]byte, error)
 	ListRawUnitsByType(typePrefix string) ([]*mpr.RawUnit, error)
 	ListRawUnits(objectType string) ([]*mpr.RawUnitInfo, error)
 	GetRawUnitByName(objectType, qualifiedName string) (*mpr.RawUnitInfo, error)

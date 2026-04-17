@@ -134,6 +134,11 @@ func TestRegistry_Validate_Partial(t *testing.T) {
 	if got := err.Error(); !strings.Contains(got, "2 unregistered") {
 		t.Fatalf("expected '2 unregistered' in error, got: %s", got)
 	}
+	// Should be a ValidationError.
+	var ve *mdlerrors.ValidationError
+	if !errors.As(err, &ve) {
+		t.Fatalf("expected ValidationError, got %T", err)
+	}
 }
 
 func TestRegistry_HandlerCount(t *testing.T) {

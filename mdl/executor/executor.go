@@ -207,7 +207,7 @@ func (e *Executor) Execute(stmt ast.Statement) error {
 	case r := <-ch:
 		err = r.err
 	case <-ctx.Done():
-		err = fmt.Errorf("statement timed out after %v", executeTimeout)
+		err = mdlerrors.NewValidationf("statement timed out after %v", executeTimeout)
 	}
 
 	if e.logger != nil {

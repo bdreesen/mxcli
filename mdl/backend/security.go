@@ -42,12 +42,25 @@ type ModuleSecurityBackend interface {
 	RemoveModuleRoleFromAllUserRoles(unitID model.ID, qualifiedRole string) (int, error)
 }
 
+// EntityAccessRuleParams groups parameters for AddEntityAccessRule to reduce
+// positional argument errors.
+type EntityAccessRuleParams struct {
+	UnitID              model.ID
+	EntityName          string
+	RoleNames           []string
+	AllowCreate         bool
+	AllowDelete         bool
+	DefaultMemberAccess string
+	XPathConstraint     string
+	MemberAccesses      []mpr.EntityMemberAccess
+}
+
 // EntityAccessBackend manages entity-level access rules and role assignments.
 type EntityAccessBackend interface {
 	UpdateAllowedRoles(unitID model.ID, roles []string) error
 	UpdatePublishedRestServiceRoles(unitID model.ID, roles []string) error
 	RemoveFromAllowedRoles(unitID model.ID, roleName string) (bool, error)
-	AddEntityAccessRule(unitID model.ID, entityName string, roleNames []string, allowCreate, allowDelete bool, defaultMemberAccess string, xpathConstraint string, memberAccesses []mpr.EntityMemberAccess) error
+	AddEntityAccessRule(params EntityAccessRuleParams) error
 	RemoveEntityAccessRule(unitID model.ID, entityName string, roleNames []string) (int, error)
 	RevokeEntityMemberAccess(unitID model.ID, entityName string, roleNames []string, revocation mpr.EntityAccessRevocation) (int, error)
 	RemoveRoleFromAllEntities(unitID model.ID, roleName string) (int, error)

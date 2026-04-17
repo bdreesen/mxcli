@@ -341,8 +341,8 @@ func (b *MprBackend) UpdatePublishedRestServiceRoles(unitID model.ID, roles []st
 func (b *MprBackend) RemoveFromAllowedRoles(unitID model.ID, roleName string) (bool, error) {
 	return b.writer.RemoveFromAllowedRoles(unitID, roleName)
 }
-func (b *MprBackend) AddEntityAccessRule(unitID model.ID, entityName string, roleNames []string, allowCreate, allowDelete bool, defaultMemberAccess string, xpathConstraint string, memberAccesses []mpr.EntityMemberAccess) error {
-	return b.writer.AddEntityAccessRule(unitID, entityName, roleNames, allowCreate, allowDelete, defaultMemberAccess, xpathConstraint, memberAccesses)
+func (b *MprBackend) AddEntityAccessRule(params backend.EntityAccessRuleParams) error {
+	return b.writer.AddEntityAccessRule(params.UnitID, params.EntityName, params.RoleNames, params.AllowCreate, params.AllowDelete, params.DefaultMemberAccess, params.XPathConstraint, params.MemberAccesses)
 }
 func (b *MprBackend) RemoveEntityAccessRule(unitID model.ID, entityName string, roleNames []string) (int, error) {
 	return b.writer.RemoveEntityAccessRule(unitID, entityName, roleNames)
@@ -627,8 +627,8 @@ func (b *MprBackend) RenameDocumentByName(moduleName, oldName, newName string) e
 func (b *MprBackend) GetRawUnit(id model.ID) (map[string]any, error) {
 	return b.reader.GetRawUnit(id)
 }
-func (b *MprBackend) GetRawUnitBytes(id string) ([]byte, error) {
-	return b.reader.GetRawUnitBytes(model.ID(id))
+func (b *MprBackend) GetRawUnitBytes(id model.ID) ([]byte, error) {
+	return b.reader.GetRawUnitBytes(id)
 }
 func (b *MprBackend) ListRawUnitsByType(typePrefix string) ([]*mpr.RawUnit, error) {
 	return b.reader.ListRawUnitsByType(typePrefix)
