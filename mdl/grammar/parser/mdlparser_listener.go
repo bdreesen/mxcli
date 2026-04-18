@@ -292,6 +292,21 @@ type MDLParserListener interface {
 	// EnterModelProperty is called when entering the modelProperty production.
 	EnterModelProperty(c *ModelPropertyContext)
 
+	// EnterCreateConsumedMCPServiceStatement is called when entering the createConsumedMCPServiceStatement production.
+	EnterCreateConsumedMCPServiceStatement(c *CreateConsumedMCPServiceStatementContext)
+
+	// EnterCreateKnowledgeBaseStatement is called when entering the createKnowledgeBaseStatement production.
+	EnterCreateKnowledgeBaseStatement(c *CreateKnowledgeBaseStatementContext)
+
+	// EnterCreateAgentStatement is called when entering the createAgentStatement production.
+	EnterCreateAgentStatement(c *CreateAgentStatementContext)
+
+	// EnterAgentBody is called when entering the agentBody production.
+	EnterAgentBody(c *AgentBodyContext)
+
+	// EnterAgentBodyBlock is called when entering the agentBodyBlock production.
+	EnterAgentBodyBlock(c *AgentBodyBlockContext)
+
 	// EnterCreateJsonStructureStatement is called when entering the createJsonStructureStatement production.
 	EnterCreateJsonStructureStatement(c *CreateJsonStructureStatementContext)
 
@@ -1569,6 +1584,21 @@ type MDLParserListener interface {
 
 	// ExitModelProperty is called when exiting the modelProperty production.
 	ExitModelProperty(c *ModelPropertyContext)
+
+	// ExitCreateConsumedMCPServiceStatement is called when exiting the createConsumedMCPServiceStatement production.
+	ExitCreateConsumedMCPServiceStatement(c *CreateConsumedMCPServiceStatementContext)
+
+	// ExitCreateKnowledgeBaseStatement is called when exiting the createKnowledgeBaseStatement production.
+	ExitCreateKnowledgeBaseStatement(c *CreateKnowledgeBaseStatementContext)
+
+	// ExitCreateAgentStatement is called when exiting the createAgentStatement production.
+	ExitCreateAgentStatement(c *CreateAgentStatementContext)
+
+	// ExitAgentBody is called when exiting the agentBody production.
+	ExitAgentBody(c *AgentBodyContext)
+
+	// ExitAgentBodyBlock is called when exiting the agentBodyBlock production.
+	ExitAgentBodyBlock(c *AgentBodyBlockContext)
 
 	// ExitCreateJsonStructureStatement is called when exiting the createJsonStructureStatement production.
 	ExitCreateJsonStructureStatement(c *CreateJsonStructureStatementContext)

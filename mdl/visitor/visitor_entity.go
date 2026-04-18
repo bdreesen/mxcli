@@ -771,6 +771,18 @@ func (b *Builder) ExitDropStatement(ctx *parser.DropStatementContext) {
 		b.statements = append(b.statements, &ast.DropModelStmt{
 			Name: buildQualifiedName(names[0]),
 		})
+	} else if ctx.CONSUMED() != nil && ctx.MCP() != nil && ctx.SERVICE() != nil {
+		b.statements = append(b.statements, &ast.DropConsumedMCPServiceStmt{
+			Name: buildQualifiedName(names[0]),
+		})
+	} else if ctx.KNOWLEDGE() != nil && ctx.BASE() != nil {
+		b.statements = append(b.statements, &ast.DropKnowledgeBaseStmt{
+			Name: buildQualifiedName(names[0]),
+		})
+	} else if ctx.AGENT() != nil {
+		b.statements = append(b.statements, &ast.DropAgentStmt{
+			Name: buildQualifiedName(names[0]),
+		})
 	} else if ctx.PUBLISHED() != nil && ctx.REST() != nil && ctx.SERVICE() != nil {
 		b.statements = append(b.statements, &ast.DropPublishedRestServiceStmt{
 			Name: buildQualifiedName(names[0]),

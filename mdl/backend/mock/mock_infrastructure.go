@@ -188,5 +188,13 @@ func (m *MockBackend) ListAgentEditorAgents() ([]*agenteditor.Agent, error) {
 	return nil, nil
 }
 
-func (m *MockBackend) CreateAgentEditorModel(_ *agenteditor.Model) error { return nil }
-func (m *MockBackend) DeleteAgentEditorModel(_ string) error             { return nil }
+func (m *MockBackend) CreateAgentEditorModel(_ *agenteditor.Model) error                  { return nil }
+func (m *MockBackend) DeleteAgentEditorModel(_ string) error                              { return nil }
+func (m *MockBackend) CreateAgentEditorKnowledgeBase(_ *agenteditor.KnowledgeBase) error  { return nil }
+func (m *MockBackend) DeleteAgentEditorKnowledgeBase(_ string) error                      { return nil }
+func (m *MockBackend) CreateAgentEditorConsumedMCPService(_ *agenteditor.ConsumedMCPService) error {
+	return nil
+}
+func (m *MockBackend) DeleteAgentEditorConsumedMCPService(_ string) error { return nil }
+func (m *MockBackend) CreateAgentEditorAgent(_ *agenteditor.Agent) error  { return nil }
+func (m *MockBackend) DeleteAgentEditorAgent(_ string) error              { return nil }

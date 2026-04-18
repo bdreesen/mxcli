@@ -52,4 +52,10 @@ type AgentEditorBackend interface {
 	ListAgentEditorAgents() ([]*agenteditor.Agent, error)
 	CreateAgentEditorModel(m *agenteditor.Model) error
 	DeleteAgentEditorModel(id string) error
+	CreateAgentEditorKnowledgeBase(k *agenteditor.KnowledgeBase) error
+	DeleteAgentEditorKnowledgeBase(id string) error
+	CreateAgentEditorConsumedMCPService(c *agenteditor.ConsumedMCPService) error
+	DeleteAgentEditorConsumedMCPService(id string) error
+	CreateAgentEditorAgent(a *agenteditor.Agent) error
+	DeleteAgentEditorAgent(id string) error
 }

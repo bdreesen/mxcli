@@ -106,6 +106,9 @@ createStatement
       | createPublishedRestServiceStatement
       | createDataTransformerStatement
       | createModelStatement
+      | createConsumedMCPServiceStatement
+      | createKnowledgeBaseStatement
+      | createAgentStatement
       )
     ;
 
@@ -289,6 +292,9 @@ dropStatement
     | DROP PUBLISHED REST SERVICE qualifiedName
     | DROP DATA TRANSFORMER qualifiedName
     | DROP MODEL qualifiedName                               // DROP MODEL Module.Name (agent-editor)
+    | DROP CONSUMED MCP SERVICE qualifiedName                // DROP CONSUMED MCP SERVICE Module.Name
+    | DROP KNOWLEDGE BASE qualifiedName                      // DROP KNOWLEDGE BASE Module.Name
+    | DROP AGENT qualifiedName                               // DROP AGENT Module.Name
     | DROP CONFIGURATION STRING_LITERAL
     | DROP FOLDER STRING_LITERAL IN (qualifiedName | IDENTIFIER)
     ;
@@ -902,6 +908,61 @@ modelProperty
     : identifierOrKeyword COLON identifierOrKeyword       // Provider: MxCloudGenAI
     | identifierOrKeyword COLON qualifiedName             // Key: Module.Constant
     | identifierOrKeyword COLON STRING_LITERAL            // DisplayName: 'GPT-4 Turbo' etc.
+    | identifierOrKeyword COLON NUMBER_LITERAL            // ConnectionTimeoutSeconds: 30
+    | identifierOrKeyword COLON booleanLiteral            // Enabled: true
+    ;
+
+// =============================================================================
+// AGENT-EDITOR CONSUMED MCP SERVICE CREATION
+// =============================================================================
+// CREATE CONSUMED MCP SERVICE Module.Name (
+//   ProtocolVersion: v2025_03_26,
+//   Version: '0.0.1',
+//   ConnectionTimeoutSeconds: 30,
+//   Documentation: '...'
+// );
+createConsumedMCPServiceStatement
+    : CONSUMED MCP SERVICE qualifiedName
+      LPAREN modelProperty (COMMA modelProperty)* RPAREN
+    ;
+
+// =============================================================================
+// AGENT-EDITOR KNOWLEDGE BASE CREATION
+// =============================================================================
+// CREATE KNOWLEDGE BASE Module.Name (
+//   Provider: MxCloudGenAI,
+//   Key: Module.SomeConstant
+// );
+createKnowledgeBaseStatement
+    : KNOWLEDGE BASE qualifiedName
+      LPAREN modelProperty (COMMA modelProperty)* RPAREN
+    ;
+
+// =============================================================================
+// AGENT-EDITOR AGENT CREATION
+// =============================================================================
+// CREATE AGENT Module.Name (
+//   UsageType: Task,
+//   Model: Module.MyModel,
+//   SystemPrompt: '...',
+//   ...
+// )
+// [ { TOOL ... | MCP SERVICE ... | KNOWLEDGE BASE ... } ]
+// ;
+createAgentStatement
+    : AGENT qualifiedName
+      LPAREN modelProperty (COMMA modelProperty)* RPAREN
+      agentBody?
+    ;
+
+agentBody
+    : LBRACE agentBodyBlock* RBRACE
+    ;
+
+agentBodyBlock
+    : MCP SERVICE qualifiedName LBRACE modelProperty (COMMA modelProperty)* RBRACE       // MCP SERVICE Mod.Name { ... }
+    | KNOWLEDGE BASE identifierOrKeyword LBRACE modelProperty (COMMA modelProperty)* RBRACE // KNOWLEDGE BASE MyKB { ... }
+    | identifierOrKeyword identifierOrKeyword LBRACE modelProperty (COMMA modelProperty)* RBRACE // TOOL ToolName { ... }
     ;
 
 // =============================================================================

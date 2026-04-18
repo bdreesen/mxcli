@@ -626,6 +626,40 @@ func (s *BaseMDLParserListener) EnterModelProperty(ctx *ModelPropertyContext) {}
 // ExitModelProperty is called when production modelProperty is exited.
 func (s *BaseMDLParserListener) ExitModelProperty(ctx *ModelPropertyContext) {}
 
+// EnterCreateConsumedMCPServiceStatement is called when production createConsumedMCPServiceStatement is entered.
+func (s *BaseMDLParserListener) EnterCreateConsumedMCPServiceStatement(ctx *CreateConsumedMCPServiceStatementContext) {
+}
+
+// ExitCreateConsumedMCPServiceStatement is called when production createConsumedMCPServiceStatement is exited.
+func (s *BaseMDLParserListener) ExitCreateConsumedMCPServiceStatement(ctx *CreateConsumedMCPServiceStatementContext) {
+}
+
+// EnterCreateKnowledgeBaseStatement is called when production createKnowledgeBaseStatement is entered.
+func (s *BaseMDLParserListener) EnterCreateKnowledgeBaseStatement(ctx *CreateKnowledgeBaseStatementContext) {
+}
+
+// ExitCreateKnowledgeBaseStatement is called when production createKnowledgeBaseStatement is exited.
+func (s *BaseMDLParserListener) ExitCreateKnowledgeBaseStatement(ctx *CreateKnowledgeBaseStatementContext) {
+}
+
+// EnterCreateAgentStatement is called when production createAgentStatement is entered.
+func (s *BaseMDLParserListener) EnterCreateAgentStatement(ctx *CreateAgentStatementContext) {}
+
+// ExitCreateAgentStatement is called when production createAgentStatement is exited.
+func (s *BaseMDLParserListener) ExitCreateAgentStatement(ctx *CreateAgentStatementContext) {}
+
+// EnterAgentBody is called when production agentBody is entered.
+func (s *BaseMDLParserListener) EnterAgentBody(ctx *AgentBodyContext) {}
+
+// ExitAgentBody is called when production agentBody is exited.
+func (s *BaseMDLParserListener) ExitAgentBody(ctx *AgentBodyContext) {}
+
+// EnterAgentBodyBlock is called when production agentBodyBlock is entered.
+func (s *BaseMDLParserListener) EnterAgentBodyBlock(ctx *AgentBodyBlockContext) {}
+
+// ExitAgentBodyBlock is called when production agentBodyBlock is exited.
+func (s *BaseMDLParserListener) ExitAgentBodyBlock(ctx *AgentBodyBlockContext) {}
+
 // EnterCreateJsonStructureStatement is called when production createJsonStructureStatement is entered.
 func (s *BaseMDLParserListener) EnterCreateJsonStructureStatement(ctx *CreateJsonStructureStatementContext) {
 }

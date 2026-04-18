@@ -706,3 +706,21 @@ func (b *MprBackend) CreateAgentEditorModel(m *agenteditor.Model) error {
 func (b *MprBackend) DeleteAgentEditorModel(id string) error {
 	return b.writer.DeleteAgentEditorModel(id)
 }
+func (b *MprBackend) CreateAgentEditorKnowledgeBase(k *agenteditor.KnowledgeBase) error {
+	return b.writer.CreateAgentEditorKnowledgeBase(k)
+}
+func (b *MprBackend) DeleteAgentEditorKnowledgeBase(id string) error {
+	return b.writer.DeleteAgentEditorKnowledgeBase(id)
+}
+func (b *MprBackend) CreateAgentEditorConsumedMCPService(c *agenteditor.ConsumedMCPService) error {
+	return b.writer.CreateAgentEditorConsumedMCPService(c)
+}
+func (b *MprBackend) DeleteAgentEditorConsumedMCPService(id string) error {
+	return b.writer.DeleteAgentEditorConsumedMCPService(id)
+}
+func (b *MprBackend) CreateAgentEditorAgent(a *agenteditor.Agent) error {
+	return b.writer.CreateAgentEditorAgent(a)
+}
+func (b *MprBackend) DeleteAgentEditorAgent(id string) error {
+	return b.writer.DeleteAgentEditorAgent(id)
+}
