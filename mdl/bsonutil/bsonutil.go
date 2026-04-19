@@ -11,10 +11,11 @@ import (
 )
 
 // IDToBsonBinary converts a hex UUID string to a BSON binary value.
+// Panics if id is not a valid UUID — an invalid ID at this layer is always a programming error.
 func IDToBsonBinary(id string) primitive.Binary {
 	blob := types.UUIDToBlob(id)
 	if blob == nil || len(blob) != 16 {
-		blob = types.UUIDToBlob(types.GenerateID())
+		panic("bsonutil.IDToBsonBinary: invalid UUID: " + id)
 	}
 	return primitive.Binary{
 		Subtype: 0x00,
