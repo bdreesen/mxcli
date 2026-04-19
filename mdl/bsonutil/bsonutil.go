@@ -10,7 +10,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// IDToBsonBinary converts a hex UUID string to a BSON binary value.
+// IDToBsonBinary converts a UUID string to a BSON binary value.
 // Panics if id is not a valid UUID — an invalid ID at this layer is always a programming error.
 func IDToBsonBinary(id string) primitive.Binary {
 	blob := types.UUIDToBlob(id)
