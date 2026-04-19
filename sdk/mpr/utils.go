@@ -24,14 +24,7 @@ func BlobToUUID(data []byte) string {
 
 // IDToBsonBinary converts a UUID string to a BSON binary value.
 func IDToBsonBinary(id string) primitive.Binary {
-	blob := types.UUIDToBlob(id)
-	if blob == nil || len(blob) != 16 {
-		blob = types.UUIDToBlob(types.GenerateID())
-	}
-	return primitive.Binary{
-		Subtype: 0x00,
-		Data:    blob,
-	}
+	return idToBsonBinary(id)
 }
 
 // BsonBinaryToID converts a BSON binary value to a UUID string.
