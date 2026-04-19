@@ -27,10 +27,13 @@ func GenerateID() string {
 		b[10], b[11], b[12], b[13], b[14], b[15])
 }
 
-// GenerateDeterministicID generates a stable UUID from a seed string.
+// GenerateDeterministicID generates a stable UUID v4 from a seed string.
 // Used for System module entities that aren't in the MPR but need consistent IDs.
 func GenerateDeterministicID(seed string) string {
 	h := sha256.Sum256([]byte(seed))
+	// Set UUID version 4 and variant bits on the hash bytes
+	h[6] = (h[6] & 0x0f) | 0x40 // Version 4
+	h[8] = (h[8] & 0x3f) | 0x80 // Variant is 10
 	return fmt.Sprintf("%08x-%04x-%04x-%04x-%012x",
 		h[0:4], h[4:6], h[6:8], h[8:10], h[10:16])
 }
