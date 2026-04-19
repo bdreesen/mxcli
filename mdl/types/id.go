@@ -11,10 +11,22 @@ import (
 )
 
 // GenerateID generates a new unique UUID v4 for model elements.
+// Panics if the OS entropy source fails — this is a fatal condition.
+// For callers that can handle failure gracefully, use GenerateIDErr.
 func GenerateID() string {
+	id, err := GenerateIDErr()
+	if err != nil {
+		panic(err.Error())
+	}
+	return id
+}
+
+// GenerateIDErr generates a new unique UUID v4 for model elements, returning
+// an error instead of panicking if the OS entropy source fails.
+func GenerateIDErr() (string, error) {
 	b := make([]byte, 16)
 	if _, err := rand.Read(b); err != nil {
-		panic("crypto/rand.Read failed: " + err.Error())
+		return "", fmt.Errorf("crypto/rand.Read failed: %w", err)
 	}
 	b[6] = (b[6] & 0x0f) | 0x40 // Version 4
 	b[8] = (b[8] & 0x3f) | 0x80 // Variant is 10
@@ -24,7 +36,7 @@ func GenerateID() string {
 		b[4], b[5],
 		b[6], b[7],
 		b[8], b[9],
-		b[10], b[11], b[12], b[13], b[14], b[15])
+		b[10], b[11], b[12], b[13], b[14], b[15]), nil
 }
 
 // GenerateDeterministicID generates a stable UUID v4 from a seed string.
@@ -38,7 +50,8 @@ func GenerateDeterministicID(seed string) string {
 		h[0:4], h[4:6], h[6:8], h[8:10], h[10:16])
 }
 
-// BlobToUUID converts a 16-byte binary ID blob to a UUID string.
+// BlobToUUID converts a 16-byte blob in Microsoft GUID format to a UUID string.
+// For non-16-byte input, returns a hex-encoded string as a best-effort fallback.
 func BlobToUUID(data []byte) string {
 	if len(data) != 16 {
 		return hex.EncodeToString(data)
@@ -56,14 +69,8 @@ func UUIDToBlob(uuid string) []byte {
 	if uuid == "" {
 		return nil
 	}
-	var clean strings.Builder
-	clean.Grow(32)
-	for i := 0; i < len(uuid); i++ {
-		if uuid[i] != '-' {
-			clean.WriteByte(uuid[i])
-		}
-	}
-	decoded, err := hex.DecodeString(clean.String())
+	clean := strings.ReplaceAll(uuid, "-", "")
+	decoded, err := hex.DecodeString(clean)
 	if err != nil || len(decoded) != 16 {
 		return nil
 	}
@@ -100,6 +107,9 @@ func ValidateID(id string) bool {
 }
 
 // Hash computes a hash for content (used for content deduplication).
+// TODO: replace with SHA-256 (or similar) — the current positional checksum is
+// weak and produces collisions easily. Deferred to avoid breaking callers that
+// may depend on the output format/length.
 func Hash(content []byte) string {
 	var sum uint64
 	for i, b := range content {

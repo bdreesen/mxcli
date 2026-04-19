@@ -320,6 +320,7 @@ func (pb *pageBuilder) resolveFolder(folderPath string) (model.ID, error) {
 				ContainerID: parentContainerID,
 				Name:        part,
 			})
+			currentContainerID = newFolderID
 		}
 	}
 

@@ -102,8 +102,8 @@ func mkHierarchy(modules ...*model.Module) *ContainerHierarchy {
 // a module ID, this call is technically redundant (the module is found directly
 // in moduleIDs), but it keeps test setup explicit about parentage. For
 // intermediate containers (folders, units) this call is required.
-func withContainer(h *ContainerHierarchy, containerID, parentID model.ID) {
-	h.containerParent[containerID] = parentID
+func withContainer(h *ContainerHierarchy, containerID, parentContainerID model.ID) {
+	h.containerParent[containerID] = parentContainerID
 }
 
 // --- Model factories ---

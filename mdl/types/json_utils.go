@@ -219,7 +219,9 @@ func (b *snippetBuilder) buildElementFromRawValue(exposedName, path, jsonKey str
 
 	// Primitive — unmarshal to determine type
 	var val any
-	json.Unmarshal(raw, &val)
+	if err := json.Unmarshal(raw, &val); err != nil {
+		return buildValueElement(exposedName, path, "Unknown", string(raw))
+	}
 
 	switch v := val.(type) {
 	case string:
@@ -262,10 +264,14 @@ func (b *snippetBuilder) buildElementFromRawRootArray(exposedName, path, rawJSON
 	}
 
 	dec := json.NewDecoder(strings.NewReader(rawJSON))
-	dec.Token() // opening [
+	if _, err := dec.Token(); err != nil { // opening [
+		return arrayElem
+	}
 	if dec.More() {
 		var firstItem json.RawMessage
-		dec.Decode(&firstItem)
+		if err := dec.Decode(&firstItem); err != nil {
+			return arrayElem
+		}
 
 		itemPath := path + "|(Object)"
 		trimmed := strings.TrimSpace(string(firstItem))
@@ -305,10 +311,14 @@ func (b *snippetBuilder) buildElementFromRawArray(exposedName, path, jsonKey, ra
 
 	// Decode array and get first element as raw JSON
 	dec := json.NewDecoder(strings.NewReader(rawJSON))
-	dec.Token() // opening [
+	if _, err := dec.Token(); err != nil { // opening [
+		return arrayElem
+	}
 	if dec.More() {
 		var firstItem json.RawMessage
-		dec.Decode(&firstItem)
+		if err := dec.Decode(&firstItem); err != nil {
+			return arrayElem
+		}
 
 		trimmed := strings.TrimSpace(string(firstItem))
 
