@@ -472,6 +472,7 @@ Full syntax tables for all MDL statements (microflows, pages, security, navigati
 - ALTER WORKFLOW (SET properties, INSERT/DROP/REPLACE activities, outcomes, paths, conditions, boundary events)
 - CALCULATED BY microflow syntax for calculated attributes
 - Image collections (SHOW/DESCRIBE/CREATE/DROP)
+- AI agent documents: Model, Knowledge Base, Consumed MCP Service, Agent (LIST/DESCRIBE/CREATE/DROP, with variables, tools, KB tools, dollar-quoted multi-line prompts; requires AgentEditorCommons module, Mendix 11.9+)
 - OData contract browsing (SHOW/DESCRIBE CONTRACT ENTITIES/ACTIONS FROM cached $metadata)
 - AsyncAPI contract browsing (SHOW/DESCRIBE CONTRACT CHANNELS/MESSAGES FROM cached AsyncAPI)
 - SHOW EXTERNAL ACTIONS, SHOW PUBLISHED REST SERVICES

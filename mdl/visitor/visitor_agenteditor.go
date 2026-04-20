@@ -213,6 +213,16 @@ func (b *Builder) ExitCreateAgentStatement(ctx *parser.CreateAgentStatementConte
 		fmt.Sscanf(v, "%d", &n)
 		stmt.MaxTokens = &n
 	}
+	if v, ok := props["temperature"]; ok {
+		var f float64
+		fmt.Sscanf(v, "%g", &f)
+		stmt.Temperature = &f
+	}
+	if v, ok := props["topp"]; ok {
+		var f float64
+		fmt.Sscanf(v, "%g", &f)
+		stmt.TopP = &f
+	}
 
 	// Parse Variables: ("Key": EntityAttribute, "Key2": String)
 	stmt.Variables = parseVariableDefsFromProps(ctx.AllModelProperty())
