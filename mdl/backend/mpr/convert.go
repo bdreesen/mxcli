@@ -29,7 +29,7 @@ func convertProjectVersion(v *version.ProjectVersion) *types.ProjectVersion {
 	}
 }
 
-func convertFolderInfoSlice(in []*types.FolderInfo, err error) ([]*types.FolderInfo, error) {
+func convertFolderInfoSlice(in []*mpr.FolderInfo, err error) ([]*types.FolderInfo, error) {
 	if err != nil || in == nil {
 		return nil, err
 	}
@@ -40,7 +40,7 @@ func convertFolderInfoSlice(in []*types.FolderInfo, err error) ([]*types.FolderI
 	return out, nil
 }
 
-func convertUnitInfoSlice(in []*types.UnitInfo, err error) ([]*types.UnitInfo, error) {
+func convertUnitInfoSlice(in []*mpr.UnitInfo, err error) ([]*types.UnitInfo, error) {
 	if err != nil || in == nil {
 		return nil, err
 	}
@@ -65,7 +65,7 @@ func convertRenameHitSlice(in []mpr.RenameHit, err error) ([]types.RenameHit, er
 	return out, nil
 }
 
-func convertRawUnitSlice(in []*types.RawUnit, err error) ([]*types.RawUnit, error) {
+func convertRawUnitSlice(in []*mpr.RawUnit, err error) ([]*types.RawUnit, error) {
 	if err != nil || in == nil {
 		return nil, err
 	}
@@ -126,7 +126,7 @@ func convertRawCustomWidgetTypeSlice(in []*mpr.RawCustomWidgetType, err error) (
 	return out, nil
 }
 
-func convertJavaActionSlice(in []*types.JavaAction, err error) ([]*types.JavaAction, error) {
+func convertJavaActionSlice(in []*mpr.JavaAction, err error) ([]*types.JavaAction, error) {
 	if err != nil || in == nil {
 		return nil, err
 	}
@@ -142,7 +142,7 @@ func convertJavaActionSlice(in []*types.JavaAction, err error) ([]*types.JavaAct
 	return out, nil
 }
 
-func convertJavaScriptActionSlice(in []*types.JavaScriptAction, err error) ([]*types.JavaScriptAction, error) {
+func convertJavaScriptActionSlice(in []*mpr.JavaScriptAction, err error) ([]*types.JavaScriptAction, error) {
 	if err != nil || in == nil {
 		return nil, err
 	}
@@ -153,14 +153,14 @@ func convertJavaScriptActionSlice(in []*types.JavaScriptAction, err error) ([]*t
 	return out, nil
 }
 
-func convertJavaScriptActionPtr(in *types.JavaScriptAction, err error) (*types.JavaScriptAction, error) {
+func convertJavaScriptActionPtr(in *mpr.JavaScriptAction, err error) (*types.JavaScriptAction, error) {
 	if err != nil || in == nil {
 		return nil, err
 	}
 	return convertJavaScriptAction(in), nil
 }
 
-func convertJavaScriptAction(in *types.JavaScriptAction) *types.JavaScriptAction {
+func convertJavaScriptAction(in *mpr.JavaScriptAction) *types.JavaScriptAction {
 	return &types.JavaScriptAction{
 		BaseElement:             in.BaseElement,
 		ContainerID:             in.ContainerID,
@@ -177,7 +177,7 @@ func convertJavaScriptAction(in *types.JavaScriptAction) *types.JavaScriptAction
 	}
 }
 
-func convertNavDocSlice(in []*types.NavigationDocument, err error) ([]*types.NavigationDocument, error) {
+func convertNavDocSlice(in []*mpr.NavigationDocument, err error) ([]*types.NavigationDocument, error) {
 	if err != nil || in == nil {
 		return nil, err
 	}
@@ -188,14 +188,14 @@ func convertNavDocSlice(in []*types.NavigationDocument, err error) ([]*types.Nav
 	return out, nil
 }
 
-func convertNavDocPtr(in *types.NavigationDocument, err error) (*types.NavigationDocument, error) {
+func convertNavDocPtr(in *mpr.NavigationDocument, err error) (*types.NavigationDocument, error) {
 	if err != nil || in == nil {
 		return nil, err
 	}
 	return convertNavDoc(in), nil
 }
 
-func convertNavDoc(in *types.NavigationDocument) *types.NavigationDocument {
+func convertNavDoc(in *mpr.NavigationDocument) *types.NavigationDocument {
 	nd := &types.NavigationDocument{
 		BaseElement: in.BaseElement,
 		ContainerID: in.ContainerID,
@@ -210,7 +210,7 @@ func convertNavDoc(in *types.NavigationDocument) *types.NavigationDocument {
 	return nd
 }
 
-func convertNavProfile(in *types.NavigationProfile) *types.NavigationProfile {
+func convertNavProfile(in *mpr.NavigationProfile) *types.NavigationProfile {
 	p := &types.NavigationProfile{
 		Name:         in.Name,
 		Kind:         in.Kind,
@@ -246,7 +246,7 @@ func convertNavProfile(in *types.NavigationProfile) *types.NavigationProfile {
 	return p
 }
 
-func convertNavMenuItem(in *types.NavMenuItem) *types.NavMenuItem {
+func convertNavMenuItem(in *mpr.NavMenuItem) *types.NavMenuItem {
 	mi := &types.NavMenuItem{
 		Caption: in.Caption, Page: in.Page, Microflow: in.Microflow, ActionType: in.ActionType,
 	}
@@ -319,7 +319,7 @@ func unconvertEntityAccessRevocation(in types.EntityAccessRevocation) mpr.Entity
 	}
 }
 
-func convertJsonStructureSlice(in []*types.JsonStructure, err error) ([]*types.JsonStructure, error) {
+func convertJsonStructureSlice(in []*mpr.JsonStructure, err error) ([]*types.JsonStructure, error) {
 	if err != nil || in == nil {
 		return nil, err
 	}
@@ -330,14 +330,14 @@ func convertJsonStructureSlice(in []*types.JsonStructure, err error) ([]*types.J
 	return out, nil
 }
 
-func convertJsonStructurePtr(in *types.JsonStructure, err error) (*types.JsonStructure, error) {
+func convertJsonStructurePtr(in *mpr.JsonStructure, err error) (*types.JsonStructure, error) {
 	if err != nil || in == nil {
 		return nil, err
 	}
 	return convertJsonStructure(in), nil
 }
 
-func convertJsonStructure(in *types.JsonStructure) *types.JsonStructure {
+func convertJsonStructure(in *mpr.JsonStructure) *types.JsonStructure {
 	js := &types.JsonStructure{
 		BaseElement:   in.BaseElement,
 		ContainerID:   in.ContainerID,
@@ -356,7 +356,7 @@ func convertJsonStructure(in *types.JsonStructure) *types.JsonStructure {
 	return js
 }
 
-func convertJsonElement(in *types.JsonElement) *types.JsonElement {
+func convertJsonElement(in *mpr.JsonElement) *types.JsonElement {
 	e := &types.JsonElement{
 		ExposedName: in.ExposedName, ExposedItemName: in.ExposedItemName,
 		Path: in.Path, ElementType: in.ElementType, PrimitiveType: in.PrimitiveType,
@@ -411,7 +411,7 @@ func unconvertJsonElement(in *types.JsonElement) *types.JsonElement {
 	return e
 }
 
-func convertImageCollectionSlice(in []*types.ImageCollection, err error) ([]*types.ImageCollection, error) {
+func convertImageCollectionSlice(in []*mpr.ImageCollection, err error) ([]*types.ImageCollection, error) {
 	if err != nil || in == nil {
 		return nil, err
 	}
@@ -422,7 +422,7 @@ func convertImageCollectionSlice(in []*types.ImageCollection, err error) ([]*typ
 	return out, nil
 }
 
-func convertImageCollection(in *types.ImageCollection) *types.ImageCollection {
+func convertImageCollection(in *mpr.ImageCollection) *types.ImageCollection {
 	ic := &types.ImageCollection{
 		BaseElement:   in.BaseElement,
 		ContainerID:   in.ContainerID,
