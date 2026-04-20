@@ -428,6 +428,87 @@ CREATE OR REPLACE NAVIGATION Responsive
 | Create service | `CREATE BUSINESS EVENT SERVICE Module.Name (...) { MESSAGE ... };` | See help topic for full syntax |
 | Drop service | `DROP BUSINESS EVENT SERVICE Module.Name;` | Delete a service |
 
+## Agents
+
+AI agent document types (Model, Knowledge Base, Consumed MCP Service, Agent) require
+the `AgentEditorCommons` marketplace module and Mendix 11.9+.
+
+**Model**
+
+| Statement | Syntax | Notes |
+|-----------|--------|-------|
+| List models | `LIST MODELS [IN Module];` | Also `SHOW MODELS` |
+| Describe model | `DESCRIBE MODEL Module.Name;` | Full MDL output |
+| Create model | `CREATE MODEL Module.Name (Provider: MxCloudGenAI, Key: Module.Const);` | Key must be a String constant |
+| Drop model | `DROP MODEL Module.Name;` | |
+
+**Knowledge Base**
+
+| Statement | Syntax | Notes |
+|-----------|--------|-------|
+| List knowledge bases | `LIST KNOWLEDGE BASES [IN Module];` | Also `SHOW KNOWLEDGE BASES` |
+| Describe knowledge base | `DESCRIBE KNOWLEDGE BASE Module.Name;` | Full MDL output |
+| Create knowledge base | `CREATE KNOWLEDGE BASE Module.Name (Provider: MxCloudGenAI, Key: Module.Const);` | Key must be a String constant |
+| Drop knowledge base | `DROP KNOWLEDGE BASE Module.Name;` | |
+
+**Consumed MCP Service**
+
+| Statement | Syntax | Notes |
+|-----------|--------|-------|
+| List MCP services | `LIST CONSUMED MCP SERVICES [IN Module];` | Also `SHOW CONSUMED MCP SERVICES` |
+| Describe MCP service | `DESCRIBE CONSUMED MCP SERVICE Module.Name;` | Full MDL output |
+| Create MCP service | `CREATE CONSUMED MCP SERVICE Module.Name (ProtocolVersion: v2025_03_26, Version: '1.0', ConnectionTimeoutSeconds: 30, Documentation: 'text');` | |
+| Drop MCP service | `DROP CONSUMED MCP SERVICE Module.Name;` | |
+
+**Agent**
+
+| Statement | Syntax | Notes |
+|-----------|--------|-------|
+| List agents | `LIST AGENTS [IN Module];` | Also `SHOW AGENTS` |
+| Describe agent | `DESCRIBE AGENT Module.Name;` | Full MDL output, re-executable |
+| Create agent | See example below | Requires a Model document |
+| Drop agent | `DROP AGENT Module.Name;` | Drop agents before their Model/KB/MCP dependencies |
+
+```sql
+CREATE AGENT Module.MyAgent (
+  UsageType: Task,
+  Model: Module.MyModel,
+  MaxTokens: 4096,
+  Temperature: 0.7,
+  TopP: 0.9,
+  ToolChoice: Auto,
+  Description: 'Agent description',
+  Variables: ("Language": EntityAttribute),
+  SystemPrompt: $$You are a helpful assistant.
+Respond in {{Language}}.$$,
+  UserPrompt: 'Ask me anything.'
+)
+{
+  MCP SERVICE Module.WebSearch {
+    Enabled: true
+  }
+
+  KNOWLEDGE BASE KBAlias {
+    Source: Module.ProductDocs,
+    Collection: 'product-docs',
+    MaxResults: 5,
+    Description: 'Product documentation',
+    Enabled: true
+  }
+
+  TOOL MyMicroflowTool {
+    Description: 'Fetch customer data',
+    Enabled: true
+  }
+};
+```
+
+**Notes:**
+- `Variables: ("Key": EntityAttribute)` binds entity attributes; `("Key": String)` binds a plain string.
+- Use `$$...$$` dollar-quoting for multi-line SystemPrompt/UserPrompt values.
+- Drop agents before dropping their referenced Model, Knowledge Base, or MCP Service.
+- Portal-populated metadata fields (`DisplayName`, `KeyName`, `KeyID`, `Environment`, `ResourceName`, `DeepLinkURL`) are managed by the portal and should not be set manually.
+
 ## Image Collections
 
 | Statement | Syntax | Notes |
