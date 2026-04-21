@@ -1176,6 +1176,39 @@ func TestWorkflowMutator_SetActivityProperty_Page_MissingKey(t *testing.T) {
 	}
 }
 
+func TestWorkflowMutator_SetActivityProperty_Page_MissingKey_NestedSubFlow(t *testing.T) {
+	// Exercises the recursive replaceActivity path: the target activity lives
+	// inside an outcome's sub-flow, not at the top level.
+	nestedAct := makeWfActivity("Workflows$UserTask", "NestedReview", "nested1")
+	// No TaskPage field at all on the nested activity.
+
+	outcome := bson.D{
+		{Key: "$ID", Value: primitive.Binary{Subtype: 0x04, Data: make([]byte, 16)}},
+		{Key: "$Type", Value: "Workflows$BooleanOutcome"},
+		{Key: "Flow", Value: bson.D{
+			{Key: "$ID", Value: primitive.Binary{Subtype: 0x04, Data: make([]byte, 16)}},
+			{Key: "$Type", Value: "Workflows$Flow"},
+			{Key: "Activities", Value: bson.A{int32(3), nestedAct}},
+		}},
+	}
+	parentAct := makeWfActivity("Workflows$Decision", "Check", "decision1")
+	parentAct = append(parentAct, bson.E{Key: "Outcomes", Value: bson.A{int32(3), outcome}})
+	m := newMutator(makeWorkflowDoc(parentAct))
+
+	if err := m.SetActivityProperty("NestedReview", 0, "PAGE", "MyModule.NestedPage"); err != nil {
+		t.Fatalf("SetActivityProperty PAGE on nested activity failed: %v", err)
+	}
+
+	actDoc, _ := m.findActivityByCaption("NestedReview", 0)
+	taskPage := dGetDoc(actDoc, "TaskPage")
+	if taskPage == nil {
+		t.Fatal("TaskPage should be set on nested activity even when key was absent")
+	}
+	if got := dGetString(taskPage, "Page"); got != "MyModule.NestedPage" {
+		t.Errorf("Page = %q, want MyModule.NestedPage", got)
+	}
+}
+
 func TestWorkflowMutator_SetActivityProperty_Page_Existing(t *testing.T) {
 	act := makeWfActivity("Workflows$UserTask", "Review", "task1")
 	act = append(act, bson.E{Key: "TaskPage", Value: bson.D{
