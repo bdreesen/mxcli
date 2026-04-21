@@ -181,7 +181,7 @@ func outputRestOperation(w io.Writer, op *model.RestClientOperation) {
 		switch op.BodyType {
 		case "template":
 			fmt.Fprintf(w, "    Body: template '%s',\n", strings.ReplaceAll(op.BodyVariable, "'", "''"))
-		case "EXPORT_MAPPING":
+		case "export_mapping":
 			if op.BodyVariable != "" && len(op.BodyMappings) > 0 {
 				fmt.Fprintf(w, "    Body: mapping %s {\n", op.BodyVariable)
 				writeExportMappings(w, op.BodyMappings, 6)
@@ -410,7 +410,7 @@ func buildRestClientOperation(opDef *ast.RestOperationDef) *model.RestClientOper
 
 	// Convert body mapping (export direction: Left=jsonField, Right=entityAttr)
 	if opDef.BodyMapping != nil {
-		op.BodyType = "EXPORT_MAPPING"
+		op.BodyType = "export_mapping"
 		op.BodyVariable = opDef.BodyMapping.Entity.String()
 		op.BodyMappings = convertMappingEntries(opDef.BodyMapping.Entries, false)
 	}

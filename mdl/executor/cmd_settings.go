@@ -212,7 +212,7 @@ func alterSettings(ctx *ExecContext, stmt *ast.AlterSettingsStmt) error {
 			}
 		}
 
-	case "LANGUAGE":
+	case "language":
 		if ps.Language == nil {
 			return mdlerrors.NewNotFound("settings section", "language")
 		}

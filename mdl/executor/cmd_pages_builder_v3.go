@@ -533,7 +533,7 @@ func (pb *pageBuilder) buildDataSourceV3(ds *ast.DataSourceV3) (pages.DataSource
 		// Handle ORDER BY
 		for _, ob := range ds.OrderBy {
 			direction := pages.SortDirectionAscending
-			if strings.ToUpper(ob.Direction) == "desc" {
+			if strings.ToLower(ob.Direction) == "desc" {
 				direction = pages.SortDirectionDescending
 			}
 			sortItem := &pages.GridSort{
