@@ -16,7 +16,7 @@ import (
 )
 
 // defaultSlotContainer is the MDLContainer name that receives default (non-containerized) child widgets.
-const defaultSlotContainer = "TEMPLATE"
+const defaultSlotContainer = "template"
 
 // =============================================================================
 // Pluggable Widget Engine — Core Types
