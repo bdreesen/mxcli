@@ -160,11 +160,23 @@ Examples:
 			// Validate the program (considers objects defined within the script)
 			validationErrors := exec.ValidateProgram(prog)
 			if len(validationErrors) > 0 {
-				fmt.Fprintf(os.Stderr, "Reference errors:\n")
-				for _, err := range validationErrors {
-					fmt.Fprintf(os.Stderr, "  %v\n", err)
+				if isStructured {
+					var refViolations []linter.Violation
+					for _, err := range validationErrors {
+						refViolations = append(refViolations, linter.Violation{
+							RuleID:   "MDL-REF",
+							Severity: linter.SeverityError,
+							Message:  err.Error(),
+						})
+					}
+					formatter.Format(refViolations, os.Stderr)
+				} else {
+					fmt.Fprintf(os.Stderr, "Reference errors:\n")
+					for _, err := range validationErrors {
+						fmt.Fprintf(os.Stderr, "  %v\n", err)
+					}
+					fmt.Fprintf(os.Stderr, "\n✗ %d reference error(s) found\n", len(validationErrors))
 				}
-				fmt.Fprintf(os.Stderr, "\n✗ %d reference error(s) found\n", len(validationErrors))
 				os.Exit(1)
 			}
 			if !isStructured {

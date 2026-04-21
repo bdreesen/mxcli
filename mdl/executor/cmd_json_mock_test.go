@@ -5,6 +5,7 @@ package executor
 import (
 	"testing"
 
+	"github.com/mendixlabs/mxcli/mdl/ast"
 	"github.com/mendixlabs/mxcli/mdl/backend/mock"
 	"github.com/mendixlabs/mxcli/mdl/types"
 	"github.com/mendixlabs/mxcli/model"
@@ -525,4 +526,76 @@ func TestListDataTransformers_Mock_JSON(t *testing.T) {
 	assertNoError(t, listDataTransformers(ctx, ""))
 	assertValidJSON(t, buf.String())
 	assertContainsStr(t, buf.String(), "Transform1")
+}
+
+func TestShowAccessOnMicroflow_Mock_JSON(t *testing.T) {
+	mod := mkModule("MyModule")
+	h := mkHierarchy(mod)
+	mf := mkMicroflow(mod.ID, "ACT_DoStuff")
+	mf.AllowedModuleRoles = []model.ID{"MyModule.User", "MyModule.Admin"}
+	withContainer(h, mf.ContainerID, mod.ID)
+
+	mb := &mock.MockBackend{
+		IsConnectedFunc:    func() bool { return true },
+		ListMicroflowsFunc: func() ([]*microflows.Microflow, error) { return []*microflows.Microflow{mf}, nil },
+	}
+
+	name := &ast.QualifiedName{Module: "MyModule", Name: "ACT_DoStuff"}
+	ctx, buf := newMockCtx(t, withBackend(mb), withFormat(FormatJSON), withHierarchy(h))
+	assertNoError(t, showAccessOnMicroflow(ctx, name))
+	assertValidJSON(t, buf.String())
+	assertContainsStr(t, buf.String(), "User")
+}
+
+func TestShowAccessOnPage_Mock_JSON(t *testing.T) {
+	mod := mkModule("MyModule")
+	h := mkHierarchy(mod)
+	pg := mkPage(mod.ID, "Page_Home")
+	pg.AllowedRoles = []model.ID{"MyModule.User"}
+	withContainer(h, pg.ContainerID, mod.ID)
+
+	mb := &mock.MockBackend{
+		IsConnectedFunc: func() bool { return true },
+		ListPagesFunc:   func() ([]*pages.Page, error) { return []*pages.Page{pg}, nil },
+	}
+
+	name := &ast.QualifiedName{Module: "MyModule", Name: "Page_Home"}
+	ctx, buf := newMockCtx(t, withBackend(mb), withFormat(FormatJSON), withHierarchy(h))
+	assertNoError(t, showAccessOnPage(ctx, name))
+	assertValidJSON(t, buf.String())
+	assertContainsStr(t, buf.String(), "User")
+}
+
+// TestShowConstants_Mock_JSON_EmptyResult verifies that an empty result still
+// produces valid JSON (not the "No ... found." plain-text message).
+func TestShowConstants_Mock_JSON_EmptyResult(t *testing.T) {
+	mod := mkModule("MyModule")
+	h := mkHierarchy(mod)
+
+	mb := &mock.MockBackend{
+		IsConnectedFunc:   func() bool { return true },
+		ListConstantsFunc: func() ([]*model.Constant, error) { return nil, nil },
+	}
+
+	ctx, buf := newMockCtx(t, withBackend(mb), withFormat(FormatJSON), withHierarchy(h))
+	assertNoError(t, showConstants(ctx, ""))
+	assertValidJSON(t, buf.String())
+	assertNotContainsStr(t, buf.String(), "No constants found")
+}
+
+// TestShowPublishedRestServices_Mock_JSON_EmptyResult verifies that an empty
+// result still produces valid JSON in JSON mode.
+func TestShowPublishedRestServices_Mock_JSON_EmptyResult(t *testing.T) {
+	mod := mkModule("MyModule")
+	h := mkHierarchy(mod)
+
+	mb := &mock.MockBackend{
+		IsConnectedFunc:               func() bool { return true },
+		ListPublishedRestServicesFunc: func() ([]*model.PublishedRestService, error) { return nil, nil },
+	}
+
+	ctx, buf := newMockCtx(t, withBackend(mb), withFormat(FormatJSON), withHierarchy(h))
+	assertNoError(t, showPublishedRestServices(ctx, ""))
+	assertValidJSON(t, buf.String())
+	assertNotContainsStr(t, buf.String(), "No published REST services found")
 }
