@@ -579,25 +579,14 @@ func (m *mprWorkflowMutator) replaceActivity(updated bson.D) {
 }
 
 func replaceActivityRecursive(flow bson.D, actID string, updated bson.D) bool {
-	activitiesVal := dGet(flow, "Activities")
-	arr := toBsonA(activitiesVal)
-	if len(arr) == 0 {
-		return false
-	}
-	// Skip the int32 type marker at index 0 if present.
-	start := 0
-	if _, ok := arr[0].(int32); ok {
-		start = 1
-	} else if _, ok := arr[0].(int); ok {
-		start = 1
-	}
-	for i := start; i < len(arr); i++ {
-		actDoc, ok := arr[i].(bson.D)
+	elements := dGetArrayElements(dGet(flow, "Activities"))
+	for i, elem := range elements {
+		actDoc, ok := elem.(bson.D)
 		if !ok {
 			continue
 		}
 		if extractBinaryIDFromDoc(dGet(actDoc, "$ID")) == actID {
-			arr[i] = updated
+			elements[i] = updated
 			return true
 		}
 		for _, nestedFlow := range getNestedFlows(actDoc) {
