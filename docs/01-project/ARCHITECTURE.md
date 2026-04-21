@@ -49,6 +49,20 @@ graph TB
         SQLGEN[Connector Generator]
     end
 
+    subgraph "Backend Layer (mdl/backend/)"
+        BACKEND[FullBackend interface]
+        MPRBACK[MPR Backend impl]
+        MOCKBACK[Mock Backend]
+        PAGEMUT[PageMutator]
+        WFMUT[WorkflowMutator]
+        FACTORY[BackendFactory]
+    end
+
+    subgraph "Shared Types (mdl/types/)"
+        TYPES[Domain types]
+        BSONUTIL[bsonutil/]
+    end
+
     subgraph "Storage Layer"
         READER[MPR Reader]
         WRITER[MPR Writer]
@@ -76,10 +90,16 @@ graph TB
     PARSER --> AST
     AST --> VISITOR
     VISITOR --> AST
-    EXEC --> SDK
+    EXEC --> BACKEND
     EXEC --> SQLPKG
     EXEC --> CATALOG
     EXEC --> LINTER
+
+    BACKEND --> PAGEMUT
+    BACKEND --> WFMUT
+    MPRBACK --> BACKEND
+    MOCKBACK --> BACKEND
+    FACTORY --> MPRBACK
 
     SDK --> DM
     SDK --> MF
@@ -88,6 +108,11 @@ graph TB
     SDK --> WIDGETS
     SDK --> READER
     SDK --> WRITER
+
+    MPRBACK --> READER
+    MPRBACK --> WRITER
+    MPRBACK --> TYPES
+    MPRBACK --> BSONUTIL
 
     SQLPKG --> SQLCONN
     SQLPKG --> SQLQUERY
@@ -120,6 +145,11 @@ graph LR
         CATALOGPKG[catalog/]
         LINTERPKG[linter/]
         REPLPKG[repl/]
+        BACKENDPKG[backend/]
+        BACKENDMPR[backend/mpr/]
+        BACKENDMOCK[backend/mock/]
+        TYPESPKG[types/]
+        BSONUTILPKG[bsonutil/]
     end
 
     subgraph "api/"
@@ -236,7 +266,12 @@ sequenceDiagram
 | `mdl/grammar` | ANTLR4 lexer/parser (generated from MDLLexer.g4 + MDLParser.g4) |
 | `mdl/ast` | AST node types for MDL statements |
 | `mdl/visitor` | ANTLR listener that builds AST from parse tree |
-| `mdl/executor` | Executes AST nodes against the SDK (~45k lines across 40+ files); handles domain model, microflows, pages, security, navigation, SQL, imports, OData, and more |
+| `mdl/executor` | Thin orchestrator: parses AST, calls `ctx.Backend.*`, formats output. **No `sdk/mpr` imports.** |
+| `mdl/backend` | Domain-specific backend interfaces (`FullBackend`, `PageMutator`, `WorkflowMutator`, `BackendFactory`) |
+| `mdl/backend/mpr` | MPR-backed implementation of all backend interfaces; owns all BSON mutation logic |
+| `mdl/backend/mock` | `MockBackend` with Func-field injection for unit testing without a `.mpr` file |
+| `mdl/types` | Shared domain types (`NavigationDocument`, `JavaAction`, `JsonStructure`, EDMX/AsyncAPI parsers, ID utilities) — no `sdk/mpr` dependency |
+| `mdl/bsonutil` | CGO-free BSON ID utilities (`IDToBsonBinary`, `BsonBinaryToID`, `NewIDBsonBinary`) |
 | `mdl/catalog` | SQLite-based catalog for querying project metadata (entities, microflows, references, permissions, source code) |
 | `mdl/linter` | Extensible linting framework with built-in rules and Starlark scripting support; includes report generation |
 | `mdl/repl` | Interactive REPL interface |
@@ -720,7 +755,85 @@ sdk/widgets/templates/mendix-11.6/
 - Expression-type properties require non-empty values (template may have placeholders)
 - See [PAGE_BSON_SERIALIZATION.md](../03-development/PAGE_BSON_SERIALIZATION.md) for detailed serialization rules
 
-### 6. Catalog System
+### 6. Pluggable Widget Engine
+
+The **PluggableWidgetEngine** is a data-driven system that replaces hardcoded widget builders with a registry of `.def.json` widget definition files. It handles CREATE, INSERT, and ALTER operations for all pluggable (React client-side) widgets.
+
+```mermaid
+flowchart TD
+    subgraph "WidgetRegistry (3-tier)"
+        EMBEDDED["Embedded definitions\n(sdk/widgets/definitions/)"]
+        GLOBAL["Global definitions\n(~/.mxcli/widgets/)"]
+        PROJECT["Project definitions\n(.mxcli/widgets/)"]
+    end
+
+    subgraph "PluggableWidgetEngine"
+        DEF[".def.json definition"]
+        OPS["OperationRegistry\n(attribute, association,\nprimitive, selection,\ndatasource, widgets)"]
+        COND["Condition evaluator"]
+        MAPPER["Property mapper"]
+    end
+
+    subgraph "Output"
+        TMPL["Load + clone template\n(sdk/widgets/templates/)"]
+        AUG["Augment from .mpk\n(sdk/widgets/augment.go)"]
+        BSON["Serialize to BSON"]
+    end
+
+    PROJECT -->|overrides| GLOBAL
+    GLOBAL -->|overrides| EMBEDDED
+    EMBEDDED --> DEF
+    DEF --> OPS
+    OPS --> COND
+    COND --> MAPPER
+    MAPPER --> TMPL
+    TMPL --> AUG
+    AUG --> BSON
+```
+
+**Widget definition format (`.def.json`):**
+Each file describes a single widget type — its MDL property mappings, conditions, and operation types:
+```json
+{
+  "widgetId": "com.mendix.widget.web.combobox.ComboBox",
+  "properties": [
+    { "key": "attribute",  "op": "attribute",  "mdl": "ATTRIBUTE" },
+    { "key": "datasource", "op": "datasource", "mdl": "DATA_SOURCE" }
+  ]
+}
+```
+
+**WidgetRegistry — 3-tier loading:**
+1. Embedded definitions (compiled into the binary via `go:embed`)
+2. Global user definitions (`~/.mxcli/widgets/`) — override embedded
+3. Project-level definitions (`.mxcli/widgets/`) — override global
+
+This allows users to add support for custom or third-party widgets without recompiling mxcli.
+
+**OperationRegistry — 6 built-in operation types:**
+
+| Operation | Description |
+|-----------|-------------|
+| `attribute` | Bind an entity attribute |
+| `association` | Bind an entity association |
+| `primitive` | Set a primitive value (string, bool, int) |
+| `selection` | Set a selection enum value |
+| `datasource` | Configure a data source (Database, Microflow, Nanoflow) |
+| `widgets` | Nest child widgets in a container slot |
+
+**`mxcli widget extract` CLI command:**
+Generates a skeleton `.def.json` from a `.mpk` widget package file, making it easy to add support for new third-party widgets:
+```bash
+mxcli widget extract --mpk path/to/widget.mpk --output .mxcli/widgets/
+```
+
+**Augmentation pipeline (CE0463 prevention):**
+When a widget is written to an MPR, `AugmentTemplate` reconciles the embedded template against the project's installed `.mpk` version — adding missing properties and removing stale ones, including **nested ObjectType properties** (e.g., DataGrid2 column sub-properties). This prevents the CE0463 "widget definition changed" error when the project's widget version differs from the embedded template.
+
+Key files: `mdl/executor/widget_engine.go` (engine), `mdl/executor/widget_registry.go` (registry), `sdk/widgets/augment.go` (augmentation), `sdk/widgets/mpk/mpk.go` (`.mpk` parser).
+
+### 7. Catalog System
+
 
 The SQLite-based catalog (`mdl/catalog/`) enables cross-reference queries and code search:
 
@@ -740,7 +853,7 @@ flowchart LR
 
 Builders populate tables for modules, entities, microflows, pages, permissions, references, and source code.
 
-### 7. Credential Isolation for External SQL
+### 8. Credential Isolation for External SQL
 
 External database credentials are managed through environment variables or YAML config, never stored in MDL scripts:
 
@@ -751,11 +864,11 @@ DSN resolution order:
 3. Inline connection string (development only)
 ```
 
-### 8. Pure Go / No CGO
+### 9. Pure Go / No CGO
 
 The project uses `modernc.org/sqlite` (a pure Go SQLite implementation) to eliminate the CGO dependency. This simplifies cross-compilation and deployment — no C compiler is required.
 
-### 9. Multi-Version Support
+### 10. Multi-Version Support
 
 Mendix projects vary along three versioning axes: **platform version** (9.x–11.x), **widget version** (each project bundles specific `.mpk` widget packages), and **extension documents** (Mendix 11+ custom document types). The BSON document structure changes across all three.
 
@@ -777,6 +890,60 @@ flowchart LR
 Key files: `sdk/widgets/augment.go` (augmentation logic), `sdk/widgets/mpk/mpk.go` (`.mpk` parser), `sdk/widgets/loader.go` (pipeline integration).
 
 **Planned: Schema Registry** (`sdk/schema/`): A runtime registry loaded from reflection data that provides type metadata (storage names, defaults, reference kinds, list encodings) per Mendix version. This will complement the hand-coded parsers/writers by handling field completeness, validation, and version migration. See [Multi-Version Support](../11-proposals/MULTI_VERSION_SUPPORT.md) for the full architecture and implementation status.
+
+### 11. Backend Abstraction + Dependency Inversion
+
+The executor **never imports `sdk/mpr`**. All project access goes through `ctx.Backend`, which implements `backend.FullBackend`. This enables:
+- Unit tests without a `.mpr` file (inject `MockBackend`)
+- Alternative storage backends (cloud, in-memory, etc.)
+- Isolated BSON mutation logic in `mdl/backend/mpr/`
+
+```mermaid
+flowchart LR
+    subgraph "Executor (thin orchestrator)"
+        HANDLER["applySetProperty(ctx, op)"]
+        CTX["ctx.Backend.OpenPageForMutation(id)"]
+    end
+
+    subgraph "backend.PageMutator interface"
+        SET["SetWidgetProperty(ref, prop, value)"]
+        INSERT["InsertWidget(target, pos, widgets)"]
+        SAVE["Save()"]
+    end
+
+    subgraph "mdl/backend/mpr (BSON impl)"
+        BSON["Walk BSON tree, mutate, marshal"]
+    end
+
+    subgraph "mdl/backend/mock (test impl)"
+        FUNC["SetWidgetPropertyFunc(ref, prop, value)"]
+    end
+
+    HANDLER --> CTX
+    CTX --> SET
+    SET --> BSON
+    SET --> FUNC
+```
+
+**Rule for new executor commands:**
+1. Add a method to the appropriate domain interface in `mdl/backend/` (e.g., `DomainModelBackend`, `MicroflowBackend`)
+2. Implement it in `mdl/backend/mpr/` operating on BSON/reader/writer
+3. Add a `Func`-field stub in `mdl/backend/mock/`
+4. Call `ctx.Backend.YourMethod()` from the executor handler
+5. Never call `sdk/mpr` types directly from the executor
+
+**Mutation pattern (ALTER PAGE / ALTER WORKFLOW):**
+
+For operations that modify a document in place, use the `PageMutator`/`WorkflowMutator` factory pattern:
+1. `mutator, err := ctx.Backend.OpenPageForMutation(unitID)` — opens the document
+2. Call mutator methods (`SetWidgetProperty`, `InsertWidget`, etc.)
+3. `mutator.Save()` — persists the changes
+
+The mutator owns the document's lifecycle; the executor only describes *what* to change.
+
+**Shared types (`mdl/types/`):**
+
+Types used by both `mdl/` and `sdk/mpr` live in `mdl/types/`. The `sdk/mpr` package re-exports them as type aliases (`type JavaAction = types.JavaAction`) for backward compatibility. New shared types go in `mdl/types/`, not in `sdk/mpr/reader_types.go`.
 
 ## Future Architecture Considerations
 
