@@ -242,7 +242,7 @@ When reviewing pull requests or validating work before commit, verify these item
 ### Bug fixes
 - [ ] **Fix-issue skill consulted** — read `.claude/skills/fix-issue.md` before diagnosing; match symptom to table before opening files
 - [ ] **Symptom table updated** — new symptom/layer/file mapping added to `.claude/skills/fix-issue.md` if not already covered
-- [ ] **Test written first** — failing test exists before implementation (parser test in `sdk/mpr/`, formatter test in `mdl/executor/`)
+- [ ] **Test written first** — failing test exists before implementation (parser test in `sdk/mpr/`, backend mutation test in `mdl/backend/mpr/`, executor handler test in `mdl/executor/` using `MockBackend`)
 
 ### Overlap & duplication
 - [ ] Check `docs/11-proposals/` for existing proposals covering the same functionality
@@ -267,13 +267,26 @@ New features that depend on a specific Mendix version must be version-gated:
 - [ ] **Test coverage** — version-gated tests use `-- @version:` directives or `requireMinVersion()`
 - [ ] **Skill updated** — `.claude/skills/version-awareness.md` updated if the feature has a workaround for older versions
 
+### Backend abstraction compliance
+All executor code must go through the backend abstraction layer — the executor must never import `sdk/mpr` for write paths:
+- [ ] **No `sdk/mpr` write imports in executor** — executor files must not call `sdk/mpr` writer/parser types directly; use `ctx.Backend.*` instead
+- [ ] **New backend methods on the interface** — any new data access or mutation goes in the appropriate interface in `mdl/backend/` (e.g., `DomainModelBackend`, `MicroflowBackend`), not as a direct SDK call
+- [ ] **MPR implementation in `mdl/backend/mpr/`** — the concrete implementation lives here; all BSON/reader/writer logic stays in this package
+- [ ] **Mock stub in `mdl/backend/mock/`** — every new backend method has a `Func`-field stub with a descriptive `"MockBackend.X not configured"` error default (not `nil, nil`)
+- [ ] **Compile-time interface check** — new backend implementations have `var _ backend.SomeInterface = (*impl)(nil)`
+- [ ] **ALTER operations use mutator pattern** — page/workflow mutations go through `ctx.Backend.OpenPageForMutation()` / `OpenWorkflowForMutation()`, not inline BSON construction
+- [ ] **New shared types in `mdl/types/`** — types used by both `mdl/` and `sdk/mpr` go in `mdl/types/`; `sdk/mpr` re-exports as type aliases (`type Foo = types.Foo`), never as duplicate definitions
+- [ ] **Map iteration is deterministic** — any map iterated for serialization output must sort keys first (`sort.Strings(keys)` pattern); non-deterministic output causes flaky diffs and BSON instability
+- [ ] **Pluggable widgets via WidgetEngine** — new pluggable widget support uses `.def.json` + `WidgetRegistry`; no hardcoded BSON widget builders in the executor
+
 ### Full-stack consistency for MDL features
 New MDL commands or language features must be wired through the full pipeline:
 - [ ] **Grammar** — rule added to `MDLParser.g4` (and `MDLLexer.g4` if new tokens)
 - [ ] **Parser regenerated** — `make grammar` run, generated files committed
 - [ ] **AST** — node type added in `mdl/ast/`
 - [ ] **Visitor** — ANTLR listener bridges parse tree to AST in `mdl/visitor/`
-- [ ] **Executor** — handler in `mdl/executor/` executes the AST node
+- [ ] **Executor** — thin handler in `mdl/executor/` dispatches to `ctx.Backend.*`; no BSON in the handler
+- [ ] **Backend method** — data access or mutation wired through `mdl/backend/` interface and implemented in `mdl/backend/mpr/`
 - [ ] **LSP** — if the feature adds formatting, diagnostics, or navigation targets, wire it into `cmd/mxcli/lsp.go` and register the capability
 - [ ] **DESCRIBE roundtrip** — if the feature creates artifacts, `DESCRIBE` should output re-executable MDL
 - [ ] **VS Code extension** — if new LSP capabilities are added, update `vscode-mdl/package.json`
@@ -309,6 +322,8 @@ New MDL commands or language features must be wired through the full pipeline:
 - [ ] Refactors are applied consistently across all relevant files (grep for the old pattern)
 - [ ] Manually maintained lists (keyword lists, type mappings) are flagged as maintenance risks
 - [ ] Design docs match the actual implementation — remove or update stale plans
+- [ ] Numeric type conversions are bounds-checked — `float64→int` casts need overflow guards (`±2^53` for safe integer range); silent overflow produces garbage in serialized output
+- [ ] `convert.go` updated when structs in `mdl/types/` gain or lose fields — `TestFieldCountDrift` will catch this at test time, but `convert.go` must be updated before merging
 
 ## Dependencies
 
