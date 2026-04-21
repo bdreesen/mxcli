@@ -3,6 +3,7 @@
 package executor
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
@@ -18,7 +19,7 @@ func execConnect(ctx *ExecContext, s *ast.ConnectStmt) error {
 	}
 
 	if e.backendFactory == nil {
-		return mdlerrors.NewBackend("connect", fmt.Errorf("no backend factory configured"))
+		return mdlerrors.NewBackend("connect", errors.New("no backend factory configured"))
 	}
 	b := e.backendFactory()
 	if err := b.Connect(s.Path); err != nil {

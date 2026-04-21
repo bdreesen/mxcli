@@ -89,5 +89,3 @@ func serializeJsonElement(elem *JsonElement) bson.D {
 		{Key: "WarningMessage", Value: ""},
 	}
 }
-
-

@@ -151,12 +151,14 @@ func asyncRefName(ref string) string {
 }
 
 func resolveAsyncSchemaProperties(schema yamlAsyncSchema) []*AsyncAPIProperty {
+	// Sort property names for deterministic output
 	names := make([]string, 0, len(schema.Properties))
 	for name := range schema.Properties {
 		names = append(names, name)
 	}
 	sort.Strings(names)
-	var props []*AsyncAPIProperty
+
+	props := make([]*AsyncAPIProperty, 0, len(names))
 	for _, name := range names {
 		prop := schema.Properties[name]
 		props = append(props, &AsyncAPIProperty{
