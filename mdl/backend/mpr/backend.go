@@ -34,6 +34,11 @@ type MprBackend struct {
 	path   string
 }
 
+// New creates a new unconnected MprBackend. Call Connect(path) to open a project.
+func New() *MprBackend {
+	return &MprBackend{}
+}
+
 // Wrap creates an MprBackend that wraps an existing Writer (and its Reader).
 // This is used during migration when the Executor already owns the Writer
 // and we want to expose it through the Backend interface without opening
@@ -74,6 +79,11 @@ func (b *MprBackend) Disconnect() error {
 
 func (b *MprBackend) IsConnected() bool { return b.writer != nil }
 func (b *MprBackend) Path() string      { return b.path }
+
+// MprReader returns the underlying *mpr.Reader for callers that still
+// require direct SDK access (e.g. linter rules). Prefer Backend methods
+// for new code.
+func (b *MprBackend) MprReader() *mpr.Reader { return b.reader }
 
 func (b *MprBackend) Version() types.MPRVersion                 { return convertMPRVersion(b.reader.Version()) }
 func (b *MprBackend) ProjectVersion() *types.ProjectVersion     { return convertProjectVersion(b.reader.ProjectVersion()) }
@@ -210,6 +220,9 @@ func (b *MprBackend) MoveMicroflow(mf *microflows.Microflow) error {
 
 func (b *MprBackend) ListNanoflows() ([]*microflows.Nanoflow, error) {
 	return b.reader.ListNanoflows()
+}
+func (b *MprBackend) ParseMicroflowFromRaw(raw map[string]any, unitID, containerID model.ID) *microflows.Microflow {
+	return mpr.ParseMicroflowFromRaw(raw, unitID, containerID)
 }
 func (b *MprBackend) GetNanoflow(id model.ID) (*microflows.Nanoflow, error) {
 	return b.reader.GetNanoflow(id)
@@ -726,17 +739,17 @@ func (b *MprBackend) DeleteAgentEditorAgent(id string) error {
 }
 
 // ---------------------------------------------------------------------------
-// PageMutationBackend
+// PageMutationBackend — implemented in page_mutator.go
+// ---------------------------------------------------------------------------
 
-func (b *MprBackend) OpenPageForMutation(unitID model.ID) (backend.PageMutator, error) {
-	panic("MprBackend.OpenPageForMutation not yet implemented") // TODO: implement in PR #237
-}
+// OpenPageForMutation is implemented in page_mutator.go.
 
 // ---------------------------------------------------------------------------
 // WorkflowMutationBackend
 
+// OpenWorkflowForMutation is implemented in workflow_mutator.go.
 func (b *MprBackend) OpenWorkflowForMutation(unitID model.ID) (backend.WorkflowMutator, error) {
-	panic("MprBackend.OpenWorkflowForMutation not yet implemented") // TODO: implement in PR #237
+	return b.openWorkflowForMutation(unitID)
 }
 
 // ---------------------------------------------------------------------------
@@ -751,7 +764,7 @@ func (b *MprBackend) SerializeClientAction(a pages.ClientAction) (any, error) {
 }
 
 func (b *MprBackend) SerializeDataSource(ds pages.DataSource) (any, error) {
-	panic("MprBackend.SerializeDataSource not yet implemented") // TODO: implement in PR #237
+	return mpr.SerializeCustomWidgetDataSource(ds), nil
 }
 
 func (b *MprBackend) SerializeWorkflowActivity(a workflows.WorkflowActivity) (any, error) {

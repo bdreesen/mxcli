@@ -15,7 +15,8 @@ import (
 )
 
 // idToBsonBinary converts a UUID string to BSON Binary format.
-// Mendix stores IDs as Binary with Subtype 0.
+// For invalid or empty UUIDs (e.g. test placeholders), generates a random ID
+// to maintain backward compatibility with existing serialization paths.
 func idToBsonBinary(id string) primitive.Binary {
 	blob := types.UUIDToBlob(id)
 	if blob == nil || len(blob) != 16 {

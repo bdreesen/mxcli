@@ -49,6 +49,13 @@ func (m *MockBackend) MoveMicroflow(mf *microflows.Microflow) error {
 	return nil
 }
 
+func (m *MockBackend) ParseMicroflowFromRaw(raw map[string]any, unitID, containerID model.ID) *microflows.Microflow {
+	if m.ParseMicroflowFromRawFunc != nil {
+		return m.ParseMicroflowFromRawFunc(raw, unitID, containerID)
+	}
+	panic("mock ParseMicroflowFromRaw called but ParseMicroflowFromRawFunc is not set")
+}
+
 func (m *MockBackend) ListNanoflows() ([]*microflows.Nanoflow, error) {
 	if m.ListNanoflowsFunc != nil {
 		return m.ListNanoflowsFunc()

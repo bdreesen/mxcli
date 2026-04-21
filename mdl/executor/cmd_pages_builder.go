@@ -9,12 +9,12 @@ import (
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	"github.com/mendixlabs/mxcli/mdl/backend"
 	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/mdl/types"
 	"github.com/mendixlabs/mxcli/model"
 	"github.com/mendixlabs/mxcli/sdk/domainmodel"
 	"github.com/mendixlabs/mxcli/sdk/microflows"
-	"github.com/mendixlabs/mxcli/sdk/mpr"
 	"github.com/mendixlabs/mxcli/sdk/pages"
 )
 
@@ -24,8 +24,7 @@ import (
 
 // pageBuilder constructs pages from AST.
 type pageBuilder struct {
-	writer           *mpr.Writer
-	reader           *mpr.Reader
+	backend          backend.FullBackend
 	moduleID         model.ID
 	moduleName       string
 	widgetScope      map[string]model.ID                // widget name -> widget ID
@@ -35,6 +34,7 @@ type pageBuilder struct {
 	isSnippet        bool                               // True if building a snippet (affects parameter datasource)
 	fragments        map[string]*ast.DefineFragmentStmt // Fragment registry from executor
 	themeRegistry    *ThemeRegistry                     // Theme design property definitions (may be nil)
+	widgetBackend    backend.WidgetBuilderBackend       // Backend for pluggable widget construction
 
 	// Pluggable widget engine (lazily initialized)
 	widgetRegistry     *WidgetRegistry
@@ -62,17 +62,25 @@ func (pb *pageBuilder) initPluggableEngine() {
 		log.Printf("warning: %v", pb.pluggableEngineErr)
 		return
 	}
-	if pb.reader != nil {
-		if loadErr := registry.LoadUserDefinitions(pb.reader.Path()); loadErr != nil {
+	if pb.backend != nil {
+		if loadErr := registry.LoadUserDefinitions(pb.backend.Path()); loadErr != nil {
 			log.Printf("warning: loading user widget definitions: %v", loadErr)
 		}
 	}
 	pb.widgetRegistry = registry
-	pb.pluggableEngine = NewPluggableWidgetEngine(NewOperationRegistry(), pb)
+	pb.pluggableEngine = NewPluggableWidgetEngine(pb.widgetBackend, pb)
 }
 
 // registerWidgetName registers a widget name and returns an error if it's already used.
 // Widget names must be unique within a page/snippet.
+
+// getProjectPath returns the project directory path from the backend.
+func (pb *pageBuilder) getProjectPath() string {
+	if pb.backend != nil {
+		return pb.backend.Path()
+	}
+	return ""
+}
 func (pb *pageBuilder) registerWidgetName(name string, id model.ID) error {
 	if name == "" {
 		return nil // Anonymous widgets are allowed
@@ -89,7 +97,7 @@ func (pb *pageBuilder) getModules() []*model.Module {
 	if pb.execCache != nil && pb.execCache.modules != nil {
 		return pb.execCache.modules
 	}
-	modules, _ := pb.reader.ListModules()
+	modules, _ := pb.backend.ListModules()
 	if pb.execCache != nil {
 		pb.execCache.modules = modules
 	}
@@ -101,7 +109,7 @@ func (pb *pageBuilder) getHierarchy() (*ContainerHierarchy, error) {
 	if pb.execCache != nil && pb.execCache.hierarchy != nil {
 		return pb.execCache.hierarchy, nil
 	}
-	h, err := NewContainerHierarchy(pb.reader)
+	h, err := NewContainerHierarchyFromBackend(pb.backend)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +123,7 @@ func (pb *pageBuilder) getHierarchy() (*ContainerHierarchy, error) {
 func (pb *pageBuilder) getLayouts() ([]*pages.Layout, error) {
 	if pb.layoutsCache == nil {
 		var err error
-		pb.layoutsCache, err = pb.reader.ListLayouts()
+		pb.layoutsCache, err = pb.backend.ListLayouts()
 		if err != nil {
 			return nil, err
 		}
@@ -128,7 +136,7 @@ func (pb *pageBuilder) getDomainModels() ([]*domainmodel.DomainModel, error) {
 	if pb.execCache != nil && pb.execCache.domainModels != nil {
 		return pb.execCache.domainModels, nil
 	}
-	domainModels, err := pb.reader.ListDomainModels()
+	domainModels, err := pb.backend.ListDomainModels()
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +150,7 @@ func (pb *pageBuilder) getDomainModels() ([]*domainmodel.DomainModel, error) {
 func (pb *pageBuilder) getPages() ([]*pages.Page, error) {
 	if pb.pagesCache == nil {
 		var err error
-		pb.pagesCache, err = pb.reader.ListPages()
+		pb.pagesCache, err = pb.backend.ListPages()
 		if err != nil {
 			return nil, err
 		}
@@ -154,7 +162,7 @@ func (pb *pageBuilder) getPages() ([]*pages.Page, error) {
 func (pb *pageBuilder) getMicroflows() ([]*microflows.Microflow, error) {
 	if pb.microflowsCache == nil {
 		var err error
-		pb.microflowsCache, err = pb.reader.ListMicroflows()
+		pb.microflowsCache, err = pb.backend.ListMicroflows()
 		if err != nil {
 			return nil, err
 		}
@@ -257,7 +265,7 @@ func (pb *pageBuilder) getMainPlaceholderRef(layoutName string) string {
 func (pb *pageBuilder) getFolders() ([]*types.FolderInfo, error) {
 	if pb.foldersCache == nil {
 		var err error
-		pb.foldersCache, err = pb.reader.ListFolders()
+		pb.foldersCache, err = pb.backend.ListFolders()
 		if err != nil {
 			return nil, err
 		}
@@ -312,6 +320,7 @@ func (pb *pageBuilder) resolveFolder(folderPath string) (model.ID, error) {
 				ContainerID: parentContainerID,
 				Name:        part,
 			})
+			currentContainerID = newFolderID
 		}
 	}
 
@@ -322,14 +331,14 @@ func (pb *pageBuilder) resolveFolder(folderPath string) (model.ID, error) {
 func (pb *pageBuilder) createFolder(name string, containerID model.ID) (model.ID, error) {
 	folder := &model.Folder{
 		BaseElement: model.BaseElement{
-			ID:       model.ID(mpr.GenerateID()),
+			ID:       model.ID(types.GenerateID()),
 			TypeName: "Projects$Folder",
 		},
 		ContainerID: containerID,
 		Name:        name,
 	}
 
-	if err := pb.writer.CreateFolder(folder); err != nil {
+	if err := pb.backend.CreateFolder(folder); err != nil {
 		return "", err
 	}
 

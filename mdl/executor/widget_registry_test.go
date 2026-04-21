@@ -189,8 +189,40 @@ func TestRegistryLoadUserDefinitions(t *testing.T) {
 	}
 }
 
+func TestNewWidgetRegistryWithOps_ExtendsKnownOperations(t *testing.T) {
+	// A definition with a custom operation should fail with default ops
+	customDef := &WidgetDefinition{
+		WidgetID: "com.example.Custom",
+		MDLName:  "CUSTOM",
+		PropertyMappings: []PropertyMapping{
+			{PropertyKey: "prop", Source: "Attribute", Operation: "customOp"},
+		},
+	}
+
+	// Default registry should reject custom operation
+	defaultReg, err := NewWidgetRegistry()
+	if err != nil {
+		t.Fatalf("NewWidgetRegistry() error: %v", err)
+	}
+	if err := defaultReg.validateDefinitionOperations(customDef, "custom.def.json"); err == nil {
+		t.Error("expected error for unknown operation 'customOp' with default ops, got nil")
+	}
+
+	// Extended registry should accept custom operation
+	extReg, err := NewWidgetRegistryWithOps(map[string]bool{"customOp": true})
+	if err != nil {
+		t.Fatalf("NewWidgetRegistryWithOps() error: %v", err)
+	}
+	if err := extReg.validateDefinitionOperations(customDef, "custom.def.json"); err != nil {
+		t.Errorf("unexpected error with extended ops: %v", err)
+	}
+}
+
 func TestValidateDefinitionOperations_MappingOrderDependency(t *testing.T) {
-	opReg := NewOperationRegistry()
+	reg, err := NewWidgetRegistry()
+	if err != nil {
+		t.Fatalf("NewWidgetRegistry() error: %v", err)
+	}
 
 	// Association before DataSource should fail validation
 	badDef := &WidgetDefinition{
@@ -201,7 +233,7 @@ func TestValidateDefinitionOperations_MappingOrderDependency(t *testing.T) {
 			{PropertyKey: "dsProp", Source: "DataSource", Operation: "datasource"},
 		},
 	}
-	if err := validateDefinitionOperations(badDef, "bad.def.json", opReg); err == nil {
+	if err := reg.validateDefinitionOperations(badDef, "bad.def.json"); err == nil {
 		t.Error("expected error for Association before DataSource, got nil")
 	}
 
@@ -214,7 +246,7 @@ func TestValidateDefinitionOperations_MappingOrderDependency(t *testing.T) {
 			{PropertyKey: "assocProp", Source: "Association", Operation: "association"},
 		},
 	}
-	if err := validateDefinitionOperations(goodDef, "good.def.json", opReg); err != nil {
+	if err := reg.validateDefinitionOperations(goodDef, "good.def.json"); err != nil {
 		t.Errorf("unexpected error for DataSource before Association: %v", err)
 	}
 
@@ -232,13 +264,16 @@ func TestValidateDefinitionOperations_MappingOrderDependency(t *testing.T) {
 			},
 		},
 	}
-	if err := validateDefinitionOperations(modeDef, "mode.def.json", opReg); err == nil {
+	if err := reg.validateDefinitionOperations(modeDef, "mode.def.json"); err == nil {
 		t.Error("expected error for Association before DataSource in mode, got nil")
 	}
 }
 
 func TestValidateDefinitionOperations_SourceOperationCompatibility(t *testing.T) {
-	opReg := NewOperationRegistry()
+	reg, err := NewWidgetRegistry()
+	if err != nil {
+		t.Fatalf("NewWidgetRegistry() error: %v", err)
+	}
 
 	// Source "Attribute" with Operation "association" should fail
 	badDef := &WidgetDefinition{
@@ -248,7 +283,7 @@ func TestValidateDefinitionOperations_SourceOperationCompatibility(t *testing.T)
 			{PropertyKey: "prop", Source: "Attribute", Operation: "association"},
 		},
 	}
-	if err := validateDefinitionOperations(badDef, "bad.def.json", opReg); err == nil {
+	if err := reg.validateDefinitionOperations(badDef, "bad.def.json"); err == nil {
 		t.Error("expected error for Source='Attribute' with Operation='association', got nil")
 	}
 
@@ -260,7 +295,7 @@ func TestValidateDefinitionOperations_SourceOperationCompatibility(t *testing.T)
 			{PropertyKey: "prop", Source: "Association", Operation: "attribute"},
 		},
 	}
-	if err := validateDefinitionOperations(badDef2, "bad2.def.json", opReg); err == nil {
+	if err := reg.validateDefinitionOperations(badDef2, "bad2.def.json"); err == nil {
 		t.Error("expected error for Source='Association' with Operation='attribute', got nil")
 	}
 }
@@ -312,7 +347,7 @@ func TestRegistryUserDefinitionOverrideLogsWarning(t *testing.T) {
 
 	var buf bytes.Buffer
 	log.SetOutput(&buf)
-	defer log.SetOutput(nil)
+	defer log.SetOutput(os.Stderr)
 
 	projectPath := filepath.Join(tmpDir, "App.mpr")
 	if err := reg.LoadUserDefinitions(projectPath); err != nil {
