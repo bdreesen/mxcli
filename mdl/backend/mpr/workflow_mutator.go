@@ -56,7 +56,7 @@ func (b *MprBackend) openWorkflowForMutation(unitID model.ID) (backend.WorkflowM
 
 func (m *mprWorkflowMutator) SetProperty(prop string, value string) error {
 	switch prop {
-	case "DISPLAY":
+	case "display":
 		wfName := dGetDoc(m.rawData, "WorkflowName")
 		if wfName == nil {
 			newName := bson.D{
@@ -71,7 +71,7 @@ func (m *mprWorkflowMutator) SetProperty(prop string, value string) error {
 		dSet(m.rawData, "Title", value)
 		return nil
 
-	case "DESCRIPTION":
+	case "description":
 		wfDesc := dGetDoc(m.rawData, "WorkflowDescription")
 		if wfDesc == nil {
 			newDesc := bson.D{
@@ -113,7 +113,7 @@ func (m *mprWorkflowMutator) SetPropertyWithEntity(prop string, value string, en
 		}
 		return nil
 
-	case "PARAMETER":
+	case "parameter":
 		if value == "" {
 			for i, elem := range m.rawData {
 				if elem.Key == "Parameter" {
@@ -159,7 +159,7 @@ func (m *mprWorkflowMutator) SetActivityProperty(activityRef string, atPos int, 
 	}
 
 	switch prop {
-	case "PAGE":
+	case "page":
 		taskPage := dGetDoc(actDoc, "TaskPage")
 		if taskPage != nil {
 			dSet(taskPage, "Page", value)
@@ -173,7 +173,7 @@ func (m *mprWorkflowMutator) SetActivityProperty(activityRef string, atPos int, 
 		}
 		return nil
 
-	case "DESCRIPTION":
+	case "description":
 		taskDesc := dGetDoc(actDoc, "TaskDescription")
 		if taskDesc != nil {
 			dSet(taskDesc, "Text", value)
