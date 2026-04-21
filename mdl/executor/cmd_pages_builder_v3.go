@@ -419,7 +419,7 @@ func applyWidgetAppearance(widget pages.Widget, w *ast.WidgetV3, theme *ThemeReg
 	if len(astProps) > 0 {
 		var dpValues []pages.DesignPropertyValue
 		for _, p := range astProps {
-			switch strings.ToUpper(p.Value) {
+			switch strings.ToLower(p.Value) {
 			case "on":
 				dpValues = append(dpValues, pages.DesignPropertyValue{
 					Key:       p.Key,

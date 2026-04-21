@@ -139,7 +139,7 @@ func parseRestClientOpProp(ctx *parser.RestClientOpPropContext, op *ast.RestOper
 
 	// Method: GET
 	if mCtx := ctx.RestHttpMethod(); mCtx != nil {
-		op.Method = strings.ToUpper(mCtx.GetText())
+		op.Method = strings.ToLower(mCtx.GetText())
 		return
 	}
 

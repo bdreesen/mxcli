@@ -146,7 +146,7 @@ func outputRestOperation(w io.Writer, op *model.RestClientOperation) {
 	}
 
 	fmt.Fprintf(w, "  operation %s {\n", op.Name)
-	fmt.Fprintf(w, "    Method: %s,\n", op.HttpMethod)
+	fmt.Fprintf(w, "    Method: %s,\n", strings.ToLower(op.HttpMethod))
 	fmt.Fprintf(w, "    Path: '%s',\n", op.Path)
 
 	// Parameters: ($var: Type, ...)

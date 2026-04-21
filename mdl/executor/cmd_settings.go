@@ -178,7 +178,7 @@ func alterSettings(ctx *ExecContext, stmt *ast.AlterSettingsStmt) error {
 		return mdlerrors.NewBackend("read project settings", err)
 	}
 
-	section := strings.ToUpper(stmt.Section)
+	section := strings.ToLower(stmt.Section)
 	switch section {
 	case "model":
 		if ps.Model == nil {
