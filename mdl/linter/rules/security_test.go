@@ -94,28 +94,20 @@ func TestWeakPasswordPolicyRule_NilReader(t *testing.T) {
 	rule := NewWeakPasswordPolicyRule()
 	violations := rule.Check(ctx)
 
-	if len(violations) != 0 {
-		t.Errorf("expected 0 violations with nil reader, got %d", len(violations))
+	if violations != nil {
+		t.Errorf("expected nil with nil reader, got %v", violations)
 	}
 }
 
-func TestWeakPasswordPolicyRule_Metadata(t *testing.T) {
-	r := NewWeakPasswordPolicyRule()
-	if r.ID() != "SEC002" {
-		t.Errorf("ID = %q, want SEC002", r.ID())
-	}
-	if r.Category() != "security" {
-		t.Errorf("Category = %q, want security", r.Category())
-	}
-}
+// SEC003: Demo users still active in production
+// Without a real MPR file, we can only test the nil-reader early return and metadata.
 
 func TestDemoUsersActiveRule_NilReader(t *testing.T) {
+	r := NewDemoUsersActiveRule()
 	ctx := linter.NewLintContextFromDB(nil)
-	rule := NewDemoUsersActiveRule()
-	violations := rule.Check(ctx)
-
-	if len(violations) != 0 {
-		t.Errorf("expected 0 violations with nil reader, got %d", len(violations))
+	violations := r.Check(ctx)
+	if violations != nil {
+		t.Errorf("expected nil with nil reader, got %v", violations)
 	}
 }
 

@@ -78,6 +78,51 @@ func TestDomainModelSizeRule_NonPersistentIgnored(t *testing.T) {
 	}
 }
 
+func TestDomainModelSizeRule_ExactlyAtThreshold(t *testing.T) {
+	var entities [][]any
+	for i := 0; i < DefaultMaxPersistentEntities; i++ {
+		entities = append(entities, []any{
+			fmt.Sprintf("id%d", i), fmt.Sprintf("Entity%d", i),
+			fmt.Sprintf("MyModule.Entity%d", i), "MyModule", "",
+			"PERSISTENT", "", "", 3, 1, 0, 0, 0,
+		})
+	}
+
+	db := setupEntitiesDB(t, entities)
+	defer db.Close()
+
+	ctx := linter.NewLintContextFromDB(db)
+	rule := NewDomainModelSizeRule()
+	violations := rule.Check(ctx)
+
+	if len(violations) != 0 {
+		t.Errorf("expected 0 violations at threshold (%d entities), got %d", DefaultMaxPersistentEntities, len(violations))
+	}
+}
+
+func TestDomainModelSizeRule_OneOverThreshold(t *testing.T) {
+	count := DefaultMaxPersistentEntities + 1
+	var entities [][]any
+	for i := 0; i < count; i++ {
+		entities = append(entities, []any{
+			fmt.Sprintf("id%d", i), fmt.Sprintf("Entity%d", i),
+			fmt.Sprintf("MyModule.Entity%d", i), "MyModule", "",
+			"PERSISTENT", "", "", 3, 1, 0, 0, 0,
+		})
+	}
+
+	db := setupEntitiesDB(t, entities)
+	defer db.Close()
+
+	ctx := linter.NewLintContextFromDB(db)
+	rule := NewDomainModelSizeRule()
+	violations := rule.Check(ctx)
+
+	if len(violations) != 1 {
+		t.Fatalf("expected 1 violation at %d entities, got %d", count, len(violations))
+	}
+}
+
 func TestDomainModelSizeRule_Metadata(t *testing.T) {
 	r := NewDomainModelSizeRule()
 	if r.ID() != "MPR003" {
