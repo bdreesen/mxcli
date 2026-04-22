@@ -133,12 +133,40 @@ create constant MyModule.EnableLogging type boolean default true;
 
 **OData Client Example:**
 ```sql
+-- HTTP(S) URL (fetches metadata from remote service)
 create odata client MyModule.ExternalAPI (
-  version: '1.0',
+  Version: '1.0',
   ODataVersion: OData4,
   MetadataUrl: 'https://api.example.com/odata/v4/$metadata',
   timeout: 300
 );
+
+-- Local file with absolute file:// URI
+CREATE ODATA CLIENT MyModule.LocalService (
+  Version: '1.0',
+  ODataVersion: OData4,
+  MetadataUrl: 'file:///path/to/metadata.xml',
+  Timeout: 300
+);
+
+-- Local file with relative path (normalized to absolute file:// in model)
+CREATE ODATA CLIENT MyModule.LocalService2 (
+  Version: '1.0',
+  ODataVersion: OData4,
+  MetadataUrl: './metadata/service.xml',
+  Timeout: 300,
+  ServiceUrl: '@MyModule.ServiceLocation'  -- Must be a constant reference
+);
+```
+
+**Note:** `MetadataUrl` supports three formats:
+- `https://...` or `http://...` — fetches from HTTP(S) endpoint
+- `file:///abs/path` — reads from local absolute path
+- `./path` or `path/file.xml` — reads from local relative path, **normalized to absolute `file://` in the model** for Studio Pro compatibility
+
+**Important:** `ServiceUrl` must always be a constant reference starting with `@` (e.g., `@Module.ConstantName`). Create a constant first:
+```sql
+CREATE CONSTANT MyModule.ServiceLocation TYPE String DEFAULT 'https://api.example.com/odata/v4/';
 ```
 
 **OData Service Example:**
