@@ -12,21 +12,22 @@ import (
 	"fmt"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/sdk/agenteditor"
 )
 
-// showAgentEditorKnowledgeBases handles SHOW KNOWLEDGE BASES [IN module].
-func (e *Executor) showAgentEditorKnowledgeBases(moduleName string) error {
-	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+// listAgentEditorKnowledgeBases handles SHOW KNOWLEDGE BASES [IN module].
+func listAgentEditorKnowledgeBases(ctx *ExecContext, moduleName string) error {
+	if !ctx.Connected() {
+		return mdlerrors.NewNotConnected()
 	}
 
-	kbs, err := e.reader.ListAgentEditorKnowledgeBases()
+	kbs, err := ctx.Backend.ListAgentEditorKnowledgeBases()
 	if err != nil {
-		return fmt.Errorf("failed to list knowledge bases: %w", err)
+		return mdlerrors.NewBackend("list knowledge bases", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return err
 	}
@@ -56,21 +57,21 @@ func (e *Executor) showAgentEditorKnowledgeBases(moduleName string) error {
 	}
 
 	result.Summary = fmt.Sprintf("(%d knowledge base(s))", len(result.Rows))
-	return e.writeResult(result)
+	return writeResult(ctx, result)
 }
 
 // describeAgentEditorKnowledgeBase handles DESCRIBE KNOWLEDGE BASE Module.Name.
-func (e *Executor) describeAgentEditorKnowledgeBase(name ast.QualifiedName) error {
-	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+func describeAgentEditorKnowledgeBase(ctx *ExecContext, name ast.QualifiedName) error {
+	if !ctx.Connected() {
+		return mdlerrors.NewNotConnected()
 	}
 
-	k := e.findAgentEditorKnowledgeBase(name.Module, name.Name)
+	k := findAgentEditorKnowledgeBase(ctx, name.Module, name.Name)
 	if k == nil {
-		return fmt.Errorf("knowledge base not found: %s", name)
+		return mdlerrors.NewNotFound("knowledge base", name.String())
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return err
 	}
@@ -79,10 +80,10 @@ func (e *Executor) describeAgentEditorKnowledgeBase(name ast.QualifiedName) erro
 	qualifiedName := fmt.Sprintf("%s.%s", modName, k.Name)
 
 	if k.Documentation != "" {
-		fmt.Fprintf(e.output, "/**\n * %s\n */\n", k.Documentation)
+		fmt.Fprintf(ctx.Output, "/**\n * %s\n */\n", k.Documentation)
 	}
 
-	fmt.Fprintf(e.output, "CREATE KNOWLEDGE BASE %s (\n", qualifiedName)
+	fmt.Fprintf(ctx.Output, "create knowledge base %s (\n", qualifiedName)
 
 	var lines []string
 	if k.Provider != "" {
@@ -112,24 +113,24 @@ func (e *Executor) describeAgentEditorKnowledgeBase(name ast.QualifiedName) erro
 
 	for i, line := range lines {
 		if i < len(lines)-1 {
-			fmt.Fprintln(e.output, line+",")
+			fmt.Fprintln(ctx.Output, line+",")
 		} else {
-			fmt.Fprintln(e.output, line)
+			fmt.Fprintln(ctx.Output, line)
 		}
 	}
 
-	fmt.Fprintln(e.output, ");")
-	fmt.Fprintln(e.output, "/")
+	fmt.Fprintln(ctx.Output, ");")
+	fmt.Fprintln(ctx.Output, "/")
 	return nil
 }
 
 // findAgentEditorKnowledgeBase looks up a KB by module and name.
-func (e *Executor) findAgentEditorKnowledgeBase(moduleName, kbName string) *agenteditor.KnowledgeBase {
-	kbs, err := e.reader.ListAgentEditorKnowledgeBases()
+func findAgentEditorKnowledgeBase(ctx *ExecContext, moduleName, kbName string) *agenteditor.KnowledgeBase {
+	kbs, err := ctx.Backend.ListAgentEditorKnowledgeBases()
 	if err != nil {
 		return nil
 	}
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return nil
 	}
@@ -142,3 +143,5 @@ func (e *Executor) findAgentEditorKnowledgeBase(moduleName, kbName string) *agen
 	}
 	return nil
 }
+
+// --- Executor method wrappers for backward compatibility ---

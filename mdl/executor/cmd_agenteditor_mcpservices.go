@@ -12,21 +12,22 @@ import (
 	"fmt"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
 	"github.com/mendixlabs/mxcli/sdk/agenteditor"
 )
 
-// showAgentEditorConsumedMCPServices handles SHOW CONSUMED MCP SERVICES [IN module].
-func (e *Executor) showAgentEditorConsumedMCPServices(moduleName string) error {
-	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+// listAgentEditorConsumedMCPServices handles SHOW CONSUMED MCP SERVICES [IN module].
+func listAgentEditorConsumedMCPServices(ctx *ExecContext, moduleName string) error {
+	if !ctx.Connected() {
+		return mdlerrors.NewNotConnected()
 	}
 
-	svcs, err := e.reader.ListAgentEditorConsumedMCPServices()
+	svcs, err := ctx.Backend.ListAgentEditorConsumedMCPServices()
 	if err != nil {
-		return fmt.Errorf("failed to list consumed MCP services: %w", err)
+		return mdlerrors.NewBackend("list consumed mcp services", err)
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return err
 	}
@@ -51,22 +52,22 @@ func (e *Executor) showAgentEditorConsumedMCPServices(moduleName string) error {
 		})
 	}
 
-	result.Summary = fmt.Sprintf("(%d consumed MCP service(s))", len(result.Rows))
-	return e.writeResult(result)
+	result.Summary = fmt.Sprintf("(%d consumed mcp service(s))", len(result.Rows))
+	return writeResult(ctx, result)
 }
 
 // describeAgentEditorConsumedMCPService handles DESCRIBE CONSUMED MCP SERVICE Module.Name.
-func (e *Executor) describeAgentEditorConsumedMCPService(name ast.QualifiedName) error {
-	if e.reader == nil {
-		return fmt.Errorf("not connected to a project")
+func describeAgentEditorConsumedMCPService(ctx *ExecContext, name ast.QualifiedName) error {
+	if !ctx.Connected() {
+		return mdlerrors.NewNotConnected()
 	}
 
-	c := e.findAgentEditorConsumedMCPService(name.Module, name.Name)
+	c := findAgentEditorConsumedMCPService(ctx, name.Module, name.Name)
 	if c == nil {
-		return fmt.Errorf("consumed MCP service not found: %s", name)
+		return mdlerrors.NewNotFound("consumed mcp service", name.String())
 	}
 
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return err
 	}
@@ -75,10 +76,10 @@ func (e *Executor) describeAgentEditorConsumedMCPService(name ast.QualifiedName)
 	qualifiedName := fmt.Sprintf("%s.%s", modName, c.Name)
 
 	if c.Documentation != "" {
-		fmt.Fprintf(e.output, "/**\n * %s\n */\n", c.Documentation)
+		fmt.Fprintf(ctx.Output, "/**\n * %s\n */\n", c.Documentation)
 	}
 
-	fmt.Fprintf(e.output, "CREATE CONSUMED MCP SERVICE %s (\n", qualifiedName)
+	fmt.Fprintf(ctx.Output, "create consumed mcp service %s (\n", qualifiedName)
 
 	var lines []string
 	if c.ProtocolVersion != "" {
@@ -96,24 +97,24 @@ func (e *Executor) describeAgentEditorConsumedMCPService(name ast.QualifiedName)
 
 	for i, line := range lines {
 		if i < len(lines)-1 {
-			fmt.Fprintln(e.output, line+",")
+			fmt.Fprintln(ctx.Output, line+",")
 		} else {
-			fmt.Fprintln(e.output, line)
+			fmt.Fprintln(ctx.Output, line)
 		}
 	}
 
-	fmt.Fprintln(e.output, ");")
-	fmt.Fprintln(e.output, "/")
+	fmt.Fprintln(ctx.Output, ");")
+	fmt.Fprintln(ctx.Output, "/")
 	return nil
 }
 
 // findAgentEditorConsumedMCPService looks up an MCP service by module and name.
-func (e *Executor) findAgentEditorConsumedMCPService(moduleName, svcName string) *agenteditor.ConsumedMCPService {
-	svcs, err := e.reader.ListAgentEditorConsumedMCPServices()
+func findAgentEditorConsumedMCPService(ctx *ExecContext, moduleName, svcName string) *agenteditor.ConsumedMCPService {
+	svcs, err := ctx.Backend.ListAgentEditorConsumedMCPServices()
 	if err != nil {
 		return nil
 	}
-	h, err := e.getHierarchy()
+	h, err := getHierarchy(ctx)
 	if err != nil {
 		return nil
 	}
@@ -126,3 +127,5 @@ func (e *Executor) findAgentEditorConsumedMCPService(moduleName, svcName string)
 	}
 	return nil
 }
+
+// --- Executor method wrappers for backward compatibility ---

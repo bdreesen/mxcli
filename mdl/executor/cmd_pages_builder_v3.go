@@ -4,13 +4,15 @@ package executor
 
 import (
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	mdlerrors "github.com/mendixlabs/mxcli/mdl/errors"
+	"github.com/mendixlabs/mxcli/mdl/types"
 	"github.com/mendixlabs/mxcli/model"
 	"github.com/mendixlabs/mxcli/sdk/domainmodel"
 	"github.com/mendixlabs/mxcli/sdk/microflows"
-	"github.com/mendixlabs/mxcli/sdk/mpr"
 	"github.com/mendixlabs/mxcli/sdk/pages"
 )
 
@@ -25,14 +27,14 @@ func (pb *pageBuilder) buildPageV3(s *ast.CreatePageStmtV3) (*pages.Page, error)
 	if s.Folder != "" {
 		folderID, err := pb.resolveFolder(s.Folder)
 		if err != nil {
-			return nil, fmt.Errorf("failed to resolve folder %s: %w", s.Folder, err)
+			return nil, mdlerrors.NewBackend("resolve folder "+s.Folder, err)
 		}
 		containerID = folderID
 	}
 
 	page := &pages.Page{
 		BaseElement: model.BaseElement{
-			ID:       model.ID(mpr.GenerateID()),
+			ID:       model.ID(types.GenerateID()),
 			TypeName: "Forms$Page",
 		},
 		ContainerID:   containerID,
@@ -47,7 +49,7 @@ func (pb *pageBuilder) buildPageV3(s *ast.CreatePageStmtV3) (*pages.Page, error)
 	if s.Title != "" {
 		page.Title = &model.Text{
 			BaseElement: model.BaseElement{
-				ID:       model.ID(mpr.GenerateID()),
+				ID:       model.ID(types.GenerateID()),
 				TypeName: "Texts$Text",
 			},
 			Translations: map[string]string{"en_US": s.Title},
@@ -59,14 +61,14 @@ func (pb *pageBuilder) buildPageV3(s *ast.CreatePageStmtV3) (*pages.Page, error)
 		layoutID, err := pb.resolveLayout(s.Layout)
 		if err != nil {
 			// Layout not found is not fatal - page will work but may not render correctly
-			fmt.Printf("Warning: layout %s not found\n", s.Layout)
+			log.Printf("warning: layout %s not found", s.Layout)
 		} else {
 			page.LayoutID = layoutID
 
 			// Create LayoutCall with arguments for placeholders
 			page.LayoutCall = &pages.LayoutCall{
 				BaseElement: model.BaseElement{
-					ID:       model.ID(mpr.GenerateID()),
+					ID:       model.ID(types.GenerateID()),
 					TypeName: "Forms$LayoutCall",
 				},
 				LayoutID:   layoutID,
@@ -79,7 +81,7 @@ func (pb *pageBuilder) buildPageV3(s *ast.CreatePageStmtV3) (*pages.Page, error)
 	for _, param := range s.Parameters {
 		pageParam := &pages.PageParameter{
 			BaseElement: model.BaseElement{
-				ID:       model.ID(mpr.GenerateID()),
+				ID:       model.ID(types.GenerateID()),
 				TypeName: "Forms$PageParameter",
 			},
 			ContainerID: page.ID,
@@ -95,7 +97,7 @@ func (pb *pageBuilder) buildPageV3(s *ast.CreatePageStmtV3) (*pages.Page, error)
 			// Entity type parameter
 			entityID, err := pb.resolveEntity(param.EntityType)
 			if err != nil {
-				return nil, fmt.Errorf("failed to resolve entity %s: %w", param.EntityType.String(), err)
+				return nil, mdlerrors.NewBackend("resolve entity "+param.EntityType.String(), err)
 			}
 			entityName := param.EntityType.String()
 			pageParam.EntityID = entityID
@@ -111,7 +113,7 @@ func (pb *pageBuilder) buildPageV3(s *ast.CreatePageStmtV3) (*pages.Page, error)
 	for _, v := range s.Variables {
 		localVar := &pages.LocalVariable{
 			BaseElement: model.BaseElement{
-				ID:       model.ID(mpr.GenerateID()),
+				ID:       model.ID(types.GenerateID()),
 				TypeName: "Forms$LocalVariable",
 			},
 			ContainerID:  page.ID,
@@ -128,7 +130,7 @@ func (pb *pageBuilder) buildPageV3(s *ast.CreatePageStmtV3) (*pages.Page, error)
 
 		arg := &pages.LayoutCallArgument{
 			BaseElement: model.BaseElement{
-				ID:       model.ID(mpr.GenerateID()),
+				ID:       model.ID(types.GenerateID()),
 				TypeName: "Forms$FormCallArgument",
 			},
 			ParameterID: model.ID(mainPlaceholderRef),
@@ -139,7 +141,7 @@ func (pb *pageBuilder) buildPageV3(s *ast.CreatePageStmtV3) (*pages.Page, error)
 			containerWidget := &pages.Container{
 				BaseWidget: pages.BaseWidget{
 					BaseElement: model.BaseElement{
-						ID:       model.ID(mpr.GenerateID()),
+						ID:       model.ID(types.GenerateID()),
 						TypeName: "Forms$DivContainer",
 					},
 					Name: "conditionalVisibilityWidget1",
@@ -153,7 +155,7 @@ func (pb *pageBuilder) buildPageV3(s *ast.CreatePageStmtV3) (*pages.Page, error)
 			for _, astWidget := range expanded {
 				w, err := pb.buildWidgetV3(astWidget)
 				if err != nil {
-					return nil, fmt.Errorf("failed to build widget: %w", err)
+					return nil, mdlerrors.NewBackend("build widget", err)
 				}
 				containerWidget.Widgets = append(containerWidget.Widgets, w)
 			}
@@ -174,14 +176,14 @@ func (pb *pageBuilder) buildSnippetV3(s *ast.CreateSnippetStmtV3) (*pages.Snippe
 	if s.Folder != "" {
 		folderID, err := pb.resolveFolder(s.Folder)
 		if err != nil {
-			return nil, fmt.Errorf("failed to resolve folder %s: %w", s.Folder, err)
+			return nil, mdlerrors.NewBackend("resolve folder "+s.Folder, err)
 		}
 		containerID = folderID
 	}
 
 	snippet := &pages.Snippet{
 		BaseElement: model.BaseElement{
-			ID:       model.ID(mpr.GenerateID()),
+			ID:       model.ID(types.GenerateID()),
 			TypeName: "Forms$Snippet",
 		},
 		ContainerID:   containerID,
@@ -193,7 +195,7 @@ func (pb *pageBuilder) buildSnippetV3(s *ast.CreateSnippetStmtV3) (*pages.Snippe
 	for _, param := range s.Parameters {
 		snippetParam := &pages.SnippetParameter{
 			BaseElement: model.BaseElement{
-				ID:       model.ID(mpr.GenerateID()),
+				ID:       model.ID(types.GenerateID()),
 				TypeName: "Forms$SnippetParameter",
 			},
 			ContainerID: snippet.ID,
@@ -204,7 +206,7 @@ func (pb *pageBuilder) buildSnippetV3(s *ast.CreateSnippetStmtV3) (*pages.Snippe
 		if param.EntityType.Name != "" {
 			entityID, err := pb.resolveEntity(param.EntityType)
 			if err != nil {
-				return nil, fmt.Errorf("failed to resolve entity %s: %w", param.EntityType.String(), err)
+				return nil, mdlerrors.NewBackend("resolve entity "+param.EntityType.String(), err)
 			}
 			entityName := param.EntityType.String()
 			snippetParam.EntityID = entityID
@@ -220,7 +222,7 @@ func (pb *pageBuilder) buildSnippetV3(s *ast.CreateSnippetStmtV3) (*pages.Snippe
 	for _, v := range s.Variables {
 		localVar := &pages.LocalVariable{
 			BaseElement: model.BaseElement{
-				ID:       model.ID(mpr.GenerateID()),
+				ID:       model.ID(types.GenerateID()),
 				TypeName: "Forms$LocalVariable",
 			},
 			ContainerID:  snippet.ID,
@@ -242,7 +244,7 @@ func (pb *pageBuilder) buildSnippetV3(s *ast.CreateSnippetStmtV3) (*pages.Snippe
 	for _, astWidget := range expanded {
 		w, err := pb.buildWidgetV3(astWidget)
 		if err != nil {
-			return nil, fmt.Errorf("failed to build widget: %w", err)
+			return nil, mdlerrors.NewBackend("build widget", err)
 		}
 		snippet.Widgets = append(snippet.Widgets, w)
 	}
@@ -255,76 +257,76 @@ func (pb *pageBuilder) buildWidgetV3(w *ast.WidgetV3) (pages.Widget, error) {
 	var widget pages.Widget
 	var err error
 
-	switch strings.ToUpper(w.Type) {
-	case "DATAVIEW":
+	switch strings.ToLower(w.Type) {
+	case "dataview":
 		widget, err = pb.buildDataViewV3(w)
-	case "DATAGRID":
+	case "datagrid":
 		widget, err = pb.buildDataGridV3(w)
-	case "LISTVIEW":
+	case "listview":
 		widget, err = pb.buildListViewV3(w)
-	case "LAYOUTGRID":
+	case "layoutgrid":
 		widget, err = pb.buildLayoutGridV3(w)
-	case "ROW":
+	case "row":
 		// ROW creates a container with LayoutGrid that contains one row
 		widget, err = pb.buildContainerWithRowV3(w)
-	case "COLUMN":
+	case "column":
 		// COLUMN creates a container with LayoutGrid that contains one column
 		widget, err = pb.buildContainerWithColumnV3(w)
-	case "CONTAINER", "CUSTOMCONTAINER":
+	case "container", "customcontainer":
 		widget, err = pb.buildContainerV3(w)
-	case "TEXTBOX":
+	case "textbox":
 		widget, err = pb.buildTextBoxV3(w)
-	case "TEXTAREA":
+	case "textarea":
 		widget, err = pb.buildTextAreaV3(w)
-	case "DATEPICKER":
+	case "datepicker":
 		widget, err = pb.buildDatePickerV3(w)
-	case "DROPDOWN":
+	case "dropdown":
 		widget, err = pb.buildDropdownV3(w)
-	case "CHECKBOX":
+	case "checkbox":
 		widget, err = pb.buildCheckBoxV3(w)
-	case "TEXT", "STATICTEXT":
+	case "text", "statictext":
 		widget, err = pb.buildTextWidgetV3(w)
-	case "DYNAMICTEXT":
+	case "dynamictext":
 		widget, err = pb.buildDynamicTextV3(w)
-	case "TITLE":
+	case "title":
 		widget, err = pb.buildTitleV3(w)
-	case "BUTTON", "ACTIONBUTTON":
+	case "button", "actionbutton":
 		widget, err = pb.buildButtonV3(w)
-	case "TABCONTAINER":
+	case "tabcontainer":
 		widget, err = pb.buildTabContainerV3(w)
-	case "TABPAGE":
+	case "tabpage":
 		// Tab pages are handled inside TabContainer
-		return nil, fmt.Errorf("TABPAGE must be a direct child of TABCONTAINER")
-	case "GROUPBOX":
+		return nil, mdlerrors.NewValidation("tabpage must be a direct child of tabcontainer")
+	case "groupbox":
 		widget, err = pb.buildGroupBoxV3(w)
-	case "RADIOBUTTONS":
+	case "radiobuttons":
 		widget, err = pb.buildRadioButtonsV3(w)
-	case "NAVIGATIONLIST":
+	case "navigationlist":
 		widget, err = pb.buildNavigationListV3(w)
-	case "ITEM":
+	case "item":
 		// Items are handled inside NavigationList
-		return nil, fmt.Errorf("ITEM must be a direct child of NAVIGATIONLIST")
-	case "SNIPPETCALL":
+		return nil, mdlerrors.NewValidation("item must be a direct child of navigationlist")
+	case "snippetcall":
 		widget, err = pb.buildSnippetCallV3(w)
-	case "FOOTER":
+	case "footer":
 		widget, err = pb.buildFooterV3(w)
-	case "HEADER":
+	case "header":
 		widget, err = pb.buildHeaderV3(w)
-	case "CONTROLBAR":
+	case "controlbar":
 		widget, err = pb.buildControlBarV3(w)
-	case "TEMPLATE":
+	case "template":
 		widget, err = pb.buildTemplateV3(w)
-	case "FILTER":
+	case "filter":
 		widget, err = pb.buildFilterV3(w)
-	case "STATICIMAGE":
+	case "staticimage":
 		widget, err = pb.buildStaticImageV3(w)
-	case "DYNAMICIMAGE":
+	case "dynamicimage":
 		widget, err = pb.buildDynamicImageV3(w)
-	case "IMAGE":
+	case "image":
 		// IMAGE routes to the pluggable React widget (com.mendix.widget.web.image.Image)
 		pb.initPluggableEngine()
 		if pb.widgetRegistry != nil {
-			if def, ok := pb.widgetRegistry.Get("IMAGE"); ok {
+			if def, ok := pb.widgetRegistry.Get("image"); ok {
 				return pb.pluggableEngine.Build(def, w)
 			}
 		}
@@ -338,19 +340,19 @@ func (pb *pageBuilder) buildWidgetV3(w *ast.WidgetV3) (pages.Widget, error) {
 				return pb.pluggableEngine.Build(def, w)
 			}
 			// PLUGGABLEWIDGET/CUSTOMWIDGET 'widget.id' name — lookup by widget ID
-			if w.Type == "PLUGGABLEWIDGET" || w.Type == "CUSTOMWIDGET" {
+			if w.Type == "pluggablewidget" || w.Type == "customwidget" {
 				if widgetType, ok := w.Properties["WidgetType"].(string); ok {
 					if def, ok := pb.widgetRegistry.GetByWidgetID(widgetType); ok {
 						return pb.pluggableEngine.Build(def, w)
 					}
-					return nil, fmt.Errorf("no definition for widget %s (run 'mxcli widget init -p app.mpr')", widgetType)
+					return nil, mdlerrors.NewNotFoundMsg("widget", widgetType, "no definition for widget "+widgetType+" (run 'mxcli widget init -p app.mpr')")
 				}
 			}
 		}
 		if pb.pluggableEngineErr != nil {
-			return nil, fmt.Errorf("unsupported widget type: %s (%v)", w.Type, pb.pluggableEngineErr)
+			return nil, mdlerrors.NewUnsupported(fmt.Sprintf("unsupported widget type: %s (%v)", w.Type, pb.pluggableEngineErr))
 		}
-		return nil, fmt.Errorf("unsupported widget type: %s", w.Type)
+		return nil, mdlerrors.NewUnsupported("unsupported widget type: " + w.Type)
 	}
 
 	if err != nil {
@@ -381,7 +383,7 @@ func applyConditionalSettings(widget pages.Widget, w *ast.WidgetV3) {
 	if visibleIf := w.GetStringProp("VisibleIf"); visibleIf != "" {
 		bw.ConditionalVisibility = &pages.ConditionalVisibilitySettings{
 			BaseElement: model.BaseElement{
-				ID:       model.ID(mpr.GenerateID()),
+				ID:       model.ID(types.GenerateID()),
 				TypeName: "Forms$ConditionalVisibilitySettings",
 			},
 			Expression: visibleIf,
@@ -391,7 +393,7 @@ func applyConditionalSettings(widget pages.Widget, w *ast.WidgetV3) {
 	if editableIf := w.GetStringProp("EditableIf"); editableIf != "" {
 		bw.ConditionalEditability = &pages.ConditionalEditabilitySettings{
 			BaseElement: model.BaseElement{
-				ID:       model.ID(mpr.GenerateID()),
+				ID:       model.ID(types.GenerateID()),
 				TypeName: "Forms$ConditionalEditabilitySettings",
 			},
 			Expression: editableIf,
@@ -417,13 +419,13 @@ func applyWidgetAppearance(widget pages.Widget, w *ast.WidgetV3, theme *ThemeReg
 	if len(astProps) > 0 {
 		var dpValues []pages.DesignPropertyValue
 		for _, p := range astProps {
-			switch strings.ToUpper(p.Value) {
-			case "ON":
+			switch strings.ToLower(p.Value) {
+			case "on":
 				dpValues = append(dpValues, pages.DesignPropertyValue{
 					Key:       p.Key,
 					ValueType: "toggle",
 				})
-			case "OFF":
+			case "off":
 				// OFF means toggle absence - skip
 			default:
 				dpValues = append(dpValues, pages.DesignPropertyValue{
@@ -484,7 +486,7 @@ func (pb *pageBuilder) buildDataSourceV3(ds *ast.DataSourceV3) (pages.DataSource
 			entityName = pb.paramEntityNames["$"+paramName]
 		}
 		if !ok {
-			return nil, "", fmt.Errorf("parameter not found: %s", ds.Reference)
+			return nil, "", mdlerrors.NewNotFound("parameter", ds.Reference)
 		}
 
 		// Fallback to lookup if entity name not stored
@@ -495,7 +497,7 @@ func (pb *pageBuilder) buildDataSourceV3(ds *ast.DataSourceV3) (pages.DataSource
 		// Use DataViewSource with IsSnippetParameter flag
 		return &pages.DataViewSource{
 			BaseElement: model.BaseElement{
-				ID:       model.ID(mpr.GenerateID()),
+				ID:       model.ID(types.GenerateID()),
 				TypeName: "Forms$DataViewSource",
 			},
 			EntityID:           entityID,
@@ -511,12 +513,12 @@ func (pb *pageBuilder) buildDataSourceV3(ds *ast.DataSourceV3) (pages.DataSource
 			Name:   pb.extractName(ds.Reference),
 		})
 		if err != nil {
-			return nil, "", fmt.Errorf("failed to resolve entity: %w", err)
+			return nil, "", mdlerrors.NewBackend("resolve entity", err)
 		}
 
 		dbSource := &pages.DatabaseSource{
 			BaseElement: model.BaseElement{
-				ID:       model.ID(mpr.GenerateID()),
+				ID:       model.ID(types.GenerateID()),
 				TypeName: "Forms$DatabaseSource", // Note: actual BSON $Type depends on widget context (grid/listview/dataview)
 			},
 			EntityID:   entityID,
@@ -531,12 +533,12 @@ func (pb *pageBuilder) buildDataSourceV3(ds *ast.DataSourceV3) (pages.DataSource
 		// Handle ORDER BY
 		for _, ob := range ds.OrderBy {
 			direction := pages.SortDirectionAscending
-			if strings.ToUpper(ob.Direction) == "DESC" {
+			if strings.ToLower(ob.Direction) == "desc" {
 				direction = pages.SortDirectionDescending
 			}
 			sortItem := &pages.GridSort{
 				BaseElement: model.BaseElement{
-					ID:       model.ID(mpr.GenerateID()),
+					ID:       model.ID(types.GenerateID()),
 					TypeName: "Forms$GridSort",
 				},
 				AttributePath: pb.resolveAttributePathForEntity(ob.Attribute, ds.Reference),
@@ -551,7 +553,7 @@ func (pb *pageBuilder) buildDataSourceV3(ds *ast.DataSourceV3) (pages.DataSource
 		// Microflow source
 		mfID, err := pb.resolveMicroflow(ds.Reference)
 		if err != nil {
-			return nil, "", fmt.Errorf("failed to resolve microflow: %w", err)
+			return nil, "", mdlerrors.NewBackend("resolve microflow", err)
 		}
 
 		// Get entity name from microflow's return type for context resolution
@@ -559,7 +561,7 @@ func (pb *pageBuilder) buildDataSourceV3(ds *ast.DataSourceV3) (pages.DataSource
 
 		return &pages.MicroflowSource{
 			BaseElement: model.BaseElement{
-				ID:       model.ID(mpr.GenerateID()),
+				ID:       model.ID(types.GenerateID()),
 				TypeName: "Forms$MicroflowSource",
 			},
 			MicroflowID: mfID,
@@ -570,7 +572,7 @@ func (pb *pageBuilder) buildDataSourceV3(ds *ast.DataSourceV3) (pages.DataSource
 		// Nanoflow source - resolve by listing all nanoflows
 		nfID, err := pb.resolveNanoflowByName(ds.Reference)
 		if err != nil {
-			return nil, "", fmt.Errorf("failed to resolve nanoflow: %w", err)
+			return nil, "", mdlerrors.NewBackend("resolve nanoflow", err)
 		}
 
 		// Get entity name from nanoflow's return type for context resolution
@@ -578,7 +580,7 @@ func (pb *pageBuilder) buildDataSourceV3(ds *ast.DataSourceV3) (pages.DataSource
 
 		return &pages.NanoflowSource{
 			BaseElement: model.BaseElement{
-				ID:       model.ID(mpr.GenerateID()),
+				ID:       model.ID(types.GenerateID()),
 				TypeName: "Forms$NanoflowSource",
 			},
 			NanoflowID: nfID,
@@ -609,7 +611,7 @@ func (pb *pageBuilder) buildDataSourceV3(ds *ast.DataSourceV3) (pages.DataSource
 		// widget can resolve short attribute names against it.
 		return &pages.AssociationSource{
 			BaseElement: model.BaseElement{
-				ID:       model.ID(mpr.GenerateID()),
+				ID:       model.ID(types.GenerateID()),
 				TypeName: "Forms$AssociationSource",
 			},
 			EntityPath:      path + "/" + destEntity,
@@ -621,7 +623,7 @@ func (pb *pageBuilder) buildDataSourceV3(ds *ast.DataSourceV3) (pages.DataSource
 		widgetName := ds.Reference
 		widgetID, ok := pb.widgetScope[widgetName]
 		if !ok {
-			return nil, "", fmt.Errorf("widget not found for selection: %s", widgetName)
+			return nil, "", mdlerrors.NewNotFound("widget", widgetName)
 		}
 
 		// Get the entity context from the source widget if available
@@ -629,7 +631,7 @@ func (pb *pageBuilder) buildDataSourceV3(ds *ast.DataSourceV3) (pages.DataSource
 
 		return &pages.ListenToWidgetSource{
 			BaseElement: model.BaseElement{
-				ID:       model.ID(mpr.GenerateID()),
+				ID:       model.ID(types.GenerateID()),
 				TypeName: "Forms$ListenTargetSource",
 			},
 			WidgetID:   widgetID,
@@ -637,7 +639,7 @@ func (pb *pageBuilder) buildDataSourceV3(ds *ast.DataSourceV3) (pages.DataSource
 		}, entityName, nil
 
 	default:
-		return nil, "", fmt.Errorf("unsupported datasource type: %s", ds.Type)
+		return nil, "", mdlerrors.NewUnsupported("unsupported datasource type: " + ds.Type)
 	}
 }
 
@@ -657,7 +659,7 @@ func (pb *pageBuilder) resolveAssociationDestination(assocQN, contextEntity stri
 	}
 	modName, assocName := parts[0], parts[1]
 
-	domainModels, err := pb.reader.ListDomainModels()
+	domainModels, err := pb.backend.ListDomainModels()
 	if err != nil {
 		return ""
 	}
@@ -700,7 +702,7 @@ func (pb *pageBuilder) entityQNByID(entityID model.ID) string {
 	if entityID == "" {
 		return ""
 	}
-	domainModels, err := pb.reader.ListDomainModels()
+	domainModels, err := pb.backend.ListDomainModels()
 	if err != nil {
 		return ""
 	}
@@ -724,7 +726,7 @@ func (pb *pageBuilder) moduleNameByID(moduleID model.ID) string {
 	if moduleID == "" {
 		return ""
 	}
-	modules, err := pb.reader.ListModules()
+	modules, err := pb.backend.ListModules()
 	if err != nil {
 		return ""
 	}
@@ -739,7 +741,7 @@ func (pb *pageBuilder) moduleNameByID(moduleID model.ID) string {
 // getMicroflowReturnEntityName looks up a microflow and returns its return type entity name.
 // Returns empty string if the microflow doesn't return an entity or list of entities.
 func (pb *pageBuilder) getMicroflowReturnEntityName(qualifiedName string) string {
-	// First, check if the microflow was created during this session (not yet in reader cache)
+	// First, check if the microflow was created during this session (not yet in backend cache)
 	if pb.execCache != nil && pb.execCache.createdMicroflows != nil {
 		if info, ok := pb.execCache.createdMicroflows[qualifiedName]; ok {
 			return info.ReturnEntityName
@@ -754,7 +756,7 @@ func (pb *pageBuilder) getMicroflowReturnEntityName(qualifiedName string) string
 	moduleName := parts[0]
 	mfName := strings.Join(parts[1:], ".")
 
-	// Get microflows from reader cache
+	// Get microflows from backend
 	mfs, err := pb.getMicroflows()
 	if err != nil {
 		return ""
@@ -808,7 +810,7 @@ func (pb *pageBuilder) getNanoflowReturnEntityName(qualifiedName string) string 
 		name = qualifiedName
 	}
 
-	nanoflows, err := pb.reader.ListNanoflows()
+	nanoflows, err := pb.backend.ListNanoflows()
 	if err != nil {
 		return ""
 	}
@@ -841,7 +843,7 @@ func (pb *pageBuilder) buildClientActionV3(action *ast.ActionV3) (pages.ClientAc
 	case "save":
 		return &pages.SaveChangesClientAction{
 			BaseElement: model.BaseElement{
-				ID:       model.ID(mpr.GenerateID()),
+				ID:       model.ID(types.GenerateID()),
 				TypeName: "Forms$SaveChangesClientAction",
 			},
 			ClosePage: action.ClosePage,
@@ -850,7 +852,7 @@ func (pb *pageBuilder) buildClientActionV3(action *ast.ActionV3) (pages.ClientAc
 	case "cancel":
 		return &pages.CancelChangesClientAction{
 			BaseElement: model.BaseElement{
-				ID:       model.ID(mpr.GenerateID()),
+				ID:       model.ID(types.GenerateID()),
 				TypeName: "Forms$CancelChangesClientAction",
 			},
 			ClosePage: action.ClosePage,
@@ -859,7 +861,7 @@ func (pb *pageBuilder) buildClientActionV3(action *ast.ActionV3) (pages.ClientAc
 	case "close":
 		return &pages.ClosePageClientAction{
 			BaseElement: model.BaseElement{
-				ID:       model.ID(mpr.GenerateID()),
+				ID:       model.ID(types.GenerateID()),
 				TypeName: "Forms$ClosePageClientAction",
 			},
 		}, nil
@@ -867,7 +869,7 @@ func (pb *pageBuilder) buildClientActionV3(action *ast.ActionV3) (pages.ClientAc
 	case "delete":
 		return &pages.DeleteClientAction{
 			BaseElement: model.BaseElement{
-				ID:       model.ID(mpr.GenerateID()),
+				ID:       model.ID(types.GenerateID()),
 				TypeName: "Forms$DeleteClientAction",
 			},
 		}, nil
@@ -878,12 +880,12 @@ func (pb *pageBuilder) buildClientActionV3(action *ast.ActionV3) (pages.ClientAc
 			Name:   pb.extractName(action.Target),
 		})
 		if err != nil {
-			return nil, fmt.Errorf("failed to resolve entity for create: %w", err)
+			return nil, mdlerrors.NewBackend("resolve entity for create", err)
 		}
 
 		createAct := &pages.CreateObjectClientAction{
 			BaseElement: model.BaseElement{
-				ID:       model.ID(mpr.GenerateID()),
+				ID:       model.ID(types.GenerateID()),
 				TypeName: "Forms$CreateObjectClientAction",
 			},
 			EntityID:   entityID,
@@ -894,7 +896,7 @@ func (pb *pageBuilder) buildClientActionV3(action *ast.ActionV3) (pages.ClientAc
 		if action.ThenAction != nil && action.ThenAction.Type == "showPage" {
 			pageID, err := pb.resolvePageRef(action.ThenAction.Target)
 			if err != nil {
-				return nil, fmt.Errorf("failed to resolve page: %w", err)
+				return nil, mdlerrors.NewBackend("resolve page", err)
 			}
 			createAct.PageID = pageID
 			createAct.PageName = action.ThenAction.Target
@@ -905,12 +907,12 @@ func (pb *pageBuilder) buildClientActionV3(action *ast.ActionV3) (pages.ClientAc
 	case "showPage":
 		_, err := pb.resolvePageRef(action.Target)
 		if err != nil {
-			return nil, fmt.Errorf("failed to resolve page: %w", err)
+			return nil, mdlerrors.NewBackend("resolve page", err)
 		}
 
 		pageAction := &pages.PageClientAction{
 			BaseElement: model.BaseElement{
-				ID:       model.ID(mpr.GenerateID()),
+				ID:       model.ID(types.GenerateID()),
 				TypeName: "Forms$PageClientAction",
 			},
 			PageName: action.Target,
@@ -920,7 +922,7 @@ func (pb *pageBuilder) buildClientActionV3(action *ast.ActionV3) (pages.ClientAc
 		for _, arg := range action.Args {
 			mapping := &pages.PageClientParameterMapping{
 				BaseElement: model.BaseElement{
-					ID:       model.ID(mpr.GenerateID()),
+					ID:       model.ID(types.GenerateID()),
 					TypeName: "Forms$PageParameterMapping",
 				},
 				ParameterName: arg.Name,
@@ -944,12 +946,12 @@ func (pb *pageBuilder) buildClientActionV3(action *ast.ActionV3) (pages.ClientAc
 	case "microflow":
 		mfID, err := pb.resolveMicroflow(action.Target)
 		if err != nil {
-			return nil, fmt.Errorf("failed to resolve microflow: %w", err)
+			return nil, mdlerrors.NewBackend("resolve microflow", err)
 		}
 
 		mfAction := &pages.MicroflowClientAction{
 			BaseElement: model.BaseElement{
-				ID:       model.ID(mpr.GenerateID()),
+				ID:       model.ID(types.GenerateID()),
 				TypeName: "Forms$MicroflowAction",
 			},
 			MicroflowID:   mfID,
@@ -960,7 +962,7 @@ func (pb *pageBuilder) buildClientActionV3(action *ast.ActionV3) (pages.ClientAc
 		for _, arg := range action.Args {
 			mapping := &pages.MicroflowParameterMapping{
 				BaseElement: model.BaseElement{
-					ID:       model.ID(mpr.GenerateID()),
+					ID:       model.ID(types.GenerateID()),
 					TypeName: "Forms$MicroflowParameterMapping",
 				},
 				ParameterName: arg.Name,
@@ -984,12 +986,12 @@ func (pb *pageBuilder) buildClientActionV3(action *ast.ActionV3) (pages.ClientAc
 	case "nanoflow":
 		nfID, err := pb.resolveNanoflowByName(action.Target)
 		if err != nil {
-			return nil, fmt.Errorf("failed to resolve nanoflow: %w", err)
+			return nil, mdlerrors.NewBackend("resolve nanoflow", err)
 		}
 
 		nfAction := &pages.NanoflowClientAction{
 			BaseElement: model.BaseElement{
-				ID:       model.ID(mpr.GenerateID()),
+				ID:       model.ID(types.GenerateID()),
 				TypeName: "Forms$NanoflowAction",
 			},
 			NanoflowID:   nfID,
@@ -1000,7 +1002,7 @@ func (pb *pageBuilder) buildClientActionV3(action *ast.ActionV3) (pages.ClientAc
 		for _, arg := range action.Args {
 			mapping := &pages.NanoflowParameterMapping{
 				BaseElement: model.BaseElement{
-					ID:       model.ID(mpr.GenerateID()),
+					ID:       model.ID(types.GenerateID()),
 					TypeName: "Forms$NanoflowParameterMapping",
 				},
 				ParameterName: arg.Name,
@@ -1024,7 +1026,7 @@ func (pb *pageBuilder) buildClientActionV3(action *ast.ActionV3) (pages.ClientAc
 	case "openLink":
 		return &pages.LinkClientAction{
 			BaseElement: model.BaseElement{
-				ID:       model.ID(mpr.GenerateID()),
+				ID:       model.ID(types.GenerateID()),
 				TypeName: "Forms$LinkClientAction",
 			},
 			LinkType: pages.LinkTypeWeb,
@@ -1034,7 +1036,7 @@ func (pb *pageBuilder) buildClientActionV3(action *ast.ActionV3) (pages.ClientAc
 	case "signOut":
 		return &pages.SignOutClientAction{
 			BaseElement: model.BaseElement{
-				ID:       model.ID(mpr.GenerateID()),
+				ID:       model.ID(types.GenerateID()),
 				TypeName: "Forms$SignOutClientAction",
 			},
 		}, nil
@@ -1042,7 +1044,7 @@ func (pb *pageBuilder) buildClientActionV3(action *ast.ActionV3) (pages.ClientAc
 	case "completeTask":
 		return &pages.SetTaskOutcomeClientAction{
 			BaseElement: model.BaseElement{
-				ID:       model.ID(mpr.GenerateID()),
+				ID:       model.ID(types.GenerateID()),
 				TypeName: "Forms$SetTaskOutcomeClientAction",
 			},
 			ClosePage:    true,
@@ -1051,7 +1053,7 @@ func (pb *pageBuilder) buildClientActionV3(action *ast.ActionV3) (pages.ClientAc
 		}, nil
 
 	default:
-		return nil, fmt.Errorf("unsupported action type: %s", action.Type)
+		return nil, mdlerrors.NewUnsupported("unsupported action type: " + action.Type)
 	}
 }
 
@@ -1097,7 +1099,7 @@ func (pb *pageBuilder) getEntityNameByID(entityID model.ID) (string, error) {
 			}
 		}
 	}
-	return "", fmt.Errorf("entity not found by ID: %s", entityID)
+	return "", mdlerrors.NewNotFound("entity", string(entityID))
 }
 
 // pageParamBSONType maps a DataType to the BSON $Type string for primitive page parameters.
@@ -1133,9 +1135,9 @@ func (pb *pageBuilder) resolveNanoflowByName(nfName string) (model.ID, error) {
 		name = nfName
 	}
 
-	nanoflows, err := pb.reader.ListNanoflows()
+	nanoflows, err := pb.backend.ListNanoflows()
 	if err != nil {
-		return "", fmt.Errorf("failed to list nanoflows: %w", err)
+		return "", mdlerrors.NewBackend("list nanoflows", err)
 	}
 
 	h, err := pb.getHierarchy()
@@ -1157,7 +1159,7 @@ func (pb *pageBuilder) resolveNanoflowByName(nfName string) (model.ID, error) {
 		}
 	}
 
-	return "", fmt.Errorf("nanoflow not found: %s", nfName)
+	return "", mdlerrors.NewNotFound("nanoflow", nfName)
 }
 
 // mdlTypeToBsonType converts an MDL type name to a BSON DataTypes$* type string.
@@ -1351,11 +1353,11 @@ func (pb *pageBuilder) expandIfFragment(w *ast.WidgetV3) ([]*ast.WidgetV3, error
 	}
 
 	if pb.fragments == nil {
-		return nil, fmt.Errorf("fragment %q not found", w.Name)
+		return nil, mdlerrors.NewNotFound("fragment", w.Name)
 	}
 	frag, ok := pb.fragments[w.Name]
 	if !ok {
-		return nil, fmt.Errorf("fragment %q not found", w.Name)
+		return nil, mdlerrors.NewNotFound("fragment", w.Name)
 	}
 
 	widgets := cloneWidgets(frag.Widgets)

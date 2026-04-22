@@ -105,6 +105,10 @@ createStatement
       | createConfigurationStatement
       | createPublishedRestServiceStatement
       | createDataTransformerStatement
+      | createModelStatement
+      | createConsumedMCPServiceStatement
+      | createKnowledgeBaseStatement
+      | createAgentStatement
       )
     ;
 
@@ -287,6 +291,10 @@ dropStatement
     | DROP REST CLIENT qualifiedName
     | DROP PUBLISHED REST SERVICE qualifiedName
     | DROP DATA TRANSFORMER qualifiedName
+    | DROP MODEL qualifiedName                               // DROP MODEL Module.Name (agent-editor)
+    | DROP CONSUMED MCP SERVICE qualifiedName                // DROP CONSUMED MCP SERVICE Module.Name
+    | DROP KNOWLEDGE BASE qualifiedName                      // DROP KNOWLEDGE BASE Module.Name
+    | DROP AGENT qualifiedName                               // DROP AGENT Module.Name
     | DROP CONFIGURATION STRING_LITERAL
     | DROP FOLDER STRING_LITERAL IN (qualifiedName | IDENTIFIER)
     ;
@@ -806,7 +814,7 @@ alterNotebookAction
 // =============================================================================
 
 createModuleStatement
-    : MODULE IDENTIFIER moduleOptions?
+    : MODULE identifierOrKeyword moduleOptions?
     ;
 
 moduleOptions
@@ -881,6 +889,90 @@ imageName
     : IDENTIFIER
     | QUOTED_IDENTIFIER
     | keyword
+    ;
+
+// =============================================================================
+// AGENT-EDITOR MODEL CREATION
+// =============================================================================
+// CREATE MODEL Module.Name (
+//   Provider: MxCloudGenAI,
+//   Key: Module.SomeConstant
+//   [, DisplayName: '...', KeyName: '...', etc. — Portal-populated metadata]
+// );
+createModelStatement
+    : MODEL qualifiedName
+      LPAREN modelProperty (COMMA modelProperty)* RPAREN
+    ;
+
+modelProperty
+    : identifierOrKeyword COLON identifierOrKeyword       // Provider: MxCloudGenAI
+    | identifierOrKeyword COLON qualifiedName             // Key: Module.Constant
+    | identifierOrKeyword COLON STRING_LITERAL            // DisplayName: 'GPT-4 Turbo' etc.
+    | identifierOrKeyword COLON NUMBER_LITERAL            // ConnectionTimeoutSeconds: 30
+    | identifierOrKeyword COLON booleanLiteral            // Enabled: true
+    | identifierOrKeyword COLON DOLLAR_STRING              // SystemPrompt: $$multi-line...$$
+    | identifierOrKeyword COLON LPAREN variableDefList RPAREN  // Variables: ("Key": EntityAttribute, ...)
+    ;
+
+variableDefList
+    : variableDef (COMMA variableDef)*
+    ;
+
+variableDef
+    : (STRING_LITERAL | QUOTED_IDENTIFIER) COLON identifierOrKeyword  // "Key": EntityAttribute
+    ;
+
+// =============================================================================
+// AGENT-EDITOR CONSUMED MCP SERVICE CREATION
+// =============================================================================
+// CREATE CONSUMED MCP SERVICE Module.Name (
+//   ProtocolVersion: v2025_03_26,
+//   Version: '0.0.1',
+//   ConnectionTimeoutSeconds: 30,
+//   Documentation: '...'
+// );
+createConsumedMCPServiceStatement
+    : CONSUMED MCP SERVICE qualifiedName
+      LPAREN modelProperty (COMMA modelProperty)* RPAREN
+    ;
+
+// =============================================================================
+// AGENT-EDITOR KNOWLEDGE BASE CREATION
+// =============================================================================
+// CREATE KNOWLEDGE BASE Module.Name (
+//   Provider: MxCloudGenAI,
+//   Key: Module.SomeConstant
+// );
+createKnowledgeBaseStatement
+    : KNOWLEDGE BASE qualifiedName
+      LPAREN modelProperty (COMMA modelProperty)* RPAREN
+    ;
+
+// =============================================================================
+// AGENT-EDITOR AGENT CREATION
+// =============================================================================
+// CREATE AGENT Module.Name (
+//   UsageType: Task,
+//   Model: Module.MyModel,
+//   SystemPrompt: '...',
+//   ...
+// )
+// [ { TOOL ... | MCP SERVICE ... | KNOWLEDGE BASE ... } ]
+// ;
+createAgentStatement
+    : AGENT qualifiedName
+      LPAREN modelProperty (COMMA modelProperty)* RPAREN
+      agentBody?
+    ;
+
+agentBody
+    : LBRACE agentBodyBlock* RBRACE
+    ;
+
+agentBodyBlock
+    : MCP SERVICE qualifiedName LBRACE modelProperty (COMMA modelProperty)* RBRACE       // MCP SERVICE Mod.Name { ... }
+    | KNOWLEDGE BASE identifierOrKeyword LBRACE modelProperty (COMMA modelProperty)* RBRACE // KNOWLEDGE BASE MyKB { ... }
+    | TOOL identifierOrKeyword LBRACE modelProperty (COMMA modelProperty)* RBRACE        // TOOL ToolName { ... }
     ;
 
 // =============================================================================
@@ -1697,6 +1789,7 @@ listOperation
     | SUBTRACT LPAREN VARIABLE COMMA VARIABLE RPAREN                   // $var = SUBTRACT($list1, $list2)
     | CONTAINS LPAREN VARIABLE COMMA VARIABLE RPAREN                   // $bool = CONTAINS($list, $item)
     | EQUALS_OP LPAREN VARIABLE COMMA VARIABLE RPAREN                  // $bool = EQUALS($list1, $list2)
+    | RANGE LPAREN VARIABLE (COMMA expression (COMMA expression)?)? RPAREN // $var = RANGE($list, offset, limit)
     ;
 
 sortSpecList
@@ -2406,7 +2499,8 @@ createRestClientStatement
 
 restClientProperty
     : identifierOrKeyword COLON STRING_LITERAL                       // BaseUrl: '...', Username: '...'
-    | identifierOrKeyword COLON VARIABLE                             // Username: $Constant (stored as Rest$ConstantValue)
+    | identifierOrKeyword COLON VARIABLE                             // Username: $Constant (legacy, stored as Rest$ConstantValue)
+    | identifierOrKeyword COLON AT qualifiedName                     // Username: @Module.Constant (preferred Mendix convention)
     | identifierOrKeyword COLON NONE                                 // Authentication: NONE
     | identifierOrKeyword COLON BASIC LPAREN restClientProperty (COMMA restClientProperty)* RPAREN
     ;
@@ -2560,6 +2654,7 @@ odataPropertyValue
     | TRUE
     | FALSE
     | MICROFLOW qualifiedName?
+    | AT qualifiedName              // @Module.ConstantName (Mendix constant reference — required for ServiceUrl)
     | qualifiedName
     ;
 
@@ -3666,7 +3761,7 @@ keyword
     | STORE | STRUCTURE | STRUCTURES | VIEW
 
     // Agent editor
-    | AGENT | AGENTS | KNOWLEDGE | BASES | CONSUMED | MCP
+    | AGENT | AGENTS | KNOWLEDGE | BASES | CONSUMED | MCP | TOOL
 
     // Microflow / Nanoflow
     | MICROFLOW | MICROFLOWS | NANOFLOW | NANOFLOWS
