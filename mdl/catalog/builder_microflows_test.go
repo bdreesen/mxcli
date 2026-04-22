@@ -6,7 +6,15 @@ import (
 	"testing"
 
 	"github.com/mendixlabs/mxcli/sdk/microflows"
+	"github.com/mendixlabs/mxcli/model"
 )
+
+// unknownMicroflowObject satisfies MicroflowObject but is not in the type switch.
+type unknownMicroflowObject struct{}
+
+func (u *unknownMicroflowObject) GetID() model.ID          { return "" }
+func (u *unknownMicroflowObject) GetPosition() model.Point { return model.Point{} }
+func (u *unknownMicroflowObject) SetPosition(model.Point)  {}
 
 func TestGetMicroflowObjectType(t *testing.T) {
 	tests := []struct {
@@ -25,6 +33,7 @@ func TestGetMicroflowObjectType(t *testing.T) {
 		{"BreakEvent", &microflows.BreakEvent{}, "BreakEvent"},
 		{"ContinueEvent", &microflows.ContinueEvent{}, "ContinueEvent"},
 		{"ErrorEvent", &microflows.ErrorEvent{}, "ErrorEvent"},
+		{"unknown object falls to default", &unknownMicroflowObject{}, "MicroflowObject"},
 	}
 
 	for _, tt := range tests {

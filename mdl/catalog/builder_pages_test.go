@@ -146,6 +146,29 @@ func TestExtractWidgetsRecursive(t *testing.T) {
 		}
 	})
 
+	t.Run("skips Pages$DivContainer but includes children", func(t *testing.T) {
+		w := map[string]any{
+			"$ID":   "div2",
+			"Name":  "pagesDivContainer",
+			"$Type": "Pages$DivContainer",
+			"Widgets": []any{
+				int32(0),
+				map[string]any{
+					"$ID":   "child2",
+					"Name":  "childWidget2",
+					"$Type": "Pages$Button",
+				},
+			},
+		}
+		got := extractWidgetsRecursive(w)
+		if len(got) != 1 {
+			t.Fatalf("expected 1 widget (child only), got %d", len(got))
+		}
+		if got[0].ID != "child2" {
+			t.Errorf("expected child2, got %q", got[0].ID)
+		}
+	})
+
 	t.Run("CustomWidget resolves WidgetId", func(t *testing.T) {
 		w := map[string]any{
 			"$ID":   "cw1",
@@ -412,9 +435,9 @@ func TestFormatGUID(t *testing.T) {
 			want: "00000000-0000-0000-0000-000000000000",
 		},
 		{
-			name: "short data — returns as string",
-			data: []byte{0x01, 0x02},
-			want: "\x01\x02",
+			name: "short data — returns raw string passthrough",
+			data: []byte{0x41, 0x42},
+			want: "AB",
 		},
 	}
 
