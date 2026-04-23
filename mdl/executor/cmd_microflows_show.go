@@ -280,8 +280,7 @@ func describeMicroflow(ctx *ExecContext, name ast.QualifiedName) error {
 		if len(freeAnnots) > 0 && len(activityLines) > 0 {
 			prefix := make([]string, 0, len(freeAnnots))
 			for _, text := range freeAnnots {
-				escaped := strings.ReplaceAll(text, "'", "''")
-				prefix = append(prefix, fmt.Sprintf("@annotation '%s'", escaped))
+				prefix = append(prefix, fmt.Sprintf("@annotation %s", mdlQuote(text)))
 			}
 			activityLines = append(prefix, activityLines...)
 		}
@@ -546,8 +545,7 @@ func renderMicroflowMDL(
 		if len(freeAnnots) > 0 && len(activityLines) > 0 {
 			prefix := make([]string, 0, len(freeAnnots))
 			for _, text := range freeAnnots {
-				escaped := strings.ReplaceAll(text, "'", "''")
-				prefix = append(prefix, fmt.Sprintf("@annotation '%s'", escaped))
+				prefix = append(prefix, fmt.Sprintf("@annotation %s", mdlQuote(text)))
 			}
 			activityLines = append(prefix, activityLines...)
 		}
@@ -650,10 +648,13 @@ func formatMicroflowActivities(
 		}
 	}
 
-	// Build flow graph: map from origin ID to flows (sorted by OriginConnectionIndex)
+	// Build flow graph: map from origin ID to flows (sorted by OriginConnectionIndex).
+	// Build the inverse destination→flows map for @anchor emission.
 	flowsByOrigin := make(map[model.ID][]*microflows.SequenceFlow)
+	flowsByDest := make(map[model.ID][]*microflows.SequenceFlow)
 	for _, flow := range mf.ObjectCollection.Flows {
 		flowsByOrigin[flow.OriginID] = append(flowsByOrigin[flow.OriginID], flow)
+		flowsByDest[flow.DestinationID] = append(flowsByDest[flow.DestinationID], flow)
 	}
 
 	var lines []string
@@ -680,7 +681,10 @@ func formatMicroflowActivities(
 	// Build annotation map for @annotation emission
 	annotationsByTarget := buildAnnotationsByTarget(mf.ObjectCollection)
 
-	traverseFlow(ctx, startID, activityMap, flowsByOrigin, splitMergeMap, visited, entityNames, microflowNames, &lines, 0, nil, 0, annotationsByTarget)
+	// flowsByOrigin / flowsByDest are threaded into traverseFlow so @anchor
+	// emission is per-call — no package-level globals, safe under concurrent
+	// describe (e.g. captureDescribeParallel).
+	traverseFlow(ctx, startID, activityMap, flowsByOrigin, flowsByDest, splitMergeMap, visited, entityNames, microflowNames, &lines, 0, nil, 0, annotationsByTarget)
 
 	return lines
 }
@@ -711,8 +715,10 @@ func formatMicroflowActivitiesWithSourceMap(
 	}
 
 	flowsByOrigin := make(map[model.ID][]*microflows.SequenceFlow)
+	flowsByDest := make(map[model.ID][]*microflows.SequenceFlow)
 	for _, flow := range mf.ObjectCollection.Flows {
 		flowsByOrigin[flow.OriginID] = append(flowsByOrigin[flow.OriginID], flow)
+		flowsByDest[flow.DestinationID] = append(flowsByDest[flow.DestinationID], flow)
 	}
 
 	var lines []string
@@ -734,7 +740,7 @@ func formatMicroflowActivitiesWithSourceMap(
 	// Build annotation map for @annotation emission
 	annotationsByTarget := buildAnnotationsByTarget(mf.ObjectCollection)
 
-	traverseFlow(ctx, startID, activityMap, flowsByOrigin, splitMergeMap, visited, entityNames, microflowNames, &lines, 0, sourceMap, headerLineCount, annotationsByTarget)
+	traverseFlow(ctx, startID, activityMap, flowsByOrigin, flowsByDest, splitMergeMap, visited, entityNames, microflowNames, &lines, 0, sourceMap, headerLineCount, annotationsByTarget)
 
 	return lines
 }
