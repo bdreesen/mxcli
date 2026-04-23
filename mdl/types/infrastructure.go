@@ -23,6 +23,14 @@ type ProjectVersion struct {
 	PatchVersion   int
 }
 
+// IsAtLeast returns true if this version is at least the specified major.minor version.
+func (v *ProjectVersion) IsAtLeast(major, minor int) bool {
+	if v.MajorVersion > major {
+		return true
+	}
+	return v.MajorVersion == major && v.MinorVersion >= minor
+}
+
 // FolderInfo is a lightweight folder descriptor.
 type FolderInfo struct {
 	ID          model.ID

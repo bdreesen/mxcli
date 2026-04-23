@@ -15,8 +15,8 @@ import (
 	"testing"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	"github.com/mendixlabs/mxcli/mdl/types"
 	"github.com/mendixlabs/mxcli/mdl/visitor"
-	"github.com/mendixlabs/mxcli/sdk/mpr/version"
 )
 
 // scriptModuleDeps maps script filenames to marketplace module MPKs they require.
@@ -228,7 +228,7 @@ type versionConstraint struct {
 }
 
 // matches returns true if the project version satisfies this constraint.
-func (vc *versionConstraint) matches(pv *version.ProjectVersion) bool {
+func (vc *versionConstraint) matches(pv *types.ProjectVersion) bool {
 	if vc.minMajor >= 0 {
 		if !pv.IsAtLeast(vc.minMajor, vc.minMinor) {
 			return false
@@ -321,7 +321,7 @@ func parseMajorMinor(s string) (int, int, bool) {
 // Sections are delimited by "-- @version: <constraint>" directives.
 // A directive applies to all following lines until the next directive or end of file.
 // "-- @version: any" resets to unconditional inclusion.
-func filterByVersion(content string, pv *version.ProjectVersion) (string, int) {
+func filterByVersion(content string, pv *types.ProjectVersion) (string, int) {
 	var result strings.Builder
 	var currentConstraint *versionConstraint // nil = no constraint (always include)
 	skippedLines := 0
