@@ -694,16 +694,6 @@ func captureDescribeParallel(ctx *ExecContext, objectType string, qualifiedName 
 		Cache:   ctx.Cache,
 		MprPath: ctx.MprPath,
 	}
-	// If a backing Executor exists, create a local one for handlers that still
-	// need e.backend/e.output (e.g., describeMicroflow via writeDescribeJSON).
-	if ctx.executor != nil {
-		local := &Executor{
-			backend: ctx.executor.backend,
-			output:  &buf,
-			cache:   ctx.Cache,
-		}
-		localCtx.executor = local
-	}
 
 	var err error
 	switch strings.ToLower(objectType) {

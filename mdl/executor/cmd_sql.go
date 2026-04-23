@@ -238,12 +238,11 @@ func execSQLGenerateConnector(ctx *ExecContext, s *ast.SQLGenerateConnectorStmt)
 
 // executeGeneratedMDL parses and executes MDL text as if it were a script.
 func executeGeneratedMDL(ctx *ExecContext, mdl string) error {
-	e := ctx.executor
 	prog, errs := visitor.Build(mdl)
 	if len(errs) > 0 {
 		return mdlerrors.NewBackend("parse generated MDL", fmt.Errorf("%v", errs[0]))
 	}
-	return e.ExecuteProgram(prog)
+	return ctx.ExecuteProgramFn(prog)
 }
 
 // execSQLDescribeTable handles SQL <alias> DESCRIBE <table>

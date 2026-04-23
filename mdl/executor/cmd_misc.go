@@ -392,7 +392,6 @@ func execExit(ctx *ExecContext) error {
 
 // execExecuteScript handles EXECUTE SCRIPT statements.
 func execExecuteScript(ctx *ExecContext, s *ast.ExecuteScriptStmt) error {
-	e := ctx.executor
 	// Resolve path relative to current working directory
 	scriptPath := s.Path
 	if !filepath.IsAbs(scriptPath) {
@@ -425,7 +424,7 @@ func execExecuteScript(ctx *ExecContext, s *ast.ExecuteScriptStmt) error {
 	// Execute all statements in the script
 	fmt.Fprintf(ctx.Output, "Executing script: %s\n", s.Path)
 	for _, stmt := range prog.Statements {
-		if err := e.Execute(stmt); err != nil {
+		if err := ctx.ExecuteFn(stmt); err != nil {
 			// Exit within a script just stops the script, doesn't exit mxcli
 			if errors.Is(err, ErrExit) {
 				fmt.Fprintf(ctx.Output, "Script exited: %s\n", s.Path)

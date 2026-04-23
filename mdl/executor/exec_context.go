@@ -65,11 +65,23 @@ type ExecContext struct {
 	// Settings holds session-scoped key-value settings (SET command).
 	Settings map[string]any
 
-	// executor is a temporary back-reference used during incremental migration.
-	// Handlers that have not yet been migrated to use Backend can access the
-	// original Executor through this field. Remove once all handlers are fully
-	// migrated to ctx.Backend (tracked: ~7 e := ctx.executor sites remain).
-	executor *Executor
+	// BackendFactory creates new backend instances (used by connect/reconnect).
+	BackendFactory BackendFactory
+
+	// OutputGuard is the line-limit guard wrapping Output (nil-safe).
+	// Used by writeDescribeJSON to temporarily disable line limiting during capture.
+	OutputGuard *outputGuard
+
+	// ExecuteFn dispatches a single statement through the Executor's full
+	// pipeline (line-limit reset, wall-clock timeout, logging). Set by
+	// newExecContext; used by script execution and generated-MDL dispatch.
+	ExecuteFn func(ast.Statement) error
+
+	// ExecuteProgramFn dispatches a full program (all statements + finalization).
+	ExecuteProgramFn func(*ast.Program) error
+
+	// FinalizeFn runs post-execution reconciliation (security rule sync).
+	FinalizeFn func() error
 }
 
 // Connected returns true if a project is connected via the Backend.

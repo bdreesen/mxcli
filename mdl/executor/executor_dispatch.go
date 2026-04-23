@@ -18,9 +18,9 @@ func (e *Executor) executeInner(ctx context.Context, stmt ast.Statement) error {
 
 // syncBack copies mutated ExecContext fields back to the Executor so that
 // the next newExecContext call picks up handler-side state changes.
-// This replaces the scattered ctx.executor.field = ctx.Field write-backs
-// that previously lived inside individual handlers.
 func (e *Executor) syncBack(ctx *ExecContext) {
+	e.backend = ctx.Backend
+	e.mprPath = ctx.MprPath
 	e.cache = ctx.Cache
 	e.catalog = ctx.Catalog
 	e.settings = ctx.Settings
@@ -32,20 +32,24 @@ func (e *Executor) syncBack(ctx *ExecContext) {
 // newExecContext builds an ExecContext from the current Executor state.
 func (e *Executor) newExecContext(ctx context.Context) *ExecContext {
 	return &ExecContext{
-		Context:       ctx,
-		Backend:       e.backend,
-		Output:        e.output,
-		Format:        e.format,
-		Quiet:         e.quiet,
-		Logger:        e.logger,
-		Fragments:     e.fragments,
-		Catalog:       e.catalog,
-		Cache:         e.cache,
-		MprPath:       e.mprPath,
-		SqlMgr:        e.sqlMgr,
-		ThemeRegistry: e.themeRegistry,
-		Settings:      e.settings,
-		executor:      e,
+		Context:          ctx,
+		Backend:          e.backend,
+		Output:           e.output,
+		Format:           e.format,
+		Quiet:            e.quiet,
+		Logger:           e.logger,
+		Fragments:        e.fragments,
+		Catalog:          e.catalog,
+		Cache:            e.cache,
+		MprPath:          e.mprPath,
+		SqlMgr:           e.sqlMgr,
+		ThemeRegistry:    e.themeRegistry,
+		Settings:         e.settings,
+		BackendFactory:   e.backendFactory,
+		OutputGuard:      e.guard,
+		ExecuteFn:        e.Execute,
+		ExecuteProgramFn: e.ExecuteProgram,
+		FinalizeFn:       e.finalizeProgramExecution,
 	}
 }
 
