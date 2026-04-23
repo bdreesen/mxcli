@@ -66,3 +66,9 @@ func (s *SqliteCatalogDB) Close() error {
 func (s *SqliteCatalogDB) RawDB() *sql.DB {
 	return s.db
 }
+
+// WrapSqlDB wraps an existing *sql.DB as a CatalogDB.
+// Used by tests that create their own in-memory databases.
+func WrapSqlDB(db *sql.DB) *SqliteCatalogDB {
+	return &SqliteCatalogDB{db: db}
+}
