@@ -65,6 +65,28 @@ type DropMicroflowStmt struct {
 
 func (s *DropMicroflowStmt) isStatement() {}
 
+// CreateNanoflowStmt represents: CREATE NANOFLOW Module.Name (params) RETURNS type BEGIN body END
+type CreateNanoflowStmt struct {
+	Name           QualifiedName
+	Parameters     []MicroflowParam
+	ReturnType     *MicroflowReturnType
+	Body           []MicroflowStatement
+	Documentation  string
+	Comment        string
+	Folder         string // Folder path within module
+	CreateOrModify bool
+	Excluded       bool // @excluded — document excluded from project
+}
+
+func (s *CreateNanoflowStmt) isStatement() {}
+
+// DropNanoflowStmt represents: DROP NANOFLOW Module.Name
+type DropNanoflowStmt struct {
+	Name QualifiedName
+}
+
+func (s *DropNanoflowStmt) isStatement() {}
+
 // ============================================================================
 // Microflow Body Statements
 // ============================================================================

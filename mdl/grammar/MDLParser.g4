@@ -109,6 +109,7 @@ createStatement
       | createConsumedMCPServiceStatement
       | createKnowledgeBaseStatement
       | createAgentStatement
+      | createNanoflowStatement
       )
     ;
 
@@ -1162,6 +1163,14 @@ attributeReferenceList
  */
 createMicroflowStatement
     : MICROFLOW qualifiedName
+      LPAREN microflowParameterList? RPAREN
+      microflowReturnType?
+      microflowOptions?
+      BEGIN microflowBody END SEMICOLON? SLASH?
+    ;
+
+createNanoflowStatement
+    : NANOFLOW qualifiedName
       LPAREN microflowParameterList? RPAREN
       microflowReturnType?
       microflowOptions?
