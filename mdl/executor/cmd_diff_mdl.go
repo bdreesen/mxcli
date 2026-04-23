@@ -372,6 +372,18 @@ func microflowStatementToMDL(ctx *ExecContext, stmt ast.MicroflowStatement, inde
 			lines = append(lines, fmt.Sprintf("%scall microflow %s(%s);", indentStr, s.MicroflowName, paramStr))
 		}
 
+	case *ast.CallNanoflowStmt:
+		var params []string
+		for _, arg := range s.Arguments {
+			params = append(params, fmt.Sprintf("%s = %s", arg.Name, diffExpressionToString(ctx, arg.Value)))
+		}
+		paramStr := strings.Join(params, ", ")
+		if s.OutputVariable != "" {
+			lines = append(lines, fmt.Sprintf("%s$%s = call nanoflow %s(%s);", indentStr, s.OutputVariable, s.NanoflowName, paramStr))
+		} else {
+			lines = append(lines, fmt.Sprintf("%scall nanoflow %s(%s);", indentStr, s.NanoflowName, paramStr))
+		}
+
 	case *ast.BreakStmt:
 		lines = append(lines, indentStr+"break;")
 

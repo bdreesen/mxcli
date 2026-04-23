@@ -138,6 +138,21 @@ func (fb *flowBuilder) validateStatement(stmt ast.MicroflowStatement) {
 			fb.validateStatements(s.ErrorHandling.Body)
 		}
 
+	case *ast.CallNanoflowStmt:
+		// Register result variable if assigned
+		if s.OutputVariable != "" {
+			nfQN := s.NanoflowName.Module + "." + s.NanoflowName.Name
+			if returnType := fb.lookupNanoflowReturnType(nfQN); returnType != nil {
+				fb.registerResultVariableType(s.OutputVariable, returnType)
+			} else {
+				fb.declaredVars[s.OutputVariable] = "Unknown"
+			}
+		}
+		// Validate error handler body if present
+		if s.ErrorHandling != nil && len(s.ErrorHandling.Body) > 0 {
+			fb.validateStatements(s.ErrorHandling.Body)
+		}
+
 	case *ast.CallJavaActionStmt:
 		// Register result variable if assigned
 		if s.OutputVariable != "" {

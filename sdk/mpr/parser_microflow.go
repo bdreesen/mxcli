@@ -540,6 +540,7 @@ var microflowActionParsers = map[string]func(map[string]any) microflows.Microflo
 
 	// Integration actions
 	"Microflows$MicroflowCallAction":  func(r map[string]any) microflows.MicroflowAction { return parseMicroflowCallAction(r) },
+	"Microflows$NanoflowCallAction":   func(r map[string]any) microflows.MicroflowAction { return parseNanoflowCallAction(r) },
 	"Microflows$JavaActionCallAction": func(r map[string]any) microflows.MicroflowAction { return parseJavaActionCallAction(r) },
 	"Microflows$CallExternalAction":   func(r map[string]any) microflows.MicroflowAction { return parseCallExternalAction(r) },
 

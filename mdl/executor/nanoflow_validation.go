@@ -84,6 +84,8 @@ func getErrorHandling(stmt ast.MicroflowStatement) *ast.ErrorHandlingClause {
 		return s.ErrorHandling
 	case *ast.CallMicroflowStmt:
 		return s.ErrorHandling
+	case *ast.CallNanoflowStmt:
+		return s.ErrorHandling
 	case *ast.CallJavaActionStmt:
 		return s.ErrorHandling
 	case *ast.CallExternalActionStmt:

@@ -776,13 +776,14 @@ func (w *Writer) serializeNanoflow(nf *microflows.Nanoflow) ([]byte, error) {
 	}
 
 	doc := bson.M{
-		"$ID":           string(nf.ID),
-		"$Type":         nf.TypeName,
-		"Name":          nf.Name,
-		"Documentation": nf.Documentation,
-		"MarkAsUsed":    nf.MarkAsUsed,
-		"Excluded":      nf.Excluded,
-		"Parameters":    params,
+		"$ID":                string(nf.ID),
+		"$Type":              nf.TypeName,
+		"Name":               nf.Name,
+		"Documentation":      nf.Documentation,
+		"MarkAsUsed":         nf.MarkAsUsed,
+		"Excluded":           nf.Excluded,
+		"AllowedModuleRoles": allowedModuleRolesArray(nf.AllowedModuleRoles),
+		"Parameters":         params,
 	}
 	return bson.Marshal(doc)
 }

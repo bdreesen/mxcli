@@ -40,6 +40,13 @@ func (r *Reader) parseNanoflow(unitID, containerID string, contents []byte) (*mi
 		nf.Excluded = excluded
 	}
 
+	// Parse AllowedModuleRoles
+	for _, r := range extractBsonArray(raw["AllowedModuleRoles"]) {
+		if roleID, ok := r.(string); ok {
+			nf.AllowedModuleRoles = append(nf.AllowedModuleRoles, model.ID(roleID))
+		}
+	}
+
 	// Parse parameters (same format variants as microflows)
 	var paramsArray any
 	if mpc, ok := raw["MicroflowParameterCollection"]; ok {

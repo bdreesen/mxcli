@@ -358,6 +358,8 @@ securityStatement
     | revokeEntityAccessStatement
     | grantMicroflowAccessStatement
     | revokeMicroflowAccessStatement
+    | grantNanoflowAccessStatement
+    | revokeNanoflowAccessStatement
     | grantPageAccessStatement
     | revokePageAccessStatement
     | grantWorkflowAccessStatement
@@ -411,6 +413,14 @@ grantMicroflowAccessStatement
 
 revokeMicroflowAccessStatement
     : REVOKE EXECUTE ON MICROFLOW qualifiedName FROM moduleRoleList
+    ;
+
+grantNanoflowAccessStatement
+    : GRANT EXECUTE ON NANOFLOW qualifiedName TO moduleRoleList
+    ;
+
+revokeNanoflowAccessStatement
+    : REVOKE EXECUTE ON NANOFLOW qualifiedName FROM moduleRoleList
     ;
 
 grantPageAccessStatement
@@ -1277,6 +1287,7 @@ microflowStatement
     | annotation* raiseErrorStatement SEMICOLON?
     | annotation* logStatement SEMICOLON?
     | annotation* callMicroflowStatement SEMICOLON?
+    | annotation* callNanoflowStatement SEMICOLON?
     | annotation* callJavaActionStatement SEMICOLON?
     | annotation* executeDatabaseQueryStatement SEMICOLON?
     | annotation* callExternalActionStatement SEMICOLON?
@@ -1440,6 +1451,10 @@ logTemplateParam: templateParam;
 // $Result = CALL MICROFLOW MfTest.M001_HelloWorld(); or CALL MICROFLOW MfTest.M001_HelloWorld();
 callMicroflowStatement
     : (VARIABLE EQUALS)? CALL MICROFLOW qualifiedName LPAREN callArgumentList? RPAREN onErrorClause?
+    ;
+
+callNanoflowStatement
+    : (VARIABLE EQUALS)? CALL NANOFLOW qualifiedName LPAREN callArgumentList? RPAREN onErrorClause?
     ;
 
 // $Result = CALL JAVA ACTION CustomActivities.ExecuteOQL(OqlStatement = '...');

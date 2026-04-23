@@ -234,6 +234,40 @@ func serializeMicroflowAction(action microflows.MicroflowAction) bson.D {
 		)
 		return doc
 
+	case *microflows.NanoflowCallAction:
+		doc := bson.D{
+			{Key: "$ID", Value: idToBsonBinary(string(a.ID))},
+			{Key: "$Type", Value: "Microflows$NanoflowCallAction"},
+			{Key: "ErrorHandlingType", Value: stringOrDefault(string(a.ErrorHandlingType), "Rollback")},
+			{Key: "ResultVariableName", Value: a.ResultVariableName},
+			{Key: "UseReturnVariable", Value: a.UseReturnVariable},
+		}
+		if a.NanoflowCall != nil {
+			nfCall := bson.D{
+				{Key: "$ID", Value: idToBsonBinary(string(a.NanoflowCall.ID))},
+				{Key: "$Type", Value: "Microflows$NanoflowCall"},
+				{Key: "Nanoflow", Value: a.NanoflowCall.Nanoflow},
+			}
+			if len(a.NanoflowCall.ParameterMappings) > 0 {
+				var mappings bson.A
+				mappings = append(mappings, int32(2))
+				for _, pm := range a.NanoflowCall.ParameterMappings {
+					mapping := bson.D{
+						{Key: "$ID", Value: idToBsonBinary(string(pm.ID))},
+						{Key: "$Type", Value: "Microflows$NanoflowCallParameterMapping"},
+						{Key: "Parameter", Value: pm.Parameter},
+						{Key: "Argument", Value: pm.Argument},
+					}
+					mappings = append(mappings, mapping)
+				}
+				nfCall = append(nfCall, bson.E{Key: "ParameterMappings", Value: mappings})
+			} else {
+				nfCall = append(nfCall, bson.E{Key: "ParameterMappings", Value: bson.A{int32(2)}})
+			}
+			doc = append(doc, bson.E{Key: "NanoflowCall", Value: nfCall})
+		}
+		return doc
+
 	case *microflows.JavaActionCallAction:
 		doc := bson.D{
 			{Key: "$ID", Value: idToBsonBinary(string(a.ID))},

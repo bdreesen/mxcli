@@ -18,6 +18,7 @@ type scriptContext struct {
 	entities     map[string]bool // Entities created (Module.Entity)
 	enumerations map[string]bool // Enumerations created (Module.Enum)
 	microflows   map[string]bool // Microflows created (Module.Microflow)
+	nanoflows    map[string]bool // Nanoflows created (Module.Nanoflow)
 	pages        map[string]bool // Pages created (Module.Page)
 	snippets     map[string]bool // Snippets created (Module.Snippet)
 }
@@ -29,6 +30,7 @@ func newScriptContext() *scriptContext {
 		entities:     make(map[string]bool),
 		enumerations: make(map[string]bool),
 		microflows:   make(map[string]bool),
+		nanoflows:    make(map[string]bool),
 		pages:        make(map[string]bool),
 		snippets:     make(map[string]bool),
 	}
@@ -59,6 +61,10 @@ func (sc *scriptContext) collectDefinitions(prog *ast.Program) {
 		case *ast.CreateMicroflowStmt:
 			if s.Name.Module != "" {
 				sc.microflows[s.Name.String()] = true
+			}
+		case *ast.CreateNanoflowStmt:
+			if s.Name.Module != "" {
+				sc.nanoflows[s.Name.String()] = true
 			}
 		case *ast.CreatePageStmtV3:
 			if s.Name.Module != "" {
@@ -96,6 +102,10 @@ func (sc *scriptContext) collectSingle(stmt ast.Statement) {
 	case *ast.CreateMicroflowStmt:
 		if s.Name.Module != "" {
 			sc.microflows[s.Name.String()] = true
+		}
+	case *ast.CreateNanoflowStmt:
+		if s.Name.Module != "" {
+			sc.nanoflows[s.Name.String()] = true
 		}
 	case *ast.CreatePageStmtV3:
 		if s.Name.Module != "" {
@@ -148,7 +158,7 @@ func annotateForwardRef(err error, _ ast.Statement, created, allDefined *scriptC
 // has returns true if the name exists in any category.
 func (sc *scriptContext) has(name string) bool {
 	return sc.modules[name] || sc.entities[name] || sc.enumerations[name] ||
-		sc.microflows[name] || sc.pages[name] || sc.snippets[name]
+		sc.microflows[name] || sc.nanoflows[name] || sc.pages[name] || sc.snippets[name]
 }
 
 // validateProgram validates all statements in a program, skipping references
@@ -272,6 +282,17 @@ func validateWithContext(ctx *ExecContext, stmt ast.Statement, sc *scriptContext
 			return mdlerrors.NewValidationf("microflow '%s' has reference errors:\n  - %s",
 				s.Name.String(), strings.Join(refErrors, "\n  - "))
 		}
+	case *ast.CreateNanoflowStmt:
+		if s.Name.Module != "" && !sc.modules[s.Name.Module] {
+			if _, err := findModule(ctx, s.Name.Module); err != nil {
+				return mdlerrors.NewNotFound("module", s.Name.Module)
+			}
+		}
+		// Validate references inside nanoflow body
+		if refErrors := validateFlowBodyReferences(ctx, s.Body, sc); len(refErrors) > 0 {
+			return mdlerrors.NewValidationf("nanoflow '%s' has reference errors:\n  - %s",
+				s.Name.String(), strings.Join(refErrors, "\n  - "))
+		}
 	case *ast.CreatePageStmtV3:
 		if s.Name.Module != "" && !sc.modules[s.Name.Module] {
 			if _, err := findModule(ctx, s.Name.Module); err != nil {
@@ -393,7 +414,12 @@ func (e *Executor) Validate(stmt ast.Statement) error {
 // validateMicroflowReferences validates that all qualified name references in a
 // microflow body (pages, microflows, java actions, entities) point to existing objects.
 func validateMicroflowReferences(ctx *ExecContext, s *ast.CreateMicroflowStmt, sc *scriptContext) []string {
-	if !ctx.Connected() || len(s.Body) == 0 {
+	return validateFlowBodyReferences(ctx, s.Body, sc)
+}
+
+// validateFlowBodyReferences validates references in any flow body (microflow or nanoflow).
+func validateFlowBodyReferences(ctx *ExecContext, body []ast.MicroflowStatement, sc *scriptContext) []string {
+	if !ctx.Connected() || len(body) == 0 {
 		return nil
 	}
 	if s.Excluded {
@@ -403,9 +429,8 @@ func validateMicroflowReferences(ctx *ExecContext, s *ast.CreateMicroflowStmt, s
 		return nil
 	}
 
-	// Collect all references from the microflow body
-	refs := &microflowRefCollector{}
-	refs.collectFromStatements(s.Body)
+	refs := &flowRefCollector{}
+	refs.collectFromStatements(body)
 
 	if refs.empty() {
 		return nil
@@ -431,6 +456,15 @@ func validateMicroflowReferences(ctx *ExecContext, s *ast.CreateMicroflowStmt, s
 		}
 	}
 
+	if len(refs.nanoflows) > 0 {
+		known := buildNanoflowQualifiedNames(ctx)
+		for _, ref := range refs.nanoflows {
+			if !known[ref] && !sc.nanoflows[ref] {
+				errors = append(errors, fmt.Sprintf("nanoflow not found: %s (referenced by call nanoflow)", ref))
+			}
+		}
+	}
+
 	if len(refs.javaActions) > 0 {
 		known := buildJavaActionQualifiedNames(ctx)
 		for _, ref := range refs.javaActions {
@@ -452,10 +486,11 @@ func validateMicroflowReferences(ctx *ExecContext, s *ast.CreateMicroflowStmt, s
 	return errors
 }
 
-// microflowRefCollector collects qualified name references from microflow statements.
-type microflowRefCollector struct {
+// flowRefCollector collects qualified name references from flow body statements.
+type flowRefCollector struct {
 	pages       []string
 	microflows  []string
+	nanoflows   []string
 	javaActions []string
 	entities    []entityRef
 }
@@ -466,12 +501,12 @@ type entityRef struct {
 	source string // e.g., "CREATE", "RETRIEVE", "CREATE LIST OF"
 }
 
-func (c *microflowRefCollector) empty() bool {
-	return len(c.pages) == 0 && len(c.microflows) == 0 &&
+func (c *flowRefCollector) empty() bool {
+	return len(c.pages) == 0 && len(c.microflows) == 0 && len(c.nanoflows) == 0 &&
 		len(c.javaActions) == 0 && len(c.entities) == 0
 }
 
-func (c *microflowRefCollector) collectFromStatements(stmts []ast.MicroflowStatement) {
+func (c *flowRefCollector) collectFromStatements(stmts []ast.MicroflowStatement) {
 	for _, stmt := range stmts {
 		switch s := stmt.(type) {
 		case *ast.ShowPageStmt:
@@ -481,6 +516,10 @@ func (c *microflowRefCollector) collectFromStatements(stmts []ast.MicroflowState
 		case *ast.CallMicroflowStmt:
 			if s.MicroflowName.Module != "" {
 				c.microflows = append(c.microflows, s.MicroflowName.String())
+			}
+		case *ast.CallNanoflowStmt:
+			if s.NanoflowName.Module != "" {
+				c.nanoflows = append(c.nanoflows, s.NanoflowName.String())
 			}
 		case *ast.CallJavaActionStmt:
 			if s.ActionName.Module != "" {
@@ -525,6 +564,10 @@ func getErrorHandlerBody(stmt ast.MicroflowStatement) []ast.MicroflowStatement {
 			return s.ErrorHandling.Body
 		}
 	case *ast.CallMicroflowStmt:
+		if s.ErrorHandling != nil && s.ErrorHandling.Body != nil {
+			return s.ErrorHandling.Body
+		}
+	case *ast.CallNanoflowStmt:
 		if s.ErrorHandling != nil && s.ErrorHandling.Body != nil {
 			return s.ErrorHandling.Body
 		}

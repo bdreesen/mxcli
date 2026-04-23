@@ -250,6 +250,22 @@ func (s *BaseMDLParserListener) EnterRevokeMicroflowAccessStatement(ctx *RevokeM
 func (s *BaseMDLParserListener) ExitRevokeMicroflowAccessStatement(ctx *RevokeMicroflowAccessStatementContext) {
 }
 
+// EnterGrantNanoflowAccessStatement is called when production grantNanoflowAccessStatement is entered.
+func (s *BaseMDLParserListener) EnterGrantNanoflowAccessStatement(ctx *GrantNanoflowAccessStatementContext) {
+}
+
+// ExitGrantNanoflowAccessStatement is called when production grantNanoflowAccessStatement is exited.
+func (s *BaseMDLParserListener) ExitGrantNanoflowAccessStatement(ctx *GrantNanoflowAccessStatementContext) {
+}
+
+// EnterRevokeNanoflowAccessStatement is called when production revokeNanoflowAccessStatement is entered.
+func (s *BaseMDLParserListener) EnterRevokeNanoflowAccessStatement(ctx *RevokeNanoflowAccessStatementContext) {
+}
+
+// ExitRevokeNanoflowAccessStatement is called when production revokeNanoflowAccessStatement is exited.
+func (s *BaseMDLParserListener) ExitRevokeNanoflowAccessStatement(ctx *RevokeNanoflowAccessStatementContext) {
+}
+
 // EnterGrantPageAccessStatement is called when production grantPageAccessStatement is entered.
 func (s *BaseMDLParserListener) EnterGrantPageAccessStatement(ctx *GrantPageAccessStatementContext) {}
 
@@ -1027,6 +1043,12 @@ func (s *BaseMDLParserListener) EnterCallMicroflowStatement(ctx *CallMicroflowSt
 
 // ExitCallMicroflowStatement is called when production callMicroflowStatement is exited.
 func (s *BaseMDLParserListener) ExitCallMicroflowStatement(ctx *CallMicroflowStatementContext) {}
+
+// EnterCallNanoflowStatement is called when production callNanoflowStatement is entered.
+func (s *BaseMDLParserListener) EnterCallNanoflowStatement(ctx *CallNanoflowStatementContext) {}
+
+// ExitCallNanoflowStatement is called when production callNanoflowStatement is exited.
+func (s *BaseMDLParserListener) ExitCallNanoflowStatement(ctx *CallNanoflowStatementContext) {}
 
 // EnterCallJavaActionStatement is called when production callJavaActionStatement is entered.
 func (s *BaseMDLParserListener) EnterCallJavaActionStatement(ctx *CallJavaActionStatementContext) {}

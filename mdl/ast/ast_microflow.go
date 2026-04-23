@@ -345,6 +345,17 @@ type CallMicroflowStmt struct {
 
 func (s *CallMicroflowStmt) isMicroflowStatement() {}
 
+// CallNanoflowStmt represents: [$Result =] CALL NANOFLOW Name (args) [ON ERROR ...]
+type CallNanoflowStmt struct {
+	OutputVariable string               // Optional output variable
+	NanoflowName   QualifiedName        // Nanoflow to call
+	Arguments      []CallArgument       // Arguments
+	ErrorHandling  *ErrorHandlingClause // Optional ON ERROR clause
+	Annotations    *ActivityAnnotations // Optional @position, @caption, @color, @annotation
+}
+
+func (s *CallNanoflowStmt) isMicroflowStatement() {}
+
 // CallJavaActionStmt represents: CALL JAVA ACTION Name (args) [ON ERROR ...]
 type CallJavaActionStmt struct {
 	OutputVariable string               // Optional output variable

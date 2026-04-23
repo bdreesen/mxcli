@@ -500,6 +500,31 @@ type MicroflowCallAction struct {
 
 func (MicroflowCallAction) isMicroflowAction() {}
 
+// NanoflowCallAction calls a nanoflow.
+type NanoflowCallAction struct {
+	model.BaseElement
+	ErrorHandlingType  ErrorHandlingType `json:"errorHandlingType,omitempty"`
+	NanoflowCall       *NanoflowCall     `json:"nanoflowCall,omitempty"`
+	ResultVariableName string            `json:"resultVariableName,omitempty"`
+	UseReturnVariable  bool              `json:"useReturnVariable"`
+}
+
+func (NanoflowCallAction) isMicroflowAction() {}
+
+// NanoflowCall represents a call to a nanoflow with its parameters.
+type NanoflowCall struct {
+	model.BaseElement
+	Nanoflow          string                          `json:"nanoflow,omitempty"` // Qualified name string
+	ParameterMappings []*NanoflowCallParameterMapping `json:"parameterMappings,omitempty"`
+}
+
+// NanoflowCallParameterMapping maps a parameter to an argument.
+type NanoflowCallParameterMapping struct {
+	model.BaseElement
+	Parameter string `json:"parameter,omitempty"` // Parameter qualified name
+	Argument  string `json:"argument,omitempty"`
+}
+
 // MicroflowCall represents a call to a microflow with its parameters.
 type MicroflowCall struct {
 	model.BaseElement

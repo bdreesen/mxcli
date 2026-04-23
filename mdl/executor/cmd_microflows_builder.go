@@ -176,6 +176,41 @@ func (fb *flowBuilder) lookupMicroflowReturnType(qualifiedName string) microflow
 	return nil
 }
 
+func (fb *flowBuilder) lookupNanoflowReturnType(qualifiedName string) microflows.DataType {
+	if fb.backend == nil || qualifiedName == "" {
+		return nil
+	}
+
+	moduleName, nanoflowName, ok := strings.Cut(qualifiedName, ".")
+	if !ok || moduleName == "" || nanoflowName == "" {
+		return nil
+	}
+
+	module, err := fb.backend.GetModuleByName(moduleName)
+	if err != nil || module == nil {
+		return nil
+	}
+	nanoflowList, err := fb.backend.ListNanoflows()
+	if err != nil {
+		return nil
+	}
+
+	for _, nf := range nanoflowList {
+		if nf == nil {
+			continue
+		}
+		containerModuleID := nf.ContainerID
+		if fb.hierarchy != nil {
+			containerModuleID = fb.hierarchy.FindModuleID(nf.ContainerID)
+		}
+		if containerModuleID == module.ID && nf.Name == nanoflowName {
+			return nf.ReturnType
+		}
+	}
+
+	return nil
+}
+
 func (fb *flowBuilder) resolveEntityQualifiedName(entityID model.ID) string {
 	if fb.backend == nil || entityID == "" {
 		return ""
