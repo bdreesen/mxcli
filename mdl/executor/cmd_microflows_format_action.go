@@ -360,7 +360,7 @@ func formatAction(
 		// Output it as-is since it's already stored as an expression
 		node := a.LogNodeName
 		if node == "" {
-			node = "'Application'" // Default value as a string literal expression
+			node = defaultLogNodeExpression
 		}
 		message := "'Message'"
 		if a.MessageTemplate != nil && len(a.MessageTemplate.Translations) > 0 {
@@ -372,8 +372,7 @@ func formatAction(
 			if text, ok := a.MessageTemplate.Translations["en_US"]; ok {
 				message = text
 			}
-			// Wrap message in quotes for MDL syntax (escape any existing single quotes)
-			message = "'" + strings.ReplaceAll(message, "'", "''") + "'"
+			message = mdlQuote(message)
 		}
 
 		// Build WITH clause if there are template parameters
@@ -448,7 +447,7 @@ func formatAction(
 				}
 			case *microflows.EntityTypeCodeActionParameterValue:
 				if v.Entity != "" {
-					valueStr = "'" + v.Entity + "'"
+					valueStr = mdlQuote(v.Entity)
 				}
 			}
 			params = append(params, fmt.Sprintf("%s = %s", paramName, valueStr))
@@ -549,8 +548,7 @@ func formatAction(
 			if text, ok := a.Template.Translations["en_US"]; ok {
 				message = text
 			}
-			// Wrap message in quotes for MDL syntax (escape any existing single quotes)
-			message = "'" + strings.ReplaceAll(message, "'", "''") + "'"
+			message = mdlQuote(message)
 		}
 		result := fmt.Sprintf("show message %s type %s", message, msgType)
 		if len(a.TemplateParameters) > 0 {
@@ -569,8 +567,7 @@ func formatAction(
 			if text, ok := a.Template.Translations["en_US"]; ok {
 				msgText = text
 			}
-			// Wrap message in quotes for MDL syntax (escape any existing single quotes)
-			msgText = "'" + strings.ReplaceAll(msgText, "'", "''") + "'"
+			msgText = mdlQuote(msgText)
 		}
 		// Build attribute path from variable and attribute name
 		// AttributeName format: Module.Entity.Attribute
@@ -636,7 +633,7 @@ func formatAction(
 		return formatWorkflowOperationAction(ctx, a)
 
 	case *microflows.SetTaskOutcomeAction:
-		return fmt.Sprintf("set task outcome $%s '%s';", a.WorkflowTaskVariable, a.OutcomeValue)
+		return fmt.Sprintf("set task outcome $%s %s;", a.WorkflowTaskVariable, mdlQuote(a.OutcomeValue))
 
 	case *microflows.OpenUserTaskAction:
 		return fmt.Sprintf("open user task $%s;", a.UserTaskVariable)
@@ -684,7 +681,7 @@ func formatWorkflowOperationAction(ctx *ExecContext, a *microflows.WorkflowOpera
 	switch op := a.Operation.(type) {
 	case *microflows.AbortOperation:
 		if op.Reason != "" {
-			return fmt.Sprintf("workflow operation abort $%s reason '%s';", op.WorkflowVariable, strings.ReplaceAll(op.Reason, "'", "''"))
+			return fmt.Sprintf("workflow operation abort $%s reason %s;", op.WorkflowVariable, mdlQuote(op.Reason))
 		}
 		return fmt.Sprintf("workflow operation abort $%s;", op.WorkflowVariable)
 	case *microflows.ContinueOperation:
@@ -843,7 +840,7 @@ func formatRestCallAction(ctx *ExecContext, a *microflows.RestCallAction) string
 	// URL
 	url := "''"
 	if a.HttpConfiguration != nil && a.HttpConfiguration.LocationTemplate != "" {
-		url = "'" + strings.ReplaceAll(a.HttpConfiguration.LocationTemplate, "'", "''") + "'"
+		url = mdlQuote(a.HttpConfiguration.LocationTemplate)
 	}
 	sb.WriteString(url)
 
@@ -862,9 +859,9 @@ func formatRestCallAction(ctx *ExecContext, a *microflows.RestCallAction) string
 	// Headers
 	if a.HttpConfiguration != nil && len(a.HttpConfiguration.CustomHeaders) > 0 {
 		for _, h := range a.HttpConfiguration.CustomHeaders {
-			sb.WriteString("\n    header '")
-			sb.WriteString(strings.ReplaceAll(h.Name, "'", "''"))
-			sb.WriteString("' = ")
+			sb.WriteString("\n    header ")
+			sb.WriteString(mdlQuote(h.Name))
+			sb.WriteString(" = ")
 			sb.WriteString(h.Value)
 		}
 	}
@@ -882,9 +879,8 @@ func formatRestCallAction(ctx *ExecContext, a *microflows.RestCallAction) string
 		switch rh := a.RequestHandling.(type) {
 		case *microflows.CustomRequestHandling:
 			if rh.Template != "" {
-				sb.WriteString("\n    body '")
-				sb.WriteString(strings.ReplaceAll(rh.Template, "'", "''"))
-				sb.WriteString("'")
+				sb.WriteString("\n    body ")
+				sb.WriteString(mdlQuote(rh.Template))
 				// Add template parameters if present
 				if len(rh.TemplateParams) > 0 {
 					sb.WriteString(" with (")

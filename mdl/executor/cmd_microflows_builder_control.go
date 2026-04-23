@@ -288,6 +288,13 @@ func (fb *flowBuilder) addLoopStatement(s *ast.LoopStmt) model.ID {
 	innerStartX := LoopPadding + iteratorSpace    // Extra offset for iterator icon and label
 	innerStartY := LoopPadding + ActivityHeight/2 // Center activities vertically with some padding
 
+	loopLeftX := fb.posX
+	loopCenterX := loopLeftX + loopWidth/2
+	if s.Annotations != nil && s.Annotations.Position != nil {
+		loopCenterX = s.Annotations.Position.X
+		loopLeftX = loopCenterX - loopWidth/2
+	}
+
 	// Add loop variable to varTypes with element type derived from list type
 	// If $ProductList is "List of MfTest.Product", then $Product is "MfTest.Product"
 	if fb.varTypes != nil {
@@ -335,7 +342,7 @@ func (fb *flowBuilder) addLoopStatement(s *ast.LoopStmt) model.ID {
 	loop := &microflows.LoopedActivity{
 		BaseMicroflowObject: microflows.BaseMicroflowObject{
 			BaseElement: model.BaseElement{ID: model.ID(types.GenerateID())},
-			Position:    model.Point{X: fb.posX + loopWidth/2, Y: fb.posY},
+			Position:    model.Point{X: loopCenterX, Y: fb.posY},
 			Size:        model.Size{Width: loopWidth, Height: loopHeight},
 		},
 		LoopSource: &microflows.IterableList{
@@ -362,7 +369,7 @@ func (fb *flowBuilder) addLoopStatement(s *ast.LoopStmt) model.ID {
 		fb.applyAnnotations(loop.ID, savedLoopAnnotations)
 	}
 
-	fb.posX += loopWidth + HorizontalSpacing
+	fb.posX = loopLeftX + loopWidth + HorizontalSpacing
 
 	return loop.ID
 }
@@ -382,6 +389,13 @@ func (fb *flowBuilder) addWhileStatement(s *ast.WhileStmt) model.ID {
 
 	innerStartX := LoopPadding
 	innerStartY := LoopPadding + ActivityHeight/2
+
+	loopLeftX := fb.posX
+	loopCenterX := loopLeftX + loopWidth/2
+	if s.Annotations != nil && s.Annotations.Position != nil {
+		loopCenterX = s.Annotations.Position.X
+		loopLeftX = loopCenterX - loopWidth/2
+	}
 
 	loopBuilder := &flowBuilder{
 		posX:         innerStartX,
@@ -417,7 +431,7 @@ func (fb *flowBuilder) addWhileStatement(s *ast.WhileStmt) model.ID {
 	loop := &microflows.LoopedActivity{
 		BaseMicroflowObject: microflows.BaseMicroflowObject{
 			BaseElement: model.BaseElement{ID: model.ID(types.GenerateID())},
-			Position:    model.Point{X: fb.posX + loopWidth/2, Y: fb.posY},
+			Position:    model.Point{X: loopCenterX, Y: fb.posY},
 			Size:        model.Size{Width: loopWidth, Height: loopHeight},
 		},
 		LoopSource: &microflows.WhileLoopCondition{
@@ -439,7 +453,7 @@ func (fb *flowBuilder) addWhileStatement(s *ast.WhileStmt) model.ID {
 		fb.applyAnnotations(loop.ID, savedWhileAnnotations)
 	}
 
-	fb.posX += loopWidth + HorizontalSpacing
+	fb.posX = loopLeftX + loopWidth + HorizontalSpacing
 
 	return loop.ID
 }
