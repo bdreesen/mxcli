@@ -205,6 +205,8 @@ authentication basic, session
 | Rename constant | `rename constant Module.Old to New;` | Updates all references |
 | Drop microflow | `drop microflow Module.Name;` | |
 | Drop nanoflow | `drop nanoflow Module.Name;` | |
+| Create nanoflow | `create [or modify] nanoflow Module.Name (params) returns type [folder 'path'] begin ... end;` | Same body syntax as microflows |
+| Move nanoflow | `move nanoflow Module.Name to folder 'path';` | |
 
 ## Microflows - Supported Statements
 
@@ -276,7 +278,7 @@ Nested folders use `/` separator: `'Parent/Child/Grandchild'`. Missing folders a
 | Show module roles | `show module roles [in module];` | All roles or filtered by module |
 | Show user roles | `show user roles;` | Project-level user roles |
 | Show demo users | `show demo users;` | Configured demo users |
-| Show access on element | `show access on microflow\|page\|entity Mod.Name;` | Which roles can access |
+| Show access on element | `show access on microflow\|nanoflow\|page\|entity Mod.Name;` | Which roles can access |
 | Show security matrix | `show security matrix [in module];` | Full access overview |
 | Create module role | `create module role Mod.Role [description 'text'];` | |
 | Drop module role | `drop module role Mod.Role;` | |
@@ -285,6 +287,8 @@ Nested folders use `/` separator: `'Parent/Child/Grandchild'`. Missing folders a
 | Drop user role | `drop user role Name;` | |
 | Grant microflow access | `grant execute on microflow Mod.MF to Mod.Role, ...;` | |
 | Revoke microflow access | `revoke execute on microflow Mod.MF from Mod.Role, ...;` | |
+| Grant nanoflow access | `grant execute on nanoflow Mod.NF to Mod.Role, ...;` | |
+| Revoke nanoflow access | `revoke execute on nanoflow Mod.NF from Mod.Role, ...;` | |
 | Grant page access | `grant view on page Mod.Page to Mod.Role, ...;` | |
 | Revoke page access | `revoke view on page Mod.Page from Mod.Role, ...;` | |
 | Grant entity access | `grant Mod.Role on Mod.Entity (create, delete, read *, write *);` | Additive — merges with existing |

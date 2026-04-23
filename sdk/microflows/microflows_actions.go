@@ -501,11 +501,14 @@ type MicroflowCallAction struct {
 func (MicroflowCallAction) isMicroflowAction() {}
 
 // NanoflowCallAction calls a nanoflow.
+// NOTE: The BSON field name is OutputVariableName (not ResultVariableName as in
+// MicroflowCallAction). This matches the generated metamodel in
+// generated/metamodel/types.go (MicroflowsNanoflowCallAction).
 type NanoflowCallAction struct {
 	model.BaseElement
 	ErrorHandlingType  ErrorHandlingType `json:"errorHandlingType,omitempty"`
 	NanoflowCall       *NanoflowCall     `json:"nanoflowCall,omitempty"`
-	ResultVariableName string            `json:"resultVariableName,omitempty"`
+	OutputVariableName string            `json:"outputVariableName,omitempty"`
 	UseReturnVariable  bool              `json:"useReturnVariable"`
 }
 
@@ -550,6 +553,25 @@ type JavaActionCallAction struct {
 }
 
 func (JavaActionCallAction) isMicroflowAction() {}
+
+// JavaScriptActionCallAction calls a JavaScript action.
+type JavaScriptActionCallAction struct {
+	model.BaseElement
+	ErrorHandlingType  ErrorHandlingType                   `json:"errorHandlingType,omitempty"`
+	JavaScriptAction   string                              `json:"javaScriptAction,omitempty"` // Qualified name string
+	ParameterMappings  []*JavaScriptActionParameterMapping `json:"parameterMappings,omitempty"`
+	OutputVariableName string                              `json:"outputVariableName,omitempty"`
+	UseReturnVariable  bool                                `json:"useReturnVariable"`
+}
+
+func (JavaScriptActionCallAction) isMicroflowAction() {}
+
+// JavaScriptActionParameterMapping maps a JavaScript action parameter.
+type JavaScriptActionParameterMapping struct {
+	model.BaseElement
+	Parameter string                   `json:"parameter,omitempty"` // Parameter qualified name
+	Value     CodeActionParameterValue `json:"value,omitempty"`
+}
 
 // JavaActionParameterMapping maps a Java action parameter.
 type JavaActionParameterMapping struct {

@@ -84,7 +84,7 @@ func registerAssociationHandlers(r *Registry) {
 	})
 }
 
-func registerMicroflowHandlers(r *Registry) {
+func registerMicroflowAndNanoflowHandlers(r *Registry) {
 	r.Register(&ast.CreateMicroflowStmt{}, func(ctx *ExecContext, stmt ast.Statement) error {
 		return execCreateMicroflow(ctx, stmt.(*ast.CreateMicroflowStmt))
 	})

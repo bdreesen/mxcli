@@ -250,6 +250,62 @@ func microflowStmtToMDL(ctx *ExecContext, s *ast.CreateMicroflowStmt) string {
 	return strings.Join(lines, "\n")
 }
 
+// nanoflowStmtToMDL converts a CreateNanoflowStmt to MDL text
+func nanoflowStmtToMDL(ctx *ExecContext, s *ast.CreateNanoflowStmt) string {
+	var lines []string
+
+	// Documentation
+	if s.Documentation != "" {
+		lines = append(lines, "/**")
+		for docLine := range strings.SplitSeq(s.Documentation, "\n") {
+			lines = append(lines, " * "+docLine)
+		}
+		lines = append(lines, " */")
+	}
+
+	// CREATE NANOFLOW header with parameters
+	if len(s.Parameters) > 0 {
+		lines = append(lines, fmt.Sprintf("create nanoflow %s (", s.Name))
+		for i, param := range s.Parameters {
+			paramType := dataTypeToString(ctx, param.Type)
+			comma := ","
+			if i == len(s.Parameters)-1 {
+				comma = ""
+			}
+			lines = append(lines, fmt.Sprintf("  $%s: %s%s", param.Name, paramType, comma))
+		}
+		lines = append(lines, ")")
+	} else {
+		lines = append(lines, fmt.Sprintf("create nanoflow %s ()", s.Name))
+	}
+
+	// Return type
+	if s.ReturnType != nil {
+		returnType := dataTypeToString(ctx, s.ReturnType.Type)
+		if returnType != "Void" && returnType != "" {
+			returnLine := fmt.Sprintf("returns %s", returnType)
+			if s.ReturnType.Variable != "" {
+				returnLine += fmt.Sprintf(" as $%s", s.ReturnType.Variable)
+			}
+			lines = append(lines, returnLine)
+		}
+	}
+
+	// BEGIN block
+	lines = append(lines, "begin")
+
+	// Body statements
+	for _, stmt := range s.Body {
+		stmtLines := microflowStatementToMDL(ctx, stmt, 1)
+		lines = append(lines, stmtLines...)
+	}
+
+	lines = append(lines, "end;")
+	lines = append(lines, "/")
+
+	return strings.Join(lines, "\n")
+}
+
 // microflowStatementToMDL converts a microflow statement to MDL lines
 func microflowStatementToMDL(ctx *ExecContext, stmt ast.MicroflowStatement, indent int) []string {
 	indentStr := strings.Repeat("  ", indent)

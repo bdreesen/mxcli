@@ -41,8 +41,8 @@ func (r *Reader) parseNanoflow(unitID, containerID string, contents []byte) (*mi
 	}
 
 	// Parse AllowedModuleRoles
-	for _, r := range extractBsonArray(raw["AllowedModuleRoles"]) {
-		if roleID, ok := r.(string); ok {
+	for _, role := range extractBsonArray(raw["AllowedModuleRoles"]) {
+		if roleID, ok := role.(string); ok {
 			nf.AllowedModuleRoles = append(nf.AllowedModuleRoles, model.ID(roleID))
 		}
 	}

@@ -483,15 +483,27 @@ func traverseFlow(
 	// Handle ExclusiveSplit specially - need to process both branches
 	if _, isSplit := obj.(*microflows.ExclusiveSplit); isSplit {
 		startLine := len(*lines) + headerLineCount
-		if stmt != "" {
-			emitObjectAnnotations(obj, lines, indentStr, annotationsByTarget, flowsByOrigin, flowsByDest)
-			*lines = append(*lines, indentStr+stmt)
-		}
 
 		flows := flowsByOrigin[currentID]
 		mergeID := splitMergeMap[currentID]
 
 		trueFlow, falseFlow := findBranchFlows(flows)
+
+		// Empty-then swap: when the true branch goes directly to the merge
+		// (empty then body) and the false branch has real content, negate
+		// the condition and swap branches for more readable output.
+		// "if cond then else <body> end if;" → "if not(cond) then <body> end if;"
+		if trueFlow != nil && falseFlow != nil && mergeID != "" {
+			if trueFlow.DestinationID == mergeID {
+				stmt = negateIfCondition(stmt)
+				trueFlow, falseFlow = falseFlow, trueFlow
+			}
+		}
+
+		if stmt != "" {
+			emitObjectAnnotations(obj, lines, indentStr, annotationsByTarget, flowsByOrigin, flowsByDest)
+			*lines = append(*lines, indentStr+stmt)
+		}
 
 		// Guard pattern: true branch is a single EndEvent (RETURN),
 		// but only when the false branch does NOT also end directly.
@@ -639,15 +651,24 @@ func traverseFlowUntilMerge(
 	// Handle nested ExclusiveSplit
 	if _, isSplit := obj.(*microflows.ExclusiveSplit); isSplit {
 		startLine := len(*lines) + headerLineCount
-		if stmt != "" {
-			emitObjectAnnotations(obj, lines, indentStr, annotationsByTarget, flowsByOrigin, flowsByDest)
-			*lines = append(*lines, indentStr+stmt)
-		}
 
 		flows := flowsByOrigin[currentID]
 		nestedMergeID := splitMergeMap[currentID]
 
 		trueFlow, falseFlow := findBranchFlows(flows)
+
+		// Empty-then swap: same logic as traverseFlow above.
+		if trueFlow != nil && falseFlow != nil && nestedMergeID != "" {
+			if trueFlow.DestinationID == nestedMergeID {
+				stmt = negateIfCondition(stmt)
+				trueFlow, falseFlow = falseFlow, trueFlow
+			}
+		}
+
+		if stmt != "" {
+			emitObjectAnnotations(obj, lines, indentStr, annotationsByTarget, flowsByOrigin, flowsByDest)
+			*lines = append(*lines, indentStr+stmt)
+		}
 
 		// Guard pattern: true branch is a single EndEvent (RETURN),
 		// but only when the false branch does NOT also end directly.
@@ -686,12 +707,17 @@ func traverseFlowUntilMerge(
 			}
 
 			if falseFlow != nil {
+				elseLineIdx := len(*lines)
 				*lines = append(*lines, indentStr+"else")
 				visitedFalseBranch := make(map[model.ID]bool)
 				for id := range visited {
 					visitedFalseBranch[id] = true
 				}
 				traverseFlowUntilMerge(ctx, falseFlow.DestinationID, nestedMergeID, activityMap, flowsByOrigin, flowsByDest, splitMergeMap, visitedFalseBranch, entityNames, microflowNames, lines, indent+1, sourceMap, headerLineCount, annotationsByTarget)
+				// Remove empty else block
+				if len(*lines) == elseLineIdx+1 {
+					*lines = (*lines)[:elseLineIdx]
+				}
 			}
 
 			*lines = append(*lines, indentStr+"end if;")
@@ -1011,7 +1037,11 @@ func getActionErrorHandlingType(activity *microflows.ActionActivity) microflows.
 	switch action := activity.Action.(type) {
 	case *microflows.MicroflowCallAction:
 		return action.ErrorHandlingType
+	case *microflows.NanoflowCallAction:
+		return action.ErrorHandlingType
 	case *microflows.JavaActionCallAction:
+		return action.ErrorHandlingType
+	case *microflows.JavaScriptActionCallAction:
 		return action.ErrorHandlingType
 	case *microflows.CallExternalAction:
 		return action.ErrorHandlingType
@@ -1111,6 +1141,24 @@ func (e *Executor) traverseFlow(
 	// supply flowsByDest. Passing nil suppresses @anchor emission, matching
 	// the pre-refactor behaviour.
 	traverseFlow(e.newExecContext(context.Background()), currentID, activityMap, flowsByOrigin, nil, splitMergeMap, visited, entityNames, microflowNames, lines, indent, sourceMap, headerLineCount, annotationsByTarget)
+}
+
+// negateIfCondition transforms "if <cond> then" into "if not(<cond>) then".
+// Used by the empty-then swap to produce readable output when Studio Pro stores
+// the flow with an inverted condition (true branch empty, false branch has body).
+func negateIfCondition(stmt string) string {
+	// stmt is always "if <condition> then" from formatActivity.
+	const prefix = "if "
+	const suffix = " then"
+	if strings.HasPrefix(stmt, prefix) && strings.HasSuffix(stmt, suffix) {
+		cond := stmt[len(prefix) : len(stmt)-len(suffix)]
+		// Avoid double-negation: not(not(x)) → x
+		if strings.HasPrefix(cond, "not(") && strings.HasSuffix(cond, ")") {
+			return prefix + cond[4:len(cond)-1] + suffix
+		}
+		return prefix + "not(" + cond + ")" + suffix
+	}
+	return stmt
 }
 
 func (e *Executor) collectErrorHandlerStatements(

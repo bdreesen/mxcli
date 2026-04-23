@@ -164,7 +164,11 @@ $ServerResult = call microflow Module.FetchFromServer(query = $query);
 
 ### Calling Nanoflows from Microflows
 
-Microflows **cannot** call nanoflows directly. Use `call nanoflow` only inside nanoflow bodies.
+Microflows can call nanoflows using the `call nanoflow` statement:
+
+```mdl
+$Result = call nanoflow Module.NanoflowName(Param = $value);
+```
 
 ## Security: GRANT/REVOKE
 

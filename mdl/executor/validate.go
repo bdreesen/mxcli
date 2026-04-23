@@ -288,10 +288,12 @@ func validateWithContext(ctx *ExecContext, stmt ast.Statement, sc *scriptContext
 				return mdlerrors.NewNotFound("module", s.Name.Module)
 			}
 		}
-		// Validate references inside nanoflow body
-		if refErrors := validateFlowBodyReferences(ctx, s.Body, sc); len(refErrors) > 0 {
-			return mdlerrors.NewValidationf("nanoflow '%s' has reference errors:\n  - %s",
-				s.Name.String(), strings.Join(refErrors, "\n  - "))
+		// Validate references inside nanoflow body (skip excluded nanoflows)
+		if !s.Excluded {
+			if refErrors := validateFlowBodyReferences(ctx, s.Body, sc); len(refErrors) > 0 {
+				return mdlerrors.NewValidationf("nanoflow '%s' has reference errors:\n  - %s",
+					s.Name.String(), strings.Join(refErrors, "\n  - "))
+			}
 		}
 	case *ast.CreatePageStmtV3:
 		if s.Name.Module != "" && !sc.modules[s.Name.Module] {
@@ -414,18 +416,18 @@ func (e *Executor) Validate(stmt ast.Statement) error {
 // validateMicroflowReferences validates that all qualified name references in a
 // microflow body (pages, microflows, java actions, entities) point to existing objects.
 func validateMicroflowReferences(ctx *ExecContext, s *ast.CreateMicroflowStmt, sc *scriptContext) []string {
+	if s.Excluded {
+		// Studio Pro allows excluded documents to keep stale references. Reference
+		// checks should not fail a roundtrip audit for microflows that are not part
+		// of the runnable app.
+		return nil
+	}
 	return validateFlowBodyReferences(ctx, s.Body, sc)
 }
 
 // validateFlowBodyReferences validates references in any flow body (microflow or nanoflow).
 func validateFlowBodyReferences(ctx *ExecContext, body []ast.MicroflowStatement, sc *scriptContext) []string {
 	if !ctx.Connected() || len(body) == 0 {
-		return nil
-	}
-	if s.Excluded {
-		// Studio Pro allows excluded documents to keep stale references. Reference
-		// checks should not fail a roundtrip audit for microflows that are not part
-		// of the runnable app.
 		return nil
 	}
 

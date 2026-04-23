@@ -165,6 +165,9 @@ func (ctx *ExecContext) trackCreatedMicroflow(moduleName, mfName string, id, con
 }
 
 // trackCreatedNanoflow registers a nanoflow created during this session.
+// The cache is consumed by execDropNanoflow (cleanup on DROP) and will be
+// used by future resolvers for session-local nanoflow lookups (matching
+// the createdMicroflows pattern).
 func (ctx *ExecContext) trackCreatedNanoflow(moduleName, nfName string, id, containerID model.ID, returnEntityName string) {
 	ctx.ensureCache()
 	if ctx.Cache.createdNanoflows == nil {

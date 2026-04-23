@@ -20,6 +20,11 @@ func execCreateNanoflow(ctx *ExecContext, s *ast.CreateNanoflowStmt) error {
 		return mdlerrors.NewNotConnectedWrite()
 	}
 
+	// Validate name is not empty
+	if strings.TrimSpace(s.Name.Name) == "" {
+		return mdlerrors.NewValidation("nanoflow name must not be empty")
+	}
+
 	// Find or auto-create module
 	module, err := findOrCreateModule(ctx, s.Name.Module)
 	if err != nil {
@@ -36,9 +41,13 @@ func execCreateNanoflow(ctx *ExecContext, s *ast.CreateNanoflowStmt) error {
 		containerID = folderID
 	}
 
-	// Check if nanoflow with same name already exists in this module
+	// Check if nanoflow with same name already exists in this module.
+	// NOTE: O(n) scan over all nanoflows — consistent with microflow handler pattern.
+	// Consider catalog-based lookup if this becomes a bottleneck for large projects.
 	var existingID model.ID
 	var existingContainerID model.ID
+	var existingAllowedRoles []model.ID
+	preserveAllowedRoles := false
 	existingNanoflows, err := ctx.Backend.ListNanoflows()
 	if err != nil {
 		return mdlerrors.NewBackend("check existing nanoflows", err)
@@ -46,10 +55,12 @@ func execCreateNanoflow(ctx *ExecContext, s *ast.CreateNanoflowStmt) error {
 	for _, existing := range existingNanoflows {
 		if existing.Name == s.Name.Name && getModuleID(ctx, existing.ContainerID) == module.ID {
 			if !s.CreateOrModify {
-				return mdlerrors.NewAlreadyExistsMsg("nanoflow", s.Name.Module+"."+s.Name.Name, "nanoflow '"+s.Name.Module+"."+s.Name.Name+"' already exists (use create or replace to overwrite)")
+				return mdlerrors.NewAlreadyExistsMsg("nanoflow", s.Name.Module+"."+s.Name.Name, "nanoflow '"+s.Name.Module+"."+s.Name.Name+"' already exists (use create or modify to overwrite)")
 			}
 			existingID = existing.ID
 			existingContainerID = existing.ContainerID
+			existingAllowedRoles = cloneRoleIDs(existing.AllowedModuleRoles)
+			preserveAllowedRoles = true
 			break
 		}
 	}
@@ -67,6 +78,10 @@ func execCreateNanoflow(ctx *ExecContext, s *ast.CreateNanoflowStmt) error {
 		if s.Folder == "" && dropped.ContainerID != "" {
 			containerID = dropped.ContainerID
 		}
+		if len(dropped.AllowedRoles) > 0 {
+			existingAllowedRoles = dropped.AllowedRoles
+			preserveAllowedRoles = true
+		}
 	}
 
 	// Build the nanoflow
@@ -80,18 +95,30 @@ func execCreateNanoflow(ctx *ExecContext, s *ast.CreateNanoflowStmt) error {
 		MarkAsUsed:    false,
 		Excluded:      s.Excluded,
 	}
+	if preserveAllowedRoles {
+		nf.AllowedModuleRoles = existingAllowedRoles
+	} else {
+		nf.AllowedModuleRoles = defaultDocumentAccessRoles(ctx, module)
+	}
+
+	// Load metadata needed by the entity resolver up front so backend read
+	// failures are returned as actionable errors instead of being treated as
+	// "entity not found".
+	dms, err := ctx.Backend.ListDomainModels()
+	if err != nil {
+		return mdlerrors.NewBackend("list domain models", err)
+	}
+	modules, err := ctx.Backend.ListModules()
+	if err != nil {
+		return mdlerrors.NewBackend("list modules", err)
+	}
+	moduleNames := make(map[model.ID]string)
+	for _, m := range modules {
+		moduleNames[m.ID] = m.Name
+	}
 
 	// Build entity resolver function for parameter/return types
 	entityResolver := func(qn ast.QualifiedName) model.ID {
-		dms, err := ctx.Backend.ListDomainModels()
-		if err != nil {
-			return ""
-		}
-		modules, _ := ctx.Backend.ListModules()
-		moduleNames := make(map[model.ID]string)
-		for _, m := range modules {
-			moduleNames[m.ID] = m.Name
-		}
 		for _, dm := range dms {
 			modName := moduleNames[dm.ContainerID]
 			if modName != qn.Module {
@@ -153,8 +180,7 @@ func execCreateNanoflow(ctx *ExecContext, s *ast.CreateNanoflowStmt) error {
 	}
 
 	// Validate nanoflow-specific constraints before building the flow graph
-	qualName := s.Name.Module + "." + s.Name.Name
-	if errMsg := validateNanoflow(qualName, s.Body, s.ReturnType); errMsg != "" {
+	if errMsg := validateNanoflow(qualifiedName, s.Body, s.ReturnType); errMsg != "" {
 		return fmt.Errorf("%s", errMsg)
 	}
 

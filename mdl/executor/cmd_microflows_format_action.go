@@ -28,7 +28,7 @@ func formatActivity(
 			returnVal := strings.TrimSuffix(activity.ReturnValue, "\n")
 			// Only add $ prefix for bare identifiers (no operators, quotes, or parens)
 			if !strings.HasPrefix(returnVal, "$") && !isMendixKeyword(returnVal) && !isQualifiedEnumLiteral(returnVal) &&
-				!strings.ContainsAny(returnVal, "+'\"()") {
+				!strings.ContainsAny(returnVal, "+'\"()") && !isNumericLiteral(returnVal) {
 				returnVal = "$" + returnVal
 			}
 			return fmt.Sprintf("return %s;", returnVal)
@@ -428,6 +428,35 @@ func formatAction(
 		}
 		return fmt.Sprintf("call microflow %s(%s);", mfName, paramStr)
 
+	case *microflows.NanoflowCallAction:
+		nfName := ""
+		if a.NanoflowCall != nil && a.NanoflowCall.Nanoflow != "" {
+			nfName = a.NanoflowCall.Nanoflow
+		} else {
+			nfName = "Nanoflow"
+		}
+
+		var params []string
+		if a.NanoflowCall != nil {
+			for _, pm := range a.NanoflowCall.ParameterMappings {
+				paramName := pm.Parameter
+				if idx := strings.LastIndex(paramName, "."); idx != -1 {
+					paramName = paramName[idx+1:]
+				}
+				params = append(params, fmt.Sprintf("%s = %s", paramName, pm.Argument))
+			}
+		}
+
+		paramStr := ""
+		if len(params) > 0 {
+			paramStr = strings.Join(params, ", ")
+		}
+
+		if a.OutputVariableName != "" {
+			return fmt.Sprintf("$%s = call nanoflow %s(%s);", a.OutputVariableName, nfName, paramStr)
+		}
+		return fmt.Sprintf("call nanoflow %s(%s);", nfName, paramStr)
+
 	case *microflows.JavaActionCallAction:
 		javaActionName := a.JavaAction
 		if javaActionName == "" {
@@ -686,6 +715,46 @@ func formatAction(
 			return fmt.Sprintf("unlock workflow %s;", a.Workflow)
 		}
 		return fmt.Sprintf("unlock workflow $%s;", a.WorkflowVariable)
+
+	case *microflows.JavaScriptActionCallAction:
+		jsActionName := a.JavaScriptAction
+		if jsActionName == "" {
+			jsActionName = "JavaScriptAction"
+		}
+
+		var params []string
+		for _, pm := range a.ParameterMappings {
+			paramName := pm.Parameter
+			if idx := strings.LastIndex(paramName, "."); idx != -1 {
+				paramName = paramName[idx+1:]
+			}
+			valueStr := "..."
+			if pm.Value != nil {
+				switch v := pm.Value.(type) {
+				case *microflows.StringTemplateParameterValue:
+					if v.TypedTemplate != nil {
+						valueStr = mdlQuote(v.TypedTemplate.Text)
+					}
+				case *microflows.ExpressionBasedCodeActionParameterValue:
+					valueStr = v.Expression
+				case *microflows.BasicCodeActionParameterValue:
+					valueStr = v.Argument
+				case *microflows.EntityTypeCodeActionParameterValue:
+					valueStr = v.Entity
+				}
+			}
+			params = append(params, fmt.Sprintf("%s = %s", paramName, valueStr))
+		}
+
+		paramStr := ""
+		if len(params) > 0 {
+			paramStr = strings.Join(params, ", ")
+		}
+
+		if a.OutputVariableName != "" {
+			return fmt.Sprintf("$%s = call javascript action %s(%s);", a.OutputVariableName, jsActionName, paramStr)
+		}
+		return fmt.Sprintf("call javascript action %s(%s);", jsActionName, paramStr)
 
 	case *microflows.UnknownAction:
 		return fmt.Sprintf("-- Unsupported action type: %s", a.TypeName)
@@ -1077,6 +1146,30 @@ func isMendixKeyword(s string) bool {
 // that must not be prefixed with "$" when serialized as a RETURN value.
 func isQualifiedEnumLiteral(s string) bool {
 	return strings.Count(s, ".") >= 2
+}
+
+// isNumericLiteral returns true for numeric literals (integers and decimals)
+// that must not be prefixed with "$" when serialized as a RETURN value.
+func isNumericLiteral(s string) bool {
+	if s == "" {
+		return false
+	}
+	start := 0
+	if s[0] == '-' {
+		start = 1
+		if len(s) == 1 {
+			return false
+		}
+	}
+	dotSeen := false
+	for i := start; i < len(s); i++ {
+		if s[i] == '.' && !dotSeen {
+			dotSeen = true
+		} else if s[i] < '0' || s[i] > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 // formatImportXmlAction formats an import mapping action as MDL.

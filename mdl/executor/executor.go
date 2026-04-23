@@ -414,8 +414,8 @@ func consumeDroppedMicroflow(ctx *ExecContext, qualifiedName string) *droppedUni
 }
 
 // rememberDroppedNanoflow records the UnitID and ContainerID of a nanoflow
-// that was just deleted so a subsequent CREATE OR REPLACE/MODIFY can reuse them.
-func rememberDroppedNanoflow(ctx *ExecContext, qualifiedName string, id, containerID model.ID) {
+// that is about to be deleted so a subsequent CREATE OR REPLACE/MODIFY can reuse them.
+func rememberDroppedNanoflow(ctx *ExecContext, qualifiedName string, id, containerID model.ID, allowedRoles []model.ID) {
 	if ctx == nil || qualifiedName == "" || id == "" {
 		return
 	}
@@ -426,8 +426,9 @@ func rememberDroppedNanoflow(ctx *ExecContext, qualifiedName string, id, contain
 		ctx.Cache.droppedNanoflows = make(map[string]*droppedUnitInfo)
 	}
 	ctx.Cache.droppedNanoflows[qualifiedName] = &droppedUnitInfo{
-		ID:          id,
-		ContainerID: containerID,
+		ID:           id,
+		ContainerID:  containerID,
+		AllowedRoles: cloneRoleIDs(allowedRoles),
 	}
 }
 

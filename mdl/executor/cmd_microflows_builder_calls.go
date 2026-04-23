@@ -194,7 +194,7 @@ func (fb *flowBuilder) addCallNanoflowAction(s *ast.CallNanoflowStmt) model.ID {
 		BaseElement:        model.BaseElement{ID: model.ID(types.GenerateID())},
 		ErrorHandlingType:  convertErrorHandlingType(s.ErrorHandling),
 		NanoflowCall:       nfCall,
-		ResultVariableName: s.OutputVariable,
+		OutputVariableName: s.OutputVariable,
 		UseReturnVariable:  s.OutputVariable != "",
 	}
 

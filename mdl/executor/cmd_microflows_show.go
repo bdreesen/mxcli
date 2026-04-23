@@ -22,6 +22,13 @@ func listMicroflows(ctx *ExecContext, moduleName string) error {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
+	// Validate module exists if specified
+	if moduleName != "" {
+		if _, err := findModule(ctx, moduleName); err != nil {
+			return err
+		}
+	}
+
 	// Get all microflows
 	microflows, err := ctx.Backend.ListMicroflows()
 	if err != nil {
@@ -84,6 +91,13 @@ func listNanoflows(ctx *ExecContext, moduleName string) error {
 	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
+	}
+
+	// Validate module exists if specified
+	if moduleName != "" {
+		if _, err := findModule(ctx, moduleName); err != nil {
+			return err
+		}
 	}
 
 	// Get all nanoflows

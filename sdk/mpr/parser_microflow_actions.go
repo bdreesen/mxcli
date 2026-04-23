@@ -70,7 +70,7 @@ func parseNanoflowCallAction(raw map[string]any) *microflows.NanoflowCallAction 
 	action := &microflows.NanoflowCallAction{}
 	action.ID = model.ID(extractBsonID(raw["$ID"]))
 	action.ErrorHandlingType = microflows.ErrorHandlingType(extractString(raw["ErrorHandlingType"]))
-	action.ResultVariableName = extractString(raw["ResultVariableName"])
+	action.OutputVariableName = extractString(raw["OutputVariableName"])
 	action.UseReturnVariable = extractBool(raw["UseReturnVariable"], false)
 
 	// Parse nested NanoflowCall structure
@@ -113,6 +113,32 @@ func parseJavaActionCallAction(raw map[string]any) *microflows.JavaActionCallAct
 				mapping.Parameter = extractString(mMap["Parameter"])
 				// Parse Value - it can be various types
 				if value, ok := mMap["Value"].(map[string]any); ok {
+					mapping.Value = parseCodeActionParameterValue(value)
+				}
+				action.ParameterMappings = append(action.ParameterMappings, mapping)
+			}
+		}
+	}
+
+	return action
+}
+
+func parseJavaScriptActionCallAction(raw map[string]any) *microflows.JavaScriptActionCallAction {
+	action := &microflows.JavaScriptActionCallAction{}
+	action.ID = model.ID(extractBsonID(raw["$ID"]))
+	action.ErrorHandlingType = microflows.ErrorHandlingType(extractString(raw["ErrorHandlingType"]))
+	action.JavaScriptAction = extractString(raw["JavaScriptAction"])
+	action.OutputVariableName = extractString(raw["OutputVariableName"])
+	action.UseReturnVariable = extractBool(raw["UseReturnVariable"], false)
+
+	// Parse parameter mappings
+	if mappings := extractBsonArray(raw["ParameterMappings"]); len(mappings) > 0 {
+		for _, m := range mappings {
+			if mMap, ok := m.(map[string]any); ok {
+				mapping := &microflows.JavaScriptActionParameterMapping{}
+				mapping.ID = model.ID(extractBsonID(mMap["$ID"]))
+				mapping.Parameter = extractString(mMap["Parameter"])
+				if value, ok := mMap["ParameterValue"].(map[string]any); ok {
 					mapping.Value = parseCodeActionParameterValue(value)
 				}
 				action.ParameterMappings = append(action.ParameterMappings, mapping)

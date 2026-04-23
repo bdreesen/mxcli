@@ -239,7 +239,7 @@ func serializeMicroflowAction(action microflows.MicroflowAction) bson.D {
 			{Key: "$ID", Value: idToBsonBinary(string(a.ID))},
 			{Key: "$Type", Value: "Microflows$NanoflowCallAction"},
 			{Key: "ErrorHandlingType", Value: stringOrDefault(string(a.ErrorHandlingType), "Rollback")},
-			{Key: "ResultVariableName", Value: a.ResultVariableName},
+			{Key: "OutputVariableName", Value: a.OutputVariableName},
 			{Key: "UseReturnVariable", Value: a.UseReturnVariable},
 		}
 		if a.NanoflowCall != nil {

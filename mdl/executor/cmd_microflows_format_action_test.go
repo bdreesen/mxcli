@@ -803,3 +803,168 @@ func reverseAssociationBackend(t *testing.T) *mock.MockBackend {
 		},
 	}
 }
+
+// --- OBS-6: Numeric return values should not get $ prefix ---
+
+func TestFormatActivity_ReturnNumericLiteral(t *testing.T) {
+	e := newTestExecutor()
+	activity := &microflows.EndEvent{
+		ReturnValue: "42",
+	}
+	got := e.formatActivity(activity, nil, nil)
+	want := "return 42;"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestFormatActivity_ReturnNegativeNumericLiteral(t *testing.T) {
+	e := newTestExecutor()
+	activity := &microflows.EndEvent{
+		ReturnValue: "-1",
+	}
+	got := e.formatActivity(activity, nil, nil)
+	want := "return -1;"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestFormatActivity_ReturnDecimalLiteral(t *testing.T) {
+	e := newTestExecutor()
+	activity := &microflows.EndEvent{
+		ReturnValue: "3.14",
+	}
+	got := e.formatActivity(activity, nil, nil)
+	want := "return 3.14;"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestFormatActivity_ReturnIdentifier(t *testing.T) {
+	e := newTestExecutor()
+	activity := &microflows.EndEvent{
+		ReturnValue: "MyVar",
+	}
+	got := e.formatActivity(activity, nil, nil)
+	want := "return $MyVar;"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+// --- OBS-6: isNumericLiteral ---
+
+func TestIsNumericLiteral(t *testing.T) {
+	tests := []struct {
+		input string
+		want  bool
+	}{
+		{"42", true},
+		{"-1", true},
+		{"3.14", true},
+		{"-0.5", true},
+		{"0", true},
+		{"", false},
+		{"-", false},
+		{"abc", false},
+		{"$42", false},
+		{"1.2.3", false},
+		{"42abc", false},
+	}
+	for _, tt := range tests {
+		got := isNumericLiteral(tt.input)
+		if got != tt.want {
+			t.Errorf("isNumericLiteral(%q) = %v, want %v", tt.input, got, tt.want)
+		}
+	}
+}
+
+// --- OBS-10: getActionErrorHandlingType with NanoflowCallAction ---
+
+func TestGetActionErrorHandlingType_NanoflowCallAction(t *testing.T) {
+	activity := &microflows.ActionActivity{
+		Action: &microflows.NanoflowCallAction{
+			ErrorHandlingType: microflows.ErrorHandlingTypeContinue,
+		},
+	}
+	got := getActionErrorHandlingType(activity)
+	if got != microflows.ErrorHandlingTypeContinue {
+		t.Errorf("got %q, want %q", got, microflows.ErrorHandlingTypeContinue)
+	}
+}
+
+func TestGetActionErrorHandlingType_NanoflowCallAction_Abort(t *testing.T) {
+	activity := &microflows.ActionActivity{
+		Action: &microflows.NanoflowCallAction{
+			ErrorHandlingType: microflows.ErrorHandlingTypeAbort,
+		},
+	}
+	got := getActionErrorHandlingType(activity)
+	if got != microflows.ErrorHandlingTypeAbort {
+		t.Errorf("got %q, want %q", got, microflows.ErrorHandlingTypeAbort)
+	}
+}
+
+// =============================================================================
+// formatAction — JavaScript action call
+// =============================================================================
+
+func TestFormatAction_JavaScriptActionCall_Simple(t *testing.T) {
+	e := newTestExecutor()
+	action := &microflows.JavaScriptActionCallAction{
+		JavaScriptAction: "MyModule.MyJSAction",
+	}
+	got := e.formatAction(action, nil, nil)
+	want := "call javascript action MyModule.MyJSAction();"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestFormatAction_JavaScriptActionCall_WithReturn(t *testing.T) {
+	e := newTestExecutor()
+	action := &microflows.JavaScriptActionCallAction{
+		JavaScriptAction:   "MyModule.MyJSAction",
+		OutputVariableName: "Result",
+	}
+	got := e.formatAction(action, nil, nil)
+	want := "$Result = call javascript action MyModule.MyJSAction();"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestFormatAction_JavaScriptActionCall_WithParams(t *testing.T) {
+	e := newTestExecutor()
+	action := &microflows.JavaScriptActionCallAction{
+		JavaScriptAction: "MyModule.MyJSAction",
+		ParameterMappings: []*microflows.JavaScriptActionParameterMapping{
+			{
+				Parameter: "MyModule.MyJSAction.Input",
+				Value: &microflows.ExpressionBasedCodeActionParameterValue{
+					Expression: "$MyVar",
+				},
+			},
+		},
+		OutputVariableName: "Result",
+	}
+	got := e.formatAction(action, nil, nil)
+	want := "$Result = call javascript action MyModule.MyJSAction(Input = $MyVar);"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestGetActionErrorHandlingType_JavaScriptActionCallAction(t *testing.T) {
+	activity := &microflows.ActionActivity{
+		Action: &microflows.JavaScriptActionCallAction{
+			ErrorHandlingType: microflows.ErrorHandlingTypeContinue,
+		},
+	}
+	got := getActionErrorHandlingType(activity)
+	if got != microflows.ErrorHandlingTypeContinue {
+		t.Errorf("got %q, want %q", got, microflows.ErrorHandlingTypeContinue)
+	}
+}

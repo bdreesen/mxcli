@@ -1179,6 +1179,21 @@ createMicroflowStatement
       BEGIN microflowBody END SEMICOLON? SLASH?
     ;
 
+/**
+ * Nanoflow creation — mirrors microflow syntax but targets client-side execution.
+ * Nanoflows cannot contain server-side actions (Java, REST, workflow, etc.).
+ *
+ * @example Basic nanoflow
+ * ```mdl
+ * CREATE NANOFLOW MyModule.ShowWelcome($UserName: String NOT NULL)
+ * BEGIN
+ *     show message "Welcome, " + $UserName;
+ * END;
+ * ```
+ *
+ * @see createMicroflowStatement for shared parameter/return type syntax
+ * @see microflowBody for available activities
+ */
 createNanoflowStatement
     : NANOFLOW qualifiedName
       LPAREN microflowParameterList? RPAREN
@@ -1268,6 +1283,12 @@ microflowBody
     : microflowStatement*
     ;
 
+/**
+ * Body shared by both microflow and nanoflow creation.
+ * CALL NANOFLOW is valid in both contexts (microflows can call nanoflows).
+ * Nanoflow-specific action restrictions are enforced at the executor level,
+ * not at the grammar level.
+ */
 microflowStatement
     : annotation* declareStatement SEMICOLON?
     | annotation* setStatement SEMICOLON?
@@ -3090,6 +3111,7 @@ showStatement
     | showOrList ACCESS ON MICROFLOW qualifiedName
     | showOrList ACCESS ON PAGE qualifiedName
     | showOrList ACCESS ON WORKFLOW qualifiedName
+    | showOrList ACCESS ON NANOFLOW qualifiedName
     | showOrList SECURITY MATRIX (IN (qualifiedName | IDENTIFIER))?
     | showOrList ODATA CLIENTS (IN (qualifiedName | IDENTIFIER))?
     | showOrList ODATA SERVICES (IN (qualifiedName | IDENTIFIER))?

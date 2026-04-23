@@ -10,35 +10,6 @@ import (
 	"github.com/mendixlabs/mxcli/mdl/ast"
 )
 
-// nanoflowDisallowedActions lists AST statement types that are not allowed in
-// nanoflow bodies. These correspond to microflow-only actions in the Mendix
-// runtime: Java actions, REST/web service calls, workflow actions, import/export,
-// external object operations, download, push-to-client, show home page, and
-// JSON transformation.
-var nanoflowDisallowedActions = map[string]string{
-	"*ast.RaiseErrorStmt":                 "ErrorEvent is not allowed in nanoflows",
-	"*ast.CallJavaActionStmt":             "Java actions cannot be called from nanoflows",
-	"*ast.ExecuteDatabaseQueryStmt":       "database queries are not allowed in nanoflows",
-	"*ast.CallExternalActionStmt":         "external action calls are not allowed in nanoflows",
-	"*ast.ShowHomePageStmt":               "SHOW HOME PAGE is not allowed in nanoflows",
-	"*ast.RestCallStmt":                   "REST calls are not allowed in nanoflows",
-	"*ast.SendRestRequestStmt":            "REST requests are not allowed in nanoflows",
-	"*ast.ImportFromMappingStmt":          "import mapping is not allowed in nanoflows",
-	"*ast.ExportToMappingStmt":            "export mapping is not allowed in nanoflows",
-	"*ast.TransformJsonStmt":              "JSON transformation is not allowed in nanoflows",
-	"*ast.CallWorkflowStmt":               "workflow calls are not allowed in nanoflows",
-	"*ast.GetWorkflowDataStmt":            "workflow actions are not allowed in nanoflows",
-	"*ast.GetWorkflowsStmt":               "workflow actions are not allowed in nanoflows",
-	"*ast.GetWorkflowActivityRecordsStmt": "workflow actions are not allowed in nanoflows",
-	"*ast.WorkflowOperationStmt":          "workflow actions are not allowed in nanoflows",
-	"*ast.SetTaskOutcomeStmt":             "workflow actions are not allowed in nanoflows",
-	"*ast.OpenUserTaskStmt":               "workflow actions are not allowed in nanoflows",
-	"*ast.NotifyWorkflowStmt":             "workflow actions are not allowed in nanoflows",
-	"*ast.OpenWorkflowStmt":               "workflow actions are not allowed in nanoflows",
-	"*ast.LockWorkflowStmt":               "workflow actions are not allowed in nanoflows",
-	"*ast.UnlockWorkflowStmt":             "workflow actions are not allowed in nanoflows",
-}
-
 // validateNanoflowBody checks that a nanoflow body does not contain disallowed
 // actions or flow objects. Returns a list of human-readable error messages.
 func validateNanoflowBody(body []ast.MicroflowStatement) []string {
@@ -49,8 +20,7 @@ func validateNanoflowBody(body []ast.MicroflowStatement) []string {
 
 func validateNanoflowStatements(stmts []ast.MicroflowStatement, errors *[]string) {
 	for _, stmt := range stmts {
-		typeName := fmt.Sprintf("%T", stmt)
-		if reason, disallowed := nanoflowDisallowedActions[typeName]; disallowed {
+		if reason := checkDisallowedNanoflowAction(stmt); reason != "" {
 			*errors = append(*errors, reason)
 			continue
 		}
@@ -69,6 +39,61 @@ func validateNanoflowStatements(stmts []ast.MicroflowStatement, errors *[]string
 			validateNanoflowStatements(eh.Body, errors)
 		}
 	}
+}
+
+// checkDisallowedNanoflowAction returns a human-readable error message if the
+// statement is not allowed in nanoflows, or empty string if allowed.
+//
+// MAINTENANCE: This uses a denylist approach — any action type NOT listed here
+// is implicitly allowed. When adding new action AST types, check whether they
+// are available in nanoflows (see Mendix docs "Nanoflows" > "Activities") and
+// add a case here if they are server-side only.
+func checkDisallowedNanoflowAction(stmt ast.MicroflowStatement) string {
+	switch stmt.(type) {
+	case *ast.RaiseErrorStmt:
+		return "ErrorEvent is not allowed in nanoflows"
+	case *ast.CallJavaActionStmt:
+		return "Java actions cannot be called from nanoflows"
+	case *ast.ExecuteDatabaseQueryStmt:
+		return "database queries are not allowed in nanoflows"
+	case *ast.CallExternalActionStmt:
+		return "external action calls are not allowed in nanoflows"
+	case *ast.ShowHomePageStmt:
+		return "SHOW HOME PAGE is not allowed in nanoflows"
+	case *ast.RestCallStmt:
+		return "REST calls are not allowed in nanoflows"
+	case *ast.SendRestRequestStmt:
+		return "REST requests are not allowed in nanoflows"
+	case *ast.ImportFromMappingStmt:
+		return "import mapping is not allowed in nanoflows"
+	case *ast.ExportToMappingStmt:
+		return "export mapping is not allowed in nanoflows"
+	case *ast.TransformJsonStmt:
+		return "JSON transformation is not allowed in nanoflows"
+	case *ast.CallWorkflowStmt:
+		return "workflow calls are not allowed in nanoflows"
+	case *ast.GetWorkflowDataStmt:
+		return "workflow actions are not allowed in nanoflows"
+	case *ast.GetWorkflowsStmt:
+		return "workflow actions are not allowed in nanoflows"
+	case *ast.GetWorkflowActivityRecordsStmt:
+		return "workflow actions are not allowed in nanoflows"
+	case *ast.WorkflowOperationStmt:
+		return "workflow actions are not allowed in nanoflows"
+	case *ast.SetTaskOutcomeStmt:
+		return "workflow actions are not allowed in nanoflows"
+	case *ast.OpenUserTaskStmt:
+		return "workflow actions are not allowed in nanoflows"
+	case *ast.NotifyWorkflowStmt:
+		return "workflow actions are not allowed in nanoflows"
+	case *ast.OpenWorkflowStmt:
+		return "workflow actions are not allowed in nanoflows"
+	case *ast.LockWorkflowStmt:
+		return "workflow actions are not allowed in nanoflows"
+	case *ast.UnlockWorkflowStmt:
+		return "workflow actions are not allowed in nanoflows"
+	}
+	return ""
 }
 
 // getErrorHandling extracts the ErrorHandlingClause from statements that have one.
@@ -109,7 +134,7 @@ func getErrorHandling(stmt ast.MicroflowStatement) *ast.ErrorHandlingClause {
 }
 
 // validateNanoflowReturnType checks that the return type is allowed for nanoflows.
-// Binary and Float return types are not supported.
+// Binary return type is not supported in nanoflows.
 func validateNanoflowReturnType(retType *ast.MicroflowReturnType) string {
 	if retType == nil {
 		return ""
