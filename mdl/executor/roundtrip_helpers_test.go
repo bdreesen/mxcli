@@ -21,6 +21,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/mendixlabs/mxcli/cmd/mxcli/docker"
 	"github.com/mendixlabs/mxcli/mdl/ast"
 	"github.com/mendixlabs/mxcli/mdl/backend"
 	mprbackend "github.com/mendixlabs/mxcli/mdl/backend/mpr"
@@ -132,8 +133,8 @@ func copyTestProject(t *testing.T) string {
 }
 
 // findMxBinary searches for the mx command in known locations.
-// Search order: MX_BINARY env var, reference/mxbuild/modeler/mx (repo-local),
-// ~/.mxcli/mxbuild/*/modeler/mx (cached downloads), PATH lookup.
+// Search order: MX_BINARY env var, PATH lookup, reference/mxbuild/modeler/mx
+// (repo-local), ~/.mxcli/mxbuild/*/modeler/mx (cached downloads, newest numeric version).
 func findMxBinary() string {
 	// 0. Explicit override via environment variable
 	if p := os.Getenv("MX_BINARY"); p != "" {
@@ -142,7 +143,12 @@ func findMxBinary() string {
 		}
 	}
 
-	// 1. Repo-local reference path
+	// 1. PATH lookup
+	if p, err := exec.LookPath("mx"); err == nil {
+		return p
+	}
+
+	// 2. Repo-local reference path
 	repoPath, err := filepath.Abs("../../reference/mxbuild/modeler/mx")
 	if err == nil {
 		if _, err := os.Stat(repoPath); err == nil {
@@ -150,21 +156,21 @@ func findMxBinary() string {
 		}
 	}
 
-	// 2. Cached downloads (~/.mxcli/mxbuild/*/modeler/mx)
+	// 3. Cached downloads (~/.mxcli/mxbuild/*/modeler/mx)
 	if home, err := os.UserHomeDir(); err == nil {
 		pattern := filepath.Join(home, ".mxcli", "mxbuild", "*", "modeler", "mx")
 		if matches, _ := filepath.Glob(pattern); len(matches) > 0 {
-			return matches[len(matches)-1]
+			return docker.NewestVersionedPath(matches)
 		}
-	}
-
-	// 3. PATH lookup
-	if p, err := exec.LookPath("mx"); err == nil {
-		return p
 	}
 
 	return ""
 }
+
+// newestVersionedPath / versionFromPath / parseVersionParts / compareVersionParts
+// used to be duplicated here. They now live as exported helpers in
+// cmd/mxcli/docker (docker.NewestVersionedPath). The integration-test harness
+// call-site was adjusted to use the exported helper instead.
 
 // copyFile copies a single file from src to dst.
 func copyFile(src, dst string) error {

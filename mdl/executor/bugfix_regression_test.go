@@ -9,8 +9,10 @@ import (
 	"testing"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	"github.com/mendixlabs/mxcli/mdl/backend/mock"
 	"github.com/mendixlabs/mxcli/mdl/visitor"
 	"github.com/mendixlabs/mxcli/model"
+	"github.com/mendixlabs/mxcli/sdk/domainmodel"
 	"github.com/mendixlabs/mxcli/sdk/microflows"
 )
 
@@ -62,6 +64,157 @@ func TestFormatActivity_WhileLoop(t *testing.T) {
 	got := e.formatActivity(obj, nil, nil)
 	if got != "while $Counter <= $N" {
 		t.Errorf("got %q, want %q", got, "while $Counter <= $N")
+	}
+}
+
+func TestAddLoopStatement_PreservesAnnotatedPosition(t *testing.T) {
+	fb := &flowBuilder{
+		posX:         350,
+		posY:         200,
+		spacing:      HorizontalSpacing,
+		varTypes:     map[string]string{"Items": "List of Test.Item"},
+		declaredVars: map[string]string{},
+		measurer:     &layoutMeasurer{varTypes: map[string]string{"Items": "List of Test.Item"}},
+	}
+
+	stmt := &ast.LoopStmt{
+		LoopVariable: "Item",
+		ListVariable: "Items",
+		Annotations: &ast.ActivityAnnotations{
+			Position: &ast.Position{X: 350, Y: 200},
+		},
+	}
+
+	id := fb.addLoopStatement(stmt)
+	if id == "" {
+		t.Fatal("expected loop activity ID")
+	}
+
+	loop, ok := fb.objects[len(fb.objects)-1].(*microflows.LoopedActivity)
+	if !ok {
+		t.Fatalf("expected LoopedActivity, got %T", fb.objects[len(fb.objects)-1])
+	}
+	if loop.Position.X != 350 || loop.Position.Y != 200 {
+		t.Fatalf("got loop position (%d, %d), want (350, 200)", loop.Position.X, loop.Position.Y)
+	}
+	wantNextX := 350 + loop.Size.Width/2 + HorizontalSpacing
+	if fb.posX != wantNextX {
+		t.Fatalf("got next posX %d, want %d", fb.posX, wantNextX)
+	}
+}
+
+func TestAddWhileStatement_PreservesAnnotatedPosition(t *testing.T) {
+	fb := &flowBuilder{
+		posX:         420,
+		posY:         180,
+		spacing:      HorizontalSpacing,
+		varTypes:     map[string]string{},
+		declaredVars: map[string]string{},
+		measurer:     &layoutMeasurer{varTypes: map[string]string{}},
+	}
+
+	stmt := &ast.WhileStmt{
+		Condition: &ast.BinaryExpr{
+			Left:     &ast.VariableExpr{Name: "Count"},
+			Operator: "<",
+			Right:    &ast.LiteralExpr{Kind: ast.LiteralInteger, Value: int64(10)},
+		},
+		Annotations: &ast.ActivityAnnotations{
+			Position: &ast.Position{X: 420, Y: 180},
+		},
+	}
+
+	id := fb.addWhileStatement(stmt)
+	if id == "" {
+		t.Fatal("expected while activity ID")
+	}
+
+	loop, ok := fb.objects[len(fb.objects)-1].(*microflows.LoopedActivity)
+	if !ok {
+		t.Fatalf("expected LoopedActivity, got %T", fb.objects[len(fb.objects)-1])
+	}
+	if loop.Position.X != 420 || loop.Position.Y != 180 {
+		t.Fatalf("got while position (%d, %d), want (420, 180)", loop.Position.X, loop.Position.Y)
+	}
+	wantNextX := 420 + loop.Size.Width/2 + HorizontalSpacing
+	if fb.posX != wantNextX {
+		t.Fatalf("got next posX %d, want %d", fb.posX, wantNextX)
+	}
+}
+
+func TestAddLogMessageAction_PreservesNodeExpression(t *testing.T) {
+	fb := &flowBuilder{
+		posX:     100,
+		posY:     200,
+		spacing:  HorizontalSpacing,
+		measurer: &layoutMeasurer{},
+	}
+
+	stmt := &ast.LogStmt{
+		Level: ast.LogInfo,
+		Node: &ast.ConstantRefExpr{
+			QualifiedName: ast.QualifiedName{Module: "TestModule", Name: "SecurityLogNode"},
+		},
+		Message: &ast.LiteralExpr{Kind: ast.LiteralString, Value: "User added"},
+	}
+
+	id := fb.addLogMessageAction(stmt)
+	if id == "" {
+		t.Fatal("expected log activity ID")
+	}
+
+	activity, ok := fb.objects[len(fb.objects)-1].(*microflows.ActionActivity)
+	if !ok {
+		t.Fatalf("expected ActionActivity, got %T", fb.objects[len(fb.objects)-1])
+	}
+
+	action, ok := activity.Action.(*microflows.LogMessageAction)
+	if !ok {
+		t.Fatalf("expected LogMessageAction, got %T", activity.Action)
+	}
+
+	if action.LogNodeName != "@TestModule.SecurityLogNode" {
+		t.Fatalf("got log node %q, want %q", action.LogNodeName, "@TestModule.SecurityLogNode")
+	}
+}
+
+func TestAddLogMessageAction_TemplateLiteralDoesNotKeepQuotes(t *testing.T) {
+	fb := &flowBuilder{
+		posX:     100,
+		posY:     200,
+		spacing:  HorizontalSpacing,
+		measurer: &layoutMeasurer{},
+	}
+
+	stmt := &ast.LogStmt{
+		Level: ast.LogInfo,
+		Node:  &ast.LiteralExpr{Kind: ast.LiteralString, Value: "App"},
+		Message: &ast.LiteralExpr{
+			Kind:  ast.LiteralString,
+			Value: "Order {1}",
+		},
+		Template: []ast.TemplateParam{
+			{Index: 1, Value: &ast.VariableExpr{Name: "OrderNumber"}},
+		},
+	}
+
+	id := fb.addLogMessageAction(stmt)
+	if id == "" {
+		t.Fatal("expected log activity ID")
+	}
+
+	activity, ok := fb.objects[len(fb.objects)-1].(*microflows.ActionActivity)
+	if !ok {
+		t.Fatalf("expected ActionActivity, got %T", fb.objects[len(fb.objects)-1])
+	}
+
+	action, ok := activity.Action.(*microflows.LogMessageAction)
+	if !ok {
+		t.Fatalf("expected LogMessageAction, got %T", activity.Action)
+	}
+
+	if got := action.MessageTemplate.Translations["en_US"]; got != "Order {1}" {
+		t.Fatalf("got message template %q, want %q", got, "Order {1}")
 	}
 }
 
@@ -421,5 +574,111 @@ func TestResolveMemberChange_FallbackWithoutReader(t *testing.T) {
 	}
 	if mc2.AttributeQualifiedName != "" {
 		t.Errorf("expected empty attribute, got %q", mc2.AttributeQualifiedName)
+	}
+}
+
+func TestCallMicroflowResultType_ResolvesSubsequentChangeMember(t *testing.T) {
+	moduleID := model.ID("module-1")
+	backend := &mock.MockBackend{
+		GetModuleByNameFunc: func(name string) (*model.Module, error) {
+			if name != "MfTest" {
+				return nil, nil
+			}
+			return &model.Module{
+				BaseElement: model.BaseElement{ID: moduleID},
+				Name:        "MfTest",
+			}, nil
+		},
+		ListMicroflowsFunc: func() ([]*microflows.Microflow, error) {
+			return []*microflows.Microflow{
+				{
+					ContainerID: moduleID,
+					Name:        "M012_CreateEntity",
+					ReturnType: &microflows.ObjectType{
+						EntityQualifiedName: "MfTest.Product",
+					},
+				},
+			}, nil
+		},
+		GetDomainModelFunc: func(id model.ID) (*domainmodel.DomainModel, error) {
+			if id != moduleID {
+				return nil, nil
+			}
+			return &domainmodel.DomainModel{
+				ContainerID: moduleID,
+				Entities: []*domainmodel.Entity{
+					{
+						Name: "Product",
+						Attributes: []*domainmodel.Attribute{
+							{
+								Name: "Price",
+								Type: &domainmodel.DecimalAttributeType{},
+							},
+						},
+					},
+				},
+			}, nil
+		},
+	}
+
+	fb := &flowBuilder{
+		varTypes:     map[string]string{},
+		declaredVars: map[string]string{},
+		backend:      backend,
+	}
+
+	fb.addCallMicroflowAction(&ast.CallMicroflowStmt{
+		OutputVariable: "Product",
+		MicroflowName:  ast.QualifiedName{Module: "MfTest", Name: "M012_CreateEntity"},
+	})
+	fb.addChangeObjectAction(&ast.ChangeObjectStmt{
+		Variable: "Product",
+		Changes: []ast.ChangeItem{
+			{
+				Attribute: "Price",
+				Value:     &ast.LiteralExpr{Value: 10.0, Kind: ast.LiteralDecimal},
+			},
+		},
+	})
+
+	if got := fb.varTypes["Product"]; got != "MfTest.Product" {
+		t.Fatalf("expected call result type MfTest.Product, got %q", got)
+	}
+
+	activity, ok := fb.objects[len(fb.objects)-1].(*microflows.ActionActivity)
+	if !ok {
+		t.Fatalf("expected last object to be ActionActivity, got %T", fb.objects[len(fb.objects)-1])
+	}
+	changeAction, ok := activity.Action.(*microflows.ChangeObjectAction)
+	if !ok {
+		t.Fatalf("expected last action to be ChangeObjectAction, got %T", activity.Action)
+	}
+	if len(changeAction.Changes) != 1 {
+		t.Fatalf("expected one member change, got %d", len(changeAction.Changes))
+	}
+	if got := changeAction.Changes[0].AttributeQualifiedName; got != "MfTest.Product.Price" {
+		t.Fatalf("expected qualified attribute MfTest.Product.Price, got %q", got)
+	}
+}
+
+func TestCallMicroflowUnknownResultTypeStillDeclaresVariable(t *testing.T) {
+	fb := &flowBuilder{
+		varTypes:     map[string]string{"Result": "Old.ModuleEntity"},
+		declaredVars: map[string]string{},
+	}
+
+	fb.addCallMicroflowAction(&ast.CallMicroflowStmt{
+		OutputVariable: "Result",
+		MicroflowName:  ast.QualifiedName{Module: "Missing", Name: "Unknown"},
+	})
+
+	if _, ok := fb.varTypes["Result"]; ok {
+		t.Fatalf("expected stale entity typing to be cleared, got %q", fb.varTypes["Result"])
+	}
+	if got := fb.declaredVars["Result"]; got != "Unknown" {
+		t.Fatalf("expected Result to remain declared as Unknown, got %q", got)
+	}
+	if !fb.isVariableDeclared("Result") {
+		t.Fatal("expected Result to remain declared after unresolved call return type")
 	}
 }

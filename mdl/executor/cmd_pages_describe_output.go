@@ -13,10 +13,16 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// mdlQuote wraps a string in single quotes, escaping any embedded single quotes
-// by doubling them (MDL convention: 'it”s here').
+// mdlQuote wraps a string in single quotes and escapes MDL-sensitive characters.
 func mdlQuote(s string) string {
-	return "'" + strings.ReplaceAll(s, "'", "''") + "'"
+	escaped := strings.NewReplacer(
+		"\\", "\\\\",
+		"\n", "\\n",
+		"\r", "\\r",
+		"\t", "\\t",
+		"'", "''",
+	).Replace(s)
+	return "'" + escaped + "'"
 }
 
 // appendDataGridPagingProps appends non-default paging properties for DataGrid2.
@@ -129,6 +135,48 @@ func outputWidgetMDLV3(ctx *ExecContext, w rawWidget, indent int) {
 	prefix := strings.Repeat("  ", indent)
 
 	switch w.Type {
+	case "Forms$ScrollContainer", "Pages$ScrollContainer":
+		header := fmt.Sprintf("scrollcontainer %s", w.Name)
+		props := appendAppearanceProps(nil, w)
+		if len(w.Children) > 0 {
+			formatWidgetProps(ctx.Output, prefix, header, props, " {\n")
+			for _, child := range w.Children {
+				outputWidgetMDLV3(ctx, child, indent+1)
+			}
+			fmt.Fprintf(ctx.Output, "%s}\n", prefix)
+		} else {
+			formatWidgetProps(ctx.Output, prefix, header, props, "\n")
+		}
+
+	case "Forms$TabControl", "Pages$TabControl":
+		header := fmt.Sprintf("tabcontainer %s", w.Name)
+		props := appendAppearanceProps(nil, w)
+		if len(w.Children) > 0 {
+			formatWidgetProps(ctx.Output, prefix, header, props, " {\n")
+			for _, child := range w.Children {
+				outputWidgetMDLV3(ctx, child, indent+1)
+			}
+			fmt.Fprintf(ctx.Output, "%s}\n", prefix)
+		} else {
+			formatWidgetProps(ctx.Output, prefix, header, props, "\n")
+		}
+
+	case "Pages$TabPage":
+		header := fmt.Sprintf("tabpage %s", w.Name)
+		var props []string
+		if w.TabCaption != "" {
+			props = append(props, fmt.Sprintf("Caption: %s", mdlQuote(w.TabCaption)))
+		}
+		if len(w.Children) > 0 {
+			formatWidgetProps(ctx.Output, prefix, header, props, " {\n")
+			for _, child := range w.Children {
+				outputWidgetMDLV3(ctx, child, indent+1)
+			}
+			fmt.Fprintf(ctx.Output, "%s}\n", prefix)
+		} else {
+			formatWidgetProps(ctx.Output, prefix, header, props, "\n")
+		}
+
 	case "Forms$DivContainer", "Pages$DivContainer":
 		header := fmt.Sprintf("container %s", w.Name)
 		props := appendAppearanceProps(nil, w)

@@ -9,6 +9,7 @@ import (
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
 	"github.com/mendixlabs/mxcli/mdl/backend"
+	"github.com/mendixlabs/mxcli/mdl/types"
 	"github.com/mendixlabs/mxcli/model"
 	"github.com/mendixlabs/mxcli/sdk/microflows"
 )
@@ -74,6 +75,132 @@ func (fb *flowBuilder) isVariableDeclared(varName string) bool {
 		return true
 	}
 	return false
+}
+
+// registerResultVariableType records the output type of an action so later
+// statements such as CHANGE, ADD TO, or attribute access can resolve members.
+// When dt is nil (e.g. backend lookup failed), any stale entity/list typing is
+// cleared but the variable remains declared as Unknown so downstream statements
+// don't report it as undeclared.
+func (fb *flowBuilder) registerResultVariableType(varName string, dt microflows.DataType) {
+	if varName == "" {
+		return
+	}
+	if dt == nil {
+		if fb.varTypes != nil {
+			delete(fb.varTypes, varName)
+		}
+		if fb.declaredVars != nil {
+			fb.declaredVars[varName] = "Unknown"
+		}
+		return
+	}
+
+	switch t := dt.(type) {
+	case *microflows.ObjectType:
+		entityQName := t.EntityQualifiedName
+		if entityQName == "" && t.EntityID != "" {
+			entityQName = fb.resolveEntityQualifiedName(t.EntityID)
+		}
+		if fb.varTypes != nil && entityQName != "" {
+			fb.varTypes[varName] = entityQName
+			return
+		}
+	case *microflows.ListType:
+		entityQName := t.EntityQualifiedName
+		if entityQName == "" && t.EntityID != "" {
+			entityQName = fb.resolveEntityQualifiedName(t.EntityID)
+		}
+		if fb.varTypes != nil && entityQName != "" {
+			fb.varTypes[varName] = "List of " + entityQName
+			return
+		}
+	}
+
+	if fb.declaredVars != nil {
+		fb.declaredVars[varName] = dt.GetTypeName()
+	}
+}
+
+// lookupMicroflowReturnType resolves the return type of a called microflow by
+// qualified name so downstream activities can infer variable types.
+func (fb *flowBuilder) lookupMicroflowReturnType(qualifiedName string) microflows.DataType {
+	if fb.backend == nil || qualifiedName == "" {
+		return nil
+	}
+
+	if rawUnit, err := fb.backend.GetRawUnitByName("microflow", qualifiedName); err == nil && rawUnit != nil && len(rawUnit.Contents) > 0 {
+		if mf, err := fb.backend.ParseMicroflowBSON(rawUnit.Contents, model.ID(rawUnit.ID), ""); err == nil && mf != nil {
+			return mf.ReturnType
+		}
+	}
+
+	moduleName, microflowName, ok := strings.Cut(qualifiedName, ".")
+	if !ok || moduleName == "" || microflowName == "" {
+		return nil
+	}
+
+	module, err := fb.backend.GetModuleByName(moduleName)
+	if err != nil || module == nil {
+		return nil
+	}
+	microflowList, err := fb.backend.ListMicroflows()
+	if err != nil {
+		return nil
+	}
+
+	for _, mf := range microflowList {
+		if mf == nil {
+			continue
+		}
+		containerModuleID := mf.ContainerID
+		if fb.hierarchy != nil {
+			containerModuleID = fb.hierarchy.FindModuleID(mf.ContainerID)
+		}
+		if containerModuleID == module.ID && mf.Name == microflowName {
+			return mf.ReturnType
+		}
+	}
+
+	return nil
+}
+
+func (fb *flowBuilder) resolveEntityQualifiedName(entityID model.ID) string {
+	if fb.backend == nil || entityID == "" {
+		return ""
+	}
+
+	domainModels, err := fb.backend.ListDomainModels()
+	if err != nil {
+		return ""
+	}
+
+	for _, dm := range domainModels {
+		if dm == nil {
+			continue
+		}
+
+		moduleName := ""
+		if fb.hierarchy != nil {
+			moduleName = fb.hierarchy.GetModuleName(dm.ContainerID)
+		}
+		if moduleName == "" {
+			if mod, err := fb.backend.GetModule(dm.ContainerID); err == nil && mod != nil {
+				moduleName = mod.Name
+			}
+		}
+		if moduleName == "" {
+			continue
+		}
+
+		for _, entity := range dm.Entities {
+			if entity != nil && entity.ID == entityID {
+				return moduleName + "." + entity.Name
+			}
+		}
+	}
+
+	return ""
 }
 
 // exprToString converts an AST Expression to a Mendix expression string,
@@ -169,4 +296,104 @@ func (fb *flowBuilder) resolvePathSegments(path []string) []string {
 		}
 	}
 	return resolved
+}
+
+// buildSplitCondition constructs the right SplitCondition variant for an IF
+// statement. When the condition is a qualified call into a rule, it emits a
+// RuleSplitCondition (nested RuleCall with ParameterMappings). Everything else
+// falls back to ExpressionSplitCondition.
+//
+// Studio Pro enforces this distinction: a rule reference stored as an
+// expression fails validation with CE0117, which is the regression this
+// helper prevents on describe → exec roundtrips.
+func (fb *flowBuilder) buildSplitCondition(expr ast.Expression, fallbackExpression string) microflows.SplitCondition {
+	if ruleCond := fb.tryBuildRuleSplitCondition(expr); ruleCond != nil {
+		return ruleCond
+	}
+	return &microflows.ExpressionSplitCondition{
+		BaseElement: model.BaseElement{ID: model.ID(types.GenerateID())},
+		Expression:  fallbackExpression,
+	}
+}
+
+// tryBuildRuleSplitCondition returns a RuleSplitCondition when the expression
+// is a qualified function call that resolves to a rule via the backend.
+// Returns nil if the expression isn't a qualified call, if the backend is
+// unavailable, or if the name doesn't resolve to a rule.
+func (fb *flowBuilder) tryBuildRuleSplitCondition(expr ast.Expression) *microflows.RuleSplitCondition {
+	if fb.backend == nil {
+		return nil
+	}
+	call := unwrapParenCall(expr)
+	if call == nil {
+		return nil
+	}
+	// Only qualified names (Module.Name) can refer to rules; bare identifiers
+	// are built-ins (length, contains, etc.).
+	if !strings.Contains(call.Name, ".") {
+		return nil
+	}
+	isRule, err := fb.backend.IsRule(call.Name)
+	if err != nil || !isRule {
+		return nil
+	}
+
+	cond := &microflows.RuleSplitCondition{
+		BaseElement:       model.BaseElement{ID: model.ID(types.GenerateID())},
+		RuleQualifiedName: call.Name,
+	}
+	for _, arg := range call.Arguments {
+		name, value := extractNamedArg(arg)
+		if name == "" {
+			// Positional arguments aren't representable in RuleCall — skip
+			// rather than fabricate a parameter mapping that Studio Pro
+			// would reject.
+			continue
+		}
+		cond.ParameterMappings = append(cond.ParameterMappings, &microflows.RuleCallParameterMapping{
+			BaseElement:   model.BaseElement{ID: model.ID(types.GenerateID())},
+			ParameterName: call.Name + "." + name,
+			Argument:      fb.exprToString(value),
+		})
+	}
+	return cond
+}
+
+// unwrapParenCall peels outer ParenExprs and returns the inner FunctionCallExpr
+// if present. Describer output wraps rule calls in parens when they sit inside
+// boolean expressions, so we must see through them.
+func unwrapParenCall(expr ast.Expression) *ast.FunctionCallExpr {
+	for {
+		switch e := expr.(type) {
+		case *ast.FunctionCallExpr:
+			return e
+		case *ast.ParenExpr:
+			expr = e.Inner
+		default:
+			return nil
+		}
+	}
+}
+
+// extractNamedArg recognises `Name = value` BinaryExprs and returns the
+// parameter name + value. Anything else returns "", nil.
+//
+// The left side of a named-arg expression can surface as either an
+// IdentifierExpr (bare parameter name) or an AttributePathExpr with an empty
+// Variable — both forms come out of the visitor depending on surrounding
+// context, so handle them both.
+func extractNamedArg(expr ast.Expression) (string, ast.Expression) {
+	bin, ok := expr.(*ast.BinaryExpr)
+	if !ok || bin.Operator != "=" {
+		return "", nil
+	}
+	switch left := bin.Left.(type) {
+	case *ast.IdentifierExpr:
+		return left.Name, bin.Right
+	case *ast.AttributePathExpr:
+		if left.Variable == "" && len(left.Path) == 1 {
+			return left.Path[0], bin.Right
+		}
+	}
+	return "", nil
 }

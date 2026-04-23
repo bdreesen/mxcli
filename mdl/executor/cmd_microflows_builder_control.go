@@ -43,11 +43,12 @@ func (fb *flowBuilder) addIfStatement(s *ast.IfStmt) model.ID {
 	splitX := fb.posX
 	centerY := fb.posY // This is the center line for the happy path
 
-	// Create ExclusiveSplit with expression condition
-	splitCondition := &microflows.ExpressionSplitCondition{
-		BaseElement: model.BaseElement{ID: model.ID(types.GenerateID())},
-		Expression:  fb.exprToString(s.Condition),
-	}
+	// Decide whether the IF condition is a rule call or a plain expression.
+	// A rule-based split must be serialized as Microflows$RuleSplitCondition;
+	// emitting ExpressionSplitCondition for a rule call causes Studio Pro to
+	// raise CE0117 "Error(s) in expression".
+	caption := fb.exprToString(s.Condition)
+	splitCondition := fb.buildSplitCondition(s.Condition, caption)
 
 	split := &microflows.ExclusiveSplit{
 		BaseMicroflowObject: microflows.BaseMicroflowObject{
@@ -55,7 +56,7 @@ func (fb *flowBuilder) addIfStatement(s *ast.IfStmt) model.ID {
 			Position:    model.Point{X: splitX, Y: centerY},
 			Size:        model.Size{Width: SplitWidth, Height: SplitHeight},
 		},
-		Caption:           fb.exprToString(s.Condition),
+		Caption:           caption,
 		SplitCondition:    splitCondition,
 		ErrorHandlingType: microflows.ErrorHandlingTypeRollback,
 	}
@@ -126,8 +127,10 @@ func (fb *flowBuilder) addIfStatement(s *ast.IfStmt) model.ID {
 			}
 		}
 
-		// Connect THEN body to merge only if it doesn't end with RETURN
-		if !thenReturns {
+		// Connect THEN body to merge only if it doesn't end with RETURN and a merge exists.
+		// When needMerge=false, the continuing branch is wired up by the parent via
+		// nextConnectionPoint/nextFlowCase, so we must not emit a dangling flow here.
+		if !thenReturns && needMerge {
 			if lastThenID != "" {
 				fb.flows = append(fb.flows, newHorizontalFlow(lastThenID, mergeID))
 			} else {
@@ -162,8 +165,10 @@ func (fb *flowBuilder) addIfStatement(s *ast.IfStmt) model.ID {
 			}
 		}
 
-		// Connect ELSE body to merge only if it doesn't end with RETURN
-		if !elseReturns {
+		// Connect ELSE body to merge only if it doesn't end with RETURN and a merge exists.
+		// When needMerge=false, the continuing branch is handled by the parent; emitting
+		// a flow with an empty mergeID would create an orphan SequenceFlow.
+		if !elseReturns && needMerge {
 			if lastElseID != "" {
 				fb.flows = append(fb.flows, newUpwardFlow(lastElseID, mergeID))
 			}
@@ -205,8 +210,10 @@ func (fb *flowBuilder) addIfStatement(s *ast.IfStmt) model.ID {
 			}
 		}
 
-		// Connect THEN body to merge only if it doesn't end with RETURN
-		if !thenReturns {
+		// Connect THEN body to merge only if it doesn't end with RETURN and a merge exists.
+		// With no ELSE + thenReturns, needMerge=false and the FALSE path is threaded through
+		// the parent — any flow emitted here would dangle with mergeID="".
+		if !thenReturns && needMerge {
 			if lastThenID != "" {
 				fb.flows = append(fb.flows, newUpwardFlow(lastThenID, mergeID))
 			} else {
@@ -281,6 +288,13 @@ func (fb *flowBuilder) addLoopStatement(s *ast.LoopStmt) model.ID {
 	innerStartX := LoopPadding + iteratorSpace    // Extra offset for iterator icon and label
 	innerStartY := LoopPadding + ActivityHeight/2 // Center activities vertically with some padding
 
+	loopLeftX := fb.posX
+	loopCenterX := loopLeftX + loopWidth/2
+	if s.Annotations != nil && s.Annotations.Position != nil {
+		loopCenterX = s.Annotations.Position.X
+		loopLeftX = loopCenterX - loopWidth/2
+	}
+
 	// Add loop variable to varTypes with element type derived from list type
 	// If $ProductList is "List of MfTest.Product", then $Product is "MfTest.Product"
 	if fb.varTypes != nil {
@@ -328,7 +342,7 @@ func (fb *flowBuilder) addLoopStatement(s *ast.LoopStmt) model.ID {
 	loop := &microflows.LoopedActivity{
 		BaseMicroflowObject: microflows.BaseMicroflowObject{
 			BaseElement: model.BaseElement{ID: model.ID(types.GenerateID())},
-			Position:    model.Point{X: fb.posX + loopWidth/2, Y: fb.posY},
+			Position:    model.Point{X: loopCenterX, Y: fb.posY},
 			Size:        model.Size{Width: loopWidth, Height: loopHeight},
 		},
 		LoopSource: &microflows.IterableList{
@@ -355,7 +369,7 @@ func (fb *flowBuilder) addLoopStatement(s *ast.LoopStmt) model.ID {
 		fb.applyAnnotations(loop.ID, savedLoopAnnotations)
 	}
 
-	fb.posX += loopWidth + HorizontalSpacing
+	fb.posX = loopLeftX + loopWidth + HorizontalSpacing
 
 	return loop.ID
 }
@@ -375,6 +389,13 @@ func (fb *flowBuilder) addWhileStatement(s *ast.WhileStmt) model.ID {
 
 	innerStartX := LoopPadding
 	innerStartY := LoopPadding + ActivityHeight/2
+
+	loopLeftX := fb.posX
+	loopCenterX := loopLeftX + loopWidth/2
+	if s.Annotations != nil && s.Annotations.Position != nil {
+		loopCenterX = s.Annotations.Position.X
+		loopLeftX = loopCenterX - loopWidth/2
+	}
 
 	loopBuilder := &flowBuilder{
 		posX:         innerStartX,
@@ -410,7 +431,7 @@ func (fb *flowBuilder) addWhileStatement(s *ast.WhileStmt) model.ID {
 	loop := &microflows.LoopedActivity{
 		BaseMicroflowObject: microflows.BaseMicroflowObject{
 			BaseElement: model.BaseElement{ID: model.ID(types.GenerateID())},
-			Position:    model.Point{X: fb.posX + loopWidth/2, Y: fb.posY},
+			Position:    model.Point{X: loopCenterX, Y: fb.posY},
 			Size:        model.Size{Width: loopWidth, Height: loopHeight},
 		},
 		LoopSource: &microflows.WhileLoopCondition{
@@ -432,7 +453,7 @@ func (fb *flowBuilder) addWhileStatement(s *ast.WhileStmt) model.ID {
 		fb.applyAnnotations(loop.ID, savedWhileAnnotations)
 	}
 
-	fb.posX += loopWidth + HorizontalSpacing
+	fb.posX = loopLeftX + loopWidth + HorizontalSpacing
 
 	return loop.ID
 }
