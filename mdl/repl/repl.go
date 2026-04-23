@@ -29,6 +29,7 @@ type REPL struct {
 	prompt   string
 	rl       *readline.Instance
 	logger   *diaglog.Logger
+	c        colorPalette
 }
 
 // SetLogger sets the diagnostics logger for the REPL and its executor.
@@ -41,11 +42,13 @@ func (r *REPL) SetLogger(l *diaglog.Logger) {
 func New(input io.Reader, output io.Writer) *REPL {
 	exec := executor.New(output)
 	exec.SetBackendFactory(func() backend.FullBackend { return mprbackend.New() })
+	c := newColorPalette()
 	return &REPL{
 		executor: exec,
 		input:    input,
 		output:   output,
 		prompt:   "mdl> ",
+		c:        c,
 	}
 }
 
@@ -80,7 +83,7 @@ func (r *REPL) Run() error {
 				if errors.Is(err, executor.ErrExit) {
 					return nil
 				}
-				fmt.Fprintf(r.output, "Error: %v\n", err)
+				fmt.Fprintf(r.output, "%s\n", r.c.Red("Error: "+err.Error()))
 			}
 			buffer.Reset()
 		}
@@ -92,7 +95,7 @@ func (r *REPL) Run() error {
 		if strings.TrimSpace(input) != "" {
 			err := r.execute(input)
 			if err != nil && !errors.Is(err, executor.ErrExit) {
-				fmt.Fprintf(r.output, "Error: %v\n", err)
+				fmt.Fprintf(r.output, "%s\n", r.c.Red("Error: "+err.Error()))
 			}
 		}
 	}
@@ -130,17 +133,17 @@ func (r *REPL) RunWithReadline() error {
 
 	var buffer strings.Builder
 
-	fmt.Fprintln(r.output, "MDL REPL - Mendix Definition Language")
-	fmt.Fprintln(r.output, "Type 'help' or '?' for commands, 'exit' or 'quit' to quit")
-	fmt.Fprintln(r.output, "Tab: autocomplete, ↑↓: history, Ctrl+R: search history")
+	fmt.Fprintln(r.output, r.c.Bold("MDL REPL")+" — Mendix Definition Language")
+	fmt.Fprintln(r.output, r.c.Gray("Type 'help' or '?' for commands, 'exit' or 'quit' to quit"))
+	fmt.Fprintln(r.output, r.c.Gray("Tab: autocomplete, ↑↓: history, Ctrl+R: search history"))
 	fmt.Fprintln(r.output)
 
 	for {
 		// Set prompt based on whether we're continuing a multi-line statement
 		if buffer.Len() == 0 {
-			rl.SetPrompt(r.prompt)
+			rl.SetPrompt(r.c.PromptPrimary(r.prompt))
 		} else {
-			rl.SetPrompt("...> ")
+			rl.SetPrompt(r.c.PromptContinue("...> "))
 		}
 
 		// Read line with readline (supports history, arrow keys, etc.)
@@ -189,7 +192,7 @@ func (r *REPL) RunWithReadline() error {
 					fmt.Fprintln(r.output, "Goodbye!")
 					return nil
 				}
-				fmt.Fprintf(r.output, "Error: %v\n", err)
+				fmt.Fprintf(r.output, "%s\n", r.c.Red("Error: "+err.Error()))
 			}
 			buffer.Reset()
 		}
@@ -218,7 +221,7 @@ func (r *REPL) execute(input string) error {
 	prog, errs := visitor.Build(input)
 	if len(errs) > 0 {
 		for _, err := range errs {
-			fmt.Fprintf(r.output, "Parse error: %v\n", err)
+			fmt.Fprintf(r.output, "%s\n", r.c.Red("Parse error: "+err.Error()))
 		}
 		r.logger.ParseError(input, errs)
 		return nil // Don't return error, just print and continue
