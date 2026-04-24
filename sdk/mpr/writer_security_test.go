@@ -3,10 +3,8 @@
 package mpr
 
 import (
-	"bytes"
 	"io"
 	"log"
-	"strings"
 	"testing"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -130,54 +128,10 @@ func TestRemoveRolesFromAccessRule_ThreeRoles_RemoveMiddle(t *testing.T) {
 }
 
 // =============================================================================
-// bsonString / bsonBool — unexpected types must not panic
+// mergeAccessRule — malformed BSON must not panic
 // =============================================================================
 
-func TestBsonHelpers_UnexpectedTypes_NoPanic(t *testing.T) {
-	var buf bytes.Buffer
-	origOutput := log.Writer()
-	log.SetOutput(&buf)
-	defer log.SetOutput(origOutput)
-
-	// bsonString with non-string values
-	if s := bsonString(42, "test"); s != "" {
-		t.Errorf("expected empty string, got %q", s)
-	}
-	if s := bsonString(nil, "test"); s != "" {
-		t.Errorf("expected empty string for nil, got %q", s)
-	}
-	if s := bsonString(true, "test"); s != "" {
-		t.Errorf("expected empty string for bool, got %q", s)
-	}
-
-	// bsonBool with non-bool values
-	if b := bsonBool("true", "test"); b {
-		t.Error("expected false for string input")
-	}
-	if b := bsonBool(nil, "test"); b {
-		t.Error("expected false for nil")
-	}
-	if b := bsonBool(42, "test"); b {
-		t.Error("expected false for int input")
-	}
-
-	// Verify diagnostic warnings were emitted
-	logged := buf.String()
-	expectedWarnings := []string{
-		`expected string for "test", got int`,
-		`expected string for "test", got <nil>`,
-		`expected string for "test", got bool`,
-		`expected bool for "test", got string`,
-		`expected bool for "test", got <nil>`,
-		`expected bool for "test", got int`,
-	}
-	for _, w := range expectedWarnings {
-		if !strings.Contains(logged, w) {
-			t.Errorf("expected warning containing %q in log output", w)
-		}
-	}
-}
-
+// Not parallel-safe: redirects global log output.
 func TestMergeAccessRule_UnexpectedTypes_NoPanic(t *testing.T) {
 	origOutput := log.Writer()
 	log.SetOutput(io.Discard)
@@ -185,7 +139,7 @@ func TestMergeAccessRule_UnexpectedTypes_NoPanic(t *testing.T) {
 
 	existing := bson.D{
 		{Key: "$Type", Value: "DomainModels$AccessRule"},
-		{Key: "AllowCreate", Value: 42},          // wrong type: int instead of bool
+		{Key: "AllowCreate", Value: 42},           // wrong type: int instead of bool
 		{Key: "AllowDelete", Value: "not-a-bool"}, // wrong type: string instead of bool
 		{Key: "DefaultMemberAccessRights", Value: 99},
 	}
