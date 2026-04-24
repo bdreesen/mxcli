@@ -4,21 +4,77 @@
 
 Two parallel approaches have emerged for AI-agent-driven editing of Mendix applications:
 
-- **PED** (Progressive Element Disclosure) — a Studio Pro MCP server exposing JSON-based tools (`ped_read_document`, `ped_get_schema`, `ped_update_document`, `ped_check_errors`). Live connection to an open project. Agent-turn-based, schema-on-demand, one-shot error-fix protocol. Optimized for interactive, single-project pair-modelling.
-- **mxcli + MDL** — an offline CLI binary operating on `.mpr` files, driven by a SQL-like text DSL. Script artifacts, per-statement atomicity, pre-execution validation layers, Starlark-based custom lint rules, local `catalog.db` (SQLite) of project metadata. Ships with a VS Code extension providing both visual and textual editing, with multi-root workspaces enabling multi-app/solution development.
+- **PED** (Progressive Element Disclosure) — a Studio Pro MCP server exposing JSON-based tools (`ped_read_document`, `ped_get_schema`, `ped_update_document`, `ped_check_errors`). Live connection to an open Studio Pro project. Agent-turn-based, schema-on-demand, one-shot error-fix protocol. Optimised for interactive, single-project pair-modelling.
+- **mxcli + MDL** — a CLI binary driven by a SQL-like text DSL, recently refactored to support **multiple backends**: one that manipulates `.mpr` files directly (offline, CI-native), and one that uses the ModelAPI inside Studio Pro (live, interactive). Same DSL, same skills, same composition model across both. Ships with a VS Code extension providing visual and textual editing, multi-root workspaces for multi-app solutions, `catalog.db` (SQLite) for project metadata, and Starlark-based custom lint rules.
 
 This memo captures a strategic conversation about where mxcli/MDL should invest to avoid duplicating PED and instead own the territory where it has structural advantages.
 
 ---
 
-## Where PED wins — concede this ground
+## The real axis of comparison — interaction protocol, not connection target
 
-- Single-project interactive pair-modelling inside Studio Pro.
-- Beginner and intermediate Mendix developers who benefit from immediate visual feedback.
-- Ad-hoc "help me add this widget / fix this microflow" edits.
-- Onboarding and teaching scenarios where the live editor loop is the best teacher.
+The dual-backend refactor **collapses the "live vs offline" distinction** that used to separate PED from mxcli. Both can now edit a running Studio Pro project interactively. What remains — and what is durable — is a different axis:
 
-Any feature whose value only materialises inside one open project session is likely a place where PED has the ergonomic edge and chasing parity is low-ROI.
+**How does the agent interact with the model?**
+
+- **PED:** MCP tool calls. Each operation is a JSON request/response inside the agent's context window. The LLM is the compute node; tools deliver data into context and emit edits.
+- **mxcli:** CLI invocations over a text DSL. The agent composes scripts, pipes, and shell commands. The LLM is an orchestrator; compute happens in subprocesses outside context.
+
+Every durable strategic difference — text artifacts vs transcripts, CLI composition vs in-context reasoning, CI-native vs session-bound, catalog-query vs document-walk, training-corpus compounding vs runtime-only — flows from this axis. It is not affected by the backend target.
+
+---
+
+## Where PED wins — the narrowed concession
+
+With the dual-backend in place, the set of PED-preferred scenarios shrinks but doesn't disappear. Honest list:
+
+**Durable PED advantages:**
+- **MCP-native distribution.** Drops into Claude Desktop, Cursor, and similar clients with zero shim. Capability is easy to match; distribution is not.
+- **Typed, self-describing tool surface.** An agent that has never seen PED can still use it. mxcli requires the agent to know MDL (closing as LLMs learn it, but not yet closed).
+- **Opinionated safety rails as protocol.** One-shot fix protocol, radical-operation prohibitions, abstract-type navigation. Safety is steered by the protocol itself, not by convention.
+- **First-party Studio Pro integration.** PED ships inside Studio Pro and gets internal model changes first. mxcli's live backend depends on ModelAPI stability and release cadence.
+- **Smaller envelope for trivial single-element edits** when already inside an MCP client.
+
+**Contingent (no longer PED-unique):**
+- Live immediacy — mxcli-live matches it.
+- Visual pair-modelling in the open editor — both can drive it.
+
+**Rule of thumb:** in an MCP client, for a trivial ad-hoc edit, PED is still the lower-overhead choice until an `mxcli-mcp` wrapper exists. Those edits are low-value and fine to concede — they are the on-ramp, not the destination.
+
+---
+
+## PED's structural weaknesses (unchanged by the dual-backend refactor)
+
+- **No text artifact.** No diff, no review, no commit, no replay. The change exists only as a transcript.
+- **No CLI composition.** Every byte of work passes through the agent's context window. No `jq`, no `wc -l`, no `parallel`, no SQL over a catalog.
+- **Session-bounded.** No fleet operations, no CI, no multi-project reasoning.
+- **Scales poorly with project size.** At 100+ modules the context-window ceiling is hit hard regardless of backend.
+- **One-shot fix protocol is fragile.** No pre-apply validation; post-apply repairs have a tight budget.
+
+These are properties of the **protocol**, not the connection. They persist whether PED is talking to a live project or (hypothetically) an offline one.
+
+---
+
+## New mxcli weaknesses introduced by the live backend
+
+The refactor adds strategic reach but also adds real engineering concerns that didn't exist with `.mpr`-only operation. Surface these honestly — customers at scale will ask.
+
+- **Two backends, two failure modes.** Live backend has to cope with Studio Pro caches, parallel user edits, ModelAPI lock contention, process restarts. Offline `.mpr` editing sidesteps these.
+- **Catalog freshness against live edits.** If `catalog.db` was refreshed from the `.mpr` but the ModelAPI is making changes, the agent's queries can go stale mid-session. Cache invalidation against live state is a new correctness problem.
+- **Semantic consistency across backends.** Per-statement atomicity on `.mpr` may not match the live-backend's atomicity guarantees. Customers who rely on offline semantics need to not be surprised when running live.
+- **ModelAPI surface coverage.** Some operations may work against `.mpr` but not ModelAPI, or vice-versa. The "same script, any backend" promise depends on maintaining parity.
+
+---
+
+## Net-new capabilities the dual-backend unlocks
+
+Worth naming these explicitly — they are strategic differentiators that neither PED nor previous-mxcli could claim.
+
+- **Recordable live editing.** Developer uses Studio Pro naturally; mxcli records the MDL equivalent of each change. Session ends with a reviewable, replayable script. Permanently solves "how did this project get into this state?" — and it is impossible in PED (no artifact) and in Model SDK (no live hook).
+- **Same-script, multi-target execution.** Author MDL once; run against `.mpr` in CI, against live ModelAPI during pair-modelling, against a cached copy for analysis. PED has one target by construction.
+- **Bi-modal sessions.** Start live for exploration, switch to offline scripted mode for the bulk change, commit the script. Same tool, same DSL, no context switch.
+- **Live dry-run.** `mxcli check` against the live backend previews consistency errors before the user sees them in Studio Pro.
+- **Live lint and test inside Studio Pro.** Real-time CI-quality feedback during editing, not batch-after-save.
 
 ---
 
@@ -115,6 +171,63 @@ Every stage except "agent writes MDL" runs outside the agent's context. The agen
 
 ---
 
+## At enterprise scale: a capability ceiling, not just a cost ceiling
+
+Mendix customers exist with projects comprising **100+ modules, 1,000+ entities, 1,000+ microflows, and 500+ pages**. At this scale the thesis stops being about efficiency and becomes about what is mathematically possible inside a single agent session.
+
+**Rough token sizes of a project at that scale:**
+
+| Element | JSON tokens (est.) | MDL tokens (est.) | Compression |
+|---|---|---|---|
+| Entity, 10 attributes | 1–2k | 50–200 | 10–20× |
+| Simple microflow (5 activities) | 3–5k | 300–1,000 | ~10× |
+| Complex microflow (30 activities) | 15–30k | 1,500–5,000 | ~8× |
+| Form page | 5–15k | 500–3,000 | ~5–10× |
+| Grid page with complex layout | 20–50k | 2,000–8,000 | ~5–8× |
+| Domain model, 50 entities | 50–150k | 10–30k | ~5× |
+
+**Full-project corpus at this scale:**
+
+- Full JSON: ~5–15M tokens.
+- Full MDL: ~500k–1.5M tokens.
+- Frontier context windows today: 200k–2M tokens.
+
+Neither representation fits fully in context. **The project is physically unobservable as a whole from inside an agent session.** The question becomes: how does the agent know what to load without loading everything?
+
+**PED has no external index.** The only way to learn about a microflow is to read it. At 1,000 microflows, questions like "what writes to `Customer.Email`?", "are naming conventions consistent across modules?", or "is this refactor safe?" cannot be answered because the answer requires information the session can't hold. This is a **capability ceiling** — not a cost problem an agent can work through with patience.
+
+**mxcli has `catalog.db`.** The project's structure lives on disk. The agent issues SQL queries:
+
+```sql
+SELECT microflow FROM activities WHERE type='CommitObject' AND entity='Customer';
+SELECT caller FROM microflow_calls WHERE callee='Sales.VAL_Customer';
+```
+
+Query cost is ~500 tokens in, ~200–2k out, regardless of project size. The agent reasons over answers, not over documents.
+
+**Three concrete scenarios at enterprise scale:**
+
+1. **Bootstrapping a 50-entity app from a spec.** MDL: one script, ~10–30k output + ~5k skill load, single shell call. PED: 50 × (schema + payload + response) ≈ 35–80k tokens I/O plus domain-model re-reads. Realistic: **50–120k per session**, and hits boundaries well before 200 entities.
+2. **One edit in a 1,000-microflow project.** MDL: catalog query for conventions (~500 tokens) + MDL (~500) + check/exec (~500) = **~2k total**. PED: needs exemplars — 3 reference microflows × ~10k = 30k baseline, plus schemas and the edit = **40–60k** for a single microflow addition, because there is no cheap way to learn the project's conventions.
+3. **"Add audit-log fields to all entities in a 1,000-entity portfolio."** MDL: agent writes a template + catalog query, produces a ~100k-token script **on disk** (zero agent context), sees pass/fail summary. **Agent footprint ~5–10k total.** PED: 1,000 update calls minimum = **500k–1M tokens**; impossible in one session; multi-session handoffs compound error rates. Essentially not doable as a single task.
+
+**What an enterprise actually feels:** a platform team running daily governance sweeps across a 100-module portfolio spends real money on agent tokens — potentially millions per day. The delta is:
+
+- **10–100× on API cost** (bounded vs. linear in project size).
+- **Unbounded on latency** — many PED tasks simply do not complete at this scale.
+- **Quality degradation** — attention thins at high context fill even when it technically fits. An mxcli agent has reasoning headroom an equivalent PED agent does not.
+
+**The enterprise pitch is not "mxcli is cheaper." It is "mxcli can do things your current setup cannot do at all."**
+
+**Caveats that need real investment to hold at this scale:**
+
+- **Catalog coverage must be deep.** If `catalog.db` doesn't index microflow internals (activity types, attribute reads/writes, call edges, XPath constraints), the agent falls back to reading documents and the advantage collapses. Cataloguing is the highest-leverage backend investment.
+- **MDL expressiveness for complex microflows.** If MDL for a 30-activity microflow is 20k tokens (close to JSON), the compression argument weakens. Dense, pattern-aware MDL (`FOREACH`, sub-flow references, reusable fragments) preserves the ratio.
+- **Template-first generation.** At 1,000-entity scale, the agent must *generate a generator* (template + catalog query), not enumerate statements. This is a skill-file investment — teach the pattern explicitly.
+- **Validation at volume.** 1,000 ALTER statements = 1,000 possible partial-failure points. `CREATE OR REPLACE` idempotence, per-statement safety, and rollback semantics matter more as N grows.
+
+---
+
 ## Honest caveats on the whole thesis
 
 - **PED will not stand still.** Models will get better at JSON/schema traversal; per-op costs narrow. The *absolute* token gap will shrink. What doesn't narrow are the structural edges (catalog, text artifacts, composition, offline execution, CI gating) — anchor the story there.
@@ -144,6 +257,10 @@ Every stage except "agent writes MDL" runs outside the agent's context. The agen
 13. **Test-informed safety policy.** Codify that radical operations are permitted when pre- and post-tests both pass. Make it a customer-facing promise, not an internal agent convention.
 14. **Fleet test runner.** `mxcli fleet test --projects apps/*.mpr --since <sha>`. Cross-project regression becomes a product, not a feature.
 15. **CI templates** (GitHub Actions / GitLab / Azure DevOps) wiring check → exec → test → lint → report. Lowers adoption cost to near zero for platform teams.
+16. **`mxcli-mcp` wrapper.** Expose `mxcli check`, `mxcli exec`, `mxcli query`, `mxcli test` as MCP tools so mxcli drops into Claude Desktop / Cursor / Claude Code without shim. Neutralises PED's strongest remaining claim (MCP-native distribution) and is technically trivial.
+17. **Recordable live editing as a headline feature.** The dual-backend enables live edits that *also* produce reviewable MDL scripts. Name it, brand it, demo it — nobody else has this. Turns every Studio Pro session into a git-reviewable change set.
+18. **Live-backend catalog freshness.** Event-driven refresh (or a ModelAPI-backed live catalog) so queries don't go stale mid-session. This is the hardest technical investment but it's load-bearing for the composition story when the backend is live.
+19. **Backend-semantics documentation.** Explicitly document atomicity, error handling, lock behaviour, rollback across `.mpr` and live backends. Avoid customers discovering semantic differences by incident.
 
 ---
 
@@ -158,14 +275,37 @@ Every stage except "agent writes MDL" runs outside the agent's context. The agen
 
 # Summary for slides
 
-A focused four-slide deck. Slides 1–3 set up the territory, the efficiency case, and the architectural moat. Slide 4 is the capstone that upgrades the pitch from "right tool" to "only safe tool."
+A focused six-slide deck. Slide 1 sets the axis — the dual-backend refactor means "live vs offline" is no longer what separates the tools. Slide 2 frames the territory. Slide 3 makes the efficiency case. Slide 4 is the architectural moat. Slide 5 is the safety upgrade. Slide 6 is the enterprise closer.
 
-## Slide 1 — Focus on the Portfolio, Not the Project
+## Slide 1 — Interaction Protocol Is the Real Axis
+
+**Thesis:** the dual-backend refactor collapses "live vs offline." Both PED and mxcli can now edit a running Studio Pro project interactively. What remains — and what is durable — is **how the agent interacts with the model**.
+
+**The two protocols:**
+- **PED:** MCP tool calls. Each op is a JSON request/response *inside* the agent's context. The LLM is the compute node.
+- **mxcli:** CLI over a text DSL. The agent composes scripts and pipes. Compute happens in subprocesses *outside* context. The LLM is an orchestrator.
+
+**Everything durable follows from this axis:**
+- Text artifacts vs. transcripts.
+- CLI composition vs. in-context reasoning.
+- CI-native vs. session-bound.
+- Catalog queries vs. document walks.
+- Training-corpus compounding vs. runtime-only.
+
+**Consequence:** mxcli now matches PED on every connection target *and* retains every composition, artifact, and scale advantage. The strategic position is strictly stronger after the refactor, not merely equivalent.
+
+**New capability neither tool had before the refactor:** **recordable live editing** — Studio Pro edits that also produce a reviewable MDL script. Unique to mxcli; impossible in PED.
+
+**Honest concession:** in an MCP client, for trivial ad-hoc single-element edits, PED is still lower-overhead until an `mxcli-mcp` wrapper exists. Concede the on-ramp; own everything beyond it.
+
+---
+
+## Slide 2 — Focus on the Portfolio, Not the Project
 
 **Thesis:** PED is for a developer with one open project. mxcli/MDL is for a team with a portfolio. Don't duplicate; diverge.
 
 **PED's lane (concede):**
-- Single-project, interactive pair-modelling.
+- Single-project, interactive pair-modelling in an MCP client.
 - Beginner onboarding and immediate visual feedback.
 - Ad-hoc widget or microflow edits in the open editor.
 
@@ -181,7 +321,7 @@ A focused four-slide deck. Slides 1–3 set up the territory, the efficiency cas
 
 ---
 
-## Slide 2 — Context Efficiency Is a Capability Gap at Scale
+## Slide 3 — Context Efficiency Is a Capability Gap at Scale
 
 **Thesis:** mxcli's token advantage isn't a convenience — at enterprise scale it's the difference between problems an agent can solve and problems it can't.
 
@@ -201,7 +341,7 @@ A focused four-slide deck. Slides 1–3 set up the territory, the efficiency cas
 
 ---
 
-## Slide 3 — CLI Composition Is the Real Moat
+## Slide 4 — CLI Composition Is the Real Moat
 
 **Thesis:** MCP forces every byte through the LLM's context. CLI pipes move work out of the context entirely. This is a structural architecture difference, not a feature difference.
 
@@ -222,7 +362,7 @@ A focused four-slide deck. Slides 1–3 set up the territory, the efficiency cas
 
 ---
 
-## Slide 4 — Testing Is What Makes Agentic Mendix Engineering Safe at Scale
+## Slide 5 — Testing Is What Makes Agentic Mendix Engineering Safe at Scale
 
 **Thesis:** without tests, an agent editing a portfolio is a liability. With tests, the same agent is a force multiplier. mxcli's CI-native loop is the only place this can land — PED is session-bound and can't participate in CI.
 
@@ -244,3 +384,34 @@ Every stage except "agent writes MDL" runs outside the agent's context. Pass/fai
 **Positioning upgrade:** from "mxcli is the right tool for portfolio-scale Mendix engineering" to **"mxcli is the only tool that makes agentic Mendix engineering safe at portfolio scale."** That is categorically stronger and architecturally out of PED's reach.
 
 **Caveat + opportunity:** Mendix testing culture is historically thin. The scaffolding, generators, and patterns to change that are a product investment — and also a differentiated one, because nobody else is solving it.
+
+---
+
+## Slide 6 — The Capability Ceiling at Enterprise Scale
+
+**Thesis:** at 100+ modules / 1,000+ entities / 1,000+ microflows, the conversation stops being about efficiency. PED hits a **mathematical wall** — some questions cannot be answered from inside an agent session at all. mxcli's catalog + CLI composition are the only way through.
+
+**The scale reality:**
+- Full project in JSON: ~5–15M tokens. Full project in MDL: ~500k–1.5M. Frontier context windows: 200k–2M. **Neither fits.** The project is unobservable as a whole.
+- PED has no external index — the only way to learn about a microflow is to read it. At 1,000 microflows, this is structural blindness to the whole.
+- mxcli has `catalog.db`. Agents issue SQL queries; cost is constant regardless of project size. The project lives on disk; the agent reasons over answers.
+
+**Three scenarios that clarify the gap:**
+- **Bootstrap 50 entities:** MDL ~15–35k tokens. PED: 50–120k per session, hits boundaries before ~200 entities.
+- **One edit in a 1,000-microflow app:** MDL ~2k tokens (catalog query locates conventions). PED: 40–60k, because exemplars must be read to learn what "idiomatic" looks like.
+- **Audit-log pattern across 1,000 entities:** MDL ~5–10k agent tokens (template + catalog → 100k script on disk → summary). PED: 500k–1M tokens minimum; not doable in one session.
+
+**What the enterprise feels:**
+- **10–100× on API cost** — bounded vs. linear in project size.
+- **Unbounded latency** — many PED tasks simply don't complete at this scale.
+- **Quality degradation** even when context technically fits — attention thins at high fill.
+
+**The pitch that closes the deal:** *"mxcli can do things your current setup cannot do at all."* Not cheaper — **possible.**
+
+**What must hold for this to land:**
+- Deep `catalog.db` coverage (activity types, attribute reads/writes, call edges, XPath).
+- MDL expressiveness that preserves compression for complex microflows.
+- Template-first generation patterns taught as first-class skills.
+- Idempotent, partial-failure-safe execution for volume operations.
+
+**Target buyer for this slide:** platform engineering lead at a bank, insurer, telco, or large government — the person whose nightmare is "how do I maintain consistency across 40 apps built by 80 developers over 6 years." This is the slide they remember.
