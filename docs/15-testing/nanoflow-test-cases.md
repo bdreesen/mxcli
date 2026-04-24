@@ -28,7 +28,6 @@ Total: 223 nanoflows across 3 projects.
 ### 2. Build mxcli
 
 ```bash
-cd ~/workspace/mxcli
 git checkout pr4-nanoflows-all
 make build && make test && make lint-go
 ```
@@ -36,7 +35,8 @@ make build && make test && make lint-go
 ### 3. Smoke test
 
 ```bash
-for mpr in ~/workspace/mendix-apps/*/*.mpr; do
+APPS_DIR=<path-to-extracted-apps>
+for mpr in "$APPS_DIR"/*/*.mpr; do
   echo "=== $(basename $(dirname $mpr)) ==="
   echo "show nanoflows;" > /tmp/show-nf.mdl
   mxcli exec /tmp/show-nf.mdl -p "$mpr" 2>&1 | tail -1
@@ -48,7 +48,7 @@ Expected: 79, 93, 51 nanoflows respectively.
 ### 4. Interactive testing
 
 ```bash
-mxcli repl -p ~/workspace/mendix-apps/EnquiriesManagement/EnquiriesManagement.mpr
+mxcli repl -p <path-to-app>/EnquiriesManagement.mpr
 ```
 
 ### 5. Script-based testing
@@ -57,7 +57,18 @@ mxcli repl -p ~/workspace/mendix-apps/EnquiriesManagement/EnquiriesManagement.mp
 mxcli exec test-sequence.mdl -p <mpr>
 ```
 
-Write operations (CREATE, DROP, GRANT/REVOKE) modify the `.mpr`. Back up before destructive tests.
+Write operations (CREATE, DROP, GRANT/REVOKE) modify the `.mpr` file **in place**.
+
+> **IMPORTANT:** Always run destructive tests against a **copy** of the project folder,
+> never the original. The `.mpr` file references other files in the project directory,
+> and nanoflows that are DROPped cannot be recovered — there is no undo, no git history,
+> and no Studio Pro autosave for `.mpr` files.
+>
+> ```bash
+> # Before each destructive test session
+> cp -r MyProject MyProject-test
+> mxcli repl -p MyProject-test/MyProject.mpr
+> ```
 
 ---
 
@@ -421,6 +432,37 @@ end;
 ```
 **Expected:** Parses without error.
 
+### 6.7 Call JavaScript action — simple
+```
+create nanoflow MyModule.JSTest () returns Boolean
+begin
+  $Result = call javascript action NanoflowCommons.HasConnectivity ();
+end;
+```
+**Expected:** Parses, creates. DESCRIBE preserves `call javascript action` syntax.
+
+### 6.8 Call JavaScript action — with parameters
+```
+create nanoflow MyModule.JSWithParams () returns Boolean
+begin
+  $Result = call javascript action NanoflowCommons.SignIn (userName = 'test', password = 'pass');
+end;
+```
+**Expected:** Parameter mappings preserved in DESCRIBE.
+
+### 6.9 Call JavaScript action — roundtrip
+1. DESCRIBE an existing nanoflow that calls a JavaScript action (e.g. `Atlas_Web_Content.ACT_Login`)
+2. Capture MDL output
+3. DROP the nanoflow
+4. Execute captured MDL (CREATE OR MODIFY)
+5. DESCRIBE again
+6. Compare — `call javascript action` syntax preserved. Only expected diff: `on error rollback` appended (default error handling)
+
+### 6.10 Call JavaScript action — cross-module
+Test calling a JS action defined in a different module (e.g. `NanoflowCommons.SignIn` from `Atlas_Web_Content`).
+
+**Expected:** Qualified action name preserved across modules.
+
 ---
 
 ## 7. GRANT / REVOKE EXECUTE ON NANOFLOW
@@ -689,12 +731,16 @@ create nanoflow M.BadReturn () returns NonExistent.MyEnum begin end;
 3. DESCRIBE — verify original version preserved
 
 ### 16.5 BSON roundtrip data integrity
-For 10+ complex nanoflows (error handling, annotations, 10+ activities, multiple parameter types):
+For 10+ complex nanoflows (error handling, annotations, 10+ activities, multiple parameter types, JavaScript action calls, association retrieves):
 1. DESCRIBE → capture
 2. DROP
 3. Execute captured MDL
 4. DESCRIBE → capture again
 5. Diff — any difference is a data loss bug
+
+Include nanoflows with:
+- `call javascript action` actions (verify syntax preserved, not lost)
+- `retrieve $X from $Y/Module.Association` actions (verify association syntax preserved, not converted to database retrieve)
 
 ### 16.6 Double DROP
 ```

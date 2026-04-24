@@ -1179,7 +1179,7 @@ func isNumericLiteral(s string) bool {
 			return false
 		}
 	}
-	return hasDigit
+	return hasDigit && s[len(s)-1] != '.'
 }
 
 // formatImportXmlAction formats an import mapping action as MDL.

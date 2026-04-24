@@ -20,6 +20,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **Nanoflow bug fixes** — Module existence validation for SHOW NANOFLOWS/MICROFLOWS, numeric return literals no longer get spurious `$` prefix, empty nanoflow/microflow names rejected at create time, `NanoflowCallAction` error handling type resolved correctly, `not()` expression spacing preserved on roundtrip, JavaScript action call rendering in DESCRIBE output
 - **Nanoflow diff support** — `mxcli diff` now detects and displays nanoflow changes (previously silently skipped)
+- **JavaScript action MDL syntax** — `call javascript action Module.ActionName(params)` now fully supported in CREATE NANOFLOW/MICROFLOW bodies: grammar, parser, builder, serializer, and roundtrip
+- **Association retrieve roundtrip fidelity** — `retrieve $X from $Y/Module.Association` syntax preserved on roundtrip (previously converted to `from Entity where Assoc = $Y`)
 - **DESCRIBE empty-then optimization** — If/else blocks with empty true branches are swapped and condition negated for readable output
 
 ### Changed

@@ -303,6 +303,9 @@ func TestShowAccessOnNanoflow_Mock_NotFound(t *testing.T) {
 // --- NANOFLOW VALIDATION ---
 
 func TestValidateNanoflowBody_DisallowedActions(t *testing.T) {
+	// EXHAUSTIVE: every type in checkDisallowedNanoflowAction must appear here.
+	// If a new server-side action is added to the AST but not to the denylist,
+	// add it here so the test fails visibly.
 	tests := []struct {
 		name string
 		stmt ast.MicroflowStatement
@@ -311,9 +314,24 @@ func TestValidateNanoflowBody_DisallowedActions(t *testing.T) {
 		{"RaiseError", &ast.RaiseErrorStmt{}, "ErrorEvent"},
 		{"JavaAction", &ast.CallJavaActionStmt{}, "Java"},
 		{"DatabaseQuery", &ast.ExecuteDatabaseQueryStmt{}, "database"},
+		{"CallExternalAction", &ast.CallExternalActionStmt{}, "external action"},
 		{"ShowHomePage", &ast.ShowHomePageStmt{}, "SHOW HOME PAGE"},
 		{"RestCall", &ast.RestCallStmt{}, "REST"},
+		{"SendRestRequest", &ast.SendRestRequestStmt{}, "REST"},
+		{"ImportFromMapping", &ast.ImportFromMappingStmt{}, "import mapping"},
+		{"ExportToMapping", &ast.ExportToMappingStmt{}, "export mapping"},
+		{"TransformJson", &ast.TransformJsonStmt{}, "JSON transformation"},
 		{"CallWorkflow", &ast.CallWorkflowStmt{}, "workflow"},
+		{"GetWorkflowData", &ast.GetWorkflowDataStmt{}, "workflow"},
+		{"GetWorkflows", &ast.GetWorkflowsStmt{}, "workflow"},
+		{"GetWorkflowActivityRecords", &ast.GetWorkflowActivityRecordsStmt{}, "workflow"},
+		{"WorkflowOperation", &ast.WorkflowOperationStmt{}, "workflow"},
+		{"SetTaskOutcome", &ast.SetTaskOutcomeStmt{}, "workflow"},
+		{"OpenUserTask", &ast.OpenUserTaskStmt{}, "workflow"},
+		{"NotifyWorkflow", &ast.NotifyWorkflowStmt{}, "workflow"},
+		{"OpenWorkflow", &ast.OpenWorkflowStmt{}, "workflow"},
+		{"LockWorkflow", &ast.LockWorkflowStmt{}, "workflow"},
+		{"UnlockWorkflow", &ast.UnlockWorkflowStmt{}, "workflow"},
 	}
 
 	for _, tt := range tests {
@@ -338,6 +356,7 @@ func TestValidateNanoflowBody_AllowedActions(t *testing.T) {
 		{"ShowPage", &ast.ShowPageStmt{}},
 		{"CallMicroflow", &ast.CallMicroflowStmt{}},
 		{"CallNanoflow", &ast.CallNanoflowStmt{}},
+		{"CallJavaScriptAction", &ast.CallJavaScriptActionStmt{}},
 		{"CreateVariable", &ast.DeclareStmt{}},
 		{"ChangeVariable", &ast.MfSetStmt{}},
 	}

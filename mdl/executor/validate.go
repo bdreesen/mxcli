@@ -476,6 +476,15 @@ func validateFlowBodyReferences(ctx *ExecContext, body []ast.MicroflowStatement,
 		}
 	}
 
+	if len(refs.javaScriptActions) > 0 {
+		known := buildJavaScriptActionQualifiedNames(ctx)
+		for _, ref := range refs.javaScriptActions {
+			if !known[ref] {
+				errors = append(errors, fmt.Sprintf("javascript action not found: %s (referenced by call javascript action)", ref))
+			}
+		}
+	}
+
 	if len(refs.entities) > 0 {
 		known := buildEntityQualifiedNames(ctx)
 		for _, ref := range refs.entities {
@@ -490,11 +499,12 @@ func validateFlowBodyReferences(ctx *ExecContext, body []ast.MicroflowStatement,
 
 // flowRefCollector collects qualified name references from flow body statements.
 type flowRefCollector struct {
-	pages       []string
-	microflows  []string
-	nanoflows   []string
-	javaActions []string
-	entities    []entityRef
+	pages             []string
+	microflows        []string
+	nanoflows         []string
+	javaActions       []string
+	javaScriptActions []string
+	entities          []entityRef
 }
 
 // entityRef tracks an entity reference along with the statement that referenced it.
@@ -505,7 +515,7 @@ type entityRef struct {
 
 func (c *flowRefCollector) empty() bool {
 	return len(c.pages) == 0 && len(c.microflows) == 0 && len(c.nanoflows) == 0 &&
-		len(c.javaActions) == 0 && len(c.entities) == 0
+		len(c.javaActions) == 0 && len(c.javaScriptActions) == 0 && len(c.entities) == 0
 }
 
 func (c *flowRefCollector) collectFromStatements(stmts []ast.MicroflowStatement) {
@@ -529,7 +539,7 @@ func (c *flowRefCollector) collectFromStatements(stmts []ast.MicroflowStatement)
 			}
 		case *ast.CallJavaScriptActionStmt:
 			if s.ActionName.Module != "" {
-				c.javaActions = append(c.javaActions, s.ActionName.String())
+				c.javaScriptActions = append(c.javaScriptActions, s.ActionName.String())
 			}
 		case *ast.CreateObjectStmt:
 			if s.EntityType.Module != "" {

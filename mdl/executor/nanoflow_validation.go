@@ -97,6 +97,12 @@ func checkDisallowedNanoflowAction(stmt ast.MicroflowStatement) string {
 }
 
 // getErrorHandling extracts the ErrorHandlingClause from statements that have one.
+//
+// NOTE: This function does not cover all statement types that carry an ErrorHandling
+// field (e.g., CallWorkflowStmt, ShowHomePageStmt, workflow action stmts). That is
+// safe because validateNanoflowStatements checks the denylist FIRST and skips
+// recursion (via continue) for disallowed actions. If the denylist ordering changes,
+// add error handling extraction for those types here.
 func getErrorHandling(stmt ast.MicroflowStatement) *ast.ErrorHandlingClause {
 	switch s := stmt.(type) {
 	case *ast.CreateObjectStmt:

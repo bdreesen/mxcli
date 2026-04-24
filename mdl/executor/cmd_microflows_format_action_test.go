@@ -872,6 +872,11 @@ func TestIsNumericLiteral(t *testing.T) {
 		{"$42", false},
 		{"1.2.3", false},
 		{"42abc", false},
+		{".", false},
+		{"-.", false},
+		{"5.", false},
+		{".5", true},
+		{"-.5", true},
 	}
 	for _, tt := range tests {
 		got := isNumericLiteral(tt.input)
