@@ -216,6 +216,39 @@ func buildCallJavaActionStatement(ctx parser.ICallJavaActionStatementContext) *a
 	return stmt
 }
 
+// buildCallJavaScriptActionStatement converts CALL JAVASCRIPT ACTION statement context to CallJavaScriptActionStmt.
+// Grammar: (VARIABLE EQUALS)? CALL JAVASCRIPT ACTION qualifiedName LPAREN callArgumentList? RPAREN
+func buildCallJavaScriptActionStatement(ctx parser.ICallJavaScriptActionStatementContext) *ast.CallJavaScriptActionStmt {
+	if ctx == nil {
+		return nil
+	}
+	callCtx := ctx.(*parser.CallJavaScriptActionStatementContext)
+
+	stmt := &ast.CallJavaScriptActionStmt{}
+
+	// Get result variable if present
+	if v := callCtx.VARIABLE(); v != nil {
+		stmt.OutputVariable = strings.TrimPrefix(v.GetText(), "$")
+	}
+
+	// Get javascript action name
+	if qn := callCtx.QualifiedName(); qn != nil {
+		stmt.ActionName = buildQualifiedName(qn)
+	}
+
+	// Get arguments from callArgumentList
+	if argList := callCtx.CallArgumentList(); argList != nil {
+		stmt.Arguments = buildCallArgumentList(argList)
+	}
+
+	// Check for ON ERROR clause
+	if errClause := callCtx.OnErrorClause(); errClause != nil {
+		stmt.ErrorHandling = buildOnErrorClause(errClause)
+	}
+
+	return stmt
+}
+
 // buildExecuteDatabaseQueryStatement converts EXECUTE DATABASE QUERY context to ExecuteDatabaseQueryStmt.
 func buildExecuteDatabaseQueryStatement(ctx parser.IExecuteDatabaseQueryStatementContext) *ast.ExecuteDatabaseQueryStmt {
 	if ctx == nil {

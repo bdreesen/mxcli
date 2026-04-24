@@ -367,6 +367,17 @@ type CallJavaActionStmt struct {
 
 func (s *CallJavaActionStmt) isMicroflowStatement() {}
 
+// CallJavaScriptActionStmt represents: CALL JAVASCRIPT ACTION Name (args) [ON ERROR ...]
+type CallJavaScriptActionStmt struct {
+	OutputVariable string               // Optional output variable
+	ActionName     QualifiedName        // JavaScript action name
+	Arguments      []CallArgument       // Arguments
+	ErrorHandling  *ErrorHandlingClause // Optional ON ERROR clause
+	Annotations    *ActivityAnnotations // Optional @position, @caption, @color, @annotation
+}
+
+func (s *CallJavaScriptActionStmt) isMicroflowStatement() {}
+
 // ExecuteDatabaseQueryStmt represents: EXECUTE DATABASE QUERY Module.Connection.QueryName ...
 type ExecuteDatabaseQueryStmt struct {
 	OutputVariable      string               // Optional output variable

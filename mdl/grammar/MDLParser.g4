@@ -1310,6 +1310,7 @@ microflowStatement
     | annotation* callMicroflowStatement SEMICOLON?
     | annotation* callNanoflowStatement SEMICOLON?
     | annotation* callJavaActionStatement SEMICOLON?
+    | annotation* callJavaScriptActionStatement SEMICOLON?
     | annotation* executeDatabaseQueryStatement SEMICOLON?
     | annotation* callExternalActionStatement SEMICOLON?
     | annotation* showPageStatement SEMICOLON?
@@ -1481,6 +1482,11 @@ callNanoflowStatement
 // $Result = CALL JAVA ACTION CustomActivities.ExecuteOQL(OqlStatement = '...');
 callJavaActionStatement
     : (VARIABLE EQUALS)? CALL JAVA ACTION qualifiedName LPAREN callArgumentList? RPAREN onErrorClause?
+    ;
+
+// $Result = CALL JAVASCRIPT ACTION Module.JSAction(Param = 'value');
+callJavaScriptActionStatement
+    : (VARIABLE EQUALS)? CALL JAVASCRIPT ACTION qualifiedName LPAREN callArgumentList? RPAREN onErrorClause?
     ;
 
 // $Result = EXECUTE DATABASE QUERY Module.Connection.QueryName (param = 'value');

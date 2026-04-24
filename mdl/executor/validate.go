@@ -527,6 +527,10 @@ func (c *flowRefCollector) collectFromStatements(stmts []ast.MicroflowStatement)
 			if s.ActionName.Module != "" {
 				c.javaActions = append(c.javaActions, s.ActionName.String())
 			}
+		case *ast.CallJavaScriptActionStmt:
+			if s.ActionName.Module != "" {
+				c.javaActions = append(c.javaActions, s.ActionName.String())
+			}
 		case *ast.CreateObjectStmt:
 			if s.EntityType.Module != "" {
 				c.entities = append(c.entities, entityRef{name: s.EntityType.String(), source: "create"})
@@ -578,6 +582,10 @@ func getErrorHandlerBody(stmt ast.MicroflowStatement) []ast.MicroflowStatement {
 			return s.ErrorHandling.Body
 		}
 	case *ast.DownloadFileStmt:
+		if s.ErrorHandling != nil && s.ErrorHandling.Body != nil {
+			return s.ErrorHandling.Body
+		}
+	case *ast.CallJavaScriptActionStmt:
 		if s.ErrorHandling != nil && s.ErrorHandling.Body != nil {
 			return s.ErrorHandling.Body
 		}

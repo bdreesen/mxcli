@@ -300,6 +300,37 @@ func serializeMicroflowAction(action microflows.MicroflowAction) bson.D {
 		}
 		return doc
 
+	case *microflows.JavaScriptActionCallAction:
+		doc := bson.D{
+			{Key: "$ID", Value: idToBsonBinary(string(a.ID))},
+			{Key: "$Type", Value: "Microflows$JavaScriptActionCallAction"},
+			{Key: "ErrorHandlingType", Value: stringOrDefault(string(a.ErrorHandlingType), "Rollback")},
+			{Key: "JavaScriptAction", Value: a.JavaScriptAction},
+			{Key: "OutputVariableName", Value: a.OutputVariableName},
+			{Key: "UseReturnVariable", Value: a.UseReturnVariable},
+		}
+		// Serialize parameter mappings
+		if len(a.ParameterMappings) > 0 {
+			var mappings bson.A
+			mappings = append(mappings, int32(2)) // Array marker
+			for _, pm := range a.ParameterMappings {
+				mapping := bson.D{
+					{Key: "$ID", Value: idToBsonBinary(string(pm.ID))},
+					{Key: "$Type", Value: "Microflows$JavaScriptActionParameterMapping"},
+					{Key: "Parameter", Value: pm.Parameter},
+				}
+				// Serialize ParameterValue (CodeActionParameterValue) — JS uses "ParameterValue" key, not "Value"
+				if pm.Value != nil {
+					mapping = append(mapping, bson.E{Key: "ParameterValue", Value: serializeCodeActionParameterValue(pm.Value)})
+				}
+				mappings = append(mappings, mapping)
+			}
+			doc = append(doc, bson.E{Key: "ParameterMappings", Value: mappings})
+		} else {
+			doc = append(doc, bson.E{Key: "ParameterMappings", Value: bson.A{int32(2)}}) // Empty array with marker
+		}
+		return doc
+
 	case *microflows.RetrieveAction:
 		doc := bson.D{
 			{Key: "$ID", Value: idToBsonBinary(string(a.ID))},

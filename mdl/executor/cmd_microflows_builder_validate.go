@@ -168,6 +168,16 @@ func (fb *flowBuilder) validateStatement(stmt ast.MicroflowStatement) {
 			fb.validateStatements(s.ErrorHandling.Body)
 		}
 
+	case *ast.CallJavaScriptActionStmt:
+		// Register result variable if assigned
+		if s.OutputVariable != "" {
+			fb.declaredVars[s.OutputVariable] = "Unknown"
+		}
+		// Validate error handler body if present
+		if s.ErrorHandling != nil && len(s.ErrorHandling.Body) > 0 {
+			fb.validateStatements(s.ErrorHandling.Body)
+		}
+
 	case *ast.ExecuteDatabaseQueryStmt:
 		if s.OutputVariable != "" {
 			fb.declaredVars[s.OutputVariable] = "Unknown"

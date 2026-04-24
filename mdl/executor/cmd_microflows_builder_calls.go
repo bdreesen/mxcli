@@ -377,6 +377,66 @@ func (fb *flowBuilder) inferGenericJavaActionReturnType(jaDef *javaactions.JavaA
 	return ""
 }
 
+// addCallJavaScriptActionAction creates a CALL JAVASCRIPT ACTION statement.
+func (fb *flowBuilder) addCallJavaScriptActionAction(s *ast.CallJavaScriptActionStmt) model.ID {
+	actionQN := s.ActionName.Module + "." + s.ActionName.Name
+
+	// Build parameter mappings with Value structure
+	var mappings []*microflows.JavaScriptActionParameterMapping
+	for _, arg := range s.Arguments {
+		// Parameter qualified name format: Module.JavaScriptAction.ParameterName
+		paramQN := actionQN + "." + arg.Name
+
+		// JavaScript actions use BasicCodeActionParameterValue for all parameters
+		valueExpr := fb.exprToString(arg.Value)
+		value := &microflows.BasicCodeActionParameterValue{
+			BaseElement: model.BaseElement{ID: model.ID(types.GenerateID())},
+			Argument:    valueExpr,
+		}
+
+		mapping := &microflows.JavaScriptActionParameterMapping{
+			BaseElement: model.BaseElement{ID: model.ID(types.GenerateID())},
+			Parameter:   paramQN,
+			Value:       value,
+		}
+		mappings = append(mappings, mapping)
+	}
+
+	action := &microflows.JavaScriptActionCallAction{
+		BaseElement:        model.BaseElement{ID: model.ID(types.GenerateID())},
+		ErrorHandlingType:  convertErrorHandlingType(s.ErrorHandling),
+		JavaScriptAction:   actionQN,
+		ParameterMappings:  mappings,
+		OutputVariableName: s.OutputVariable,
+		UseReturnVariable:  s.OutputVariable != "",
+	}
+
+	activityX := fb.posX
+	activity := &microflows.ActionActivity{
+		BaseActivity: microflows.BaseActivity{
+			BaseMicroflowObject: microflows.BaseMicroflowObject{
+				BaseElement: model.BaseElement{ID: model.ID(types.GenerateID())},
+				Position:    model.Point{X: fb.posX, Y: fb.posY},
+				Size:        model.Size{Width: ActivityWidth, Height: ActivityHeight},
+			},
+			AutoGenerateCaption: true,
+		},
+		Action: action,
+	}
+
+	fb.objects = append(fb.objects, activity)
+	fb.posX += fb.spacing
+
+	// Build custom error handler flow if present
+	if s.ErrorHandling != nil && len(s.ErrorHandling.Body) > 0 {
+		errorY := fb.posY + VerticalSpacing
+		mergeID := fb.addErrorHandlerFlow(activity.ID, activityX, s.ErrorHandling.Body)
+		fb.handleErrorHandlerMerge(mergeID, activity.ID, errorY)
+	}
+
+	return activity.ID
+}
+
 // addCallExternalActionAction creates a CALL EXTERNAL ACTION statement.
 func (fb *flowBuilder) addCallExternalActionAction(s *ast.CallExternalActionStmt) model.ID {
 	serviceQN := s.ServiceName.Module + "." + s.ServiceName.Name

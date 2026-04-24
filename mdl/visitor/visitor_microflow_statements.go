@@ -77,6 +77,8 @@ func buildMicroflowStatement(ctx parser.IMicroflowStatementContext) ast.Microflo
 		stmt = buildCallNanoflowStatement(call)
 	} else if call := mfCtx.CallJavaActionStatement(); call != nil {
 		stmt = buildCallJavaActionStatement(call)
+	} else if call := mfCtx.CallJavaScriptActionStatement(); call != nil {
+		stmt = buildCallJavaScriptActionStatement(call)
 	} else if call := mfCtx.ExecuteDatabaseQueryStatement(); call != nil {
 		stmt = buildExecuteDatabaseQueryStatement(call)
 	} else if call := mfCtx.CallExternalActionStatement(); call != nil {
@@ -420,6 +422,8 @@ func setStatementAnnotations(stmt ast.MicroflowStatement, ann *ast.ActivityAnnot
 	case *ast.CallNanoflowStmt:
 		s.Annotations = ann
 	case *ast.CallJavaActionStmt:
+		s.Annotations = ann
+	case *ast.CallJavaScriptActionStmt:
 		s.Annotations = ann
 	case *ast.ExecuteDatabaseQueryStmt:
 		s.Annotations = ann
