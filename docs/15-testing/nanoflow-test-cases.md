@@ -1,41 +1,41 @@
-# Nanoflow Implementation — Test Cases
+# Nanoflow Test Cases — Manual Testing
 
 **Updated:** 2026-04-24
-**PR:** [retran/mxcli#10](https://github.com/retran/mxcli/pull/10) (consolidated nanoflow support)
-**Test projects:** Demo apps from [Mendix App Gallery](https://appgallery.mendixcloud.com/), developed by Evangelists team:
-- **Lato Enquiry Management** (SP 11.4.0, 79 nanoflows) — AI multi-agent workflow, MCP
-- **Evora - Factory Management** (SP 10.24.15, 93 nanoflows) — SAP, IoT, AI, Snowflake, Teamcenter
-- **Lato Product Inventory** (SP 11.2.0, 51 nanoflows) — dashboards, 3D viewer, GenAI
+**PR:** [retran/mxcli#10](https://github.com/retran/mxcli/pull/10)
 
-Total: 223 nanoflows across 3 projects. Download from App Gallery, open in Studio Pro to extract `.mpr`.
+## Test Projects
 
-## Overview
+Demo apps from [Mendix App Gallery](https://appgallery.mendixcloud.com/):
 
-Test cases for verifying the full mxcli nanoflow implementation. Covers every MDL command, BSON round-trip, validation, catalog, security, formatting, multi-step workflows, failure modes, security cascades, and boundary cases. Derived from code audit of all nanoflow-related source files and brainstorm session (2026-04-24).
+| App | Studio Pro | Nanoflows |
+|-----|-----------|-----------|
+| Lato Enquiry Management | 11.4.0 | 79 |
+| Evora - Factory Management | 10.24.15 | 93 |
+| Lato Product Inventory | 11.2.0 | 51 |
 
-## Setup — Configuring Test Projects
+Total: 223 nanoflows across 3 projects.
+
+---
+
+## Setup
 
 ### 1. Download test apps
 
 1. Go to [Mendix App Gallery](https://appgallery.mendixcloud.com/)
-2. Search for and download each demo app:
-   - **Lato Enquiry Management**
-   - **Evora - Factory Management**
-   - **Lato Product Inventory**
-3. Open each downloaded `.mpk` in Studio Pro to extract the project (this creates the `.mpr` and `mprcontents/` directory)
+2. Download each demo app listed above
+3. Open each `.mpk` in Studio Pro to extract the `.mpr` file
 
 ### 2. Build mxcli
 
 ```bash
 cd ~/workspace/mxcli
-git checkout pr4-nanoflows-all   # or branch with nanoflow support merged
+git checkout pr4-nanoflows-all
 make build && make test && make lint-go
 ```
 
-### 3. Verify connectivity
+### 3. Smoke test
 
 ```bash
-# Quick smoke test — should list nanoflows from each project
 for mpr in ~/workspace/mendix-apps/*/*.mpr; do
   echo "=== $(basename $(dirname $mpr)) ==="
   echo "show nanoflows;" > /tmp/show-nf.mdl
@@ -43,57 +43,37 @@ for mpr in ~/workspace/mendix-apps/*/*.mpr; do
 done
 ```
 
-**Expected output:**
-```
-=== EnquiriesManagement ===
-(79 nanoflows)
-=== Evora-FactoryManagement-main ===
-(93 nanoflows)
-=== LatoProductInventory ===
-(51 nanoflows)
-```
+Expected: 79, 93, 51 nanoflows respectively.
 
-### 4. Interactive testing via REPL
+### 4. Interactive testing
 
 ```bash
 mxcli repl -p ~/workspace/mendix-apps/EnquiriesManagement/EnquiriesManagement.mpr
 ```
 
-Then run MDL commands interactively (e.g. `show nanoflows;`, `describe nanoflow Module.Name;`).
-
 ### 5. Script-based testing
 
-Create `.mdl` files with test sequences and execute:
-
 ```bash
-mxcli exec test-sequence.mdl -p ~/workspace/mendix-apps/EnquiriesManagement/EnquiriesManagement.mpr
+mxcli exec test-sequence.mdl -p <mpr>
 ```
 
-**Note:** Write operations (CREATE, DROP, GRANT/REVOKE) modify the `.mpr` file. Back up or use a copy for destructive tests.
-
-## Prerequisites
-
-- `mxcli` built from branch `pr4-nanoflows-all` (or later with nanoflow support)
-- Test `.mpr` files set up per the Setup section above
-- `make build && make test && make lint-go` passes before manual testing
+Write operations (CREATE, DROP, GRANT/REVOKE) modify the `.mpr`. Back up before destructive tests.
 
 ---
 
 ## 1. SHOW NANOFLOWS
 
-**Source:** `cmd_microflows_show.go:82` — `listNanoflows()`
-
 ### 1.1 List all nanoflows
 ```
 show nanoflows;
 ```
-**Expected:** All nanoflows listed across all modules. Verify count matches Studio Pro.
+**Expected:** All nanoflows listed. Count matches Studio Pro.
 
-### 1.2 List nanoflows in specific module
+### 1.2 Filter by module
 ```
 show nanoflows in MyModule;
 ```
-**Expected:** Only nanoflows from `MyModule`. No microflows mixed in.
+**Expected:** Only nanoflows from `MyModule`. No microflows.
 
 ### 1.3 Empty module
 ```
@@ -105,27 +85,23 @@ show nanoflows in ModuleWithNoNanoflows;
 ```
 show nanoflows in NonExistentModule;
 ```
-**Expected:** Empty result or clear error.
+**Expected:** Error message.
 
 ### 1.5 Activity count accuracy
-Pick 5+ nanoflows with known activity counts (verified in Studio Pro). Check that `show nanoflows` column matches.
-**Source:** `countNanoflowActivities()` in `catalog/builder_microflows.go:427`
+Pick 5+ nanoflows with known activity counts (verified in Studio Pro). Verify `show nanoflows` column matches.
 
-### 1.6 Complexity calculation
-Verify complexity values shown for nanoflows with varying numbers of decisions, loops, and nested paths.
-**Source:** `calculateNanoflowComplexity()` in `catalog/builder_microflows.go:447`
+### 1.6 Complexity values
+Verify complexity values for nanoflows with varying numbers of decisions, loops, and nested paths.
 
 ---
 
 ## 2. DESCRIBE NANOFLOW
 
-**Source:** `cmd_microflows_show.go:316` — `describeNanoflow()`
-
 ### 2.1 Simple nanoflow (no parameters, no return)
 ```
 describe nanoflow Module.SimpleNanoflow;
 ```
-**Expected:** Valid `create or modify nanoflow` MDL output. Empty body or minimal activities.
+**Expected:** Valid `create or modify nanoflow` MDL output.
 
 ### 2.2 Nanoflow with parameters and return type
 ```
@@ -134,15 +110,14 @@ describe nanoflow Module.NanoflowWithParams;
 **Expected:** Parameters with correct types. Return type shown.
 
 ### 2.3 Parameter format variants
-The BSON parser handles 3 parameter storage formats: `MicroflowParameterCollection`, `MicroflowParameters`, `Parameters`. Additionally, parameters may be extracted from `ObjectCollection.Objects` as fallback.
-**Test:** Find nanoflows in different Studio Pro versions to exercise each path.
+Find nanoflows across different Studio Pro versions. The BSON parser handles multiple parameter storage formats (`MicroflowParameterCollection`, `MicroflowParameters`, `Parameters`, and `ObjectCollection.Objects` fallback).
 
-### 2.4 Nanoflow with activities — full coverage
+### 2.4 Activity coverage
 
-Test DESCRIBE on nanoflows containing each of the 25 allowed action types:
+Test DESCRIBE on nanoflows containing each allowed action type:
 
-| # | Activity | What to verify |
-|---|----------|---------------|
+| # | Activity | Verify |
+|---|----------|--------|
 | 1 | CreateVariable | Variable name, type, initial value |
 | 2 | ChangeVariable | Target variable, new value expression |
 | 3 | CreateObject | Entity name, member assignments |
@@ -161,29 +136,24 @@ Test DESCRIBE on nanoflows containing each of the 25 allowed action types:
 | 16 | ShowMessage | Message template, blocking/non-blocking |
 | 17 | ValidationFeedback | Object, member, message |
 | 18 | CallNanoflow | `call nanoflow Module.Name (args)` — NOT `call microflow` |
-| 19 | CallMicroflow | `call microflow Module.Name (args)` — server call from nanoflow |
-| 20 | CallJavaScriptAction | `call javascript action` syntax, JS action reference |
+| 19 | CallMicroflow | `call microflow Module.Name (args)` |
+| 20 | CallJavaScriptAction | `call javascript action` syntax |
 | 21 | Synchronize | No arguments (nanoflow-only) |
 | 22 | LogMessage | Level, message template |
 | 23 | ExclusiveSplit | Decision expression, true/false paths |
 | 24 | Loop | Iterator variable, list variable |
 | 25 | MergeNode | Multiple incoming paths converge |
 
-### 2.5 Nanoflow with error handling
+### 2.5 Error handling
 ```
 describe nanoflow Module.NanoflowWithErrorHandling;
 ```
-**Expected:** Error handler flow shown. `$latestError` predefined variable preserved.
-**Source:** `getErrorHandling()` covers 12 statement types — verify IfStmt, LoopStmt, WhileStmt error handlers.
+**Expected:** Error handler flow shown. `$latestError` predefined variable preserved. Verify on IfStmt, LoopStmt, WhileStmt.
 
-### 2.6 Nanoflow with nested control flow
-Test nanoflows with:
-- If inside loop
-- Loop inside if
-- Nested if/else chains
-- Error handling inside loop body
+### 2.6 Nested control flow
+Test nanoflows with: if inside loop, loop inside if, nested if/else chains, error handling inside loop body.
 
-### 2.7 Nanoflow not found
+### 2.7 Non-existent nanoflow
 ```
 describe nanoflow Module.DoesNotExist;
 ```
@@ -191,7 +161,6 @@ describe nanoflow Module.DoesNotExist;
 
 ### 2.8 Activity count regression
 Pick 5+ nanoflows with known activity counts from Studio Pro. Verify DESCRIBE body contains correct number.
-**Regression:** Parser previously returned 0 activities due to missing `parseMicroflowObjectCollection()` call.
 
 ### 2.9 Documentation and MarkAsUsed properties
 Test nanoflow with Documentation string set and MarkAsUsed=true. Verify both appear in DESCRIBE output.
@@ -203,9 +172,7 @@ Test nanoflow with Excluded=true. Verify property appears in output.
 
 ## 3. CREATE NANOFLOW
 
-**Source:** `cmd_nanoflows_create.go` — `execCreateNanoflow()` (225 lines)
-
-> **Note:** Parentheses are required even for parameterless nanoflows: `create nanoflow M.N () begin end;`. This is grammar-by-design — the parser expects `'(' params? ')'` unconditionally.
+> Parentheses required even for parameterless nanoflows: `create nanoflow M.N () begin end;`.
 
 ### 3.1 Minimal nanoflow
 ```
@@ -257,7 +224,7 @@ begin
   log warning 'world';
 end;
 ```
-**Expected:** Activities preserved in DESCRIBE. `log info 'text'` renders as `log info node 'Application' 'text'` in output.
+**Expected:** Activities preserved in DESCRIBE. `log info 'text'` renders as `log info node 'Application' 'text'`.
 
 ### 3.6 With call nanoflow action
 ```
@@ -266,7 +233,7 @@ begin
   $Result = call nanoflow MyModule.Target ();
 end;
 ```
-**Expected:** `NanoflowCallAction` stored in BSON (not `MicroflowCallAction`).
+**Expected:** `NanoflowCallAction` stored (not `MicroflowCallAction`).
 
 ### 3.7 Create or modify — existing nanoflow
 ```
@@ -274,39 +241,39 @@ create or modify nanoflow MyModule.Existing ()
 begin
 end;
 ```
-**Expected:** Existing nanoflow updated (ID reused). No AlreadyExistsError.
+**Expected:** Existing nanoflow updated (ID reused). No error.
 
-### 3.8 Create duplicate — no CreateOrModify
+### 3.8 Create duplicate — without OR MODIFY
 ```
 create nanoflow MyModule.TestNano () begin end;
 create nanoflow MyModule.TestNano () begin end;
 ```
-**Expected:** Second CREATE fails with AlreadyExistsError.
+**Expected:** Second CREATE fails with "already exists" error.
 
 ### 3.9 Module auto-creation
 ```
 create nanoflow NewModule.TestNano () begin end;
 ```
-**Expected:** If `NewModule` doesn't exist, it's created automatically.
+**Expected:** `NewModule` created automatically if it doesn't exist.
 
-### 3.10 Folder resolution
+### 3.10 Folder placement
 ```
 create nanoflow MyModule.TestNano () in folder 'SubFolder/Nested' begin end;
 ```
-**Expected:** Nanoflow placed in correct folder. Error if folder path invalid.
+**Expected:** Nanoflow placed in correct folder.
 
-### 3.11 consumeDroppedNanoflow — ID reuse
+### 3.11 ID reuse after drop
 ```
 create nanoflow MyModule.A () begin end;
 drop nanoflow MyModule.A;
 create nanoflow MyModule.A () begin end;
 ```
-**Expected:** Second CREATE reuses the ID from the dropped nanoflow (same session).
+**Expected:** Second CREATE reuses the ID from the dropped nanoflow.
 
 ### 3.12 Default return type
 Create nanoflow without explicit return type. DESCRIBE should show VoidType or omit return.
 
-### 3.13 Not-connected-for-write guard
+### 3.13 Write guard
 Attempt CREATE without opening a project for writing.
 **Expected:** Error about not being connected.
 
@@ -314,27 +281,25 @@ Attempt CREATE without opening a project for writing.
 
 ## 4. CREATE NANOFLOW — Validation
 
-**Source:** `nanoflow_validation.go` (145 lines)
+### 4.1 Disallowed actions
+Each must be rejected with clear error:
 
-### 4.1 Disallowed actions — full list
-Each must be rejected with clear error when used inside `create nanoflow`:
-
-| # | Disallowed action | BSON/AST type |
-|---|-------------------|---------------|
-| 1 | ErrorEvent | `ast.ErrorEvent` |
-| 2 | Java action call | Java action |
-| 3 | Database query | External DB query |
-| 4 | REST call | Call REST service |
-| 5 | Web service call | Call web service |
-| 6 | Import mapping | Import with mapping |
-| 7 | Export mapping | Export with mapping |
-| 8 | Generate document | Document generation |
-| 9 | Show home page | ShowHomePage |
-| 10 | Download file | Download file |
-| 11 | External action | Call external action |
-| 12 | Send external object | Send external object |
-| 13 | Delete external object | Delete external object |
-| 14 | All workflow actions (9 types) | Create/show/complete/lock/etc |
+| # | Disallowed action |
+|---|-------------------|
+| 1 | ErrorEvent |
+| 2 | Java action call |
+| 3 | Database query |
+| 4 | REST call |
+| 5 | Web service call |
+| 6 | Import mapping |
+| 7 | Export mapping |
+| 8 | Generate document |
+| 9 | Show home page |
+| 10 | Download file |
+| 11 | External action |
+| 12 | Send external object |
+| 13 | Delete external object |
+| 14 | All workflow actions (9 types) |
 
 ### 4.2 Binary return type rejected
 ```
@@ -342,10 +307,7 @@ create nanoflow MyModule.Bad () returns Binary begin end;
 ```
 **Expected:** Validation error.
 
-### 4.3 Float return type
-`ast.TypeFloat` does not exist in the AST — Float can never be used as a nanoflow return type. No validation needed.
-
-### 4.4 Disallowed actions in nested control flow
+### 4.3 Disallowed actions in nested control flow
 ```
 create nanoflow MyModule.Nested ()
 begin
@@ -354,21 +316,20 @@ begin
   end if;
 end;
 ```
-**Expected:** Rejected — validation recurses into IfStmt, LoopStmt, WhileStmt bodies.
+**Expected:** Rejected — validation recurses into nested blocks.
 
-### 4.5 Disallowed actions in error handling body
-**Expected:** Rejected — validation also checks error handling clauses.
+### 4.4 Disallowed actions in error handling body
+**Expected:** Rejected — validation checks error handling clauses.
 
-### 4.6 Cross-reference validation — nanoflow target
+### 4.5 Non-existent nanoflow target
 ```
 create nanoflow MyModule.BadRef () begin
   call nanoflow NonExistent.Flow ();
 end;
 ```
 **Expected:** Error — target nanoflow not found.
-**Source:** `validate.go:285-293` uses `buildNanoflowQualifiedNames`.
 
-### 4.7 Cross-reference validation — page target
+### 4.6 Non-existent page target
 ```
 create nanoflow MyModule.BadPage () begin
   show page NonExistent.Page ();
@@ -376,7 +337,7 @@ end;
 ```
 **Expected:** Error — target page not found.
 
-### 4.8 Cross-reference validation — microflow target from nanoflow
+### 4.7 Non-existent microflow target
 ```
 create nanoflow MyModule.BadMF () begin
   call microflow NonExistent.Flow ();
@@ -387,8 +348,6 @@ end;
 ---
 
 ## 5. DROP NANOFLOW
-
-**Source:** `cmd_nanoflows_drop.go:14` — `execDropNanoflow()`
 
 ### 5.1 Drop existing nanoflow
 ```
@@ -408,18 +367,16 @@ Create two nanoflows where one calls the other, drop the callee.
 **Expected:** Warning or error about dangling reference.
 
 ### 5.4 Drop and recreate (ID reuse)
-See 3.11 — verify `consumeDroppedNanoflow` works.
+See §3.11.
 
-### 5.5 Not-connected-for-write guard
+### 5.5 Write guard
 **Expected:** Error if no project open for writing.
 
 ---
 
 ## 6. CALL NANOFLOW (inside flow body)
 
-**Source:** Flow builder, `validate_microflow.go:357`
-
-Note: `call nanoflow` is an action inside a flow body (`begin`/`end`), not a standalone MDL command.
+`call nanoflow` is an action inside a flow body (`begin`/`end`), not a standalone MDL command.
 
 ### 6.1 Call with arguments
 ```
@@ -432,10 +389,10 @@ begin
   $Result = call nanoflow MyModule.Adder (A = 1, B = 2);
 end;
 ```
-**Expected:** Microflow can call nanoflow. Arguments mapped correctly.
+**Expected:** Arguments mapped correctly.
 
 ### 6.2 Call nanoflow from nanoflow
-**Expected:** Uses `NanoflowCallAction` BSON type (not `MicroflowCallAction`).
+**Expected:** Uses `NanoflowCallAction` (not `MicroflowCallAction`).
 
 ### 6.3 Call with return value assignment
 ```
@@ -449,11 +406,11 @@ call nanoflow MyModule.DoSomething ();
 ```
 **Expected:** No assignment. No error.
 
-### 6.5 Call with error handling clause
+### 6.5 Call with error handling
 ```
 $Result = call nanoflow MyModule.Risky () on error continue;
 ```
-**Expected:** `onErrorClause` parsed and preserved.
+**Expected:** `on error continue` parsed and preserved in DESCRIBE.
 
 ### 6.6 Recursive call
 ```
@@ -462,21 +419,19 @@ begin
   $Result = call nanoflow MyModule.Recursive ();
 end;
 ```
-**Expected:** Parses without error (no compile-time recursion check).
+**Expected:** Parses without error.
 
 ---
 
 ## 7. GRANT / REVOKE EXECUTE ON NANOFLOW
 
-**Source:** `cmd_security_write.go:674` (grant), `:733` (revoke)
-
-> **Note:** Drop/recreate of the same nanoflow name preserves security roles by design. The executor caches `AllowedModuleRoles` on DROP and restores them on the next CREATE with the same qualified name (`rememberDroppedNanoflow`/`consumeDroppedNanoflow` pattern). Use REVOKE after recreate if roles should change.
+> Drop/recreate of the same nanoflow name preserves security roles by design. Use REVOKE after recreate if roles should change.
 
 ### 7.1 Grant to single role
 ```
 grant execute on nanoflow MyModule.TestNano to MyModule.User;
 ```
-**Expected:** `AllowedModuleRoles` updated. Verifiable via `show access on nanoflow`.
+**Expected:** Verifiable via `show access on nanoflow`.
 
 ### 7.2 Grant to multiple roles
 ```
@@ -486,7 +441,7 @@ grant execute on nanoflow MyModule.TestNano to MyModule.User, MyModule.Admin;
 
 ### 7.3 Idempotent grant
 Grant same role twice.
-**Expected:** Message "already have access" on second grant. No duplicate entries.
+**Expected:** "already have access" on second grant. No duplicate entries.
 
 ### 7.4 Revoke from role
 ```
@@ -496,22 +451,20 @@ revoke execute on nanoflow MyModule.TestNano from MyModule.User;
 
 ### 7.5 Idempotent revoke
 Revoke role that was never granted.
-**Expected:** Message "none of the specified roles have access".
+**Expected:** "none of the specified roles have access".
 
 ### 7.6 Grant on non-existent nanoflow
-**Expected:** Clear error — nanoflow not found.
+**Expected:** Clear error.
 
 ### 7.7 Grant with non-existent role
-**Expected:** Error from `validateModuleRole`.
+**Expected:** Clear error.
 
-### 7.8 Not-connected-for-write guard
+### 7.8 Write guard
 **Expected:** Error if no project open for writing.
 
 ---
 
 ## 8. SHOW ACCESS ON NANOFLOW
-
-**Source:** `cmd_security.go:405` — `listAccessOnNanoflow()`
 
 ### 8.1 Nanoflow with roles
 ```
@@ -520,7 +473,7 @@ show access on nanoflow MyModule.TestNano;
 **Expected:** Lists all allowed module roles.
 
 ### 8.2 Nanoflow without roles
-**Expected:** "No access" or empty list.
+**Expected:** Empty list or "No access" message.
 
 ### 8.3 JSON output format
 **Expected:** Valid JSON array of role objects.
@@ -531,8 +484,8 @@ show access on nanoflow MyModule.TestNano;
 ### 8.5 Non-existent nanoflow
 **Expected:** Clear error.
 
-### 8.6 Role ID format
-`AllowedModuleRoles` stored as IDs — `listAccessOnNanoflow` splits on `.` to display `Module.Role`. Verify this works correctly for all role formats.
+### 8.6 Role ID display
+Verify roles display as `Module.Role` format.
 
 ---
 
@@ -554,178 +507,281 @@ Rename nanoflow called by another flow. Verify caller's reference updated.
 
 ## 10. MOVE NANOFLOW
 
-**Source:** `cmd_move.go:215` — `moveNanoflow()`
-
 ### 10.1 Move to another module
 ```
 move nanoflow MyModule.TestNano to TargetModule;
 ```
-**Expected:** Nanoflow moved to `TargetModule`. Qualified name becomes `TargetModule.TestNano`.
+**Expected:** Qualified name becomes `TargetModule.TestNano`.
 
 ### 10.2 Move to non-existent module
-**Expected:** Error: `failed to find target module: module not found: X`.
-
-### 20.4 Iterative development (CREATE OR MODIFY loop)
-1. `create nanoflow M.Evolving () begin end;`
-2. `create or modify nanoflow M.Evolving ($Name : String) begin end;` — add parameter
-3. `create or modify nanoflow M.Evolving ($Name : String) returns String begin $Result = $Name; end;` — add body + return
-4. `create or modify nanoflow M.Evolving ($Name : String, $Count : Integer) returns String begin $Result = $Name; end;` — add second param
-5. After each step: DESCRIBE and verify cumulative changes preserved
-6. Final: DESCRIBE → capture MDL → DROP → execute captured MDL → DESCRIBE → compare (full roundtrip)
-**Expected:** Each modification preserves prior state except for explicitly changed fields. Roundtrip at end matches last version.
-
-### 20.5 Drop and recreate with different signature
-1. CREATE nanoflow with `String` return type and 2 params, GRANT roles
-2. DROP
-3. CREATE same name with `Integer` return type and 0 params
-4. `show access on nanoflow M.Name;` — verify roles NOT carried over (clean slate)
-5. DESCRIBE — verify new signature, no remnant of old params/body
-**Source:** exercises `consumeDroppedNanoflow` (ID reuse) + security state reset
-
-### 20.6 Cross-module call chain
-1. CREATE `ModuleA.Entrypoint` calling `ModuleB.Processor`
-2. CREATE `ModuleB.Processor` calling `microflow ModuleC.DataFetcher`
-3. DESCRIBE `ModuleA.Entrypoint` — verify cross-module nanoflow call shown
-4. DROP `ModuleB.Processor`
-5. DESCRIBE `ModuleA.Entrypoint` — verify dangling reference handling
-6. Recreate `ModuleB.Processor` — verify caller roundtrips cleanly again
-**Source:** tests cross-module references and dangling ref recovery
+**Expected:** Error: `failed to find target module: module not found`.
 
 ---
 
-## 21. FAILURE MODES & ERROR RECOVERY
+## 11. MERMAID OUTPUT (CLI `--format mermaid`)
 
-Test error paths, partial state after failures, and silent corruption detection.
+Mermaid is a presentation format accessed via the CLI `--format mermaid` flag.
 
-### 21.1 Validation failure mid-batch
-Execute MDL script with 3 CREATEs where #2 has a disallowed action:
+### 11.1 Simple nanoflow
+```
+mxcli describe nanoflow -p <mpr> --format mermaid Module.SimpleNanoflow
+```
+**Expected:**
+- `flowchart TD` header
+- Start node, end node, activity nodes
+- Edges connecting nodes in correct order
+- `%% nodeinfo` section with node metadata
+
+### 11.2 Complex nanoflow with branching
+```
+mxcli describe nanoflow -p <mpr> --format mermaid Module.ComplexNanoflow
+```
+**Expected:**
+- If/else branches with condition labels on edges
+- Multiple activity types with correct labels
+- Merge points where branches rejoin
+
+### 11.3 Nanoflow with call actions
+```
+mxcli describe nanoflow -p <mpr> --format mermaid Module.NanoWithCalls
+```
+**Expected:** Call action nodes show qualified target names, not generic "Action" labels.
+
+### 11.4 Non-existent nanoflow
+```
+mxcli describe nanoflow -p <mpr> --format mermaid Module.DoesNotExist
+```
+**Expected:** Clear error message. No empty output or crash.
+
+---
+
+## 12. BSON ROUNDTRIP
+
+### 12.1 Simple roundtrip
+1. DESCRIBE nanoflow → capture MDL
+2. DROP nanoflow
+3. Execute captured MDL
+4. DESCRIBE again → capture
+5. Diff the two outputs
+
+**Expected:** Identical or cosmetic-only differences (expression whitespace normalization).
+
+### 12.2 Complex roundtrip
+Repeat §12.1 on nanoflows with: error handling, annotations, 10+ activities, multiple parameter types, nested control flow.
+
+**Expected:** Structure preserved. Known cosmetic diffs:
+- Expression whitespace: `find($x,'y')` → `find($x, 'y')`
+- Association retrieve syntax: `from $X/Assoc` may become `from Entity where Assoc = $X`
+
+### 12.3 Bulk roundtrip
+Run §12.1 on all 223 nanoflows across 3 test projects. Record pass/fail counts.
+
+---
+
+## 13. CATALOG
+
+### 13.1 Catalog query
+```
+select * from catalog.nanoflows;
+```
+**Expected:** All nanoflows listed with correct columns.
+
+### 13.2 MicroflowType field
+**Expected:** All entries show `MicroflowType = NANOFLOW`.
+
+### 13.3 Filter by module
+```
+select * from catalog.nanoflows where ModuleName = 'MyModule';
+```
+**Expected:** Only nanoflows from specified module. Column names are PascalCase.
+
+---
+
+## 14. DIFF
+
+### 14.1 Modified nanoflow
+1. DESCRIBE nanoflow → save to file
+2. Modify the nanoflow (CREATE OR MODIFY with different body)
+3. `mxcli diff -p <mpr> <saved-file.mdl>`
+
+**Expected:** Unified diff with `---`/`+++` headers and `@@` hunks.
+
+### 14.2 New nanoflow
+1. Create `.mdl` file with a new nanoflow definition
+2. `mxcli diff -p <mpr> <new-file.mdl>`
+
+**Expected:** Shows full addition.
+
+---
+
+## 15. MULTI-STEP WORKFLOWS
+
+### 15.1 Scaffold module with nanoflows
+1. CREATE 3 nanoflows in a new module
+2. GRANT roles to each
+3. DESCRIBE each — verify complete MDL output
+4. `mxcli describe nanoflow -p <mpr> --format mermaid` on each — verify Mermaid output
+
+### 15.2 Rename in call chain
+1. CREATE nanoflow A calling nanoflow B
+2. RENAME B
+3. DESCRIBE A — verify reference updated
+
+### 15.3 Move and reorganize
+1. CREATE nanoflow in ModuleA
+2. MOVE to ModuleB
+3. Verify qualified name, folder, params preserved
+
+### 15.4 Iterative CREATE OR MODIFY
+1. `create nanoflow M.Evolving () begin end;`
+2. `create or modify nanoflow M.Evolving ($Name : String) begin end;`
+3. `create or modify nanoflow M.Evolving ($Name : String) returns String begin $Result = $Name; end;`
+4. `create or modify nanoflow M.Evolving ($Name : String, $Count : Integer) returns String begin $Result = $Name; end;`
+5. After each step: DESCRIBE and verify cumulative changes preserved
+6. Final roundtrip: DESCRIBE → DROP → execute captured → DESCRIBE → compare
+
+**Expected:** Each modification preserves prior state. Roundtrip matches last version.
+
+### 15.5 Drop and recreate with different signature
+1. CREATE nanoflow with `String` return and 2 params, GRANT roles
+2. DROP
+3. CREATE same name with `Integer` return and 0 params
+4. `show access on nanoflow M.Name;` — verify roles NOT carried over
+5. DESCRIBE — verify new signature, no remnant of old params/body
+
+### 15.6 Cross-module call chain
+1. CREATE `ModuleA.Entrypoint` calling `ModuleB.Processor`
+2. CREATE `ModuleB.Processor` calling `microflow ModuleC.DataFetcher`
+3. DESCRIBE `ModuleA.Entrypoint` — verify cross-module call shown
+4. DROP `ModuleB.Processor`
+5. DESCRIBE `ModuleA.Entrypoint` — verify dangling reference handling (no crash)
+6. Recreate `ModuleB.Processor` — verify caller roundtrips again
+
+---
+
+## 16. FAILURE MODES & ERROR RECOVERY
+
+### 16.1 Validation failure mid-batch
 ```
 create nanoflow M.Good1 () begin end;
 create nanoflow M.Bad () begin call java action SomeModule.JavaAction (); end;
 create nanoflow M.Good3 () begin end;
 ```
-**Expected:** Good1 created, Bad rejected with clear error, Good3 **not created** — batch aborts on first error.
+**Expected:** Good1 created, Bad rejected, Good3 NOT created — batch aborts on first error.
 
-> **Note:** Batch mode (`mxcli exec`) is fail-fast — the first error aborts all remaining statements. REPL mode (interactive or piped) continues on error per-line. This is consistent across all entity types. `IF EXISTS` / `IF NOT EXISTS` syntax does not exist yet.
+> Batch mode (`mxcli exec`) is fail-fast. REPL mode continues on error per-line.
 
-### 21.2 CREATE with non-existent entity parameter
+### 16.2 CREATE with non-existent entity parameter
 ```
 create nanoflow M.BadParam (Input : NonExistent.Entity) begin end;
 ```
-**Expected:** Clear error. No partial nanoflow left in model. `show nanoflows` does not list `M.BadParam`.
+**Expected:** Clear error. No partial nanoflow in model.
 
-### 21.3 CREATE with non-existent enum return type
+### 16.3 CREATE with non-existent enum return type
 ```
 create nanoflow M.BadReturn () returns NonExistent.MyEnum begin end;
 ```
-**Expected:** Clear error. No partial nanoflow left in model.
+**Expected:** Clear error. No partial nanoflow in model.
 
-### 21.4 DESCRIBE after partial modification failure
+### 16.4 DESCRIBE after partial modification failure
 1. CREATE nanoflow with valid body
 2. Attempt `create or modify` with invalid body (disallowed action)
-3. DESCRIBE — verify original version preserved (not corrupted by failed modify)
-**Source:** `execCreateNanoflow` should be atomic — either fully applied or fully rejected
+3. DESCRIBE — verify original version preserved
 
-### 21.5 BSON roundtrip data integrity check
-For 10+ complex nanoflows from test projects (choose ones with error handling, annotations, 10+ activities, multiple parameter types):
-1. DESCRIBE → capture MDL
+### 16.5 BSON roundtrip data integrity
+For 10+ complex nanoflows (error handling, annotations, 10+ activities, multiple parameter types):
+1. DESCRIBE → capture
 2. DROP
 3. Execute captured MDL
 4. DESCRIBE → capture again
-5. **Diff the two outputs** — any difference is a data loss bug
-**Source:** exercises full BSON parse→serialize→parse pipeline against real-world data
+5. Diff — any difference is a data loss bug
 
-### 21.6 Double DROP
+### 16.6 Double DROP
 ```
 drop nanoflow M.X;
 drop nanoflow M.X;
 ```
-**Expected:** First succeeds, second gives clear "not found" error (not crash or silent failure).
+**Expected:** First succeeds, second gives "not found" error.
 
-### 21.7 GRANT on just-dropped nanoflow (same session)
+### 16.7 GRANT on just-dropped nanoflow
 1. CREATE nanoflow, then DROP
 2. `grant execute on nanoflow M.Dropped to M.User;`
-**Expected:** Clear error about nanoflow not found. No crash, no phantom entry created.
 
-### 21.8 CREATE OR MODIFY with completely different body
-1. CREATE nanoflow with 5-activity body (variables, if/else, loop)
-2. CREATE OR MODIFY same name with completely different 3-activity body
-3. DESCRIBE — verify old body fully replaced, no ghost activities from original
-**Source:** verifies ObjectCollection is fully replaced, not merged
+**Expected:** Clear error. No phantom entry.
 
-### 21.9 Corrupt cross-reference after callee drop
-1. CREATE nanoflow A calling nanoflow B (both exist)
+### 16.8 CREATE OR MODIFY — full body replacement
+1. CREATE nanoflow with 5-activity body
+2. CREATE OR MODIFY same name with different 3-activity body
+3. DESCRIBE — verify old body fully replaced
+
+### 16.9 Dangling cross-reference after callee drop
+1. CREATE nanoflow A calling nanoflow B
 2. DROP B
-3. DESCRIBE A — how is the dangling `call nanoflow M.B` rendered? Verify no crash.
-4. `describe nanoflow M.A mermaid;` — verify graceful handling of missing call target
-**Expected:** Either error message, placeholder text, or unresolved qualified name — not a panic.
+3. DESCRIBE A — verify no crash
+4. `mxcli describe nanoflow -p <mpr> --format mermaid M.A` — verify graceful handling
 
-### 21.10 Error message quality audit
-For each error scenario, verify the error message includes:
-- **What** went wrong (e.g., "nanoflow not found", "disallowed action")
+**Expected:** Stale name rendered or error message. No panic.
+
+### 16.10 Error message quality
+For each error scenario, verify the message includes:
+- **What** went wrong
 - **Which** nanoflow (qualified name)
-- **Actionable guidance** (e.g., "did you mean...", "use `show nanoflows` to list available")
+- **Actionable guidance** where applicable
 
-Scenarios: not-found (DESCRIBE, DROP, GRANT, REVOKE, MOVE, SHOW ACCESS), not-connected (CREATE, DROP, GRANT, REVOKE), validation failure (disallowed action, binary return), duplicate (CREATE without OR MODIFY).
+Scenarios: not-found (DESCRIBE, DROP, GRANT, REVOKE, MOVE, SHOW ACCESS), not-connected (CREATE, DROP, GRANT, REVOKE), validation failure, duplicate CREATE.
 
-### 21.11 Empty string and unicode names
+### 16.11 Empty string and unicode names
 ```
 create nanoflow MyModule.Nañoflow_テスト () begin end;
 ```
-**Expected:** Parser handles consistently — either accepts and roundtrips correctly, or rejects with clear error. Document actual behavior.
+**Expected:** Consistent behavior — accepts and roundtrips, or rejects with clear error.
 
-### 21.12 Very long MDL statement
+Also test empty name — should be rejected.
+
+### 16.12 Very long MDL statement
 CREATE nanoflow with 100-character name, 10 parameters, 20-line body with nested control flow.
-**Expected:** Parses and executes without truncation or buffer issues. DESCRIBE output complete.
+**Expected:** Parses without truncation or buffer issues. DESCRIBE output complete.
 
 ---
 
-## 22. SECURITY CASCADES
+## 17. SECURITY CASCADES
 
-Extended grant/revoke patterns testing role accumulation, cross-module references, and persistence.
-
-### 22.1 Multi-role accumulation
+### 17.1 Multi-role accumulation
 1. `grant execute on nanoflow M.N to M.RoleA;`
 2. `grant execute on nanoflow M.N to M.RoleB;`
 3. `grant execute on nanoflow M.N to M.RoleC;`
-4. `show access on nanoflow M.N;` — verify all 3 roles present (no overwrite on each grant)
-**Source:** `UpdateAllowedRoles` merge logic in `cmd_security_write.go`
+4. `show access on nanoflow M.N;` — verify all 3 roles present
 
-### 22.2 Selective revoke
-1. GRANT roles A, B, C (per 22.1)
-2. `revoke execute on nanoflow M.N from M.RoleB;` — revoke only B
-3. `show access on nanoflow M.N;` — verify A and C remain, B removed
-**Source:** revoke filters by role, shouldn't affect other roles
+### 17.2 Selective revoke
+1. GRANT roles A, B, C
+2. `revoke execute on nanoflow M.N from M.RoleB;`
+3. `show access` — verify A and C remain, B removed
 
-### 22.3 Revoke all then re-grant
+### 17.3 Revoke all then re-grant
 1. GRANT A, B, C
-2. REVOKE A, then REVOKE B, then REVOKE C
-3. `show access on nanoflow M.N;` — verify empty
+2. REVOKE A, B, C individually
+3. `show access` — verify empty
 4. GRANT A
-5. `show access on nanoflow M.N;` — verify only A
-**Source:** tests empty AllowedModuleRoles state + recovery
+5. `show access` — verify only A
 
-### 22.4 Cross-module role reference
+### 17.4 Cross-module role reference
 ```
 grant execute on nanoflow ModuleA.Nano to ModuleB.UserRole;
 ```
-**Expected:** Cross-module role reference accepted and persisted. SHOW ACCESS displays `ModuleB.UserRole` correctly.
-**Source:** `AllowedModuleRoles` stored as IDs — display splits on `.` delimiter
+**Expected:** Cross-module role reference accepted. SHOW ACCESS displays `ModuleB.UserRole`.
 
-### 22.5 Security persistence through save/reopen
+### 17.5 Security persistence
 1. CREATE nanoflow, GRANT 2 roles
 2. Disconnect from project
-3. Reconnect to same project
-4. `show access on nanoflow M.N;` — verify roles persisted in BSON
-**Source:** verifies `serializeNanoflow` correctly writes AllowedModuleRoles to BSON
+3. Reconnect
+4. `show access` — verify roles persisted
 
-### 22.6 Security state after CREATE OR MODIFY
+### 17.6 Security after CREATE OR MODIFY
 1. CREATE nanoflow, GRANT roles A and B
-2. `create or modify nanoflow M.N () begin $x : String = 'changed'; end;` — change body only
-3. `show access on nanoflow M.N;` — verify roles A and B preserved (not cleared by modify)
-**Source:** CREATE OR MODIFY should reuse existing nanoflow ID and preserve non-body fields
+2. `create or modify nanoflow M.N () begin $x : String = 'changed'; end;`
+3. `show access` — verify A and B preserved
 
-### 22.7 Bulk grant in script
+### 17.7 Bulk grant in script
 ```
 grant execute on nanoflow M.N1 to M.User, M.Admin;
 grant execute on nanoflow M.N2 to M.User, M.Admin;
@@ -734,23 +790,19 @@ show access on nanoflow M.N1;
 show access on nanoflow M.N2;
 show access on nanoflow M.N3;
 ```
-Execute as batch. Verify all 3 nanoflows have both roles.
-**Source:** tests batch execution of security commands
+**Expected:** All 3 nanoflows have both roles.
 
-### 22.8 Grant with non-existent module role
+### 17.8 Grant with non-existent role
 ```
 grant execute on nanoflow M.Nano to M.NonExistentRole;
 ```
-**Expected:** Clear error from `validateModuleRole`. No partial grant applied. SHOW ACCESS unchanged.
+**Expected:** Clear error. No partial grant. SHOW ACCESS unchanged.
 
 ---
 
-## 23. BOUNDARY & STRESS CASES
+## 18. BOUNDARY & STRESS
 
-Extreme inputs that push beyond typical usage patterns.
-
-### 23.1 Maximum parameters (20)
-CREATE nanoflow with 20 parameters of mixed types:
+### 18.1 Maximum parameters (20)
 ```
 create nanoflow M.ManyParams (
   P1 : String, P2 : Integer, P3 : Boolean, P4 : Decimal, P5 : DateTime,
@@ -761,10 +813,9 @@ create nanoflow M.ManyParams (
 begin
 end;
 ```
-DESCRIBE — verify all 20 preserved with correct types and names.
-Roundtrip — DROP → CREATE from DESCRIBE output → DESCRIBE → compare.
+DESCRIBE — verify all 20 preserved. Roundtrip — compare output.
 
-### 23.2 Deeply nested control flow (4+ levels)
+### 18.2 Deeply nested control flow (4+ levels)
 ```
 create nanoflow M.DeepNest ()
 begin
@@ -779,24 +830,12 @@ begin
   end if;
 end;
 ```
-DESCRIBE — verify full 4-level nesting preserved (each level with positions, anchors, captions).
-**Source:** exercises recursive validation (`validateNanoflowBody`) and ObjectCollection depth
+DESCRIBE — verify full 4-level nesting preserved.
 
-### 23.3 Many activities (30+)
-CREATE nanoflow with 30+ sequential log actions:
-```
-create nanoflow M.ManyActivities ()
-begin
-  log info 'action_1';
-  log info 'action_2';
-  ...
-  log info 'action_30';
-end;
-```
-DESCRIBE — verify all 30+ activities present (ObjectCollection not truncated).
-Check activity count in `show nanoflows;` matches 30+.
+### 18.3 Many activities (30+)
+CREATE nanoflow with 30+ sequential log actions. DESCRIBE — verify all present. Check activity count in `show nanoflows`.
 
-### 23.4 Empty body with complex signature
+### 18.4 Empty body with complex signature
 ```
 create nanoflow M.EmptyComplex (
   A : String, B : Integer, C : Boolean, D : Decimal, E : DateTime
@@ -804,10 +843,10 @@ create nanoflow M.EmptyComplex (
 begin
 end;
 ```
-**Expected:** Empty body accepted. All 5 parameters and return type roundtrip correctly via DESCRIBE.
+**Expected:** Empty body accepted. All parameters and return type roundtrip correctly.
 
-### 23.5 Nanoflow calling 5+ other nanoflows
-CREATE 5 target nanoflows, then one caller that calls all 5 in sequence:
+### 18.5 Nanoflow calling 5+ other nanoflows
+CREATE 5 target nanoflows, then one caller that calls all 5:
 ```
 create nanoflow M.Caller () returns Boolean
 begin
@@ -819,10 +858,9 @@ begin
 end;
 ```
 DESCRIBE — verify all 5 call targets preserved.
-MERMAID — verify all 5 call nodes rendered with correct target names.
+`mxcli describe nanoflow -p <mpr> --format mermaid M.Caller` — verify all 5 nodes rendered.
 
-### 23.6 Multiple error handling clauses
-CREATE nanoflow with 3 different `on error continue` clauses:
+### 18.6 Multiple error handling clauses
 ```
 create nanoflow M.MultiError () returns Boolean
 begin
@@ -831,34 +869,30 @@ begin
   $R3 = call nanoflow M.Risky3 () on error continue;
 end;
 ```
-DESCRIBE — verify all 3 error handling clauses preserved.
-**Source:** `getErrorHandling()` in `validate_microflow.go`
+DESCRIBE — verify all 3 `on error continue` clauses preserved.
 
-### 23.7 Annotations on every statement type
-CREATE nanoflow with `@annotation`, `@caption`, `@color`, `@position` on various statement types (declare, set, if, loop, call).
+### 18.7 Annotations on every statement type
+CREATE nanoflow with `@annotation`, `@caption`, `@color`, `@position` on various statement types.
 DESCRIBE — verify all annotations roundtrip.
-MERMAID — verify annotations rendered where applicable.
-**Source:** AnnotationFlows parsing in `parser_nanoflow.go`
+`mxcli describe nanoflow -p <mpr> --format mermaid` — verify annotations rendered.
 
-### 23.8 Show nanoflows with 100+ results
-Run `show nanoflows;` on Evora project (93 nanoflows).
-CREATE 10 additional nanoflows to push past 100.
-**Expected:** No truncation, formatting stable, all listed.
+### 18.8 100+ results listing
+Run `show nanoflows;` on Evora project (93 nanoflows). CREATE 10 additional to push past 100.
+**Expected:** No truncation. All listed.
 
-### 23.9 Rapid CREATE/DROP cycle (10 iterations)
+### 18.9 Rapid CREATE/DROP cycle (10 iterations)
 ```
 -- repeat 10 times:
 create nanoflow M.Temp () begin end;
 drop nanoflow M.Temp;
 ```
-After all 10 cycles: `show nanoflows;` should show zero temp nanoflows.
-**Expected:** No resource leak, no ID collision, no catalog corruption after rapid cycling.
-**Source:** exercises `consumeDroppedNanoflow` ID reuse under repeated stress
+After all 10 cycles: `show nanoflows` shows zero temp nanoflows.
+**Expected:** No resource leak, no ID collision, no catalog corruption.
 
-### 23.10 Nanoflow with all 25 allowed action types
-CREATE single nanoflow containing one instance of each allowed action type (where grammar supports it): CreateVariable, ChangeVariable, CreateObject, ChangeObject, CommitObject, DeleteObject, RollbackObject, Retrieve, AggregateList, ChangeList, CreateList, ListOperation, CastObject, ShowPage, ClosePage, ShowMessage, ValidationFeedback, CallNanoflow, CallMicroflow, CallJavaScriptAction, Synchronize, LogMessage, ExclusiveSplit, Loop, MergeNode.
-DESCRIBE → compare to original input. This is the ultimate roundtrip stress test.
-**Note:** Some action types may not be expressible in current MDL grammar — document which ones work and which don't.
+### 18.10 All 25 allowed action types
+CREATE single nanoflow with one instance of each allowed action type (where grammar supports it). DESCRIBE → compare to original.
+
+> Some action types may not be expressible in current MDL grammar. Document which work and which don't.
 
 ---
 
@@ -866,57 +900,57 @@ DESCRIBE → compare to original input. This is the ultimate roundtrip stress te
 
 | Category | Enquiries (79) | Evora Factory (93) | Lato Inventory (51) |
 |---|---|---|---|
-| SHOW nanoflows count | Verify: 79 | Verify: 93 | Verify: 51 |
+| SHOW count | Verify: 79 | Verify: 93 | Verify: 51 |
 | DESCRIBE (sample 10+) | Diverse activities | Diverse activities | Diverse activities |
-| DESCRIBE MERMAID (sample 5) | Complex flows | Complex flows | Complex flows |
+| Mermaid (sample 5) | Complex flows | Complex flows | Complex flows |
 | SHOW ACCESS (sample 5) | With/without roles | With/without roles | With/without roles |
 | Catalog query | Full table | Full table | Full table |
 | Roundtrip (sample 10+) | Describe→Drop→Create→Describe | Same | Same |
 | Activity coverage | Track 25 allowed types | Same | Same |
-| Multi-step workflows (§20) | Use project entities for call chains | Same | Same |
-| BSON data integrity (§21.5) | 10+ complex nanoflows | Same | Same |
-| Security cascades (§22) | Test with project roles | Same | Same |
-| Boundary: 100+ listing (§23.8) | N/A (79) | CREATE extras to reach 100+ | N/A (51) |
+| Multi-step workflows (§15) | Project entities for call chains | Same | Same |
+| BSON data integrity (§16.5) | 10+ complex nanoflows | Same | Same |
+| Security cascades (§17) | Project roles | Same | Same |
+| 100+ listing (§18.8) | N/A (79) | CREATE extras to reach 100+ | N/A (51) |
 
 ---
 
-## Automated Test Coverage Status
+## Automated Test Coverage
 
-| Area | Automated Tests | Status |
+| Area | Tests | Status |
 |---|---|---|
 | Catalog: activity count | `TestCountNanoflowActivities` | Covered |
 | Catalog: complexity | `TestCalculateNanoflowComplexity` | Covered |
 | Registry: handler registration | `registry_test.go` | Covered |
-| CREATE NANOFLOW executor | 13 integration + 4 mock tests | Covered |
-| DROP NANOFLOW executor | 2 integration + 1 mock test | Covered |
-| GRANT/REVOKE executor | 3 integration + 5 mock tests | Covered |
-| SHOW NANOFLOWS executor | 2 integration + 2 mock tests | Covered |
-| DESCRIBE NANOFLOW executor | 2 integration + 2 mock tests | Covered |
-| SHOW ACCESS executor | 3 mock tests | Covered |
-| MOVE NANOFLOW executor | 1 integration + 1 mock test | Covered |
-| MERMAID output | 1 integration test | Covered |
-| Nanoflow validation | 6 mock tests (disallowed actions, nested, return types) | Covered |
-| BSON parser | 5 roundtrip tests (synthetic + with activities) | Covered |
-| BSON writer | 5 roundtrip tests (serialize→parse→serialize cycle) | Covered |
+| CREATE NANOFLOW | 13 integration + 4 mock | Covered |
+| DROP NANOFLOW | 2 integration + 1 mock | Covered |
+| GRANT/REVOKE | 3 integration + 5 mock | Covered |
+| SHOW NANOFLOWS | 2 integration + 2 mock | Covered |
+| DESCRIBE NANOFLOW | 2 integration + 2 mock | Covered |
+| SHOW ACCESS | 3 mock | Covered |
+| MOVE NANOFLOW | 1 integration + 1 mock | Covered |
+| Mermaid output | 1 integration | Covered |
+| Nanoflow validation | 6 mock | Covered |
+| BSON parser | 5 roundtrip | Covered |
+| BSON writer | 5 roundtrip | Covered |
 | Diff output | None | **Gap** |
-| Roundtrip (integration) | 3 integration tests (create→describe→compare) | Covered |
-| Multi-step workflows (§20) | None | **Manual only** |
-| Failure modes (§21) | Partial: double-drop, not-connected guards in mock tests | **Mostly manual** |
-| Security cascades (§22) | Partial: idempotent grant/revoke in mock + integration tests | **Mostly manual** |
-| Boundary cases (§23) | None | **Manual only** |
+| Roundtrip (integration) | 3 integration | Covered |
+| Multi-step workflows (§15) | None | **Manual only** |
+| Failure modes (§16) | Partial | **Mostly manual** |
+| Security cascades (§17) | Partial | **Mostly manual** |
+| Boundary cases (§18) | None | **Manual only** |
 
 Manual testing priority:
-1. Roundtrip all 223 nanoflows across 3 test projects (bulk DESCRIBE→DROP→CREATE→DESCRIBE)
-2. Activity type coverage (verify all 25 allowed actions represented)
-3. Multi-step workflows (§20) — highest risk for interaction bugs
-4. Failure modes (§21) — especially §21.5 BSON data integrity and §21.8 body replacement
+1. Roundtrip all 223 nanoflows (bulk DESCRIBE→DROP→CREATE→DESCRIBE)
+2. Activity type coverage (all 25 allowed actions)
+3. Multi-step workflows (§15) — highest interaction bug risk
+4. Failure modes (§16) — especially §16.5 and §16.8
 5. Diff output with nanoflow changes
 
 ---
 
 ## Manual Test Report Template
 
-Copy and fill in after running manual tests. Include in PR description under `## Manual Testing`.
+Copy and fill in after running manual tests.
 
 ```markdown
 ## Manual Testing
@@ -927,8 +961,8 @@ Copy and fill in after running manual tests. Include in PR description under `##
 
 ### Test Projects
 
-| App | Studio Pro | Nanoflows | SHOW count | DESCRIBE sample | Mermaid sample | Roundtrip |
-|-----|-----------|-----------|------------|-----------------|----------------|-----------|
+| App | Studio Pro | Nanoflows | SHOW count | DESCRIBE sample | Mermaid (`--format mermaid`) | Roundtrip |
+|-----|-----------|-----------|------------|-----------------|------------------------------|-----------|
 | Lato Enquiry Management | 11.4.0 | 79 | ✅ 79 | ✅ _n_/79 | ✅ _n_/79 | ✅ _n_/79 |
 | Evora Factory Management | 10.24.15 | 93 | ✅ 93 | ✅ _n_/93 | ✅ _n_/93 | ✅ _n_/93 |
 | Lato Product Inventory | 11.2.0 | 51 | ✅ 51 | ✅ _n_/51 | ✅ _n_/51 | ✅ _n_/51 |
@@ -940,7 +974,7 @@ Copy and fill in after running manual tests. Include in PR description under `##
 | SHOW NANOFLOWS | ✅/❌ | |
 | SHOW NANOFLOWS IN module | ✅/❌ | |
 | DESCRIBE NANOFLOW | ✅/❌ | |
-| DESCRIBE MERMAID NANOFLOW | ✅/❌ | |
+| `--format mermaid` | ✅/❌ | |
 | CREATE NANOFLOW | ✅/❌ | |
 | CREATE OR MODIFY NANOFLOW | ✅/❌ | |
 | DROP NANOFLOW | ✅/❌ | |
@@ -953,20 +987,15 @@ Copy and fill in after running manual tests. Include in PR description under `##
 
 ### Bulk Roundtrip Results
 
-> **Note:** Expression whitespace is intentionally normalized during roundtrip. Function arguments get a space after commas: `find($x,'y')` → `find($x, 'y')`. This is by-design normalization for readability, not a fidelity bug.
+> Expression whitespace is normalized during roundtrip: `find($x,'y')` → `find($x, 'y')`. This is by-design.
 
 ```
-# Command used:
-# for each nanoflow: describe → capture → drop → execute captured → describe → diff
-
 Total: _n_ nanoflows tested
 Passed: _n_
 Failed: _n_ (list failures below)
 ```
 
 ### Activity Type Coverage
-
-_List which of the 25 allowed action types were exercised across test projects._
 
 | # | Activity | Found in test project | Roundtrip OK |
 |---|----------|-----------------------|-------------|
@@ -983,47 +1012,45 @@ _List which of the 25 allowed action types were exercised across test projects._
 | Nested disallowed action rejected | ✅/❌ | |
 | Cross-ref to non-existent target | ✅/❌ | |
 
-### Multi-Step Workflows (§20)
+### Multi-Step Workflows (§15)
 
 | Scenario | Result | Notes |
 |----------|--------|-------|
-| 20.1 Scaffold module | ✅/❌ | |
-| 20.2 Rename in call chain | ✅/❌ | |
-| 20.3 Move and reorganize | ✅/❌ | |
-| 20.4 Iterative CREATE OR MODIFY | ✅/❌ | |
-| 20.5 Drop/recreate different sig | ✅/❌ | |
-| 20.6 Cross-module call chain | ✅/❌ | |
+| 15.1 Scaffold module | ✅/❌ | |
+| 15.2 Rename in call chain | ✅/❌ | |
+| 15.3 Move and reorganize | ✅/❌ | |
+| 15.4 Iterative CREATE OR MODIFY | ✅/❌ | |
+| 15.5 Drop/recreate different sig | ✅/❌ | |
+| 15.6 Cross-module call chain | ✅/❌ | |
 
-### Failure Modes (§21)
-
-| Scenario | Result | Notes |
-|----------|--------|-------|
-| 21.1 Validation mid-batch | ✅/❌ | |
-| 21.4 DESCRIBE after failed modify | ✅/❌ | |
-| 21.5 BSON data integrity (10+) | ✅/❌ | |
-| 21.8 Full body replacement | ✅/❌ | |
-| 21.9 Dangling cross-reference | ✅/❌ | |
-
-### Security Cascades (§22)
+### Failure Modes (§16)
 
 | Scenario | Result | Notes |
 |----------|--------|-------|
-| 22.1 Multi-role accumulation | ✅/❌ | |
-| 22.5 Persistence through save | ✅/❌ | |
-| 22.6 Preserved after modify | ✅/❌ | |
+| 16.1 Validation mid-batch | ✅/❌ | |
+| 16.4 DESCRIBE after failed modify | ✅/❌ | |
+| 16.5 BSON data integrity (10+) | ✅/❌ | |
+| 16.8 Full body replacement | ✅/❌ | |
+| 16.9 Dangling cross-reference | ✅/❌ | |
 
-### Boundary Cases (§23)
+### Security Cascades (§17)
 
 | Scenario | Result | Notes |
 |----------|--------|-------|
-| 23.1 20 parameters | ✅/❌ | |
-| 23.2 5-level nesting | ✅/❌ | |
-| 23.9 Rapid CREATE/DROP x10 | ✅/❌ | |
-| 23.10 All 25 action types | ✅/❌ | |
+| 17.1 Multi-role accumulation | ✅/❌ | |
+| 17.5 Persistence through save | ✅/❌ | |
+| 17.6 Preserved after modify | ✅/❌ | |
+
+### Boundary Cases (§18)
+
+| Scenario | Result | Notes |
+|----------|--------|-------|
+| 18.1 20 parameters | ✅/❌ | |
+| 18.2 4-level nesting | ✅/❌ | |
+| 18.9 Rapid CREATE/DROP x10 | ✅/❌ | |
+| 18.10 All 25 action types | ✅/❌ | |
 
 ### Issues Found
-
-_List any issues discovered during manual testing. For each: command, input, expected vs actual, severity._
 
 1. (none / describe issues here)
 ```
