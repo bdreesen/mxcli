@@ -100,7 +100,9 @@ func serializeClientAction(action pages.ClientAction) bson.D {
 				// Variable must be a non-null Forms$PageVariable object in widget context.
 				// Studio Pro's set_Variable setter requires a non-null value and throws
 				// ArgumentNullException when this field is nil (issue #295).
-				{Key: "Variable", Value: buildFormPageVariable()},
+				// For Forms$PageParameterMapping the variable name is in Argument; all
+				// sub-fields of the PageVariable object are left empty.
+				{Key: "Variable", Value: buildFormPageVariable("")},
 			}
 			paramMappings = append(paramMappings, mapping)
 		}
@@ -225,16 +227,17 @@ func serializeClientAction(action pages.ClientAction) bson.D {
 	}
 }
 
-// buildFormPageVariable returns an empty Forms$PageVariable BSON document.
-// Studio Pro's PageParameterMapping.Variable property requires a non-null
-// PageVariable object in the widget context (Forms$FormAction). All sub-fields
-// are empty; the actual variable reference is carried in the sibling Argument field.
-func buildFormPageVariable() bson.D {
+// buildFormPageVariable returns a Forms$PageVariable BSON document.
+// pageParam is the page parameter name that supplies the value (without leading $).
+// For Forms$PageParameterMapping (show-page button), all sub-fields are empty and
+// the variable is carried in the sibling Argument field.
+// For Forms$SnippetParameterMapping, pageParam is set and Argument is empty.
+func buildFormPageVariable(pageParam string) bson.D {
 	return bson.D{
 		{Key: "$ID", Value: idToBsonBinary(generateUUID())},
 		{Key: "$Type", Value: "Forms$PageVariable"},
 		{Key: "LocalVariable", Value: ""},
-		{Key: "PageParameter", Value: ""},
+		{Key: "PageParameter", Value: pageParam},
 		{Key: "SnippetParameter", Value: ""},
 		{Key: "SubKey", Value: ""},
 		{Key: "UseAllPages", Value: false},
