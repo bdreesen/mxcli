@@ -153,7 +153,8 @@ func extractMicroflowAnnotations(annotations []parser.IAnnotationContext) *ast.A
 	result := &ast.ActivityAnnotations{}
 	hasAny := false
 
-	for _, annCtx := range annotations {
+	seenActivityMetadata := false
+	for i, annCtx := range annotations {
 		ann := annCtx.(*parser.AnnotationContext)
 		annName := strings.ToLower(ann.AnnotationName().GetText())
 
@@ -170,6 +171,7 @@ func extractMicroflowAnnotations(annotations []parser.IAnnotationContext) *ast.A
 					hasAny = true
 				}
 			}
+			seenActivityMetadata = true
 
 		case "caption":
 			// @caption 'text' — bare annotationValue
@@ -180,6 +182,7 @@ func extractMicroflowAnnotations(annotations []parser.IAnnotationContext) *ast.A
 					hasAny = true
 				}
 			}
+			seenActivityMetadata = true
 
 		case "color":
 			// @color Green — bare annotationValue (identifier)
@@ -190,13 +193,18 @@ func extractMicroflowAnnotations(annotations []parser.IAnnotationContext) *ast.A
 					hasAny = true
 				}
 			}
+			seenActivityMetadata = true
 
 		case "annotation":
 			// @annotation 'text' — bare annotationValue
 			if valCtx := ann.AnnotationValue(); valCtx != nil {
 				text := extractAnnotationValueString(valCtx)
 				if text != "" {
-					result.AnnotationText = text
+					if !seenActivityMetadata && hasLaterActivityAnnotation(annotations, i+1) {
+						result.FreeAnnotation = text
+					} else {
+						result.AnnotationText = text
+					}
 					hasAny = true
 				}
 			}
@@ -205,6 +213,7 @@ func extractMicroflowAnnotations(annotations []parser.IAnnotationContext) *ast.A
 			// @excluded — no value needed
 			result.Excluded = true
 			hasAny = true
+			seenActivityMetadata = true
 
 		case "anchor":
 			// @anchor(from: right, to: left) — simple form for the outgoing flow.
@@ -216,6 +225,7 @@ func extractMicroflowAnnotations(annotations []parser.IAnnotationContext) *ast.A
 				parseAnchorAnnotation(params.(*parser.AnnotationParamsContext), result)
 				hasAny = true
 			}
+			seenActivityMetadata = true
 		}
 	}
 
@@ -223,6 +233,17 @@ func extractMicroflowAnnotations(annotations []parser.IAnnotationContext) *ast.A
 		return nil
 	}
 	return result
+}
+
+func hasLaterActivityAnnotation(annotations []parser.IAnnotationContext, start int) bool {
+	for _, annCtx := range annotations[start:] {
+		ann := annCtx.(*parser.AnnotationContext)
+		switch strings.ToLower(ann.AnnotationName().GetText()) {
+		case "position", "caption", "color", "excluded", "anchor":
+			return true
+		}
+	}
+	return false
 }
 
 // parseAnchorAnnotation populates Anchor / TrueBranchAnchor / FalseBranchAnchor /

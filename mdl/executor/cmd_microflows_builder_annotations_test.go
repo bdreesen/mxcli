@@ -310,3 +310,33 @@ func TestInheritanceSplitCaptionApplied(t *testing.T) {
 		t.Errorf("inheritance split caption: got %q, want %q", split.Caption, "Customer type?")
 	}
 }
+
+func TestFreeAnnotationBeforePositionStaysUnattached(t *testing.T) {
+	body := []ast.MicroflowStatement{
+		&ast.LogStmt{
+			Level:   ast.LogInfo,
+			Message: &ast.LiteralExpr{Kind: ast.LiteralString, Value: "message"},
+			Annotations: &ast.ActivityAnnotations{
+				FreeAnnotation: "free synthetic note",
+				Position:       &ast.Position{X: 120, Y: 240},
+			},
+		},
+	}
+
+	fb := &flowBuilder{posX: 100, posY: 100, spacing: HorizontalSpacing}
+	oc := fb.buildFlowGraph(body, nil)
+
+	freeAnnotations := collectFreeAnnotations(oc)
+	if len(freeAnnotations) != 1 || freeAnnotations[0] != "free synthetic note" {
+		t.Fatalf("free annotations = %#v, want one free note", freeAnnotations)
+	}
+
+	attached := buildAnnotationsByTarget(oc)
+	for activityID, captions := range attached {
+		for _, caption := range captions {
+			if caption == "free synthetic note" {
+				t.Fatalf("free note was attached to activity %s", activityID)
+			}
+		}
+	}
+}

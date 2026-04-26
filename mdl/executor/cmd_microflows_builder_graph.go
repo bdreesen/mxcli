@@ -121,6 +121,9 @@ func (fb *flowBuilder) buildFlowGraph(stmts []ast.MicroflowStatement, returns *a
 
 	// Handle leftover pending annotations (free-floating annotation text)
 	if fb.pendingAnnotations != nil {
+		if fb.pendingAnnotations.FreeAnnotation != "" {
+			fb.attachFreeAnnotation(fb.pendingAnnotations.FreeAnnotation)
+		}
 		if fb.pendingAnnotations.AnnotationText != "" {
 			fb.attachFreeAnnotation(fb.pendingAnnotations.AnnotationText)
 		}
@@ -177,6 +180,10 @@ func (fb *flowBuilder) addStatement(stmt ast.MicroflowStatement) model.ID {
 	if fb.pendingAnnotations != nil && fb.pendingAnnotations.Position != nil {
 		fb.posX = fb.pendingAnnotations.Position.X
 		fb.posY = fb.pendingAnnotations.Position.Y
+	}
+	if fb.pendingAnnotations != nil && fb.pendingAnnotations.FreeAnnotation != "" {
+		fb.attachFreeAnnotation(fb.pendingAnnotations.FreeAnnotation)
+		fb.pendingAnnotations.FreeAnnotation = ""
 	}
 
 	switch s := stmt.(type) {

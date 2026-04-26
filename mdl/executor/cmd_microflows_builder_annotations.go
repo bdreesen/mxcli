@@ -113,6 +113,9 @@ func (fb *flowBuilder) mergeStatementAnnotations(stmt ast.MicroflowStatement) {
 	if ann.AnnotationText != "" {
 		fb.pendingAnnotations.AnnotationText = ann.AnnotationText
 	}
+	if ann.FreeAnnotation != "" {
+		fb.pendingAnnotations.FreeAnnotation = ann.FreeAnnotation
+	}
 	if ann.Anchor != nil {
 		fb.pendingAnnotations.Anchor = ann.Anchor
 	}
