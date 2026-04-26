@@ -125,10 +125,7 @@ func (fb *flowBuilder) addIfStatement(s *ast.IfStmt) model.ID {
 					// Destination: prefer the first statement's own @anchor(to: ...) if it
 					// has one; otherwise fall back to trueBranchAnchor.To.
 					flow := newHorizontalFlowWithCase(splitID, actID, "true")
-					applyUserAnchors(flow, trueBranchAnchor, trueBranchAnchor)
-					if thisAnchor != nil && thisAnchor.To != ast.AnchorSideUnset {
-						flow.DestinationConnectionIndex = int(thisAnchor.To)
-					}
+					applyUserAnchors(flow, trueBranchAnchor, branchDestinationAnchor(trueBranchAnchor, thisAnchor))
 					fb.flows = append(fb.flows, flow)
 				} else {
 					flow := newHorizontalFlow(lastThenID, actID)
@@ -178,10 +175,7 @@ func (fb *flowBuilder) addIfStatement(s *ast.IfStmt) model.ID {
 					// First statement in ELSE - connect from split going down (false path).
 					// Same compositional rule as the THEN branch.
 					flow := newDownwardFlowWithCase(splitID, actID, "false")
-					applyUserAnchors(flow, falseBranchAnchor, falseBranchAnchor)
-					if thisAnchor != nil && thisAnchor.To != ast.AnchorSideUnset {
-						flow.DestinationConnectionIndex = int(thisAnchor.To)
-					}
+					applyUserAnchors(flow, falseBranchAnchor, branchDestinationAnchor(falseBranchAnchor, thisAnchor))
 					fb.flows = append(fb.flows, flow)
 				} else {
 					flow := newHorizontalFlow(lastElseID, actID)
@@ -237,10 +231,7 @@ func (fb *flowBuilder) addIfStatement(s *ast.IfStmt) model.ID {
 				if lastThenID == "" {
 					// First statement in THEN - connect from split going down with "true" case
 					flow := newDownwardFlowWithCase(splitID, actID, "true")
-					applyUserAnchors(flow, trueBranchAnchor, trueBranchAnchor)
-					if thisAnchor != nil && thisAnchor.To != ast.AnchorSideUnset {
-						flow.DestinationConnectionIndex = int(thisAnchor.To)
-					}
+					applyUserAnchors(flow, trueBranchAnchor, branchDestinationAnchor(trueBranchAnchor, thisAnchor))
 					fb.flows = append(fb.flows, flow)
 				} else {
 					flow := newHorizontalFlow(lastThenID, actID)

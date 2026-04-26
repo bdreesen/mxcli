@@ -88,15 +88,8 @@ func (fb *flowBuilder) buildFlowGraph(stmts []ast.MicroflowStatement, returns *a
 			// both From (origin side on the split) and To (the side of the
 			// continuing activity), unless the incoming statement explicitly
 			// overrides its own To.
-			originAnchor := fb.previousStmtAnchor
-			destAnchor := stmtAnchor
-			if pendingFlowAnchor != nil {
-				originAnchor = pendingFlowAnchor
-				if destAnchor == nil || destAnchor.To == ast.AnchorSideUnset {
-					destAnchor = pendingFlowAnchor
-				}
-				pendingFlowAnchor = nil
-			}
+			originAnchor, destAnchor := pendingFlowAnchors(fb.previousStmtAnchor, pendingFlowAnchor, stmtAnchor)
+			pendingFlowAnchor = nil
 			applyUserAnchors(flow, originAnchor, destAnchor)
 			fb.flows = append(fb.flows, flow)
 			fb.previousStmtAnchor = stmtAnchor
