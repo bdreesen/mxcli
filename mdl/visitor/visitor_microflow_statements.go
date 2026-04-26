@@ -5,6 +5,7 @@ package visitor
 import (
 	"strings"
 
+	"github.com/antlr4-go/antlr/v4"
 	"github.com/mendixlabs/mxcli/mdl/ast"
 	"github.com/mendixlabs/mxcli/mdl/grammar/parser"
 )
@@ -530,7 +531,7 @@ func buildDeclareStatement(ctx parser.IDeclareStatementContext) *ast.DeclareStmt
 
 	// Get optional initial value
 	if expr := declCtx.Expression(); expr != nil {
-		stmt.InitialValue = buildExpression(expr)
+		stmt.InitialValue = buildSourceExpression(expr)
 	}
 
 	return stmt
@@ -1104,7 +1105,7 @@ func buildWhileStatement(ctx parser.IWhileStatementContext) *ast.WhileStmt {
 
 	// Get condition expression
 	if expr := wsCtx.Expression(); expr != nil {
-		stmt.Condition = buildExpression(expr)
+		stmt.Condition = buildSourceExpression(expr)
 	}
 
 	// Get body
@@ -1113,6 +1114,39 @@ func buildWhileStatement(ctx parser.IWhileStatementContext) *ast.WhileStmt {
 	}
 
 	return stmt
+}
+
+func buildSourceExpression(ctx parser.IExpressionContext) ast.Expression {
+	if ctx == nil {
+		return nil
+	}
+	expr := buildExpression(ctx)
+	if prc, ok := ctx.(antlr.ParserRuleContext); ok {
+		if source := strings.TrimSpace(extractOriginalText(prc)); source != "" {
+			if shouldPreserveExpressionSource(source) {
+				return &ast.SourceExpr{Expression: expr, Source: source}
+			}
+		}
+	}
+	return expr
+}
+
+func shouldPreserveExpressionSource(source string) bool {
+	if strings.ContainsAny(source, "\r\n") {
+		return true
+	}
+	for i := 0; i < len(source); i++ {
+		switch source[i] {
+		case '=', '!', '<', '>', '+', '-', '*', ':':
+			if i > 0 && source[i-1] != ' ' && source[i-1] != '\t' {
+				return true
+			}
+			if i+1 < len(source) && source[i+1] != ' ' && source[i+1] != '\t' && source[i+1] != '=' {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // buildReturnStatement converts RETURN statement context to ReturnStmt.

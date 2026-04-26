@@ -1685,3 +1685,51 @@ END;`
 		t.Fatalf("free annotation = %q, want empty", logStmt.Annotations.FreeAnnotation)
 	}
 }
+
+func TestDeclareAndLogTemplatePreserveMultilineSourceWhitespace(t *testing.T) {
+	input := `CREATE MICROFLOW Synthetic.Check ()
+RETURNS Boolean AS $Success
+BEGIN
+  DECLARE $Endpoint String = @Synthetic.Endpoint
++ '/items?page=' + toString($Page)
++ '&token=' + (if $Token!=empty then $Token/Value
+else
+'');
+  LOG INFO NODE 'SyntheticLog' 'Processed {1} items for {2}' WITH ({1} = toString($Count)
+
+, {2} = $Endpoint);
+  RETURN true;
+END;`
+
+	prog, errs := Build(input)
+	if len(errs) > 0 {
+		t.Fatalf("unexpected parse errors: %v", errs)
+	}
+
+	stmt := prog.Statements[0].(*ast.CreateMicroflowStmt)
+	decl, ok := stmt.Body[0].(*ast.DeclareStmt)
+	if !ok {
+		t.Fatalf("Expected DeclareStmt, got %T", stmt.Body[0])
+	}
+	logStmt, ok := stmt.Body[1].(*ast.LogStmt)
+	if !ok {
+		t.Fatalf("Expected LogStmt, got %T", stmt.Body[1])
+	}
+
+	declSource, ok := decl.InitialValue.(*ast.SourceExpr)
+	if !ok {
+		t.Fatalf("Expected SourceExpr declare value, got %T", decl.InitialValue)
+	}
+	wantDecl := "@Synthetic.Endpoint\n+ '/items?page=' + toString($Page)\n+ '&token=' + (if $Token!=empty then $Token/Value\nelse\n'')"
+	if declSource.Source != wantDecl {
+		t.Fatalf("declare source = %q, want %q", declSource.Source, wantDecl)
+	}
+
+	firstParam, ok := logStmt.Template[0].Value.(*ast.SourceExpr)
+	if !ok {
+		t.Fatalf("Expected SourceExpr first log template param, got %T", logStmt.Template[0].Value)
+	}
+	if firstParam.Source != "toString($Count)\n\n" {
+		t.Fatalf("template param source = %q, want trailing blank line", firstParam.Source)
+	}
+}

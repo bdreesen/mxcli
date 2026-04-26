@@ -51,10 +51,10 @@ func buildLogStatement(ctx parser.ILogStatementContext) *ast.LogStmt {
 	// LOG always has a message expression; when NODE is present the first
 	// expression is the node and the second is the message.
 	if logCtx.NODE() != nil && len(exprs) > 1 {
-		stmt.Node = buildExpression(exprs[0])
-		stmt.Message = buildExpression(exprs[1])
+		stmt.Node = buildSourceExpression(exprs[0])
+		stmt.Message = buildSourceExpression(exprs[1])
 	} else if len(exprs) > 0 {
-		stmt.Message = buildExpression(exprs[0])
+		stmt.Message = buildSourceExpression(exprs[0])
 	}
 
 	// Parse template parameters: WITH ({1} = expr, {2} = expr, ...)
@@ -79,7 +79,8 @@ func buildTemplateParams(ctx parser.ITemplateParamsContext) []ast.TemplateParam 
 	var result []ast.TemplateParam
 
 	// Handle WITH ({1} = expr, {2} = expr, ...) syntax
-	for _, param := range paramsCtx.AllTemplateParam() {
+	allParams := paramsCtx.AllTemplateParam()
+	for i, param := range allParams {
 		paramCtx := param.(*parser.TemplateParamContext)
 		indexStr := paramCtx.NUMBER_LITERAL().GetText()
 		index, _ := strconv.Atoi(indexStr)
@@ -89,7 +90,8 @@ func buildTemplateParams(ctx parser.ITemplateParamsContext) []ast.TemplateParam 
 
 		// Parse the expression and check for data source attribute reference
 		if exprCtx := paramCtx.Expression(); exprCtx != nil {
-			expr := buildExpression(exprCtx)
+			expr := buildSourceExpression(exprCtx)
+			expr = appendTemplateParamTrailingWhitespace(paramsCtx, allParams, i, exprCtx, expr)
 			tp.Value = expr
 
 			// Check if this is a $Widget.Attr pattern (AttributePathExpr with Path)
@@ -115,6 +117,70 @@ func buildTemplateParams(ctx parser.ITemplateParamsContext) []ast.TemplateParam 
 	}
 
 	return result
+}
+
+func appendTemplateParamTrailingWhitespace(
+	paramsCtx *parser.TemplateParamsContext,
+	allParams []parser.ITemplateParamContext,
+	index int,
+	exprCtx parser.IExpressionContext,
+	expr ast.Expression,
+) ast.Expression {
+	trailing := templateParamTrailingWhitespace(paramsCtx, allParams, index, exprCtx)
+	if trailing == "" || !strings.ContainsAny(trailing, "\r\n") {
+		return expr
+	}
+
+	source := strings.TrimSpace(extractOriginalText(exprCtx.(antlr.ParserRuleContext)))
+	innerExpr := expr
+	if sourceExpr, ok := expr.(*ast.SourceExpr); ok {
+		source = sourceExpr.Source
+		innerExpr = sourceExpr.Expression
+	}
+	return &ast.SourceExpr{Expression: innerExpr, Source: source + trailing}
+}
+
+func templateParamTrailingWhitespace(
+	paramsCtx *parser.TemplateParamsContext,
+	allParams []parser.ITemplateParamContext,
+	index int,
+	exprCtx parser.IExpressionContext,
+) string {
+	exprRule, ok := exprCtx.(antlr.ParserRuleContext)
+	if !ok || exprRule.GetStop() == nil {
+		return ""
+	}
+	input := exprRule.GetStop().GetInputStream()
+	if input == nil {
+		return ""
+	}
+
+	start := exprRule.GetStop().GetStop() + 1
+	end := -1
+	delimiter := byte(')')
+	if index+1 < len(allParams) {
+		nextParam := allParams[index+1].(antlr.ParserRuleContext)
+		end = nextParam.GetStart().GetStart() - 1
+		delimiter = ','
+	} else if paramsCtx.GetStop() != nil {
+		end = paramsCtx.GetStop().GetStart() - 1
+	}
+	if start < 0 || end < start {
+		return ""
+	}
+
+	gap := input.GetText(start, end)
+	if delimiter == ',' {
+		comma := strings.IndexByte(gap, ',')
+		if comma == -1 {
+			return ""
+		}
+		gap = gap[:comma]
+	}
+	if strings.TrimSpace(gap) != "" {
+		return ""
+	}
+	return gap
 }
 
 // buildCallMicroflowStatement converts CALL MICROFLOW statement context to CallMicroflowStmt.
