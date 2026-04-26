@@ -995,6 +995,7 @@ func emitLoopBody(
 	for _, loopObj := range loop.ObjectCollection.Objects {
 		loopActivityMap[loopObj.GetID()] = loopObj
 	}
+	loopObjectIDs := collectLoopObjectIDs(loop.ObjectCollection)
 
 	// Build flow graph from the loop's own ObjectCollection flows
 	loopFlowsByOrigin := make(map[model.ID][]*microflows.SequenceFlow)
@@ -1005,9 +1006,9 @@ func emitLoopBody(
 	}
 	// Also include parent flows that originate from loop body objects (for backward compatibility)
 	for originID, flows := range flowsByOrigin {
-		if _, inLoop := loopActivityMap[originID]; inLoop {
-			if _, exists := loopFlowsByOrigin[originID]; !exists {
-				loopFlowsByOrigin[originID] = flows
+		if loopObjectIDs[originID] {
+			for _, flow := range flows {
+				loopFlowsByOrigin[originID] = appendSequenceFlowIfMissing(loopFlowsByOrigin[originID], flow)
 			}
 		}
 	}
@@ -1022,9 +1023,9 @@ func emitLoopBody(
 		}
 	}
 	for destID, flows := range flowsByDest {
-		if _, inLoop := loopActivityMap[destID]; inLoop {
-			if _, exists := loopFlowsByDest[destID]; !exists {
-				loopFlowsByDest[destID] = flows
+		if loopObjectIDs[destID] {
+			for _, flow := range flows {
+				loopFlowsByDest[destID] = appendSequenceFlowIfMissing(loopFlowsByDest[destID], flow)
 			}
 		}
 	}
@@ -1042,10 +1043,12 @@ func emitLoopBody(
 		}
 	}
 	var firstID model.ID
+	var firstObj microflows.MicroflowObject
 	for id, count := range incomingCount {
-		if count == 0 {
+		obj := loopActivityMap[id]
+		if count == 0 && preferLoopBodyStart(obj, firstObj) {
 			firstID = id
-			break
+			firstObj = obj
 		}
 	}
 
@@ -1056,6 +1059,65 @@ func emitLoopBody(
 		loopSplitMergeMap := findSplitMergePoints(ctx, loop.ObjectCollection, loopActivityMap)
 		traverseLoopBody(ctx, firstID, loopActivityMap, loopFlowsByOrigin, loopFlowsByDest, loopSplitMergeMap, loopVisited, entityNames, microflowNames, lines, indent+1, sourceMap, headerLineCount, annotationsByTarget)
 	}
+}
+
+func collectLoopObjectIDs(oc *microflows.MicroflowObjectCollection) map[model.ID]bool {
+	result := make(map[model.ID]bool)
+	collectLoopObjectIDsInto(oc, result)
+	return result
+}
+
+func collectLoopObjectIDsInto(oc *microflows.MicroflowObjectCollection, result map[model.ID]bool) {
+	if oc == nil {
+		return
+	}
+	for _, obj := range oc.Objects {
+		if obj == nil {
+			continue
+		}
+		result[obj.GetID()] = true
+		if loop, ok := obj.(*microflows.LoopedActivity); ok {
+			collectLoopObjectIDsInto(loop.ObjectCollection, result)
+		}
+	}
+}
+
+func appendSequenceFlowIfMissing(flows []*microflows.SequenceFlow, candidate *microflows.SequenceFlow) []*microflows.SequenceFlow {
+	if candidate == nil {
+		return flows
+	}
+	candidateKey := sequenceFlowIdentity(candidate)
+	for _, flow := range flows {
+		if sequenceFlowIdentity(flow) == candidateKey {
+			return flows
+		}
+	}
+	return append(flows, candidate)
+}
+
+func sequenceFlowIdentity(flow *microflows.SequenceFlow) string {
+	if flow == nil {
+		return ""
+	}
+	if flow.ID != "" {
+		return string(flow.ID)
+	}
+	return fmt.Sprintf("%s>%s:%t:%d:%d", flow.OriginID, flow.DestinationID, flow.IsErrorHandler, flow.OriginConnectionIndex, flow.DestinationConnectionIndex)
+}
+
+func preferLoopBodyStart(candidate, current microflows.MicroflowObject) bool {
+	if candidate == nil {
+		return false
+	}
+	if current == nil {
+		return true
+	}
+	candidatePos := candidate.GetPosition()
+	currentPos := current.GetPosition()
+	if candidatePos.X != currentPos.X {
+		return candidatePos.X < currentPos.X
+	}
+	return candidatePos.Y < currentPos.Y
 }
 
 // isMergePairedWithSplit reports whether an ExclusiveMerge appears as the
