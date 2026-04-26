@@ -61,6 +61,19 @@ func collectFreeAnnotations(oc *microflows.MicroflowObjectCollection) []string {
 	return result
 }
 
+func prependFreeAnnotationLines(oc *microflows.MicroflowObjectCollection, activityLines []string) []string {
+	freeAnnots := collectFreeAnnotations(oc)
+	if len(freeAnnots) == 0 || len(activityLines) == 0 {
+		return activityLines
+	}
+
+	prefix := make([]string, 0, len(freeAnnots))
+	for _, text := range freeAnnots {
+		prefix = append(prefix, fmt.Sprintf("@annotation %s", mdlQuote(text)))
+	}
+	return append(prefix, activityLines...)
+}
+
 // anchorSideKeyword returns the MDL keyword (top/right/bottom/left) for a
 // connection-index value. Returns "" for unknown values.
 func anchorSideKeyword(idx int) string {
