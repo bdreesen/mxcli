@@ -1135,7 +1135,19 @@ func shouldPreserveExpressionSource(source string) bool {
 	if strings.ContainsAny(source, "\r\n") {
 		return true
 	}
+	inString := false
 	for i := 0; i < len(source); i++ {
+		if source[i] == '\'' {
+			if inString && i+1 < len(source) && source[i+1] == '\'' {
+				i++
+				continue
+			}
+			inString = !inString
+			continue
+		}
+		if inString {
+			continue
+		}
 		switch source[i] {
 		case '=', '!', '<', '>', '+', '-', '*', ':':
 			if i > 0 && source[i-1] != ' ' && source[i-1] != '\t' {

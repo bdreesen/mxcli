@@ -1733,3 +1733,15 @@ END;`
 		t.Fatalf("template param source = %q, want trailing blank line", firstParam.Source)
 	}
 }
+
+func TestShouldPreserveExpressionSourceIgnoresStringLiteralPunctuation(t *testing.T) {
+	if shouldPreserveExpressionSource("'Processed {1} items!'") {
+		t.Fatal("plain string literal punctuation should not force SourceExpr preservation")
+	}
+	if shouldPreserveExpressionSource("'Owner''s item: {1}'") {
+		t.Fatal("escaped quotes and colon inside a string literal should not force SourceExpr preservation")
+	}
+	if !shouldPreserveExpressionSource("$Token!=empty") {
+		t.Fatal("compact operators outside string literals should preserve source")
+	}
+}
