@@ -340,3 +340,30 @@ func TestFreeAnnotationBeforePositionStaysUnattached(t *testing.T) {
 		}
 	}
 }
+
+func TestMultipleFreeAnnotationsBeforePositionStayUnattached(t *testing.T) {
+	body := []ast.MicroflowStatement{
+		&ast.LogStmt{
+			Level:   ast.LogInfo,
+			Message: &ast.LiteralExpr{Kind: ast.LiteralString, Value: "message"},
+			Annotations: &ast.ActivityAnnotations{
+				FreeAnnotations: []string{"first free note", "second free note"},
+				Position:        &ast.Position{X: 120, Y: 240},
+			},
+		},
+	}
+
+	fb := &flowBuilder{posX: 100, posY: 100, spacing: HorizontalSpacing}
+	oc := fb.buildFlowGraph(body, nil)
+
+	freeAnnotations := collectFreeAnnotations(oc)
+	want := []string{"first free note", "second free note"}
+	if len(freeAnnotations) != len(want) {
+		t.Fatalf("free annotations = %#v, want %#v", freeAnnotations, want)
+	}
+	for i, wantText := range want {
+		if freeAnnotations[i] != wantText {
+			t.Fatalf("free annotation %d = %q, want %q", i, freeAnnotations[i], wantText)
+		}
+	}
+}
