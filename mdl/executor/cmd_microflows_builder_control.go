@@ -106,6 +106,9 @@ func (fb *flowBuilder) addIfStatement(s *ast.IfStmt) model.ID {
 	}
 
 	thenStartX := splitX + SplitWidth + HorizontalSpacing/2
+	var noMergeExitID model.ID
+	var noMergeExitCase string
+	var noMergeExitAnchor *ast.FlowAnchors
 
 	if hasElseBody {
 		// IF WITH ELSE: TRUE path horizontal (happy path), FALSE path below
@@ -115,6 +118,8 @@ func (fb *flowBuilder) addIfStatement(s *ast.IfStmt) model.ID {
 
 		var lastThenID model.ID
 		var prevThenAnchor *ast.FlowAnchors
+		var pendingThenCase string
+		var pendingThenAnchor *ast.FlowAnchors
 		for _, stmt := range s.ThenBody {
 			thisAnchor := stmtOwnAnchor(stmt)
 			actID := fb.addStatement(stmt)
@@ -129,7 +134,17 @@ func (fb *flowBuilder) addIfStatement(s *ast.IfStmt) model.ID {
 					applyUserAnchors(flow, trueBranchAnchor, branchDestinationAnchor(trueBranchAnchor, thisAnchor))
 					fb.flows = append(fb.flows, flow)
 				} else {
-					flow := newHorizontalFlow(lastThenID, actID)
+					var flow *microflows.SequenceFlow
+					if pendingThenCase != "" {
+						flow = newHorizontalFlowWithCase(lastThenID, actID, pendingThenCase)
+						if pendingThenAnchor != nil {
+							prevThenAnchor = pendingThenAnchor
+						}
+						pendingThenCase = ""
+						pendingThenAnchor = nil
+					} else {
+						flow = newHorizontalFlow(lastThenID, actID)
+					}
 					applyUserAnchors(flow, prevThenAnchor, thisAnchor)
 					fb.flows = append(fb.flows, flow)
 				}
@@ -138,6 +153,10 @@ func (fb *flowBuilder) addIfStatement(s *ast.IfStmt) model.ID {
 				if fb.nextConnectionPoint != "" {
 					lastThenID = fb.nextConnectionPoint
 					fb.nextConnectionPoint = ""
+					pendingThenCase = fb.nextFlowCase
+					fb.nextFlowCase = ""
+					pendingThenAnchor = fb.nextFlowAnchor
+					fb.nextFlowAnchor = nil
 				} else {
 					lastThenID = actID
 				}
@@ -149,7 +168,15 @@ func (fb *flowBuilder) addIfStatement(s *ast.IfStmt) model.ID {
 		// nextConnectionPoint/nextFlowCase, so we must not emit a dangling flow here.
 		if !thenReturns && needMerge {
 			if lastThenID != "" {
-				flow := newHorizontalFlow(lastThenID, mergeID)
+				var flow *microflows.SequenceFlow
+				if pendingThenCase != "" {
+					flow = newHorizontalFlowWithCase(lastThenID, mergeID, pendingThenCase)
+					if pendingThenAnchor != nil {
+						prevThenAnchor = pendingThenAnchor
+					}
+				} else {
+					flow = newHorizontalFlow(lastThenID, mergeID)
+				}
 				applyUserAnchors(flow, prevThenAnchor, nil)
 				fb.flows = append(fb.flows, flow)
 			} else {
@@ -170,6 +197,8 @@ func (fb *flowBuilder) addIfStatement(s *ast.IfStmt) model.ID {
 
 		var lastElseID model.ID
 		var prevElseAnchor *ast.FlowAnchors
+		var pendingElseCase string
+		var pendingElseAnchor *ast.FlowAnchors
 		for _, stmt := range s.ElseBody {
 			thisAnchor := stmtOwnAnchor(stmt)
 			actID := fb.addStatement(stmt)
@@ -182,7 +211,17 @@ func (fb *flowBuilder) addIfStatement(s *ast.IfStmt) model.ID {
 					applyUserAnchors(flow, falseBranchAnchor, branchDestinationAnchor(falseBranchAnchor, thisAnchor))
 					fb.flows = append(fb.flows, flow)
 				} else {
-					flow := newHorizontalFlow(lastElseID, actID)
+					var flow *microflows.SequenceFlow
+					if pendingElseCase != "" {
+						flow = newHorizontalFlowWithCase(lastElseID, actID, pendingElseCase)
+						if pendingElseAnchor != nil {
+							prevElseAnchor = pendingElseAnchor
+						}
+						pendingElseCase = ""
+						pendingElseAnchor = nil
+					} else {
+						flow = newHorizontalFlow(lastElseID, actID)
+					}
 					applyUserAnchors(flow, prevElseAnchor, thisAnchor)
 					fb.flows = append(fb.flows, flow)
 				}
@@ -191,6 +230,10 @@ func (fb *flowBuilder) addIfStatement(s *ast.IfStmt) model.ID {
 				if fb.nextConnectionPoint != "" {
 					lastElseID = fb.nextConnectionPoint
 					fb.nextConnectionPoint = ""
+					pendingElseCase = fb.nextFlowCase
+					fb.nextFlowCase = ""
+					pendingElseAnchor = fb.nextFlowAnchor
+					fb.nextFlowAnchor = nil
 				} else {
 					lastElseID = actID
 				}
@@ -203,8 +246,48 @@ func (fb *flowBuilder) addIfStatement(s *ast.IfStmt) model.ID {
 		if !elseReturns && needMerge {
 			if lastElseID != "" {
 				flow := newUpwardFlow(lastElseID, mergeID)
+				if pendingElseCase != "" {
+					flow.CaseValue = microflows.EnumerationCase{
+						BaseElement: model.BaseElement{ID: model.ID(types.GenerateID())},
+						Value:       pendingElseCase,
+					}
+					if pendingElseAnchor != nil {
+						prevElseAnchor = pendingElseAnchor
+					}
+				}
 				applyUserAnchors(flow, prevElseAnchor, nil)
 				fb.flows = append(fb.flows, flow)
+			}
+		}
+		if !needMerge {
+			if thenReturns && !elseReturns {
+				if lastElseID != "" {
+					noMergeExitID = lastElseID
+					noMergeExitCase = pendingElseCase
+					if pendingElseAnchor != nil {
+						noMergeExitAnchor = pendingElseAnchor
+					} else {
+						noMergeExitAnchor = prevElseAnchor
+					}
+				} else {
+					noMergeExitID = splitID
+					noMergeExitCase = "false"
+					noMergeExitAnchor = falseBranchAnchor
+				}
+			} else if elseReturns && !thenReturns {
+				if lastThenID != "" {
+					noMergeExitID = lastThenID
+					noMergeExitCase = pendingThenCase
+					if pendingThenAnchor != nil {
+						noMergeExitAnchor = pendingThenAnchor
+					} else {
+						noMergeExitAnchor = prevThenAnchor
+					}
+				} else {
+					noMergeExitID = splitID
+					noMergeExitCase = "true"
+					noMergeExitAnchor = trueBranchAnchor
+				}
 			}
 		}
 	} else {
@@ -230,6 +313,8 @@ func (fb *flowBuilder) addIfStatement(s *ast.IfStmt) model.ID {
 
 		var lastThenID model.ID
 		var prevThenAnchor *ast.FlowAnchors
+		var pendingThenCase string
+		var pendingThenAnchor *ast.FlowAnchors
 		for _, stmt := range s.ThenBody {
 			thisAnchor := stmtOwnAnchor(stmt)
 			actID := fb.addStatement(stmt)
@@ -241,7 +326,17 @@ func (fb *flowBuilder) addIfStatement(s *ast.IfStmt) model.ID {
 					applyUserAnchors(flow, trueBranchAnchor, branchDestinationAnchor(trueBranchAnchor, thisAnchor))
 					fb.flows = append(fb.flows, flow)
 				} else {
-					flow := newHorizontalFlow(lastThenID, actID)
+					var flow *microflows.SequenceFlow
+					if pendingThenCase != "" {
+						flow = newHorizontalFlowWithCase(lastThenID, actID, pendingThenCase)
+						if pendingThenAnchor != nil {
+							prevThenAnchor = pendingThenAnchor
+						}
+						pendingThenCase = ""
+						pendingThenAnchor = nil
+					} else {
+						flow = newHorizontalFlow(lastThenID, actID)
+					}
 					applyUserAnchors(flow, prevThenAnchor, thisAnchor)
 					fb.flows = append(fb.flows, flow)
 				}
@@ -250,6 +345,10 @@ func (fb *flowBuilder) addIfStatement(s *ast.IfStmt) model.ID {
 				if fb.nextConnectionPoint != "" {
 					lastThenID = fb.nextConnectionPoint
 					fb.nextConnectionPoint = ""
+					pendingThenCase = fb.nextFlowCase
+					fb.nextFlowCase = ""
+					pendingThenAnchor = fb.nextFlowAnchor
+					fb.nextFlowAnchor = nil
 				} else {
 					lastThenID = actID
 				}
@@ -262,6 +361,15 @@ func (fb *flowBuilder) addIfStatement(s *ast.IfStmt) model.ID {
 		if !thenReturns && needMerge {
 			if lastThenID != "" {
 				flow := newUpwardFlow(lastThenID, mergeID)
+				if pendingThenCase != "" {
+					flow.CaseValue = microflows.EnumerationCase{
+						BaseElement: model.BaseElement{ID: model.ID(types.GenerateID())},
+						Value:       pendingThenCase,
+					}
+					if pendingThenAnchor != nil {
+						prevThenAnchor = pendingThenAnchor
+					}
+				}
 				applyUserAnchors(flow, prevThenAnchor, nil)
 				fb.flows = append(fb.flows, flow)
 			} else {
@@ -272,6 +380,11 @@ func (fb *flowBuilder) addIfStatement(s *ast.IfStmt) model.ID {
 				applyUserAnchors(flow, trueBranchAnchor, trueBranchAnchor)
 				fb.flows = append(fb.flows, flow)
 			}
+		}
+		if !needMerge {
+			noMergeExitID = splitID
+			noMergeExitCase = "false"
+			noMergeExitAnchor = falseBranchAnchor
 		}
 	}
 
@@ -300,22 +413,12 @@ func (fb *flowBuilder) addIfStatement(s *ast.IfStmt) model.ID {
 			fb.posX = max(afterSplit, afterBranch)
 		}
 		fb.posY = centerY
-		fb.nextConnectionPoint = splitID
-		// Tell parent to attach the case value on the next flow, and pass the
-		// matching branch anchor so @anchor(true: ..., false: ...) survives to
-		// the deferred splitID→nextActivity flow.
-		if hasElseBody {
-			if thenReturns {
-				fb.nextFlowCase = "false"
-				fb.nextFlowAnchor = falseBranchAnchor
-			} else {
-				fb.nextFlowCase = "true"
-				fb.nextFlowAnchor = trueBranchAnchor
-			}
+		if noMergeExitID != "" {
+			fb.nextConnectionPoint = noMergeExitID
+			fb.nextFlowCase = noMergeExitCase
+			fb.nextFlowAnchor = noMergeExitAnchor
 		} else {
-			// IF without ELSE: false is the continuing path
-			fb.nextFlowCase = "false"
-			fb.nextFlowAnchor = falseBranchAnchor
+			fb.nextConnectionPoint = splitID
 		}
 	}
 
