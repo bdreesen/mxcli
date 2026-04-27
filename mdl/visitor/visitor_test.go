@@ -1734,6 +1734,82 @@ END;`
 	}
 }
 
+func TestActionExpressionSlotsPreserveSourceWhitespace(t *testing.T) {
+	input := `CREATE MICROFLOW Synthetic.PreserveExpressionSlots (
+  $Input: String,
+  $Count: Integer,
+  $Flag: Boolean,
+  $OtherFlag: Boolean
+)
+RETURNS Boolean AS $Result
+BEGIN
+  $Created = CREATE Synthetic.Entity (Name = if $Count=0 then 'zero'
+else 'many'
+, Description = 'sample');
+  CHANGE $Created (Name = 'updated'
+, Description = 'sample');
+  $Loaded = CALL JAVA ACTION Synthetic.LoadValue(envVarName = 'SYNTHETIC_VALUE'
+, defaultValue = @Synthetic.DefaultValue);
+  IF isMatch( $Input, '[0-9]+') THEN
+    SHOW MESSAGE 'Value {1}' TYPE Information OBJECTS [if $Flag then 'enabled'
+else 'disabled'
+, $Input];
+  END IF;
+  RETURN $Flag
+and
+$OtherFlag;
+END;`
+
+	prog, errs := Build(input)
+	if len(errs) > 0 {
+		t.Fatalf("unexpected parse errors: %v", errs)
+	}
+
+	mf := prog.Statements[0].(*ast.CreateMicroflowStmt)
+
+	createStmt := mf.Body[0].(*ast.CreateObjectStmt)
+	if source, ok := createStmt.Changes[0].Value.(*ast.SourceExpr); !ok {
+		t.Fatalf("expected create assignment SourceExpr, got %T", createStmt.Changes[0].Value)
+	} else if !strings.Contains(source.Source, "\nelse 'many'\n") {
+		t.Fatalf("create assignment source lost line breaks: %q", source.Source)
+	}
+
+	changeStmt := mf.Body[1].(*ast.ChangeObjectStmt)
+	if source, ok := changeStmt.Changes[0].Value.(*ast.SourceExpr); !ok {
+		t.Fatalf("expected change assignment SourceExpr, got %T", changeStmt.Changes[0].Value)
+	} else if !strings.Contains(source.Source, "\n") {
+		t.Fatalf("change assignment source lost trailing separator whitespace: %q", source.Source)
+	}
+
+	callStmt := mf.Body[2].(*ast.CallJavaActionStmt)
+	if source, ok := callStmt.Arguments[0].Value.(*ast.SourceExpr); !ok {
+		t.Fatalf("expected call argument SourceExpr, got %T", callStmt.Arguments[0].Value)
+	} else if !strings.Contains(source.Source, "\n") {
+		t.Fatalf("call argument source lost trailing separator whitespace: %q", source.Source)
+	}
+
+	ifStmt := mf.Body[3].(*ast.IfStmt)
+	if source, ok := ifStmt.Condition.(*ast.SourceExpr); !ok {
+		t.Fatalf("expected if condition SourceExpr, got %T", ifStmt.Condition)
+	} else if source.Source != "isMatch( $Input, '[0-9]+')" {
+		t.Fatalf("if condition source = %q", source.Source)
+	}
+
+	showStmt := ifStmt.ThenBody[0].(*ast.ShowMessageStmt)
+	if source, ok := showStmt.TemplateArgs[0].(*ast.SourceExpr); !ok {
+		t.Fatalf("expected show-message argument SourceExpr, got %T", showStmt.TemplateArgs[0])
+	} else if !strings.Contains(source.Source, "\nelse 'disabled'\n") {
+		t.Fatalf("show-message argument source lost line breaks: %q", source.Source)
+	}
+
+	returnStmt := mf.Body[4].(*ast.ReturnStmt)
+	if source, ok := returnStmt.Value.(*ast.SourceExpr); !ok {
+		t.Fatalf("expected return SourceExpr, got %T", returnStmt.Value)
+	} else if source.Source != "$Flag\nand\n$OtherFlag" {
+		t.Fatalf("return source = %q", source.Source)
+	}
+}
+
 func TestShouldPreserveExpressionSourceIgnoresStringLiteralPunctuation(t *testing.T) {
 	if shouldPreserveExpressionSource("'Processed {1} items!'") {
 		t.Fatal("plain string literal punctuation should not force SourceExpr preservation")
@@ -1743,5 +1819,11 @@ func TestShouldPreserveExpressionSourceIgnoresStringLiteralPunctuation(t *testin
 	}
 	if !shouldPreserveExpressionSource("$Token!=empty") {
 		t.Fatal("compact operators outside string literals should preserve source")
+	}
+	if !shouldPreserveExpressionSource("substring($Text,0,find($Text, '.'))") {
+		t.Fatal("compact comma-separated arguments should preserve source")
+	}
+	if !shouldPreserveExpressionSource("not($Object/Flag)") {
+		t.Fatal("compact not() expressions should preserve source")
 	}
 }

@@ -554,9 +554,12 @@ func buildSetStatement(ctx parser.ISetStatementContext) ast.MicroflowStatement {
 		targetVar = ap.GetText()
 	}
 
-	// Get value expression
+	// Get value expression. Keep the structured expression for list/aggregate
+	// detection, then preserve source text for plain SET statements.
 	var valueExpr ast.Expression
+	var valueExprCtx parser.IExpressionContext
 	if expr := setCtx.Expression(); expr != nil {
+		valueExprCtx = expr
 		valueExpr = buildExpression(expr)
 	}
 
@@ -689,6 +692,10 @@ func buildSetStatement(ctx parser.ISetStatementContext) ast.MicroflowStatement {
 				Attribute:      attr,
 			}
 		}
+	}
+
+	if valueExprCtx != nil {
+		valueExpr = buildSourceExpression(valueExprCtx)
 	}
 
 	// Default: regular SET statement
@@ -983,7 +990,7 @@ func buildRetrieveStatement(ctx parser.IRetrieveStatementContext) *ast.RetrieveS
 				stmt.Where = result
 			}
 		} else if expr := retrCtx.Expression(0); expr != nil {
-			stmt.Where = buildExpression(expr)
+			stmt.Where = buildSourceExpression(expr)
 		}
 	}
 
@@ -1052,7 +1059,7 @@ func buildIfStatement(ctx parser.IIfStatementContext) *ast.IfStmt {
 	// Get all expressions (condition for IF and ELSIFs)
 	exprs := ifCtx.AllExpression()
 	if len(exprs) > 0 {
-		stmt.Condition = buildExpression(exprs[0])
+		stmt.Condition = buildSourceExpression(exprs[0])
 	}
 
 	// Get all microflow bodies (THEN, ELSIF THENs, ELSE)
@@ -1149,7 +1156,7 @@ func shouldPreserveExpressionSource(source string) bool {
 			continue
 		}
 		switch source[i] {
-		case '=', '!', '<', '>', '+', '-', '*', ':':
+		case '=', '!', '<', '>', '+', '-', '*', ':', ',':
 			if i > 0 && source[i-1] != ' ' && source[i-1] != '\t' {
 				return true
 			}
@@ -1157,6 +1164,9 @@ func shouldPreserveExpressionSource(source string) bool {
 				return true
 			}
 		}
+	}
+	if strings.Contains(strings.ToLower(source), "not(") {
+		return true
 	}
 	return false
 }
@@ -1172,7 +1182,7 @@ func buildReturnStatement(ctx parser.IReturnStatementContext) *ast.ReturnStmt {
 
 	// Get optional return value
 	if expr := retCtx.Expression(); expr != nil {
-		stmt.Value = buildExpression(expr)
+		stmt.Value = buildSourceExpression(expr)
 	}
 
 	return stmt

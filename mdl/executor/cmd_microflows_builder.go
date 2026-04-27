@@ -451,6 +451,8 @@ func unwrapParenCall(expr ast.Expression) *ast.FunctionCallExpr {
 			return e
 		case *ast.ParenExpr:
 			expr = e.Inner
+		case *ast.SourceExpr:
+			expr = e.Expression
 		default:
 			return nil
 		}
