@@ -230,6 +230,23 @@ func branchAnchorFragmentWithDefaultSides(label, from, to string, defaultFroms, 
 	if containsString(defaultTos, to) {
 		to = ""
 	}
+	// Studio Pro / the builder can choose equivalent branch sides based on the
+	// relative layout of the branch destination. Suppress those single-sided
+	// fragments only when the opposite side is already default; paired manual
+	// anchors such as false: (from: left, to: right) still roundtrip visibly.
+	switch label {
+	case "false":
+		if to == "" && from == "top" {
+			from = ""
+		}
+		if from == "" && (to == "bottom" || to == "right") {
+			to = ""
+		}
+	case "true":
+		if from == "" && to == "bottom" {
+			to = ""
+		}
+	}
 	return branchAnchorFragment(label, from, to)
 }
 

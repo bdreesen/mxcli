@@ -151,6 +151,61 @@ func TestEmitSplitAnchor_OmitsBuilderNoElseBranchAnchors(t *testing.T) {
 	}
 }
 
+func TestEmitSplitAnchor_OmitsSingleSidedLayoutEquivalentBranchAnchors(t *testing.T) {
+	tests := []struct {
+		name string
+		flow *microflows.SequenceFlow
+	}{
+		{
+			name: "false from top",
+			flow: &microflows.SequenceFlow{
+				OriginConnectionIndex:      AnchorTop,
+				DestinationConnectionIndex: AnchorLeft,
+				CaseValue:                  &microflows.ExpressionCase{Expression: "false"},
+			},
+		},
+		{
+			name: "false to bottom",
+			flow: &microflows.SequenceFlow{
+				OriginConnectionIndex:      AnchorBottom,
+				DestinationConnectionIndex: AnchorBottom,
+				CaseValue:                  &microflows.ExpressionCase{Expression: "false"},
+			},
+		},
+		{
+			name: "false to right",
+			flow: &microflows.SequenceFlow{
+				OriginConnectionIndex:      AnchorBottom,
+				DestinationConnectionIndex: AnchorRight,
+				CaseValue:                  &microflows.ExpressionCase{Expression: "false"},
+			},
+		},
+		{
+			name: "true to bottom",
+			flow: &microflows.SequenceFlow{
+				OriginConnectionIndex:      AnchorRight,
+				DestinationConnectionIndex: AnchorBottom,
+				CaseValue:                  &microflows.ExpressionCase{Expression: "true"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			splitID := model.ID("split-" + strings.ReplaceAll(tt.name, " ", "-"))
+			split := &microflows.ExclusiveSplit{}
+			split.ID = splitID
+			tt.flow.OriginID = splitID
+
+			var lines []string
+			emitAnchorAnnotation(split, map[model.ID][]*microflows.SequenceFlow{splitID: {tt.flow}}, nil, &lines, "")
+			if len(lines) != 0 {
+				t.Fatalf("expected layout-equivalent anchor to be omitted, got %v", lines)
+			}
+		})
+	}
+}
+
 func TestEmitSplitAnchor_EmitsNonDefaultDestinationAgainstBuilderDefaults(t *testing.T) {
 	splitID := model.ID("split-non-default-destination")
 	split := &microflows.ExclusiveSplit{}
