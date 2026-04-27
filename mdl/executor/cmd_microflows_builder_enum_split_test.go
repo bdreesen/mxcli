@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
+	"github.com/mendixlabs/mxcli/model"
 	"github.com/mendixlabs/mxcli/sdk/microflows"
 )
 
@@ -60,4 +61,61 @@ func TestEnumSplitBuilderCreatesEnumerationCaseFlows(t *testing.T) {
 	if len(cases) != 2 || cases[0] != "Open" || cases[1] != "Pending" {
 		t.Fatalf("enum case flows = %v, want [Open Pending]", cases)
 	}
+}
+
+func TestEnumSplitNestedEmptyThenBranchKeepsContinuationCase(t *testing.T) {
+	fb := &flowBuilder{
+		spacing:      HorizontalSpacing,
+		declaredVars: map[string]string{"MemberProvided": "Boolean"},
+		measurer:     &layoutMeasurer{},
+	}
+
+	oc := fb.buildFlowGraph([]ast.MicroflowStatement{
+		&ast.EnumSplitStmt{
+			Variable: "SubjectType",
+			Cases: []ast.EnumSplitCase{
+				{
+					Value: "member",
+					Body: []ast.MicroflowStatement{
+						&ast.IfStmt{
+							Condition: &ast.VariableExpr{Name: "MemberProvided"},
+							ElseBody:  []ast.MicroflowStatement{&ast.ReturnStmt{}},
+						},
+					},
+				},
+				{
+					Value: "unknown",
+					Body:  []ast.MicroflowStatement{&ast.ReturnStmt{}},
+				},
+			},
+		},
+		&ast.LogStmt{Level: ast.LogInfo, Message: &ast.LiteralExpr{Kind: ast.LiteralString, Value: "shared tail"}},
+	}, nil)
+
+	objects := map[model.ID]microflows.MicroflowObject{}
+	var nestedSplitID model.ID
+	for _, obj := range oc.Objects {
+		objects[obj.GetID()] = obj
+		split, ok := obj.(*microflows.ExclusiveSplit)
+		if !ok {
+			continue
+		}
+		if condition, ok := split.SplitCondition.(*microflows.ExpressionSplitCondition); ok && condition.Expression == "$MemberProvided" {
+			nestedSplitID = split.ID
+		}
+	}
+	if nestedSplitID == "" {
+		t.Fatal("expected nested decision split")
+	}
+	for _, flow := range oc.Flows {
+		if flow.OriginID != nestedSplitID {
+			continue
+		}
+		if value, ok := enumCaseValue(flow); ok && value == "true" {
+			if _, ok := objects[flow.DestinationID].(*microflows.ExclusiveMerge); ok {
+				return
+			}
+		}
+	}
+	t.Fatal("nested empty-then enum branch must carry CaseValue=true to the enum merge")
 }

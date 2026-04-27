@@ -345,6 +345,7 @@ func (fb *flowBuilder) addEnumSplit(s *ast.EnumSplitStmt) model.ID {
 		fb.endsWithReturn = false
 
 		lastID := model.ID("")
+		pendingCase := ""
 		for _, stmt := range br.body {
 			actID := fb.addStatement(stmt)
 			if actID == "" {
@@ -357,11 +358,18 @@ func (fb *flowBuilder) addEnumSplit(s *ast.EnumSplitStmt) model.ID {
 			if lastID == "" {
 				fb.addEnumSplitFlows(splitID, actID, br.values)
 			} else {
-				fb.flows = append(fb.flows, newHorizontalFlow(lastID, actID))
+				if pendingCase != "" {
+					fb.flows = append(fb.flows, newHorizontalFlowWithCase(lastID, actID, pendingCase))
+					pendingCase = ""
+				} else {
+					fb.flows = append(fb.flows, newHorizontalFlow(lastID, actID))
+				}
 			}
 			if fb.nextConnectionPoint != "" {
 				lastID = fb.nextConnectionPoint
 				fb.nextConnectionPoint = ""
+				pendingCase = fb.nextFlowCase
+				fb.nextFlowCase = ""
 			} else {
 				lastID = actID
 			}
@@ -374,7 +382,11 @@ func (fb *flowBuilder) addEnumSplit(s *ast.EnumSplitStmt) model.ID {
 		if lastID == "" {
 			fb.addEnumSplitFlows(splitID, merge.ID, br.values)
 		} else {
-			fb.flows = append(fb.flows, newHorizontalFlow(lastID, merge.ID))
+			if pendingCase != "" {
+				fb.flows = append(fb.flows, newHorizontalFlowWithCase(lastID, merge.ID, pendingCase))
+			} else {
+				fb.flows = append(fb.flows, newHorizontalFlow(lastID, merge.ID))
+			}
 		}
 	}
 
