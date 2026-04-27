@@ -241,6 +241,13 @@ func (fb *flowBuilder) addCallJavaActionAction(s *ast.CallJavaActionStmt) model.
 		ResultVariableName: s.OutputVariable,
 		UseReturnVariable:  s.OutputVariable != "",
 	}
+	if s.OutputVariable != "" && jaDef != nil && fb.varTypes != nil {
+		if varType := javaActionReturnVarType(jaDef.ReturnType); varType != "" {
+			fb.varTypes[s.OutputVariable] = varType
+		} else if inferred := fb.inferGenericJavaActionReturnType(jaDef, s); inferred != "" {
+			fb.varTypes[s.OutputVariable] = inferred
+		}
+	}
 
 	activityX := fb.posX
 	activity := &microflows.ActionActivity{
@@ -266,6 +273,48 @@ func (fb *flowBuilder) addCallJavaActionAction(s *ast.CallJavaActionStmt) model.
 	}
 
 	return activity.ID
+}
+
+func javaActionReturnVarType(returnType javaactions.CodeActionReturnType) string {
+	switch t := returnType.(type) {
+	case *javaactions.EntityType:
+		return t.Entity
+	case *javaactions.ListType:
+		if t.Entity != "" {
+			return "List of " + t.Entity
+		}
+	case *javaactions.FileDocumentType:
+		return "System.FileDocument"
+	}
+	return ""
+}
+
+func (fb *flowBuilder) inferGenericJavaActionReturnType(jaDef *javaactions.JavaAction, s *ast.CallJavaActionStmt) string {
+	if jaDef == nil || fb.varTypes == nil || s == nil {
+		return ""
+	}
+	switch t := jaDef.ReturnType.(type) {
+	case *javaactions.ListType:
+		if t.Entity != "" {
+			return ""
+		}
+	case javaactions.ListType:
+		if t.Entity != "" {
+			return ""
+		}
+	default:
+		return ""
+	}
+	for _, arg := range s.Arguments {
+		valueExpr := strings.TrimPrefix(strings.Trim(fb.exprToString(arg.Value), "'"), "$")
+		if valueExpr == "" {
+			continue
+		}
+		if typ := fb.varTypes[valueExpr]; strings.HasPrefix(typ, "List of ") {
+			return typ
+		}
+	}
+	return ""
 }
 
 // addCallExternalActionAction creates a CALL EXTERNAL ACTION statement.
