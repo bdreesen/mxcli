@@ -1,0 +1,59 @@
+// SPDX-License-Identifier: Apache-2.0
+
+package executor
+
+import (
+	"testing"
+
+	"github.com/mendixlabs/mxcli/mdl/ast"
+	"github.com/mendixlabs/mxcli/sdk/microflows"
+)
+
+func TestBuildJavaAction_PlaceholderArgumentPreservesEmptyBasicValue(t *testing.T) {
+	fb := &flowBuilder{posX: 100, posY: 100, spacing: HorizontalSpacing}
+	stmt := &ast.CallJavaActionStmt{
+		ActionName: ast.QualifiedName{Module: "SampleModule", Name: "Recalculate"},
+		Arguments: []ast.CallArgument{
+			{Name: "CompanyId", Value: &ast.SourceExpr{Source: "..."}},
+			{Name: "RecalculateAll", Value: &ast.LiteralExpr{Kind: ast.LiteralBoolean, Value: true}},
+			{Name: "ItemList", Value: &ast.SourceExpr{Source: " ... "}},
+		},
+	}
+
+	id := fb.addCallJavaActionAction(stmt)
+	var activity *microflows.ActionActivity
+	for _, obj := range fb.objects {
+		if obj.GetID() == id {
+			activity, _ = obj.(*microflows.ActionActivity)
+			break
+		}
+	}
+	if activity == nil {
+		t.Fatal("expected Java action activity")
+	}
+	action, ok := activity.Action.(*microflows.JavaActionCallAction)
+	if !ok {
+		t.Fatalf("action = %T, want *JavaActionCallAction", activity.Action)
+	}
+	if len(action.ParameterMappings) != 3 {
+		t.Fatalf("parameter mappings = %d, want 3", len(action.ParameterMappings))
+	}
+
+	for _, idx := range []int{0, 2} {
+		value, ok := action.ParameterMappings[idx].Value.(*microflows.BasicCodeActionParameterValue)
+		if !ok {
+			t.Fatalf("mapping %d value = %T, want *BasicCodeActionParameterValue", idx, action.ParameterMappings[idx].Value)
+		}
+		if value.Argument != "" {
+			t.Fatalf("mapping %d argument = %q, want empty string", idx, value.Argument)
+		}
+	}
+
+	value, ok := action.ParameterMappings[1].Value.(*microflows.BasicCodeActionParameterValue)
+	if !ok {
+		t.Fatalf("boolean mapping value = %T, want *BasicCodeActionParameterValue", action.ParameterMappings[1].Value)
+	}
+	if value.Argument != "true" {
+		t.Fatalf("boolean argument = %q, want true", value.Argument)
+	}
+}

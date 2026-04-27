@@ -125,6 +125,15 @@ type IfThenElseExpr struct {
 
 func (e *IfThenElseExpr) isExpression() {}
 
+// SourceExpr preserves source text for expressions that do not have a richer
+// AST representation yet.
+type SourceExpr struct {
+	Expression Expression
+	Source     string
+}
+
+func (e *SourceExpr) isExpression() {}
+
 // ============================================================================
 // XPath-Specific Expression Types
 // ============================================================================

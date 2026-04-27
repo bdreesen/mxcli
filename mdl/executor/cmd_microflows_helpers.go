@@ -327,6 +327,11 @@ func expressionToString(expr ast.Expression) string {
 		thenStr := expressionToString(e.ThenExpr)
 		elseStr := expressionToString(e.ElseExpr)
 		return "if " + cond + " then " + thenStr + " else " + elseStr
+	case *ast.SourceExpr:
+		if e.Source != "" {
+			return e.Source
+		}
+		return expressionToString(e.Expression)
 	default:
 		return ""
 	}

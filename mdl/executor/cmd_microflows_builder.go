@@ -329,6 +329,14 @@ func (fb *flowBuilder) resolveAssociationPaths(expr ast.Expression) ast.Expressi
 			ThenExpr:  fb.resolveAssociationPaths(e.ThenExpr),
 			ElseExpr:  fb.resolveAssociationPaths(e.ElseExpr),
 		}
+	case *ast.SourceExpr:
+		if e.Source != "" {
+			return e
+		}
+		return &ast.SourceExpr{
+			Expression: fb.resolveAssociationPaths(e.Expression),
+			Source:     e.Source,
+		}
 	default:
 		return expr
 	}
