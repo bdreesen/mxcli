@@ -240,9 +240,12 @@ func (fb *flowBuilder) addRollbackAction(s *ast.RollbackStmt) model.ID {
 // addChangeObjectAction creates a CHANGE statement.
 func (fb *flowBuilder) addChangeObjectAction(s *ast.ChangeObjectStmt) model.ID {
 	action := &microflows.ChangeObjectAction{
-		BaseElement:     model.BaseElement{ID: model.ID(types.GenerateID())},
-		ChangeVariable:  s.Variable,
-		Commit:          microflows.CommitTypeNo,
+		BaseElement:    model.BaseElement{ID: model.ID(types.GenerateID())},
+		ChangeVariable: s.Variable,
+		Commit:         microflows.CommitTypeNo,
+		// Studio Pro rejects an empty non-committing change action unless it
+		// refreshes in client. The CE0032 message mentions only items/commit,
+		// but mx check accepts RefreshInClient=true as the third valid escape.
 		RefreshInClient: len(s.Changes) == 0,
 	}
 
