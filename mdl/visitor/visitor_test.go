@@ -1810,6 +1810,30 @@ END;`
 	}
 }
 
+func TestRetrieveXPathPreservesOriginalPathSpacing(t *testing.T) {
+	input := `CREATE MICROFLOW Synthetic.PreserveXPathPathSpacing ()
+BEGIN
+  RETRIEVE $Items FROM Synthetic.Item
+    WHERE Synthetic.Item_Group/Synthetic.Group/Synthetic.Group_Company = $Company;
+END;`
+
+	prog, errs := Build(input)
+	if len(errs) > 0 {
+		t.Fatalf("unexpected parse errors: %v", errs)
+	}
+
+	mf := prog.Statements[0].(*ast.CreateMicroflowStmt)
+	retrieveStmt := mf.Body[0].(*ast.RetrieveStmt)
+	source, ok := retrieveStmt.Where.(*ast.SourceExpr)
+	if !ok {
+		t.Fatalf("expected retrieve XPath SourceExpr, got %T", retrieveStmt.Where)
+	}
+	want := "Synthetic.Item_Group/Synthetic.Group/Synthetic.Group_Company = $Company"
+	if source.Source != want {
+		t.Fatalf("XPath source = %q, want %q", source.Source, want)
+	}
+}
+
 func TestTrailingExpressionWhitespacePreservedForRoundtripSlots(t *testing.T) {
 	input := `CREATE MICROFLOW Synthetic.PreserveTrailingExpressionWhitespace (
   $Object: Synthetic.Entity
