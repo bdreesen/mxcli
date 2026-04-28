@@ -1230,6 +1230,9 @@ func objectTerminatesBeforeMerge(
 		return true
 	case *microflows.ExclusiveSplit, *microflows.InheritanceSplit:
 		nestedMergeID := splitMergeMap[currentID]
+		if nestedMergeID == "" {
+			nestedMergeID = mergeID
+		}
 		flows := findNormalFlows(flowsByOrigin[currentID])
 		if len(flows) == 0 {
 			return false

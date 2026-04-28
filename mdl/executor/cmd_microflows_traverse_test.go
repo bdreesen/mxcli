@@ -576,6 +576,47 @@ func TestTraverseFlow_AlreadyVisited(t *testing.T) {
 	}
 }
 
+func TestBranchFlowTerminatesBeforeMerge_InheritanceSplitFallsThroughParentMerge(t *testing.T) {
+	entityID := mkID("entity-specialized")
+	activityMap := map[model.ID]microflows.MicroflowObject{
+		mkID("type_split"): &microflows.InheritanceSplit{
+			BaseMicroflowObject: mkObj("type_split"),
+			VariableName:        "Input",
+		},
+		mkID("set_value"): &microflows.ActionActivity{
+			BaseActivity: microflows.BaseActivity{BaseMicroflowObject: mkObj("set_value")},
+			Action:       &microflows.ChangeVariableAction{VariableName: "Value", Value: "$Input/Value"},
+		},
+		mkID("error_log"): &microflows.ActionActivity{
+			BaseActivity: microflows.BaseActivity{BaseMicroflowObject: mkObj("error_log")},
+			Action:       &microflows.LogMessageAction{LogLevel: "Info", LogNodeName: "'App'", MessageTemplate: &model.Text{Translations: map[string]string{"en_US": "no matching type"}}},
+		},
+		mkID("error_return"): &microflows.EndEvent{
+			BaseMicroflowObject: mkObj("error_return"),
+			ReturnValue:         "empty",
+		},
+		mkID("parent_merge"): &microflows.ExclusiveMerge{BaseMicroflowObject: mkObj("parent_merge")},
+		mkID("tail_return"): &microflows.EndEvent{
+			BaseMicroflowObject: mkObj("tail_return"),
+			ReturnValue:         "'ok'",
+		},
+	}
+	flowsByOrigin := map[model.ID][]*microflows.SequenceFlow{
+		mkID("type_split"): {
+			mkBranchFlow("type_split", "set_value", &microflows.InheritanceCase{EntityID: entityID}),
+			mkBranchFlow("type_split", "error_log", &microflows.InheritanceCase{}),
+		},
+		mkID("set_value"):    {mkFlow("set_value", "parent_merge")},
+		mkID("error_log"):    {mkFlow("error_log", "error_return")},
+		mkID("parent_merge"): {mkFlow("parent_merge", "tail_return")},
+	}
+	parentBranch := mkFlow("outer_split", "type_split")
+
+	if branchFlowTerminatesBeforeMerge(parentBranch, mkID("parent_merge"), activityMap, flowsByOrigin, nil) {
+		t.Fatal("inheritance split branch that falls through the parent merge must not be classified as terminal")
+	}
+}
+
 // =============================================================================
 // traverseFlowWithSourceMap — verifies source map recording
 // =============================================================================
