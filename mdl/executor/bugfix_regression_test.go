@@ -696,3 +696,68 @@ func TestCallMicroflowUnknownResultTypeStillDeclaresVariable(t *testing.T) {
 		t.Fatal("expected Result to remain declared after unresolved call return type")
 	}
 }
+
+func TestValidateMicroflowReferencesSkipsExcludedMicroflow(t *testing.T) {
+	moduleID := model.ID("module-1")
+	backend := &mock.MockBackend{
+		IsConnectedFunc: func() bool { return true },
+		ListModulesFunc: func() ([]*model.Module, error) {
+			return []*model.Module{{
+				BaseElement: model.BaseElement{ID: moduleID},
+				Name:        "SyntheticAudit",
+			}}, nil
+		},
+		ListMicroflowsFunc: func() ([]*microflows.Microflow, error) {
+			return nil, nil
+		},
+	}
+	ctx, _ := newMockCtx(t, withBackend(backend))
+
+	stmt := &ast.CreateMicroflowStmt{
+		Excluded: true,
+		Name:     ast.QualifiedName{Module: "SyntheticAudit", Name: "ExcludedLegacyFlow"},
+		Body: []ast.MicroflowStatement{
+			&ast.CallMicroflowStmt{
+				MicroflowName: ast.QualifiedName{Module: "SyntheticAudit", Name: "DeletedScaffoldFlow"},
+			},
+		},
+	}
+
+	if err := validate(ctx, stmt); err != nil {
+		t.Fatalf("excluded microflow reference validation returned error: %v", err)
+	}
+}
+
+func TestValidateMicroflowReferencesReportsIncludedMissingMicroflow(t *testing.T) {
+	moduleID := model.ID("module-1")
+	backend := &mock.MockBackend{
+		IsConnectedFunc: func() bool { return true },
+		ListModulesFunc: func() ([]*model.Module, error) {
+			return []*model.Module{{
+				BaseElement: model.BaseElement{ID: moduleID},
+				Name:        "SyntheticAudit",
+			}}, nil
+		},
+		ListMicroflowsFunc: func() ([]*microflows.Microflow, error) {
+			return nil, nil
+		},
+	}
+	ctx, _ := newMockCtx(t, withBackend(backend))
+
+	stmt := &ast.CreateMicroflowStmt{
+		Name: ast.QualifiedName{Module: "SyntheticAudit", Name: "IncludedFlow"},
+		Body: []ast.MicroflowStatement{
+			&ast.CallMicroflowStmt{
+				MicroflowName: ast.QualifiedName{Module: "SyntheticAudit", Name: "DeletedScaffoldFlow"},
+			},
+		},
+	}
+
+	err := validate(ctx, stmt)
+	if err == nil {
+		t.Fatal("expected missing microflow reference error")
+	}
+	if !strings.Contains(err.Error(), "microflow not found: SyntheticAudit.DeletedScaffoldFlow") {
+		t.Fatalf("unexpected validation error: %v", err)
+	}
+}
