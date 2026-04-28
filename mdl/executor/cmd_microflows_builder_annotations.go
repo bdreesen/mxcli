@@ -191,6 +191,14 @@ func (fb *flowBuilder) applyAnnotations(activityID model.ID, ann *ast.ActivityAn
 	}
 }
 
+func (fb *flowBuilder) applyPendingAnnotations(activityID model.ID) {
+	if activityID == "" || fb.pendingAnnotations == nil {
+		return
+	}
+	fb.applyAnnotations(activityID, fb.pendingAnnotations)
+	fb.pendingAnnotations = nil
+}
+
 // addEndEventWithReturn creates an EndEvent with the specified return value.
 // This produces an actual EndEvent activity in the flow graph, allowing RETURN
 // to work correctly inside IF/ELSE branches and error handler bodies.

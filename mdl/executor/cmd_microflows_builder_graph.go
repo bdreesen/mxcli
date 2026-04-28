@@ -68,11 +68,7 @@ func (fb *flowBuilder) buildFlowGraph(stmts []ast.MicroflowStatement, returns *a
 
 		activityID := fb.addStatement(stmt)
 		if activityID != "" {
-			// If there are pending annotations, apply them to this activity
-			if fb.pendingAnnotations != nil {
-				fb.applyAnnotations(activityID, fb.pendingAnnotations)
-				fb.pendingAnnotations = nil
-			}
+			fb.applyPendingAnnotations(activityID)
 			// Connect to previous object with horizontal SequenceFlow
 			var flow *microflows.SequenceFlow
 			if pendingCase != "" {

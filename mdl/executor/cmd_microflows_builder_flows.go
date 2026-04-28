@@ -73,6 +73,7 @@ func (fb *flowBuilder) addErrorHandlerFlow(sourceActivityID model.ID, sourceX in
 	for _, stmt := range errorBody {
 		actID := errBuilder.addStatement(stmt)
 		if actID != "" {
+			errBuilder.applyPendingAnnotations(actID)
 			if lastErrID == "" {
 				// Connect source activity to first error handler activity
 				fb.flows = append(fb.flows, newErrorHandlerFlow(sourceActivityID, actID))

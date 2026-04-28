@@ -119,6 +119,7 @@ func (fb *flowBuilder) addIfStatement(s *ast.IfStmt) model.ID {
 			thisAnchor := stmtOwnAnchor(stmt)
 			actID := fb.addStatement(stmt)
 			if actID != "" {
+				fb.applyPendingAnnotations(actID)
 				if lastThenID == "" {
 					// First statement in THEN - connect from split with "true" case.
 					// Origin: trueBranchAnchor.From (if set) — anchor on the split side.
@@ -174,6 +175,7 @@ func (fb *flowBuilder) addIfStatement(s *ast.IfStmt) model.ID {
 			thisAnchor := stmtOwnAnchor(stmt)
 			actID := fb.addStatement(stmt)
 			if actID != "" {
+				fb.applyPendingAnnotations(actID)
 				if lastElseID == "" {
 					// First statement in ELSE - connect from split going down (false path).
 					// Same compositional rule as the THEN branch.
@@ -234,6 +236,7 @@ func (fb *flowBuilder) addIfStatement(s *ast.IfStmt) model.ID {
 			thisAnchor := stmtOwnAnchor(stmt)
 			actID := fb.addStatement(stmt)
 			if actID != "" {
+				fb.applyPendingAnnotations(actID)
 				if lastThenID == "" {
 					// First statement in THEN - connect from split going down with "true" case
 					flow := newDownwardFlowWithCase(splitID, actID, "true")
@@ -382,6 +385,7 @@ func (fb *flowBuilder) addLoopStatement(s *ast.LoopStmt) model.ID {
 	for _, stmt := range s.Body {
 		actID := loopBuilder.addStatement(stmt)
 		if actID != "" {
+			loopBuilder.applyPendingAnnotations(actID)
 			if lastBodyID != "" {
 				loopBuilder.flows = append(loopBuilder.flows, newHorizontalFlow(lastBodyID, actID))
 			}
@@ -479,6 +483,7 @@ func (fb *flowBuilder) addWhileStatement(s *ast.WhileStmt) model.ID {
 	for _, stmt := range s.Body {
 		actID := loopBuilder.addStatement(stmt)
 		if actID != "" {
+			loopBuilder.applyPendingAnnotations(actID)
 			if lastBodyID != "" {
 				loopBuilder.flows = append(loopBuilder.flows, newHorizontalFlow(lastBodyID, actID))
 			}
