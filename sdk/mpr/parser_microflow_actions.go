@@ -138,6 +138,7 @@ func parseJavaScriptActionCallAction(raw map[string]any) *microflows.JavaScriptA
 				mapping := &microflows.JavaScriptActionParameterMapping{}
 				mapping.ID = model.ID(extractBsonID(mMap["$ID"]))
 				mapping.Parameter = extractString(mMap["Parameter"])
+				// BSON key is "ParameterValue"; Go struct JSON tag is "value" — intentional asymmetry
 				if value, ok := mMap["ParameterValue"].(map[string]any); ok {
 					mapping.Value = parseCodeActionParameterValue(value)
 				}

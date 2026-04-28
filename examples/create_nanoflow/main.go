@@ -86,7 +86,7 @@ grant execute on nanoflow MyModule.NF_HelloWorld to MyModule.User;
 grant execute on nanoflow MyModule.NF_ValidateAndCheck to MyModule.User;
 
 -- Verify: list all nanoflows in the module
-show nanoflows MyModule;
+show nanoflows in MyModule;
 
 -- Verify: describe a nanoflow
 describe nanoflow MyModule.NF_ValidateAndCheck;

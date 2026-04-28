@@ -507,7 +507,10 @@ func describeNanoflowToString(ctx *ExecContext, name ast.QualifiedName) (string,
 	}
 
 	entityNames := make(map[model.ID]string)
-	domainModels, _ := ctx.Backend.ListDomainModels()
+	domainModels, err := ctx.Backend.ListDomainModels()
+	if err != nil {
+		return "", nil, mdlerrors.NewBackend("list domain models", err)
+	}
 	for _, dm := range domainModels {
 		modName := h.GetModuleName(dm.ContainerID)
 		for _, entity := range dm.Entities {

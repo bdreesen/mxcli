@@ -285,7 +285,7 @@ Before executing a nanoflow script, verify:
 - [ ] Every flow path ends with `return`
 - [ ] No code after `return` statements
 - [ ] All entity/association names are fully qualified
-- [ ] Nanoflow ends with `/` separator
+- [ ] Nanoflow ends with `/` separator (statement separator for multi-statement MDL scripts)
 
 ## Common Errors
 

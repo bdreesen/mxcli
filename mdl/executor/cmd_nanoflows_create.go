@@ -201,8 +201,8 @@ func execCreateNanoflow(ctx *ExecContext, s *ast.CreateNanoflowStmt) error {
 		}
 	}
 
-	hierarchy, _ := getHierarchy(ctx)
-	restServices, _ := loadRestServices(ctx)
+	hierarchy, _ := getHierarchy(ctx)        // best-effort: builder works without hierarchy
+	restServices, _ := loadRestServices(ctx) // best-effort: builder works without REST services
 
 	builder := &flowBuilder{
 		posX:         200,

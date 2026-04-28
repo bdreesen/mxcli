@@ -3,7 +3,7 @@
 ## Overview
 
 **Status:** Implemented
-**Priority:** High — nanoflows are heavily used (227 across test projects) and CLI parity with microflows is expected.
+**Priority:** High — nanoflows are heavily used (223 across test projects) and CLI parity with microflows is expected.
 
 Full nanoflow feature surface in mxcli: CREATE, DROP, CALL, GRANT/REVOKE, SHOW, SHOW ACCESS, DESCRIBE, DESCRIBE MERMAID, and validation. Supersedes the earlier `show-describe-nanoflows.md` proposal which focused only on DESCRIBE/DROP.
 
@@ -40,7 +40,7 @@ Nanoflows execute client-side (browser or native app). In the Mendix metamodel, 
 | Command | Description |
 |---------|-------------|
 | `CREATE NANOFLOW Module.Name(params) RETURNS type BEGIN ... END` | Create a nanoflow with body, parameters, return type |
-| `CREATE OR REPLACE NANOFLOW ...` | Create or update existing nanoflow |
+| `CREATE OR MODIFY NANOFLOW ...` | Create or update existing nanoflow |
 | `DROP NANOFLOW Module.Name` | Delete a nanoflow |
 | `CALL NANOFLOW Module.Name(args)` | Call a nanoflow from within a flow body (valid in both microflows and nanoflows) |
 | `GRANT EXECUTE ON NANOFLOW Module.Name TO RoleList` | Grant module role access |

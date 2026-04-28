@@ -333,6 +333,7 @@ func diffNanoflow(ctx *ExecContext, s *ast.CreateNanoflowStmt) (*DiffResult, err
 	}
 
 	// Try to find existing nanoflow
+	// Errors treated as "new" to match diffMicroflow and other diff* functions
 	h, err := getHierarchy(ctx)
 	if err != nil {
 		result.IsNew = true

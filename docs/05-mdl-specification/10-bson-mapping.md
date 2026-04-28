@@ -1220,8 +1220,6 @@ All other fields — `ObjectCollection`, `Parameters`, `ReturnType`, `AllowedMod
 
 Nanoflows run client-side. The following action types are **disallowed** in nanoflows:
 
-- `Microflows$CommitAction` — requires database (server-side)
-- `Microflows$RollbackAction` — requires database
 - `Microflows$DownloadFileAction` — requires server response
 - `Microflows$ImportMappingCallAction` — requires server context
 - `Microflows$ExportMappingCallAction` — requires server context

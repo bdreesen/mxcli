@@ -238,6 +238,7 @@ func serializeMicroflowAction(action microflows.MicroflowAction) bson.D {
 		doc := bson.D{
 			{Key: "$ID", Value: idToBsonBinary(string(a.ID))},
 			{Key: "$Type", Value: "Microflows$NanoflowCallAction"},
+			// Mendix metamodel defaults to "Rollback" for all call actions, including nanoflow calls.
 			{Key: "ErrorHandlingType", Value: stringOrDefault(string(a.ErrorHandlingType), "Rollback")},
 			{Key: "OutputVariableName", Value: a.OutputVariableName},
 			{Key: "UseReturnVariable", Value: a.UseReturnVariable},

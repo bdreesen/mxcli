@@ -79,16 +79,9 @@ func microflowELK(ctx *ExecContext, name string) error {
 	}
 
 	// Build entity name lookup
-	entityNames := make(map[model.ID]string)
-	domainModels, err := ctx.Backend.ListDomainModels()
+	entityNames, err := buildEntityNames(ctx, h)
 	if err != nil {
-		return mdlerrors.NewBackend("list domain models", err)
-	}
-	for _, dm := range domainModels {
-		modName := h.GetModuleName(dm.ContainerID)
-		for _, entity := range dm.Entities {
-			entityNames[entity.ID] = modName + "." + entity.Name
-		}
+		return err
 	}
 
 	// Find the microflow
