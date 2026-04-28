@@ -287,6 +287,55 @@ func TestTraverseFlow_LoopBodyMergesParentFlowsForExistingOrigin(t *testing.T) {
 	}
 }
 
+func TestTraverseFlow_LoopBodyEmitsStructuredIfElse(t *testing.T) {
+	split := &microflows.ExclusiveSplit{
+		BaseMicroflowObject: mkObj("split"),
+		SplitCondition:      &microflows.ExpressionSplitCondition{Expression: "$Item/IsActive"},
+	}
+	trueLog := &microflows.ActionActivity{
+		BaseActivity: microflows.BaseActivity{BaseMicroflowObject: mkObj("true_log")},
+		Action: &microflows.LogMessageAction{
+			LogLevel:    "Info",
+			LogNodeName: "'App'",
+			MessageTemplate: &model.Text{
+				Translations: map[string]string{"en_US": "active"},
+			},
+		},
+	}
+	falseLog := &microflows.ActionActivity{
+		BaseActivity: microflows.BaseActivity{BaseMicroflowObject: mkObj("false_log")},
+		Action: &microflows.LogMessageAction{
+			LogLevel:    "Info",
+			LogNodeName: "'App'",
+			MessageTemplate: &model.Text{
+				Translations: map[string]string{"en_US": "inactive"},
+			},
+		},
+	}
+	merge := &microflows.ExclusiveMerge{BaseMicroflowObject: mkObj("merge")}
+	loop := &microflows.LoopedActivity{
+		BaseMicroflowObject: mkObj("loop"),
+		ObjectCollection: &microflows.MicroflowObjectCollection{
+			Objects: []microflows.MicroflowObject{split, trueLog, falseLog, merge},
+			Flows: []*microflows.SequenceFlow{
+				mkBranchFlow("split", "true_log", &microflows.ExpressionCase{Expression: "true"}),
+				mkBranchFlow("split", "false_log", &microflows.ExpressionCase{Expression: "false"}),
+				mkFlow("true_log", "merge"),
+				mkFlow("false_log", "merge"),
+			},
+		},
+	}
+
+	var lines []string
+	emitLoopBody(nil, loop, nil, nil, nil, nil, &lines, 0, nil, 0, nil)
+	out := strings.Join(lines, "\n")
+	for _, want := range []string{"if $Item/IsActive then", "else", "end if;"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("loop body should emit structured %q, got:\n%s", want, out)
+		}
+	}
+}
+
 // =============================================================================
 // collectErrorHandlerStatements
 // =============================================================================
