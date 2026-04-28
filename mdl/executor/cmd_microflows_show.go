@@ -867,7 +867,9 @@ func findSplitMergePoints(
 	return result
 }
 
-// findMergeForSplit finds the ExclusiveMerge where branches from a split converge.
+// findMergeForSplit finds the nearest node where branches from a split converge.
+// Studio Pro models often converge directly on the next activity instead of an
+// explicit ExclusiveMerge, so the join can be any executable microflow object.
 func findMergeForSplit(
 	ctx *ExecContext,
 	splitID model.ID,
@@ -884,7 +886,7 @@ func findMergeForSplit(
 		branchDistances = append(branchDistances, collectReachableDistances(flow.DestinationID, flowsByOrigin))
 	}
 
-	return selectNearestCommonMerge(activityMap, branchDistances)
+	return selectNearestCommonJoin(activityMap, branchDistances)
 }
 
 // collectReachableNodes collects all nodes reachable from a starting node.
@@ -948,7 +950,7 @@ func collectReachableDistances(
 	return distances
 }
 
-func selectNearestCommonMerge(
+func selectNearestCommonJoin(
 	activityMap map[model.ID]microflows.MicroflowObject,
 	branchDistances []map[model.ID]int,
 ) model.ID {
@@ -964,7 +966,7 @@ func selectNearestCommonMerge(
 	candidates := []candidate{}
 
 	for nodeID, firstDistance := range branchDistances[0] {
-		if _, ok := activityMap[nodeID].(*microflows.ExclusiveMerge); !ok {
+		if !isSplitJoinCandidate(activityMap[nodeID]) {
 			continue
 		}
 
@@ -1006,6 +1008,15 @@ func selectNearestCommonMerge(
 	})
 
 	return candidates[0].id
+}
+
+func isSplitJoinCandidate(obj microflows.MicroflowObject) bool {
+	switch obj.(type) {
+	case nil, *microflows.StartEvent, *microflows.EndEvent:
+		return false
+	default:
+		return true
+	}
 }
 
 // --- Executor method wrappers for callers in unmigrated code ---

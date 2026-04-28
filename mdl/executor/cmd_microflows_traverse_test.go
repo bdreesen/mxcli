@@ -230,6 +230,76 @@ func TestTraverseFlow_IfWithoutElse(t *testing.T) {
 	}
 }
 
+func TestTraverseFlow_CommonActivityJoinKeepsTailOutsideBranches(t *testing.T) {
+	e := newTestExecutor()
+
+	activityMap := map[model.ID]microflows.MicroflowObject{
+		mkID("start"): &microflows.StartEvent{BaseMicroflowObject: mkObj("start")},
+		mkID("outer_split"): &microflows.ExclusiveSplit{
+			BaseMicroflowObject: mkObj("outer_split"),
+			SplitCondition:      &microflows.ExpressionSplitCondition{Expression: "$Allowed"},
+		},
+		mkID("allowed_act"): &microflows.ActionActivity{
+			BaseActivity: microflows.BaseActivity{BaseMicroflowObject: mkObj("allowed_act")},
+			Action:       &microflows.LogMessageAction{LogLevel: "Info", LogNodeName: "'App'", MessageTemplate: &model.Text{Translations: map[string]string{"en_US": "allowed branch"}}},
+		},
+		mkID("denied_act"): &microflows.ActionActivity{
+			BaseActivity: microflows.BaseActivity{BaseMicroflowObject: mkObj("denied_act")},
+			Action:       &microflows.LogMessageAction{LogLevel: "Info", LogNodeName: "'App'", MessageTemplate: &model.Text{Translations: map[string]string{"en_US": "denied branch"}}},
+		},
+		mkID("tail_split"): &microflows.ExclusiveSplit{
+			BaseMicroflowObject: mkObj("tail_split"),
+			SplitCondition:      &microflows.ExpressionSplitCondition{Expression: "$FollowUp"},
+		},
+		mkID("tail_true"): &microflows.ActionActivity{
+			BaseActivity: microflows.BaseActivity{BaseMicroflowObject: mkObj("tail_true")},
+			Action:       &microflows.LogMessageAction{LogLevel: "Info", LogNodeName: "'App'", MessageTemplate: &model.Text{Translations: map[string]string{"en_US": "follow true"}}},
+		},
+		mkID("tail_false"): &microflows.ActionActivity{
+			BaseActivity: microflows.BaseActivity{BaseMicroflowObject: mkObj("tail_false")},
+			Action:       &microflows.LogMessageAction{LogLevel: "Info", LogNodeName: "'App'", MessageTemplate: &model.Text{Translations: map[string]string{"en_US": "follow false"}}},
+		},
+		mkID("end"): &microflows.EndEvent{BaseMicroflowObject: mkObj("end")},
+	}
+	flowsByOrigin := map[model.ID][]*microflows.SequenceFlow{
+		mkID("start"): {mkFlow("start", "outer_split")},
+		mkID("outer_split"): {
+			mkBranchFlow("outer_split", "allowed_act", &microflows.ExpressionCase{Expression: "true"}),
+			mkBranchFlow("outer_split", "denied_act", &microflows.ExpressionCase{Expression: "false"}),
+		},
+		mkID("allowed_act"): {mkFlow("allowed_act", "tail_split")},
+		mkID("denied_act"):  {mkFlow("denied_act", "tail_split")},
+		mkID("tail_split"): {
+			mkBranchFlow("tail_split", "tail_true", &microflows.ExpressionCase{Expression: "true"}),
+			mkBranchFlow("tail_split", "tail_false", &microflows.ExpressionCase{Expression: "false"}),
+		},
+		mkID("tail_true"):  {mkFlow("tail_true", "end")},
+		mkID("tail_false"): {mkFlow("tail_false", "end")},
+	}
+
+	joinID := findMergeForSplit(nil, mkID("outer_split"), flowsByOrigin, activityMap)
+	if joinID != mkID("tail_split") {
+		t.Fatalf("outer split paired with %q, want common tail activity %q", joinID, mkID("tail_split"))
+	}
+
+	splitMergeMap := map[model.ID]model.ID{mkID("outer_split"): joinID}
+	var lines []string
+	visited := make(map[model.ID]bool)
+	e.traverseFlow(mkID("start"), activityMap, flowsByOrigin, splitMergeMap, visited, nil, nil, &lines, 0, nil, 0, nil)
+
+	out := strings.Join(lines, "\n")
+	firstEndIf := strings.Index(out, "end if;")
+	tailIf := strings.Index(out, "if $FollowUp then")
+	if firstEndIf == -1 || tailIf == -1 || firstEndIf > tailIf {
+		t.Fatalf("shared tail must be emitted after the outer IF closes:\n%s", out)
+	}
+	for _, line := range lines {
+		if strings.Contains(line, "if $FollowUp then") && strings.HasPrefix(line, "  ") {
+			t.Fatalf("shared tail must be top-level, got %q in:\n%s", line, out)
+		}
+	}
+}
+
 func TestTraverseFlow_SequentialIfWithoutElseKeepsContinuationOutsideFirstIf(t *testing.T) {
 	e := newTestExecutor()
 

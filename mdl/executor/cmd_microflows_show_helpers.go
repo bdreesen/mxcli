@@ -570,14 +570,7 @@ func traverseFlow(
 			*lines = append(*lines, indentStr+"end if;")
 			recordSourceMap(sourceMap, currentID, startLine, len(*lines)+headerLineCount-1)
 
-			// Continue after the merge point
-			if mergeID != "" {
-				visited[mergeID] = true
-				nextFlows := flowsByOrigin[mergeID]
-				for _, flow := range nextFlows {
-					traverseFlow(ctx, flow.DestinationID, activityMap, flowsByOrigin, flowsByDest, splitMergeMap, visited, entityNames, microflowNames, lines, indent, sourceMap, headerLineCount, annotationsByTarget)
-				}
-			}
+			continueAfterSplitJoin(ctx, mergeID, activityMap, flowsByOrigin, flowsByDest, splitMergeMap, visited, entityNames, microflowNames, lines, indent, sourceMap, headerLineCount, annotationsByTarget)
 		}
 		return
 	}
@@ -723,14 +716,7 @@ func traverseFlowUntilMerge(
 			*lines = append(*lines, indentStr+"end if;")
 			recordSourceMap(sourceMap, currentID, startLine, len(*lines)+headerLineCount-1)
 
-			// Continue after nested merge
-			if nestedMergeID != "" && nestedMergeID != mergeID {
-				visited[nestedMergeID] = true
-				nextFlows := flowsByOrigin[nestedMergeID]
-				for _, flow := range nextFlows {
-					traverseFlowUntilMerge(ctx, flow.DestinationID, mergeID, activityMap, flowsByOrigin, flowsByDest, splitMergeMap, visited, entityNames, microflowNames, lines, indent, sourceMap, headerLineCount, annotationsByTarget)
-				}
-			}
+			continueAfterNestedSplitJoin(ctx, nestedMergeID, mergeID, activityMap, flowsByOrigin, flowsByDest, splitMergeMap, visited, entityNames, microflowNames, lines, indent, sourceMap, headerLineCount, annotationsByTarget)
 		}
 		return
 	}
@@ -767,6 +753,65 @@ func traverseFlowUntilMerge(
 	for _, flow := range normalFlows {
 		traverseFlowUntilMerge(ctx, flow.DestinationID, mergeID, activityMap, flowsByOrigin, flowsByDest, splitMergeMap, visited, entityNames, microflowNames, lines, indent, sourceMap, headerLineCount, annotationsByTarget)
 	}
+}
+
+func continueAfterSplitJoin(
+	ctx *ExecContext,
+	joinID model.ID,
+	activityMap map[model.ID]microflows.MicroflowObject,
+	flowsByOrigin map[model.ID][]*microflows.SequenceFlow,
+	flowsByDest map[model.ID][]*microflows.SequenceFlow,
+	splitMergeMap map[model.ID]model.ID,
+	visited map[model.ID]bool,
+	entityNames map[model.ID]string,
+	microflowNames map[model.ID]string,
+	lines *[]string,
+	indent int,
+	sourceMap map[string]elkSourceRange,
+	headerLineCount int,
+	annotationsByTarget map[model.ID][]string,
+) {
+	if joinID == "" {
+		return
+	}
+	if _, isMerge := activityMap[joinID].(*microflows.ExclusiveMerge); isMerge {
+		visited[joinID] = true
+		for _, flow := range flowsByOrigin[joinID] {
+			traverseFlow(ctx, flow.DestinationID, activityMap, flowsByOrigin, flowsByDest, splitMergeMap, visited, entityNames, microflowNames, lines, indent, sourceMap, headerLineCount, annotationsByTarget)
+		}
+		return
+	}
+	traverseFlow(ctx, joinID, activityMap, flowsByOrigin, flowsByDest, splitMergeMap, visited, entityNames, microflowNames, lines, indent, sourceMap, headerLineCount, annotationsByTarget)
+}
+
+func continueAfterNestedSplitJoin(
+	ctx *ExecContext,
+	joinID model.ID,
+	parentMergeID model.ID,
+	activityMap map[model.ID]microflows.MicroflowObject,
+	flowsByOrigin map[model.ID][]*microflows.SequenceFlow,
+	flowsByDest map[model.ID][]*microflows.SequenceFlow,
+	splitMergeMap map[model.ID]model.ID,
+	visited map[model.ID]bool,
+	entityNames map[model.ID]string,
+	microflowNames map[model.ID]string,
+	lines *[]string,
+	indent int,
+	sourceMap map[string]elkSourceRange,
+	headerLineCount int,
+	annotationsByTarget map[model.ID][]string,
+) {
+	if joinID == "" || joinID == parentMergeID {
+		return
+	}
+	if _, isMerge := activityMap[joinID].(*microflows.ExclusiveMerge); isMerge {
+		visited[joinID] = true
+		for _, flow := range flowsByOrigin[joinID] {
+			traverseFlowUntilMerge(ctx, flow.DestinationID, parentMergeID, activityMap, flowsByOrigin, flowsByDest, splitMergeMap, visited, entityNames, microflowNames, lines, indent, sourceMap, headerLineCount, annotationsByTarget)
+		}
+		return
+	}
+	traverseFlowUntilMerge(ctx, joinID, parentMergeID, activityMap, flowsByOrigin, flowsByDest, splitMergeMap, visited, entityNames, microflowNames, lines, indent, sourceMap, headerLineCount, annotationsByTarget)
 }
 
 // traverseLoopBody traverses activities inside a loop body.
