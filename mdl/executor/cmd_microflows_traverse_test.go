@@ -298,6 +298,99 @@ func TestTraverseFlow_SequentialIfWithoutElseKeepsContinuationOutsideFirstIf(t *
 	}
 }
 
+func TestTraverseFlow_GuardBranchWithMultipleActivitiesKeepsContinuationOutsideElse(t *testing.T) {
+	e := newTestExecutor()
+
+	activityMap := map[model.ID]microflows.MicroflowObject{
+		mkID("start"): &microflows.StartEvent{BaseMicroflowObject: mkObj("start")},
+		mkID("split"): &microflows.ExclusiveSplit{
+			BaseMicroflowObject: mkObj("split"),
+			SplitCondition:      &microflows.ExpressionSplitCondition{Expression: "$HasExistingData"},
+		},
+		mkID("then_log"): &microflows.ActionActivity{
+			BaseActivity: microflows.BaseActivity{BaseMicroflowObject: mkObj("then_log")},
+			Action:       &microflows.LogMessageAction{LogLevel: "Info", LogNodeName: "'App'", MessageTemplate: &model.Text{Translations: map[string]string{"en_US": "terminal branch"}}},
+		},
+		mkID("then_return"): &microflows.EndEvent{BaseMicroflowObject: mkObj("then_return")},
+		mkID("tail_log"): &microflows.ActionActivity{
+			BaseActivity: microflows.BaseActivity{BaseMicroflowObject: mkObj("tail_log")},
+			Action:       &microflows.LogMessageAction{LogLevel: "Info", LogNodeName: "'App'", MessageTemplate: &model.Text{Translations: map[string]string{"en_US": "shared tail"}}},
+		},
+		mkID("end"): &microflows.EndEvent{BaseMicroflowObject: mkObj("end")},
+	}
+	flowsByOrigin := map[model.ID][]*microflows.SequenceFlow{
+		mkID("start"): {mkFlow("start", "split")},
+		mkID("split"): {
+			mkBranchFlow("split", "then_log", &microflows.ExpressionCase{Expression: "true"}),
+			mkBranchFlow("split", "tail_log", &microflows.ExpressionCase{Expression: "false"}),
+		},
+		mkID("then_log"): {mkFlow("then_log", "then_return")},
+		mkID("tail_log"): {mkFlow("tail_log", "end")},
+	}
+	if !branchFlowTerminatesBeforeMerge(flowsByOrigin[mkID("split")][0], "", activityMap, flowsByOrigin, nil) {
+		t.Fatal("expected multi-activity true branch to be terminal")
+	}
+
+	var lines []string
+	visited := make(map[model.ID]bool)
+	e.traverseFlow(mkID("start"), activityMap, flowsByOrigin, nil, visited, nil, nil, &lines, 0, nil, 0, nil)
+
+	out := strings.Join(lines, "\n")
+	if strings.Contains(out, "\nelse\n") {
+		t.Fatalf("terminal guard branch should not wrap continuation in ELSE:\n%s", out)
+	}
+	if strings.Index(out, "end if;") > strings.Index(out, "shared tail") {
+		t.Fatalf("shared tail must be emitted after the guard IF closes:\n%s", out)
+	}
+}
+
+func TestTraverseFlow_NestedTerminalGuardBranchSuppressesEmptyOuterElse(t *testing.T) {
+	e := newTestExecutor()
+
+	activityMap := map[model.ID]microflows.MicroflowObject{
+		mkID("start"): &microflows.StartEvent{BaseMicroflowObject: mkObj("start")},
+		mkID("outer_split"): &microflows.ExclusiveSplit{
+			BaseMicroflowObject: mkObj("outer_split"),
+			SplitCondition:      &microflows.ExpressionSplitCondition{Expression: "$NeedsValidation"},
+		},
+		mkID("inner_split"): &microflows.ExclusiveSplit{
+			BaseMicroflowObject: mkObj("inner_split"),
+			SplitCondition:      &microflows.ExpressionSplitCondition{Expression: "$IsValid"},
+		},
+		mkID("valid_return"):   &microflows.EndEvent{BaseMicroflowObject: mkObj("valid_return")},
+		mkID("invalid_return"): &microflows.EndEvent{BaseMicroflowObject: mkObj("invalid_return")},
+		mkID("tail_log"): &microflows.ActionActivity{
+			BaseActivity: microflows.BaseActivity{BaseMicroflowObject: mkObj("tail_log")},
+			Action:       &microflows.LogMessageAction{LogLevel: "Info", LogNodeName: "'App'", MessageTemplate: &model.Text{Translations: map[string]string{"en_US": "fallback tail"}}},
+		},
+		mkID("end"): &microflows.EndEvent{BaseMicroflowObject: mkObj("end")},
+	}
+	flowsByOrigin := map[model.ID][]*microflows.SequenceFlow{
+		mkID("start"): {mkFlow("start", "outer_split")},
+		mkID("outer_split"): {
+			mkBranchFlow("outer_split", "inner_split", &microflows.ExpressionCase{Expression: "true"}),
+			mkBranchFlow("outer_split", "tail_log", &microflows.ExpressionCase{Expression: "false"}),
+		},
+		mkID("inner_split"): {
+			mkBranchFlow("inner_split", "valid_return", &microflows.ExpressionCase{Expression: "true"}),
+			mkBranchFlow("inner_split", "invalid_return", &microflows.ExpressionCase{Expression: "false"}),
+		},
+		mkID("tail_log"): {mkFlow("tail_log", "end")},
+	}
+
+	var lines []string
+	visited := make(map[model.ID]bool)
+	e.traverseFlow(mkID("start"), activityMap, flowsByOrigin, nil, visited, nil, nil, &lines, 0, nil, 0, nil)
+
+	out := strings.Join(lines, "\n")
+	if got := strings.Count(out, "\n  else\n"); got != 1 {
+		t.Fatalf("expected only the nested IF ELSE, got %d ELSE blocks:\n%s", got, out)
+	}
+	if strings.Index(out, "end if;") > strings.Index(out, "fallback tail") {
+		t.Fatalf("fallback tail must be emitted after the outer guard IF closes:\n%s", out)
+	}
+}
+
 // =============================================================================
 // collectErrorHandlerStatements
 // =============================================================================
