@@ -114,6 +114,17 @@ func emitAnchorAnnotation(
 	lines *[]string,
 	indentStr string,
 ) {
+	emitAnchorAnnotationWithActivityMap(obj, flowsByOrigin, flowsByDest, nil, lines, indentStr)
+}
+
+func emitAnchorAnnotationWithActivityMap(
+	obj microflows.MicroflowObject,
+	flowsByOrigin map[model.ID][]*microflows.SequenceFlow,
+	flowsByDest map[model.ID][]*microflows.SequenceFlow,
+	activityMap map[model.ID]microflows.MicroflowObject,
+	lines *[]string,
+	indentStr string,
+) {
 	id := obj.GetID()
 
 	if _, isSplit := obj.(*microflows.ExclusiveSplit); isSplit {
@@ -131,7 +142,13 @@ func emitAnchorAnnotation(
 
 	var from, to string
 	if outgoing := flowsByOrigin[id]; len(outgoing) > 0 {
-		from = anchorSideKeyword(outgoing[0].OriginConnectionIndex)
+		for _, flow := range outgoing {
+			if isNonWritableLoopBodyTailFlow(id, flow, activityMap) {
+				continue
+			}
+			from = anchorSideKeyword(flow.OriginConnectionIndex)
+			break
+		}
 	}
 	if incoming := flowsByDest[id]; len(incoming) > 0 {
 		to = anchorSideKeyword(incoming[0].DestinationConnectionIndex)
@@ -151,6 +168,22 @@ func emitAnchorAnnotation(
 		return
 	}
 	*lines = append(*lines, indentStr+fmt.Sprintf("@anchor(%s)", strings.Join(parts, ", ")))
+}
+
+func isNonWritableLoopBodyTailFlow(originID model.ID, flow *microflows.SequenceFlow, activityMap map[model.ID]microflows.MicroflowObject) bool {
+	if flow == nil || activityMap == nil {
+		return false
+	}
+	loop, ok := activityMap[flow.DestinationID].(*microflows.LoopedActivity)
+	if !ok || loop.ObjectCollection == nil {
+		return false
+	}
+	for _, obj := range loop.ObjectCollection.Objects {
+		if obj.GetID() == originID {
+			return true
+		}
+	}
+	return false
 }
 
 // emitSplitAnchorAnnotation emits the split form of @anchor — the incoming
@@ -366,6 +399,7 @@ func emitObjectAnnotations(
 	annotationsByTarget map[model.ID][]string,
 	flowsByOrigin map[model.ID][]*microflows.SequenceFlow,
 	flowsByDest map[model.ID][]*microflows.SequenceFlow,
+	activityMap map[model.ID]microflows.MicroflowObject,
 ) {
 	currentID := obj.GetID()
 
@@ -376,7 +410,7 @@ func emitObjectAnnotations(
 		// @anchor — emit whenever attached flows exist, for roundtrip fidelity.
 		// The emitter sorts out the right form (simple / split / loop) based on
 		// the object type.
-		emitAnchorAnnotation(obj, flowsByOrigin, flowsByDest, lines, indentStr)
+		emitAnchorAnnotationWithActivityMap(obj, flowsByOrigin, flowsByDest, activityMap, lines, indentStr)
 	}
 
 	if activity, ok := obj.(*microflows.ActionActivity); ok {
@@ -427,7 +461,7 @@ func emitActivityStatement(
 	}
 
 	// Emit @ annotations before the statement
-	emitObjectAnnotations(obj, lines, indentStr, annotationsByTarget, flowsByOrigin, flowsByDest)
+	emitObjectAnnotations(obj, lines, indentStr, annotationsByTarget, flowsByOrigin, flowsByDest, activityMap)
 
 	currentID := obj.GetID()
 	flows := flowsByOrigin[currentID]
@@ -545,6 +579,10 @@ func traverseFlow(
 	// Handle ExclusiveSplit specially - need to process both branches
 	if _, isSplit := obj.(*microflows.ExclusiveSplit); isSplit {
 		startLine := len(*lines) + headerLineCount
+		if stmt != "" {
+			emitObjectAnnotations(obj, lines, indentStr, annotationsByTarget, flowsByOrigin, flowsByDest, activityMap)
+			*lines = append(*lines, indentStr+stmt)
+		}
 
 		flows := flowsByOrigin[currentID]
 		mergeID := splitMergeMap[currentID]
@@ -638,7 +676,7 @@ func traverseFlow(
 	if loop, isLoop := obj.(*microflows.LoopedActivity); isLoop {
 		startLine := len(*lines) + headerLineCount
 		if stmt != "" {
-			emitObjectAnnotations(obj, lines, indentStr, annotationsByTarget, flowsByOrigin, flowsByDest)
+			emitObjectAnnotations(obj, lines, indentStr, annotationsByTarget, flowsByOrigin, flowsByDest, activityMap)
 			*lines = append(*lines, indentStr+stmt)
 		}
 
@@ -713,6 +751,10 @@ func traverseFlowUntilMerge(
 	// Handle nested ExclusiveSplit
 	if _, isSplit := obj.(*microflows.ExclusiveSplit); isSplit {
 		startLine := len(*lines) + headerLineCount
+		if stmt != "" {
+			emitObjectAnnotations(obj, lines, indentStr, annotationsByTarget, flowsByOrigin, flowsByDest, activityMap)
+			*lines = append(*lines, indentStr+stmt)
+		}
 
 		flows := flowsByOrigin[currentID]
 		nestedMergeID := splitMergeMap[currentID]
@@ -802,7 +844,7 @@ func traverseFlowUntilMerge(
 	if loop, isLoop := obj.(*microflows.LoopedActivity); isLoop {
 		startLine := len(*lines) + headerLineCount
 		if stmt != "" {
-			emitObjectAnnotations(obj, lines, indentStr, annotationsByTarget, flowsByOrigin, flowsByDest)
+			emitObjectAnnotations(obj, lines, indentStr, annotationsByTarget, flowsByOrigin, flowsByDest, activityMap)
 			*lines = append(*lines, indentStr+stmt)
 		}
 
@@ -962,7 +1004,7 @@ func traverseLoopBody(
 	if loop, isLoop := obj.(*microflows.LoopedActivity); isLoop {
 		startLine := len(*lines) + headerLineCount
 		if stmt != "" {
-			emitObjectAnnotations(obj, lines, indentStr, annotationsByTarget, flowsByOrigin, flowsByDest)
+			emitObjectAnnotations(obj, lines, indentStr, annotationsByTarget, flowsByOrigin, flowsByDest, activityMap)
 			*lines = append(*lines, indentStr+stmt)
 		}
 
