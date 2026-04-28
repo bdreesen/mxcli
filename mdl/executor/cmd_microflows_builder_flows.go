@@ -191,6 +191,20 @@ func applyUserAnchors(flow *microflows.SequenceFlow, origin *ast.FlowAnchors, de
 	}
 }
 
+func branchDestinationAnchor(branchAnchor, stmtAnchor *ast.FlowAnchors) *ast.FlowAnchors {
+	if stmtAnchor != nil && stmtAnchor.To != ast.AnchorSideUnset {
+		return stmtAnchor
+	}
+	return branchAnchor
+}
+
+func pendingFlowAnchors(previousAnchor, pendingAnchor, stmtAnchor *ast.FlowAnchors) (*ast.FlowAnchors, *ast.FlowAnchors) {
+	if pendingAnchor == nil {
+		return previousAnchor, stmtAnchor
+	}
+	return pendingAnchor, branchDestinationAnchor(pendingAnchor, stmtAnchor)
+}
+
 // lastStmtIsReturn reports whether execution of a body is guaranteed to terminate
 // (via RETURN or RAISE ERROR) on every path — i.e. control can never fall off the
 // end of the body into the parent flow.
