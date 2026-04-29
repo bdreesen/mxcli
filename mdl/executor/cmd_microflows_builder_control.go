@@ -135,17 +135,20 @@ func (fb *flowBuilder) addIfStatement(s *ast.IfStmt) model.ID {
 					fb.flows = append(fb.flows, flow)
 				} else {
 					var flow *microflows.SequenceFlow
-					if pendingThenCase != "" {
+					originAnchor := prevThenAnchor
+					destAnchor := thisAnchor
+					if pendingThenCase != "" || pendingThenAnchor != nil {
+						originAnchor, destAnchor = pendingFlowAnchors(prevThenAnchor, pendingThenAnchor, thisAnchor)
 						flow = newHorizontalFlowWithCase(lastThenID, actID, pendingThenCase)
-						if pendingThenAnchor != nil {
-							prevThenAnchor = pendingThenAnchor
+						if pendingThenCase == "" {
+							flow = newHorizontalFlow(lastThenID, actID)
 						}
 						pendingThenCase = ""
 						pendingThenAnchor = nil
 					} else {
 						flow = newHorizontalFlow(lastThenID, actID)
 					}
-					applyUserAnchors(flow, prevThenAnchor, thisAnchor)
+					applyUserAnchors(flow, originAnchor, destAnchor)
 					fb.flows = append(fb.flows, flow)
 				}
 				prevThenAnchor = thisAnchor
@@ -169,15 +172,18 @@ func (fb *flowBuilder) addIfStatement(s *ast.IfStmt) model.ID {
 		if !thenReturns && needMerge {
 			if lastThenID != "" {
 				var flow *microflows.SequenceFlow
-				if pendingThenCase != "" {
+				originAnchor := prevThenAnchor
+				destAnchor := (*ast.FlowAnchors)(nil)
+				if pendingThenCase != "" || pendingThenAnchor != nil {
+					originAnchor, destAnchor = pendingFlowAnchors(prevThenAnchor, pendingThenAnchor, nil)
 					flow = newHorizontalFlowWithCase(lastThenID, mergeID, pendingThenCase)
-					if pendingThenAnchor != nil {
-						prevThenAnchor = pendingThenAnchor
+					if pendingThenCase == "" {
+						flow = newHorizontalFlow(lastThenID, mergeID)
 					}
 				} else {
 					flow = newHorizontalFlow(lastThenID, mergeID)
 				}
-				applyUserAnchors(flow, prevThenAnchor, nil)
+				applyUserAnchors(flow, originAnchor, destAnchor)
 				fb.flows = append(fb.flows, flow)
 			} else {
 				// Empty THEN body - connect split directly to merge with true case.
@@ -212,17 +218,20 @@ func (fb *flowBuilder) addIfStatement(s *ast.IfStmt) model.ID {
 					fb.flows = append(fb.flows, flow)
 				} else {
 					var flow *microflows.SequenceFlow
-					if pendingElseCase != "" {
+					originAnchor := prevElseAnchor
+					destAnchor := thisAnchor
+					if pendingElseCase != "" || pendingElseAnchor != nil {
+						originAnchor, destAnchor = pendingFlowAnchors(prevElseAnchor, pendingElseAnchor, thisAnchor)
 						flow = newHorizontalFlowWithCase(lastElseID, actID, pendingElseCase)
-						if pendingElseAnchor != nil {
-							prevElseAnchor = pendingElseAnchor
+						if pendingElseCase == "" {
+							flow = newHorizontalFlow(lastElseID, actID)
 						}
 						pendingElseCase = ""
 						pendingElseAnchor = nil
 					} else {
 						flow = newHorizontalFlow(lastElseID, actID)
 					}
-					applyUserAnchors(flow, prevElseAnchor, thisAnchor)
+					applyUserAnchors(flow, originAnchor, destAnchor)
 					fb.flows = append(fb.flows, flow)
 				}
 				prevElseAnchor = thisAnchor
@@ -246,16 +255,18 @@ func (fb *flowBuilder) addIfStatement(s *ast.IfStmt) model.ID {
 		if !elseReturns && needMerge {
 			if lastElseID != "" {
 				flow := newUpwardFlow(lastElseID, mergeID)
-				if pendingElseCase != "" {
-					flow.CaseValue = microflows.EnumerationCase{
-						BaseElement: model.BaseElement{ID: model.ID(types.GenerateID())},
-						Value:       pendingElseCase,
-					}
-					if pendingElseAnchor != nil {
-						prevElseAnchor = pendingElseAnchor
+				originAnchor := prevElseAnchor
+				destAnchor := (*ast.FlowAnchors)(nil)
+				if pendingElseCase != "" || pendingElseAnchor != nil {
+					originAnchor, destAnchor = pendingFlowAnchors(prevElseAnchor, pendingElseAnchor, nil)
+					if pendingElseCase != "" {
+						flow.CaseValue = microflows.EnumerationCase{
+							BaseElement: model.BaseElement{ID: model.ID(types.GenerateID())},
+							Value:       pendingElseCase,
+						}
 					}
 				}
-				applyUserAnchors(flow, prevElseAnchor, nil)
+				applyUserAnchors(flow, originAnchor, destAnchor)
 				fb.flows = append(fb.flows, flow)
 			}
 		}
@@ -327,17 +338,20 @@ func (fb *flowBuilder) addIfStatement(s *ast.IfStmt) model.ID {
 					fb.flows = append(fb.flows, flow)
 				} else {
 					var flow *microflows.SequenceFlow
-					if pendingThenCase != "" {
+					originAnchor := prevThenAnchor
+					destAnchor := thisAnchor
+					if pendingThenCase != "" || pendingThenAnchor != nil {
+						originAnchor, destAnchor = pendingFlowAnchors(prevThenAnchor, pendingThenAnchor, thisAnchor)
 						flow = newHorizontalFlowWithCase(lastThenID, actID, pendingThenCase)
-						if pendingThenAnchor != nil {
-							prevThenAnchor = pendingThenAnchor
+						if pendingThenCase == "" {
+							flow = newHorizontalFlow(lastThenID, actID)
 						}
 						pendingThenCase = ""
 						pendingThenAnchor = nil
 					} else {
 						flow = newHorizontalFlow(lastThenID, actID)
 					}
-					applyUserAnchors(flow, prevThenAnchor, thisAnchor)
+					applyUserAnchors(flow, originAnchor, destAnchor)
 					fb.flows = append(fb.flows, flow)
 				}
 				prevThenAnchor = thisAnchor
@@ -361,16 +375,18 @@ func (fb *flowBuilder) addIfStatement(s *ast.IfStmt) model.ID {
 		if !thenReturns && needMerge {
 			if lastThenID != "" {
 				flow := newUpwardFlow(lastThenID, mergeID)
-				if pendingThenCase != "" {
-					flow.CaseValue = microflows.EnumerationCase{
-						BaseElement: model.BaseElement{ID: model.ID(types.GenerateID())},
-						Value:       pendingThenCase,
-					}
-					if pendingThenAnchor != nil {
-						prevThenAnchor = pendingThenAnchor
+				originAnchor := prevThenAnchor
+				destAnchor := (*ast.FlowAnchors)(nil)
+				if pendingThenCase != "" || pendingThenAnchor != nil {
+					originAnchor, destAnchor = pendingFlowAnchors(prevThenAnchor, pendingThenAnchor, nil)
+					if pendingThenCase != "" {
+						flow.CaseValue = microflows.EnumerationCase{
+							BaseElement: model.BaseElement{ID: model.ID(types.GenerateID())},
+							Value:       pendingThenCase,
+						}
 					}
 				}
-				applyUserAnchors(flow, prevThenAnchor, nil)
+				applyUserAnchors(flow, originAnchor, destAnchor)
 				fb.flows = append(fb.flows, flow)
 			} else {
 				// Empty THEN body - connect split directly to merge going down and back up.
