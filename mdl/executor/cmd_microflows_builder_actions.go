@@ -303,7 +303,7 @@ func (fb *flowBuilder) addRetrieveAction(s *ast.RetrieveStmt) model.ID {
 		}
 
 		if assocInfo != nil && assocInfo.Type == domainmodel.AssociationTypeReference &&
-			assocInfo.Owner != domainmodel.AssociationOwnerBoth &&
+			assocInfo.Owner != "" &&
 			assocInfo.parentPersistable &&
 			assocInfo.childEntityQN != "" && startVarType == assocInfo.childEntityQN {
 			// Reverse traversal on Reference: child → parent (one-to-many)
@@ -326,12 +326,18 @@ func (fb *flowBuilder) addRetrieveAction(s *ast.RetrieveStmt) model.ID {
 			}
 			if fb.varTypes != nil {
 				if assocInfo != nil && assocInfo.Type == domainmodel.AssociationTypeReference {
-					// Reference forward traversal: returns single object
+					// Forward Reference traversal returns a single object. Legacy or
+					// non-persistable reverse traversal can still use association
+					// source syntax, but keeps list typing for downstream actions.
 					otherEntity := assocInfo.childEntityQN
 					if startVarType == assocInfo.childEntityQN {
 						otherEntity = assocInfo.parentEntityQN
 					}
-					fb.varTypes[s.Variable] = otherEntity
+					if startVarType == assocInfo.childEntityQN {
+						fb.varTypes[s.Variable] = "List of " + otherEntity
+					} else {
+						fb.varTypes[s.Variable] = otherEntity
+					}
 				} else if assocInfo != nil && assocInfo.Type == domainmodel.AssociationTypeReferenceSet {
 					// ReferenceSet traversal returns a list of the entity on the other side,
 					// not a list typed as the association itself.
