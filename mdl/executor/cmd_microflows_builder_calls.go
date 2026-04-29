@@ -168,6 +168,66 @@ func (fb *flowBuilder) addCallMicroflowAction(s *ast.CallMicroflowStmt) model.ID
 	return activity.ID
 }
 
+// addCallNanoflowAction creates a CALL NANOFLOW statement.
+func (fb *flowBuilder) addCallNanoflowAction(s *ast.CallNanoflowStmt) model.ID {
+	nfQN := s.NanoflowName.Module + "." + s.NanoflowName.Name
+
+	// Build parameter mappings for NanoflowCall
+	var mappings []*microflows.NanoflowCallParameterMapping
+	for _, arg := range s.Arguments {
+		paramQN := nfQN + "." + arg.Name
+		mapping := &microflows.NanoflowCallParameterMapping{
+			BaseElement: model.BaseElement{ID: model.ID(types.GenerateID())},
+			Parameter:   paramQN,
+			Argument:    fb.exprToString(arg.Value),
+		}
+		mappings = append(mappings, mapping)
+	}
+
+	nfCall := &microflows.NanoflowCall{
+		BaseElement:       model.BaseElement{ID: model.ID(types.GenerateID())},
+		Nanoflow:          nfQN,
+		ParameterMappings: mappings,
+	}
+
+	action := &microflows.NanoflowCallAction{
+		BaseElement:        model.BaseElement{ID: model.ID(types.GenerateID())},
+		ErrorHandlingType:  convertErrorHandlingType(s.ErrorHandling),
+		NanoflowCall:       nfCall,
+		OutputVariableName: s.OutputVariable,
+		UseReturnVariable:  s.OutputVariable != "",
+	}
+
+	activityX := fb.posX
+	activity := &microflows.ActionActivity{
+		BaseActivity: microflows.BaseActivity{
+			BaseMicroflowObject: microflows.BaseMicroflowObject{
+				BaseElement: model.BaseElement{ID: model.ID(types.GenerateID())},
+				Position:    model.Point{X: fb.posX, Y: fb.posY},
+				Size:        model.Size{Width: ActivityWidth, Height: ActivityHeight},
+			},
+			AutoGenerateCaption: true,
+		},
+		Action: action,
+	}
+
+	fb.objects = append(fb.objects, activity)
+	fb.posX += fb.spacing
+
+	if s.OutputVariable != "" {
+		fb.registerResultVariableType(s.OutputVariable, fb.lookupNanoflowReturnType(nfQN))
+	}
+
+	// Build custom error handler flow if present
+	if s.ErrorHandling != nil && len(s.ErrorHandling.Body) > 0 {
+		errorY := fb.posY + VerticalSpacing
+		mergeID := fb.addErrorHandlerFlow(activity.ID, activityX, s.ErrorHandling.Body)
+		fb.handleErrorHandlerMerge(mergeID, activity.ID, errorY)
+	}
+
+	return activity.ID
+}
+
 // addCallJavaActionAction creates a CALL JAVA ACTION statement.
 func (fb *flowBuilder) addCallJavaActionAction(s *ast.CallJavaActionStmt) model.ID {
 	actionQN := s.ActionName.Module + "." + s.ActionName.Name
@@ -239,6 +299,115 @@ func (fb *flowBuilder) addCallJavaActionAction(s *ast.CallJavaActionStmt) model.
 		JavaAction:         actionQN,
 		ParameterMappings:  mappings,
 		ResultVariableName: s.OutputVariable,
+		UseReturnVariable:  s.OutputVariable != "",
+	}
+	if s.OutputVariable != "" && jaDef != nil && fb.varTypes != nil {
+		if varType := javaActionReturnVarType(jaDef.ReturnType); varType != "" {
+			fb.varTypes[s.OutputVariable] = varType
+		} else if inferred := fb.inferGenericJavaActionReturnType(jaDef, s); inferred != "" {
+			fb.varTypes[s.OutputVariable] = inferred
+		}
+	}
+
+	activityX := fb.posX
+	activity := &microflows.ActionActivity{
+		BaseActivity: microflows.BaseActivity{
+			BaseMicroflowObject: microflows.BaseMicroflowObject{
+				BaseElement: model.BaseElement{ID: model.ID(types.GenerateID())},
+				Position:    model.Point{X: fb.posX, Y: fb.posY},
+				Size:        model.Size{Width: ActivityWidth, Height: ActivityHeight},
+			},
+			AutoGenerateCaption: true,
+		},
+		Action: action,
+	}
+
+	fb.objects = append(fb.objects, activity)
+	fb.posX += fb.spacing
+
+	// Build custom error handler flow if present
+	if s.ErrorHandling != nil && len(s.ErrorHandling.Body) > 0 {
+		errorY := fb.posY + VerticalSpacing
+		mergeID := fb.addErrorHandlerFlow(activity.ID, activityX, s.ErrorHandling.Body)
+		fb.handleErrorHandlerMerge(mergeID, activity.ID, errorY)
+	}
+
+	return activity.ID
+}
+
+func javaActionReturnVarType(returnType javaactions.CodeActionReturnType) string {
+	switch t := returnType.(type) {
+	case *javaactions.EntityType:
+		return t.Entity
+	case *javaactions.ListType:
+		if t.Entity != "" {
+			return "List of " + t.Entity
+		}
+	case *javaactions.FileDocumentType:
+		return "System.FileDocument"
+	}
+	return ""
+}
+
+func (fb *flowBuilder) inferGenericJavaActionReturnType(jaDef *javaactions.JavaAction, s *ast.CallJavaActionStmt) string {
+	if jaDef == nil || fb.varTypes == nil || s == nil {
+		return ""
+	}
+	switch t := jaDef.ReturnType.(type) {
+	case *javaactions.ListType:
+		if t.Entity != "" {
+			return ""
+		}
+	case javaactions.ListType:
+		if t.Entity != "" {
+			return ""
+		}
+	default:
+		return ""
+	}
+	for _, arg := range s.Arguments {
+		valueExpr := strings.TrimPrefix(strings.Trim(fb.exprToString(arg.Value), "'"), "$")
+		if valueExpr == "" {
+			continue
+		}
+		if typ := fb.varTypes[valueExpr]; strings.HasPrefix(typ, "List of ") {
+			return typ
+		}
+	}
+	return ""
+}
+
+// addCallJavaScriptActionAction creates a CALL JAVASCRIPT ACTION statement.
+func (fb *flowBuilder) addCallJavaScriptActionAction(s *ast.CallJavaScriptActionStmt) model.ID {
+	actionQN := s.ActionName.Module + "." + s.ActionName.Name
+
+	// Build parameter mappings with Value structure
+	var mappings []*microflows.JavaScriptActionParameterMapping
+	for _, arg := range s.Arguments {
+		// Parameter qualified name format: Module.JavaScriptAction.ParameterName
+		paramQN := actionQN + "." + arg.Name
+
+		// JavaScript actions use BasicCodeActionParameterValue for all parameters
+		valueExpr := fb.exprToString(arg.Value)
+		value := &microflows.BasicCodeActionParameterValue{
+			BaseElement: model.BaseElement{ID: model.ID(types.GenerateID())},
+			Argument:    valueExpr,
+		}
+
+		mapping := &microflows.JavaScriptActionParameterMapping{
+			BaseElement: model.BaseElement{ID: model.ID(types.GenerateID())},
+			Parameter:   paramQN,
+			Value:       value,
+		}
+		mappings = append(mappings, mapping)
+	}
+
+	action := &microflows.JavaScriptActionCallAction{
+		BaseElement:        model.BaseElement{ID: model.ID(types.GenerateID())},
+		ErrorHandlingType:  convertErrorHandlingType(s.ErrorHandling),
+		JavaScriptAction:   actionQN,
+		ParameterMappings:  mappings,
+		OutputVariableName: s.OutputVariable,
 		UseReturnVariable:  s.OutputVariable != "",
 	}
 
@@ -457,6 +626,35 @@ func (fb *flowBuilder) addShowMessageAction(s *ast.ShowMessageStmt) model.ID {
 		Template:           template,
 		Type:               msgType,
 		TemplateParameters: templateParams,
+	}
+
+	activity := &microflows.ActionActivity{
+		BaseActivity: microflows.BaseActivity{
+			BaseMicroflowObject: microflows.BaseMicroflowObject{
+				BaseElement: model.BaseElement{ID: model.ID(types.GenerateID())},
+				Position:    model.Point{X: fb.posX, Y: fb.posY},
+				Size:        model.Size{Width: ActivityWidth, Height: ActivityHeight},
+			},
+			AutoGenerateCaption: true,
+		},
+		Action: action,
+	}
+
+	fb.objects = append(fb.objects, activity)
+	fb.posX += fb.spacing
+	return activity.ID
+}
+
+// addDownloadFileAction creates a DOWNLOAD FILE statement.
+func (fb *flowBuilder) addDownloadFileAction(s *ast.DownloadFileStmt) model.ID {
+	action := &microflows.DownloadFileAction{
+		BaseElement:       model.BaseElement{ID: model.ID(types.GenerateID())},
+		FileDocument:      s.FileDocument,
+		ShowInBrowser:     s.ShowInBrowser,
+		ErrorHandlingType: microflows.ErrorHandlingTypeRollback,
+	}
+	if s.ErrorHandling != nil {
+		action.ErrorHandlingType = convertErrorHandlingType(s.ErrorHandling)
 	}
 
 	activity := &microflows.ActionActivity{
@@ -700,10 +898,14 @@ func (fb *flowBuilder) addRestCallAction(s *ast.RestCallStmt) model.ID {
 			BaseElement: model.BaseElement{ID: model.ID(types.GenerateID())},
 		}
 	case ast.RestResultResponse:
-		resultHandling = &microflows.ResultHandlingString{
-			BaseElement: model.BaseElement{ID: model.ID(types.GenerateID())},
+		// Bind the full HTTP response object to the output variable. The writer
+		// emits the matching `DataTypes$ObjectType` bound to System.HttpResponse;
+		// the action-level `ResultHandlingType` is derived as "HttpResponse" from
+		// this concrete type.
+		resultHandling = &microflows.ResultHandlingHttpResponse{
+			BaseElement:  model.BaseElement{ID: model.ID(types.GenerateID())},
+			VariableName: s.OutputVariable,
 		}
-		// Note: For HttpResponse, we would need a different result type, but using String for now
 	case ast.RestResultMapping:
 		mappingQN := s.Result.MappingName.Module + "." + s.Result.MappingName.Name
 		entityQN := s.Result.ResultEntity.Module + "." + s.Result.ResultEntity.Name
@@ -1012,7 +1214,8 @@ func (fb *flowBuilder) addImportFromMappingAction(s *ast.ImportFromMappingStmt) 
 		SingleObject:   true,
 	}
 
-	// Determine single vs list and result entity from the import mapping
+	// Determine single vs list and result entity from the import mapping.
+	resultEntityQN := ""
 	if fb.backend != nil {
 		if im, err := fb.backend.GetImportMappingByQualifiedName(s.Mapping.Module, s.Mapping.Name); err == nil {
 			if im.JsonStructure != "" {
@@ -1026,7 +1229,8 @@ func (fb *flowBuilder) addImportFromMappingAction(s *ast.ImportFromMappingStmt) 
 				}
 			}
 			if len(im.Elements) > 0 && im.Elements[0].Entity != "" {
-				resultHandling.ResultEntityID = model.ID(im.Elements[0].Entity)
+				resultEntityQN = im.Elements[0].Entity
+				resultHandling.ResultEntityID = model.ID(resultEntityQN)
 			}
 		}
 	}
@@ -1047,6 +1251,13 @@ func (fb *flowBuilder) addImportFromMappingAction(s *ast.ImportFromMappingStmt) 
 
 	fb.objects = append(fb.objects, activity)
 	fb.posX += fb.spacing
+	if s.OutputVariable != "" && resultEntityQN != "" && fb.varTypes != nil {
+		if resultHandling.SingleObject {
+			fb.varTypes[s.OutputVariable] = resultEntityQN
+		} else {
+			fb.varTypes[s.OutputVariable] = "List of " + resultEntityQN
+		}
+	}
 
 	if s.ErrorHandling != nil && len(s.ErrorHandling.Body) > 0 {
 		errorY := fb.posY + VerticalSpacing
@@ -1057,7 +1268,7 @@ func (fb *flowBuilder) addImportFromMappingAction(s *ast.ImportFromMappingStmt) 
 	return activity.ID
 }
 
-// addExportToMappingAction adds an ExportXmlAction to the microflow.
+// addTransformJsonAction adds a TransformJsonAction to the microflow.
 func (fb *flowBuilder) addTransformJsonAction(s *ast.TransformJsonStmt) model.ID {
 	activityX := fb.posX
 

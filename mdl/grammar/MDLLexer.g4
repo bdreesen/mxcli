@@ -185,6 +185,8 @@ RETURN: R E T U R N;
 THROW: T H R O W;
 LOG: L O G;
 CALL: C A L L;
+DOWNLOAD: D O W N L O A D;
+BROWSER: B R O W S E R;
 JAVA: J A V A;
 JAVASCRIPT: J A V A S C R I P T;
 ACTION: A C T I O N;
@@ -755,8 +757,11 @@ DOLLAR_STRING
     ;
 
 // Number literal (integer or decimal)
+// Note: no leading '-' here — negation is handled by unaryExpression in the parser.
+// Including '-' in the lexer caused greedy tokenisation of e.g. `$x -2` as
+// VARIABLE NUMBER_LITERAL(-2) instead of VARIABLE MINUS NUMBER_LITERAL(2).
 NUMBER_LITERAL
-    : '-'? DIGIT+ ('.' DIGIT+)? ([eE] [+-]? DIGIT+)?
+    : DIGIT+ ('.' DIGIT+)? ([eE] [+-]? DIGIT+)?
     ;
 
 // =============================================================================

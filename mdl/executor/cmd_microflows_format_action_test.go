@@ -5,7 +5,9 @@ package executor
 import (
 	"testing"
 
+	"github.com/mendixlabs/mxcli/mdl/backend/mock"
 	"github.com/mendixlabs/mxcli/model"
+	"github.com/mendixlabs/mxcli/sdk/domainmodel"
 	"github.com/mendixlabs/mxcli/sdk/microflows"
 )
 
@@ -491,6 +493,20 @@ func TestFormatAction_ShowMessage_EscapesMultiline(t *testing.T) {
 	}
 }
 
+func TestFormatAction_DownloadFile(t *testing.T) {
+	e := newTestExecutor()
+	action := &microflows.DownloadFileAction{
+		FileDocument:  "GeneratedReport",
+		ShowInBrowser: true,
+	}
+
+	got := e.formatAction(action, nil, nil)
+	want := "download file $GeneratedReport show in browser;"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
 func TestFormatAction_ValidationFeedback(t *testing.T) {
 	e := newTestExecutor()
 	action := &microflows.ValidationFeedbackAction{
@@ -671,5 +687,433 @@ func TestFormatAction_Retrieve_Association(t *testing.T) {
 	want := "retrieve $Address from $Customer/MyModule.Customer_Address;"
 	if got != want {
 		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestFormatAction_Retrieve_ReverseAssociationDatabaseSourceUsesCompactForm(t *testing.T) {
+	e := newTestExecutor()
+	e.backend = reverseAssociationBackend(t)
+	action := &microflows.RetrieveAction{
+		OutputVariable: "Domains",
+		Source: &microflows.DatabaseRetrieveSource{
+			EntityQualifiedName: "SampleRuntime.Domain",
+			XPathConstraint:     "[SampleRuntime.Domain_Runtime = $Runtime]",
+			Range:               &microflows.Range{RangeType: microflows.RangeTypeAll},
+		},
+	}
+
+	got := e.formatAction(action, nil, nil)
+	want := "retrieve $Domains from $Runtime/SampleRuntime.Domain_Runtime;"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestFormatAction_Retrieve_ReverseAssociationRequiresSimpleAllRange(t *testing.T) {
+	e := newTestExecutor()
+	e.backend = reverseAssociationBackend(t)
+	action := &microflows.RetrieveAction{
+		OutputVariable: "Domains",
+		Source: &microflows.DatabaseRetrieveSource{
+			EntityQualifiedName: "SampleRuntime.Domain",
+			XPathConstraint:     "[SampleRuntime.Domain_Runtime = $Runtime]",
+			Range:               &microflows.Range{RangeType: microflows.RangeTypeFirst},
+		},
+	}
+
+	got := e.formatAction(action, nil, nil)
+	want := "retrieve $Domains from SampleRuntime.Domain\n    where SampleRuntime.Domain_Runtime = $Runtime\n    limit 1;"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestFormatAction_Retrieve_ReverseAssociationRequiresMatchingEntity(t *testing.T) {
+	e := newTestExecutor()
+	e.backend = reverseAssociationBackend(t)
+	action := &microflows.RetrieveAction{
+		OutputVariable: "Domains",
+		Source: &microflows.DatabaseRetrieveSource{
+			EntityQualifiedName: "SampleRuntime.Runtime",
+			XPathConstraint:     "[SampleRuntime.Domain_Runtime = $Runtime]",
+		},
+	}
+
+	got := e.formatAction(action, nil, nil)
+	want := "retrieve $Domains from SampleRuntime.Runtime\n    where SampleRuntime.Domain_Runtime = $Runtime;"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestParseReverseAssociationXPathRejectsComplexPredicates(t *testing.T) {
+	tests := []string{
+		"[SampleRuntime.Domain_Runtime = $Runtime][Active = true]",
+		"[SampleRuntime.Domain_Runtime != $Runtime]",
+		"[SampleRuntime.Domain_Runtime = $Runtime/Other.Assoc]",
+		"[SampleRuntime.Domain_Runtime = 'literal']",
+		"SampleRuntime.Domain_Runtime = $Runtime",
+	}
+
+	for _, tt := range tests {
+		if assoc, start, ok := parseReverseAssociationXPath(tt); ok {
+			t.Fatalf("parseReverseAssociationXPath(%q) = %q, %q, true; want false", tt, assoc, start)
+		}
+	}
+}
+
+func reverseAssociationBackend(t *testing.T) *mock.MockBackend {
+	t.Helper()
+	moduleID := model.ID("sample-runtime-module")
+	return &mock.MockBackend{
+		GetModuleByNameFunc: func(name string) (*model.Module, error) {
+			if name != "SampleRuntime" {
+				return nil, nil
+			}
+			return &model.Module{
+				BaseElement: model.BaseElement{ID: moduleID},
+				Name:        "SampleRuntime",
+			}, nil
+		},
+		GetDomainModelFunc: func(id model.ID) (*domainmodel.DomainModel, error) {
+			if id != moduleID {
+				return nil, nil
+			}
+			return &domainmodel.DomainModel{
+				ContainerID: moduleID,
+				Entities: []*domainmodel.Entity{
+					{
+						BaseElement: model.BaseElement{ID: "domain-entity"},
+						Name:        "Domain",
+					},
+					{
+						BaseElement: model.BaseElement{ID: "runtime-entity"},
+						Name:        "Runtime",
+					},
+				},
+				Associations: []*domainmodel.Association{
+					{
+						Name:     "Domain_Runtime",
+						ParentID: "domain-entity",
+						ChildID:  "runtime-entity",
+						Type:     domainmodel.AssociationTypeReference,
+					},
+				},
+			}, nil
+		},
+	}
+}
+
+// --- OBS-6: Numeric return values should not get $ prefix ---
+
+func TestFormatActivity_ReturnNumericLiteral(t *testing.T) {
+	e := newTestExecutor()
+	activity := &microflows.EndEvent{
+		ReturnValue: "42",
+	}
+	got := e.formatActivity(activity, nil, nil)
+	want := "return 42;"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestFormatActivity_ReturnNegativeNumericLiteral(t *testing.T) {
+	e := newTestExecutor()
+	activity := &microflows.EndEvent{
+		ReturnValue: "-1",
+	}
+	got := e.formatActivity(activity, nil, nil)
+	want := "return -1;"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestFormatActivity_ReturnDecimalLiteral(t *testing.T) {
+	e := newTestExecutor()
+	activity := &microflows.EndEvent{
+		ReturnValue: "3.14",
+	}
+	got := e.formatActivity(activity, nil, nil)
+	want := "return 3.14;"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestFormatActivity_ReturnIdentifier(t *testing.T) {
+	e := newTestExecutor()
+	activity := &microflows.EndEvent{
+		ReturnValue: "MyVar",
+	}
+	got := e.formatActivity(activity, nil, nil)
+	want := "return $MyVar;"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+// --- OBS-6: isNumericLiteral ---
+
+func TestIsNumericLiteral(t *testing.T) {
+	tests := []struct {
+		input string
+		want  bool
+	}{
+		{"42", true},
+		{"-1", true},
+		{"3.14", true},
+		{"-0.5", true},
+		{"0", true},
+		{"", false},
+		{"-", false},
+		{"abc", false},
+		{"$42", false},
+		{"1.2.3", false},
+		{"42abc", false},
+		{".", false},
+		{"-.", false},
+		{"5.", false},
+		{".5", true},
+		{"-.5", true},
+	}
+	for _, tt := range tests {
+		got := isNumericLiteral(tt.input)
+		if got != tt.want {
+			t.Errorf("isNumericLiteral(%q) = %v, want %v", tt.input, got, tt.want)
+		}
+	}
+}
+
+// --- OBS-10: getActionErrorHandlingType with NanoflowCallAction ---
+
+func TestGetActionErrorHandlingType_NanoflowCallAction(t *testing.T) {
+	activity := &microflows.ActionActivity{
+		Action: &microflows.NanoflowCallAction{
+			ErrorHandlingType: microflows.ErrorHandlingTypeContinue,
+		},
+	}
+	got := getActionErrorHandlingType(activity)
+	if got != microflows.ErrorHandlingTypeContinue {
+		t.Errorf("got %q, want %q", got, microflows.ErrorHandlingTypeContinue)
+	}
+}
+
+func TestGetActionErrorHandlingType_NanoflowCallAction_Abort(t *testing.T) {
+	activity := &microflows.ActionActivity{
+		Action: &microflows.NanoflowCallAction{
+			ErrorHandlingType: microflows.ErrorHandlingTypeAbort,
+		},
+	}
+	got := getActionErrorHandlingType(activity)
+	if got != microflows.ErrorHandlingTypeAbort {
+		t.Errorf("got %q, want %q", got, microflows.ErrorHandlingTypeAbort)
+	}
+}
+
+// =============================================================================
+// formatAction — JavaScript action call
+// =============================================================================
+
+func TestFormatAction_JavaScriptActionCall_Simple(t *testing.T) {
+	e := newTestExecutor()
+	action := &microflows.JavaScriptActionCallAction{
+		JavaScriptAction: "MyModule.MyJSAction",
+	}
+	got := e.formatAction(action, nil, nil)
+	want := "call javascript action MyModule.MyJSAction();"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestFormatAction_JavaScriptActionCall_WithReturn(t *testing.T) {
+	e := newTestExecutor()
+	action := &microflows.JavaScriptActionCallAction{
+		JavaScriptAction:   "MyModule.MyJSAction",
+		OutputVariableName: "Result",
+	}
+	got := e.formatAction(action, nil, nil)
+	want := "$Result = call javascript action MyModule.MyJSAction();"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestFormatAction_JavaScriptActionCall_WithParams(t *testing.T) {
+	e := newTestExecutor()
+	action := &microflows.JavaScriptActionCallAction{
+		JavaScriptAction: "MyModule.MyJSAction",
+		ParameterMappings: []*microflows.JavaScriptActionParameterMapping{
+			{
+				Parameter: "MyModule.MyJSAction.Input",
+				Value: &microflows.ExpressionBasedCodeActionParameterValue{
+					Expression: "$MyVar",
+				},
+			},
+		},
+		OutputVariableName: "Result",
+	}
+	got := e.formatAction(action, nil, nil)
+	want := "$Result = call javascript action MyModule.MyJSAction(Input = $MyVar);"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestFormatAction_JavaScriptActionCall_NilParamValue(t *testing.T) {
+	e := newTestExecutor()
+	action := &microflows.JavaScriptActionCallAction{
+		JavaScriptAction: "MyModule.MyJSAction",
+		ParameterMappings: []*microflows.JavaScriptActionParameterMapping{
+			{
+				Parameter: "MyModule.MyJSAction.Input",
+				Value:     nil,
+			},
+		},
+	}
+	got := e.formatAction(action, nil, nil)
+	want := "call javascript action MyModule.MyJSAction();"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestFormatAction_JavaScriptActionCall_EmptyName(t *testing.T) {
+	e := newTestExecutor()
+	action := &microflows.JavaScriptActionCallAction{
+		JavaScriptAction: "",
+	}
+	got := e.formatAction(action, nil, nil)
+	want := "-- JavaScriptAction: missing action reference"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestFormatAction_JavaScriptActionCall_EmptyNameWithParams(t *testing.T) {
+	e := newTestExecutor()
+	action := &microflows.JavaScriptActionCallAction{
+		JavaScriptAction: "",
+		ParameterMappings: []*microflows.JavaScriptActionParameterMapping{
+			{Parameter: "Mod.Action.P1"},
+		},
+	}
+	got := e.formatAction(action, nil, nil)
+	want := "-- JavaScriptAction: missing action reference (1 param)"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestFormatAction_JavaScriptActionCall_EmptyParamValues(t *testing.T) {
+	e := newTestExecutor()
+	action := &microflows.JavaScriptActionCallAction{
+		JavaScriptAction: "MyModule.MyJSAction",
+		ParameterMappings: []*microflows.JavaScriptActionParameterMapping{
+			{
+				Parameter: "MyModule.MyJSAction.Input",
+				Value:     &microflows.BasicCodeActionParameterValue{Argument: ""},
+			},
+		},
+	}
+	got := e.formatAction(action, nil, nil)
+	want := "call javascript action MyModule.MyJSAction();"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestFormatAction_JavaScriptActionCall_EmptyExpressionParam(t *testing.T) {
+	e := newTestExecutor()
+	action := &microflows.JavaScriptActionCallAction{
+		JavaScriptAction: "MyModule.MyJSAction",
+		ParameterMappings: []*microflows.JavaScriptActionParameterMapping{
+			{
+				Parameter: "MyModule.MyJSAction.Token",
+				Value:     &microflows.ExpressionBasedCodeActionParameterValue{Expression: ""},
+			},
+		},
+	}
+	got := e.formatAction(action, nil, nil)
+	want := "call javascript action MyModule.MyJSAction();"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestFormatAction_JavaScriptActionCall_EmptyEntityParam(t *testing.T) {
+	e := newTestExecutor()
+	action := &microflows.JavaScriptActionCallAction{
+		JavaScriptAction: "MyModule.MyJSAction",
+		ParameterMappings: []*microflows.JavaScriptActionParameterMapping{
+			{
+				Parameter: "MyModule.MyJSAction.EntityType",
+				Value:     &microflows.EntityTypeCodeActionParameterValue{Entity: ""},
+			},
+		},
+	}
+	got := e.formatAction(action, nil, nil)
+	want := "call javascript action MyModule.MyJSAction();"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestFormatAction_JavaScriptActionCall_MixedEmptyAndPopulatedParams(t *testing.T) {
+	e := newTestExecutor()
+	action := &microflows.JavaScriptActionCallAction{
+		JavaScriptAction: "MyModule.MyJSAction",
+		ParameterMappings: []*microflows.JavaScriptActionParameterMapping{
+			{
+				Parameter: "MyModule.MyJSAction.URL",
+				Value:     &microflows.ExpressionBasedCodeActionParameterValue{Expression: "'https://example.com'"},
+			},
+			{
+				Parameter: "MyModule.MyJSAction.UseAuthToken",
+				Value:     &microflows.BasicCodeActionParameterValue{Argument: ""},
+			},
+			{
+				Parameter: "MyModule.MyJSAction.Timeout",
+				Value:     &microflows.ExpressionBasedCodeActionParameterValue{Expression: "30"},
+			},
+		},
+	}
+	got := e.formatAction(action, nil, nil)
+	want := "call javascript action MyModule.MyJSAction(URL = 'https://example.com', Timeout = 30);"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestFormatAction_JavaScriptActionCall_WithOutputAndEmptyParam(t *testing.T) {
+	e := newTestExecutor()
+	action := &microflows.JavaScriptActionCallAction{
+		JavaScriptAction:   "MyModule.MyJSAction",
+		OutputVariableName: "Result",
+		ParameterMappings: []*microflows.JavaScriptActionParameterMapping{
+			{
+				Parameter: "MyModule.MyJSAction.Input",
+				Value:     &microflows.BasicCodeActionParameterValue{Argument: ""},
+			},
+		},
+	}
+	got := e.formatAction(action, nil, nil)
+	want := "$Result = call javascript action MyModule.MyJSAction();"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestGetActionErrorHandlingType_JavaScriptActionCallAction(t *testing.T) {
+	activity := &microflows.ActionActivity{
+		Action: &microflows.JavaScriptActionCallAction{
+			ErrorHandlingType: microflows.ErrorHandlingTypeContinue,
+		},
+	}
+	got := getActionErrorHandlingType(activity)
+	if got != microflows.ErrorHandlingTypeContinue {
+		t.Errorf("got %q, want %q", got, microflows.ErrorHandlingTypeContinue)
 	}
 }

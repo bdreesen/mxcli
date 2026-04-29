@@ -82,6 +82,11 @@ type ExecContext struct {
 	// Executor. Used by REFRESH CATALOG BACKGROUND so the goroutine can
 	// deliver the result after syncBack has already run.
 	SyncCatalog func(*catalog.Catalog)
+
+	// DescribingMicroflowHasReturnValue is set while rendering a microflow body.
+	// It lets activity formatting distinguish a terminal void EndEvent from an
+	// empty EndEvent in a value-returning microflow, where bare `return;` is invalid.
+	DescribingMicroflowHasReturnValue bool
 }
 
 // Connected returns true if a project is connected via the Backend.
@@ -153,6 +158,25 @@ func (ctx *ExecContext) trackCreatedMicroflow(moduleName, mfName string, id, con
 	ctx.Cache.createdMicroflows[qualifiedName] = &createdMicroflowInfo{
 		ID:               id,
 		Name:             mfName,
+		ModuleName:       moduleName,
+		ContainerID:      containerID,
+		ReturnEntityName: returnEntityName,
+	}
+}
+
+// trackCreatedNanoflow registers a nanoflow created during this session.
+// The cache is consumed by execDropNanoflow (cleanup on DROP) and will be
+// used by future resolvers for session-local nanoflow lookups (matching
+// the createdMicroflows pattern).
+func (ctx *ExecContext) trackCreatedNanoflow(moduleName, nfName string, id, containerID model.ID, returnEntityName string) {
+	ctx.ensureCache()
+	if ctx.Cache.createdNanoflows == nil {
+		ctx.Cache.createdNanoflows = make(map[string]*createdNanoflowInfo)
+	}
+	qualifiedName := moduleName + "." + nfName
+	ctx.Cache.createdNanoflows[qualifiedName] = &createdNanoflowInfo{
+		ID:               id,
+		Name:             nfName,
 		ModuleName:       moduleName,
 		ContainerID:      containerID,
 		ReturnEntityName: returnEntityName,

@@ -73,8 +73,12 @@ func buildMicroflowStatement(ctx parser.IMicroflowStatementContext) ast.Microflo
 		stmt = buildLogStatement(log)
 	} else if call := mfCtx.CallMicroflowStatement(); call != nil {
 		stmt = buildCallMicroflowStatement(call)
+	} else if call := mfCtx.CallNanoflowStatement(); call != nil {
+		stmt = buildCallNanoflowStatement(call)
 	} else if call := mfCtx.CallJavaActionStatement(); call != nil {
 		stmt = buildCallJavaActionStatement(call)
+	} else if call := mfCtx.CallJavaScriptActionStatement(); call != nil {
+		stmt = buildCallJavaScriptActionStatement(call)
 	} else if call := mfCtx.ExecuteDatabaseQueryStatement(); call != nil {
 		stmt = buildExecuteDatabaseQueryStatement(call)
 	} else if call := mfCtx.CallExternalActionStatement(); call != nil {
@@ -99,6 +103,8 @@ func buildMicroflowStatement(ctx parser.IMicroflowStatementContext) ast.Microflo
 		stmt = &ast.ShowHomePageStmt{}
 	} else if showMsg := mfCtx.ShowMessageStatement(); showMsg != nil {
 		stmt = buildShowMessageStatement(showMsg)
+	} else if download := mfCtx.DownloadFileStatement(); download != nil {
+		stmt = buildDownloadFileStatement(download)
 	} else if valFeedback := mfCtx.ValidationFeedbackStatement(); valFeedback != nil {
 		stmt = buildValidationFeedbackStatement(valFeedback)
 	} else if restCall := mfCtx.RestCallStatement(); restCall != nil {
@@ -437,7 +443,11 @@ func setStatementAnnotations(stmt ast.MicroflowStatement, ann *ast.ActivityAnnot
 		s.Annotations = ann
 	case *ast.CallMicroflowStmt:
 		s.Annotations = ann
+	case *ast.CallNanoflowStmt:
+		s.Annotations = ann
 	case *ast.CallJavaActionStmt:
+		s.Annotations = ann
+	case *ast.CallJavaScriptActionStmt:
 		s.Annotations = ann
 	case *ast.ExecuteDatabaseQueryStmt:
 		s.Annotations = ann
@@ -464,6 +474,8 @@ func setStatementAnnotations(stmt ast.MicroflowStatement, ann *ast.ActivityAnnot
 	case *ast.ShowHomePageStmt:
 		s.Annotations = ann
 	case *ast.ShowMessageStmt:
+		s.Annotations = ann
+	case *ast.DownloadFileStmt:
 		s.Annotations = ann
 	case *ast.ValidationFeedbackStmt:
 		s.Annotations = ann

@@ -675,6 +675,27 @@ func TestCallMicroflowResultType_ResolvesSubsequentChangeMember(t *testing.T) {
 	}
 }
 
+func TestEmptyChangeObjectRefreshesInClient(t *testing.T) {
+	fb := &flowBuilder{posX: 100, posY: 100, spacing: HorizontalSpacing}
+
+	id := fb.addChangeObjectAction(&ast.ChangeObjectStmt{Variable: "Object"})
+	if id == "" || len(fb.objects) != 1 {
+		t.Fatalf("expected one change object activity, got id=%q objects=%d", id, len(fb.objects))
+	}
+
+	activity, ok := fb.objects[0].(*microflows.ActionActivity)
+	if !ok {
+		t.Fatalf("object type = %T, want *microflows.ActionActivity", fb.objects[0])
+	}
+	action, ok := activity.Action.(*microflows.ChangeObjectAction)
+	if !ok {
+		t.Fatalf("action type = %T, want *microflows.ChangeObjectAction", activity.Action)
+	}
+	if !action.RefreshInClient {
+		t.Fatal("empty change object must refresh in client to remain valid without member changes or commit")
+	}
+}
+
 func TestCallMicroflowUnknownResultTypeStillDeclaresVariable(t *testing.T) {
 	fb := &flowBuilder{
 		varTypes:     map[string]string{"Result": "Old.ModuleEntity"},
@@ -694,5 +715,70 @@ func TestCallMicroflowUnknownResultTypeStillDeclaresVariable(t *testing.T) {
 	}
 	if !fb.isVariableDeclared("Result") {
 		t.Fatal("expected Result to remain declared after unresolved call return type")
+	}
+}
+
+func TestValidateMicroflowReferencesSkipsExcludedMicroflow(t *testing.T) {
+	moduleID := model.ID("module-1")
+	backend := &mock.MockBackend{
+		IsConnectedFunc: func() bool { return true },
+		ListModulesFunc: func() ([]*model.Module, error) {
+			return []*model.Module{{
+				BaseElement: model.BaseElement{ID: moduleID},
+				Name:        "SyntheticAudit",
+			}}, nil
+		},
+		ListMicroflowsFunc: func() ([]*microflows.Microflow, error) {
+			return nil, nil
+		},
+	}
+	ctx, _ := newMockCtx(t, withBackend(backend))
+
+	stmt := &ast.CreateMicroflowStmt{
+		Excluded: true,
+		Name:     ast.QualifiedName{Module: "SyntheticAudit", Name: "ExcludedLegacyFlow"},
+		Body: []ast.MicroflowStatement{
+			&ast.CallMicroflowStmt{
+				MicroflowName: ast.QualifiedName{Module: "SyntheticAudit", Name: "DeletedScaffoldFlow"},
+			},
+		},
+	}
+
+	if err := validate(ctx, stmt); err != nil {
+		t.Fatalf("excluded microflow reference validation returned error: %v", err)
+	}
+}
+
+func TestValidateMicroflowReferencesReportsIncludedMissingMicroflow(t *testing.T) {
+	moduleID := model.ID("module-1")
+	backend := &mock.MockBackend{
+		IsConnectedFunc: func() bool { return true },
+		ListModulesFunc: func() ([]*model.Module, error) {
+			return []*model.Module{{
+				BaseElement: model.BaseElement{ID: moduleID},
+				Name:        "SyntheticAudit",
+			}}, nil
+		},
+		ListMicroflowsFunc: func() ([]*microflows.Microflow, error) {
+			return nil, nil
+		},
+	}
+	ctx, _ := newMockCtx(t, withBackend(backend))
+
+	stmt := &ast.CreateMicroflowStmt{
+		Name: ast.QualifiedName{Module: "SyntheticAudit", Name: "IncludedFlow"},
+		Body: []ast.MicroflowStatement{
+			&ast.CallMicroflowStmt{
+				MicroflowName: ast.QualifiedName{Module: "SyntheticAudit", Name: "DeletedScaffoldFlow"},
+			},
+		},
+	}
+
+	err := validate(ctx, stmt)
+	if err == nil {
+		t.Fatal("expected missing microflow reference error")
+	}
+	if !strings.Contains(err.Error(), "microflow not found: SyntheticAudit.DeletedScaffoldFlow") {
+		t.Fatalf("unexpected validation error: %v", err)
 	}
 }

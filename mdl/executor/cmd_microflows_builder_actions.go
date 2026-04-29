@@ -240,10 +240,13 @@ func (fb *flowBuilder) addRollbackAction(s *ast.RollbackStmt) model.ID {
 // addChangeObjectAction creates a CHANGE statement.
 func (fb *flowBuilder) addChangeObjectAction(s *ast.ChangeObjectStmt) model.ID {
 	action := &microflows.ChangeObjectAction{
-		BaseElement:     model.BaseElement{ID: model.ID(types.GenerateID())},
-		ChangeVariable:  s.Variable,
-		Commit:          microflows.CommitTypeNo,
-		RefreshInClient: false,
+		BaseElement:    model.BaseElement{ID: model.ID(types.GenerateID())},
+		ChangeVariable: s.Variable,
+		Commit:         microflows.CommitTypeNo,
+		// Studio Pro rejects an empty non-committing change action unless it
+		// refreshes in client. The CE0032 message mentions only items/commit,
+		// but mx check accepts RefreshInClient=true as the third valid escape.
+		RefreshInClient: len(s.Changes) == 0,
 	}
 
 	// Look up entity type from variable scope
@@ -286,6 +289,8 @@ func (fb *flowBuilder) addRetrieveAction(s *ast.RetrieveStmt) model.ID {
 
 	if s.StartVariable != "" {
 		// Association retrieve: RETRIEVE $List FROM $Parent/Module.AssocName
+		// Always use AssociationRetrieveSource to preserve the original syntax.
+		// The runtime resolves traversal direction from association metadata.
 		assocQN := s.Source.Module + "." + s.Source.Name
 
 		// Look up association to determine type and direction.
@@ -299,8 +304,19 @@ func (fb *flowBuilder) addRetrieveAction(s *ast.RetrieveStmt) model.ID {
 			startVarType = fb.varTypes[s.StartVariable]
 		}
 
-		if assocInfo != nil && assocInfo.Type == domainmodel.AssociationTypeReference &&
-			assocInfo.childEntityQN != "" && startVarType == assocInfo.childEntityQN {
+		outputUsedAsList := fb.listInputVariables != nil && fb.listInputVariables[s.Variable]
+		outputUsedAsObject := fb.objectInputVariables != nil && fb.objectInputVariables[s.Variable]
+		// Owner-both Reference associations need later usage context: the same
+		// compact retrieve can be consumed as either a list or a single object.
+		expandReverseReference := assocInfo != nil &&
+			assocInfo.Type == domainmodel.AssociationTypeReference &&
+			assocInfo.Owner != "" &&
+			assocInfo.parentPersistable &&
+			assocInfo.childEntityQN != "" &&
+			startVarType == assocInfo.childEntityQN &&
+			(assocInfo.Owner != domainmodel.AssociationOwnerBoth || outputUsedAsList && !outputUsedAsObject)
+
+		if expandReverseReference {
 			// Reverse traversal on Reference: child → parent (one-to-many)
 			// Use DatabaseRetrieveSource with XPath to get a list of parent entities
 			dbSource := &microflows.DatabaseRetrieveSource{
@@ -321,12 +337,30 @@ func (fb *flowBuilder) addRetrieveAction(s *ast.RetrieveStmt) model.ID {
 			}
 			if fb.varTypes != nil {
 				if assocInfo != nil && assocInfo.Type == domainmodel.AssociationTypeReference {
-					// Reference forward traversal: returns single object
+					// Forward Reference traversal returns a single object. Legacy or
+					// non-persistable reverse traversal can still use association
+					// source syntax, but keeps list typing for downstream actions.
 					otherEntity := assocInfo.childEntityQN
 					if startVarType == assocInfo.childEntityQN {
 						otherEntity = assocInfo.parentEntityQN
 					}
-					fb.varTypes[s.Variable] = otherEntity
+					if startVarType == assocInfo.childEntityQN && !outputUsedAsObject {
+						fb.varTypes[s.Variable] = "List of " + otherEntity
+					} else {
+						fb.varTypes[s.Variable] = otherEntity
+					}
+				} else if assocInfo != nil && assocInfo.Type == domainmodel.AssociationTypeReferenceSet {
+					// ReferenceSet traversal returns a list of the entity on the other side,
+					// not a list typed as the association itself.
+					otherEntity := assocInfo.childEntityQN
+					if startVarType == assocInfo.childEntityQN {
+						otherEntity = assocInfo.parentEntityQN
+					}
+					if otherEntity != "" {
+						fb.varTypes[s.Variable] = "List of " + otherEntity
+					} else {
+						fb.varTypes[s.Variable] = "List of " + assocQN
+					}
 				} else {
 					// ReferenceSet or unknown: returns a list
 					fb.varTypes[s.Variable] = "List of " + assocQN
@@ -862,9 +896,12 @@ func resolveMemberChangeFallback(mc *microflows.MemberChange, memberName string,
 
 // assocLookupResult holds resolved association metadata.
 type assocLookupResult struct {
-	Type           domainmodel.AssociationType
-	parentEntityQN string // Qualified name of the parent (FROM/owner) entity
-	childEntityQN  string // Qualified name of the child (TO/referenced) entity
+	Type              domainmodel.AssociationType
+	Owner             domainmodel.AssociationOwner
+	parentEntityQN    string // Qualified name of the parent (FROM/owner) entity
+	childEntityQN     string // Qualified name of the child (TO/referenced) entity
+	parentPersistable bool
+	childPersistable  bool
 }
 
 // lookupAssociation finds an association by module and name, returning its type
@@ -885,16 +922,21 @@ func (fb *flowBuilder) lookupAssociation(moduleName, assocName string) *assocLoo
 
 	// Build entity ID → qualified name map
 	entityNames := make(map[model.ID]string, len(dm.Entities))
+	entityPersistable := make(map[model.ID]bool, len(dm.Entities))
 	for _, e := range dm.Entities {
 		entityNames[e.ID] = moduleName + "." + e.Name
+		entityPersistable[e.ID] = e.Persistable
 	}
 
 	for _, a := range dm.Associations {
 		if a.Name == assocName {
 			return &assocLookupResult{
-				Type:           a.Type,
-				parentEntityQN: entityNames[a.ParentID],
-				childEntityQN:  entityNames[a.ChildID],
+				Type:              a.Type,
+				Owner:             a.Owner,
+				parentEntityQN:    entityNames[a.ParentID],
+				childEntityQN:     entityNames[a.ChildID],
+				parentPersistable: entityPersistable[a.ParentID],
+				childPersistable:  entityPersistable[a.ChildID],
 			}
 		}
 	}

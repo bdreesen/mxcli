@@ -250,6 +250,22 @@ func (s *BaseMDLParserListener) EnterRevokeMicroflowAccessStatement(ctx *RevokeM
 func (s *BaseMDLParserListener) ExitRevokeMicroflowAccessStatement(ctx *RevokeMicroflowAccessStatementContext) {
 }
 
+// EnterGrantNanoflowAccessStatement is called when production grantNanoflowAccessStatement is entered.
+func (s *BaseMDLParserListener) EnterGrantNanoflowAccessStatement(ctx *GrantNanoflowAccessStatementContext) {
+}
+
+// ExitGrantNanoflowAccessStatement is called when production grantNanoflowAccessStatement is exited.
+func (s *BaseMDLParserListener) ExitGrantNanoflowAccessStatement(ctx *GrantNanoflowAccessStatementContext) {
+}
+
+// EnterRevokeNanoflowAccessStatement is called when production revokeNanoflowAccessStatement is entered.
+func (s *BaseMDLParserListener) EnterRevokeNanoflowAccessStatement(ctx *RevokeNanoflowAccessStatementContext) {
+}
+
+// ExitRevokeNanoflowAccessStatement is called when production revokeNanoflowAccessStatement is exited.
+func (s *BaseMDLParserListener) ExitRevokeNanoflowAccessStatement(ctx *RevokeNanoflowAccessStatementContext) {
+}
+
 // EnterGrantPageAccessStatement is called when production grantPageAccessStatement is entered.
 func (s *BaseMDLParserListener) EnterGrantPageAccessStatement(ctx *GrantPageAccessStatementContext) {}
 
@@ -792,6 +808,12 @@ func (s *BaseMDLParserListener) EnterCreateMicroflowStatement(ctx *CreateMicrofl
 // ExitCreateMicroflowStatement is called when production createMicroflowStatement is exited.
 func (s *BaseMDLParserListener) ExitCreateMicroflowStatement(ctx *CreateMicroflowStatementContext) {}
 
+// EnterCreateNanoflowStatement is called when production createNanoflowStatement is entered.
+func (s *BaseMDLParserListener) EnterCreateNanoflowStatement(ctx *CreateNanoflowStatementContext) {}
+
+// ExitCreateNanoflowStatement is called when production createNanoflowStatement is exited.
+func (s *BaseMDLParserListener) ExitCreateNanoflowStatement(ctx *CreateNanoflowStatementContext) {}
+
 // EnterCreateJavaActionStatement is called when production createJavaActionStatement is entered.
 func (s *BaseMDLParserListener) EnterCreateJavaActionStatement(ctx *CreateJavaActionStatementContext) {
 }
@@ -1022,11 +1044,25 @@ func (s *BaseMDLParserListener) EnterCallMicroflowStatement(ctx *CallMicroflowSt
 // ExitCallMicroflowStatement is called when production callMicroflowStatement is exited.
 func (s *BaseMDLParserListener) ExitCallMicroflowStatement(ctx *CallMicroflowStatementContext) {}
 
+// EnterCallNanoflowStatement is called when production callNanoflowStatement is entered.
+func (s *BaseMDLParserListener) EnterCallNanoflowStatement(ctx *CallNanoflowStatementContext) {}
+
+// ExitCallNanoflowStatement is called when production callNanoflowStatement is exited.
+func (s *BaseMDLParserListener) ExitCallNanoflowStatement(ctx *CallNanoflowStatementContext) {}
+
 // EnterCallJavaActionStatement is called when production callJavaActionStatement is entered.
 func (s *BaseMDLParserListener) EnterCallJavaActionStatement(ctx *CallJavaActionStatementContext) {}
 
 // ExitCallJavaActionStatement is called when production callJavaActionStatement is exited.
 func (s *BaseMDLParserListener) ExitCallJavaActionStatement(ctx *CallJavaActionStatementContext) {}
+
+// EnterCallJavaScriptActionStatement is called when production callJavaScriptActionStatement is entered.
+func (s *BaseMDLParserListener) EnterCallJavaScriptActionStatement(ctx *CallJavaScriptActionStatementContext) {
+}
+
+// ExitCallJavaScriptActionStatement is called when production callJavaScriptActionStatement is exited.
+func (s *BaseMDLParserListener) ExitCallJavaScriptActionStatement(ctx *CallJavaScriptActionStatementContext) {
+}
 
 // EnterExecuteDatabaseQueryStatement is called when production executeDatabaseQueryStatement is entered.
 func (s *BaseMDLParserListener) EnterExecuteDatabaseQueryStatement(ctx *ExecuteDatabaseQueryStatementContext) {
@@ -1167,6 +1203,12 @@ func (s *BaseMDLParserListener) EnterShowMessageStatement(ctx *ShowMessageStatem
 
 // ExitShowMessageStatement is called when production showMessageStatement is exited.
 func (s *BaseMDLParserListener) ExitShowMessageStatement(ctx *ShowMessageStatementContext) {}
+
+// EnterDownloadFileStatement is called when production downloadFileStatement is entered.
+func (s *BaseMDLParserListener) EnterDownloadFileStatement(ctx *DownloadFileStatementContext) {}
+
+// ExitDownloadFileStatement is called when production downloadFileStatement is exited.
+func (s *BaseMDLParserListener) ExitDownloadFileStatement(ctx *DownloadFileStatementContext) {}
 
 // EnterThrowStatement is called when production throwStatement is entered.
 func (s *BaseMDLParserListener) EnterThrowStatement(ctx *ThrowStatementContext) {}

@@ -22,6 +22,13 @@ func listMicroflows(ctx *ExecContext, moduleName string) error {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
 
+	// Validate module exists if specified
+	if moduleName != "" {
+		if _, err := findModule(ctx, moduleName); err != nil {
+			return err
+		}
+	}
+
 	// Get all microflows
 	microflows, err := ctx.Backend.ListMicroflows()
 	if err != nil {
@@ -84,6 +91,13 @@ func listNanoflows(ctx *ExecContext, moduleName string) error {
 	h, err := getHierarchy(ctx)
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
+	}
+
+	// Validate module exists if specified
+	if moduleName != "" {
+		if _, err := findModule(ctx, moduleName); err != nil {
+			return err
+		}
 	}
 
 	// Get all nanoflows
@@ -273,6 +287,12 @@ func describeMicroflow(ctx *ExecContext, name ast.QualifiedName) error {
 	// BEGIN block
 	lines = append(lines, "begin")
 
+	prevDescribingReturnValue := ctx.DescribingMicroflowHasReturnValue
+	ctx.DescribingMicroflowHasReturnValue = microflowHasReturnValue(targetMf)
+	defer func() {
+		ctx.DescribingMicroflowHasReturnValue = prevDescribingReturnValue
+	}()
+
 	// Generate activities
 	if targetMf.ObjectCollection != nil && len(targetMf.ObjectCollection.Objects) > 0 {
 		activityLines := formatMicroflowActivities(ctx, targetMf, entityNames, microflowNames)
@@ -314,7 +334,10 @@ func describeNanoflow(ctx *ExecContext, name ast.QualifiedName) error {
 
 	// Build entity name lookup
 	entityNames := make(map[model.ID]string)
-	domainModels, _ := ctx.Backend.ListDomainModels()
+	domainModels, err := ctx.Backend.ListDomainModels()
+	if err != nil {
+		return mdlerrors.NewBackend("list domain models", err)
+	}
 	for _, dm := range domainModels {
 		modName := h.GetModuleName(dm.ContainerID)
 		for _, entity := range dm.Entities {
@@ -324,7 +347,10 @@ func describeNanoflow(ctx *ExecContext, name ast.QualifiedName) error {
 
 	// Build microflow/nanoflow name lookup (used for call actions)
 	microflowNames := make(map[model.ID]string)
-	allMicroflows, _ := ctx.Backend.ListMicroflows()
+	allMicroflows, err := ctx.Backend.ListMicroflows()
+	if err != nil {
+		return mdlerrors.NewBackend("list microflows", err)
+	}
 	for _, mf := range allMicroflows {
 		microflowNames[mf.ID] = h.GetQualifiedName(mf.ContainerID, mf.Name)
 	}
@@ -461,7 +487,73 @@ func describeMicroflowToString(ctx *ExecContext, name ast.QualifiedName) (string
 	}
 
 	sourceMap := make(map[string]elkSourceRange)
-	mdl := renderMicroflowMDL(ctx, targetMf, name, entityNames, microflowNames, sourceMap)
+	mdl := renderMicroflowMDL(ctx, "microflow", targetMf, name, entityNames, microflowNames, sourceMap)
+	return mdl, sourceMap, nil
+}
+
+// describeNanoflowToString generates MDL source for a nanoflow and returns it as a string
+// along with a source map mapping node IDs to line ranges.
+func describeNanoflowToString(ctx *ExecContext, name ast.QualifiedName) (string, map[string]elkSourceRange, error) {
+	h, err := getHierarchy(ctx)
+	if err != nil {
+		return "", nil, mdlerrors.NewBackend("build hierarchy", err)
+	}
+
+	entityNames := make(map[model.ID]string)
+	domainModels, err := ctx.Backend.ListDomainModels()
+	if err != nil {
+		return "", nil, mdlerrors.NewBackend("list domain models", err)
+	}
+	for _, dm := range domainModels {
+		modName := h.GetModuleName(dm.ContainerID)
+		for _, entity := range dm.Entities {
+			entityNames[entity.ID] = modName + "." + entity.Name
+		}
+	}
+
+	microflowNames := make(map[model.ID]string)
+	allMicroflows, err := ctx.Backend.ListMicroflows()
+	if err != nil {
+		return "", nil, mdlerrors.NewBackend("list microflows", err)
+	}
+	for _, mf := range allMicroflows {
+		microflowNames[mf.ID] = h.GetQualifiedName(mf.ContainerID, mf.Name)
+	}
+
+	allNanoflows, err := ctx.Backend.ListNanoflows()
+	if err != nil {
+		return "", nil, mdlerrors.NewBackend("list nanoflows", err)
+	}
+	for _, nf := range allNanoflows {
+		microflowNames[nf.ID] = h.GetQualifiedName(nf.ContainerID, nf.Name)
+	}
+
+	var targetNf *microflows.Nanoflow
+	for _, nf := range allNanoflows {
+		modID := h.FindModuleID(nf.ContainerID)
+		modName := h.GetModuleName(modID)
+		if modName == name.Module && nf.Name == name.Name {
+			targetNf = nf
+			break
+		}
+	}
+
+	if targetNf == nil {
+		return "", nil, mdlerrors.NewNotFound("nanoflow", name.String())
+	}
+
+	// Wrap nanoflow as a Microflow so renderMicroflowMDL can handle it
+	wrapperMf := &microflows.Microflow{
+		Documentation:      targetNf.Documentation,
+		Excluded:           targetNf.Excluded,
+		Parameters:         targetNf.Parameters,
+		ReturnType:         targetNf.ReturnType,
+		ObjectCollection:   targetNf.ObjectCollection,
+		AllowedModuleRoles: targetNf.AllowedModuleRoles,
+	}
+
+	sourceMap := make(map[string]elkSourceRange)
+	mdl := renderMicroflowMDL(ctx, "nanoflow", wrapperMf, name, entityNames, microflowNames, sourceMap)
 	return mdl, sourceMap, nil
 }
 
@@ -474,12 +566,19 @@ func describeMicroflowToString(ctx *ExecContext, name ast.QualifiedName) (string
 // ELK node IDs → line ranges for visualization; pass nil when not needed.
 func renderMicroflowMDL(
 	ctx *ExecContext,
+	flowType string,
 	mf *microflows.Microflow,
 	name ast.QualifiedName,
 	entityNames map[model.ID]string,
 	microflowNames map[model.ID]string,
 	sourceMap map[string]elkSourceRange,
 ) string {
+	prevDescribingReturnValue := ctx.DescribingMicroflowHasReturnValue
+	ctx.DescribingMicroflowHasReturnValue = microflowHasReturnValue(mf)
+	defer func() {
+		ctx.DescribingMicroflowHasReturnValue = prevDescribingReturnValue
+	}()
+
 	var lines []string
 
 	if mf.Documentation != "" {
@@ -496,7 +595,7 @@ func renderMicroflowMDL(
 
 	qualifiedName := name.Module + "." + name.Name
 	if len(mf.Parameters) > 0 {
-		lines = append(lines, fmt.Sprintf("create or modify microflow %s (", qualifiedName))
+		lines = append(lines, fmt.Sprintf("create or modify %s %s (", flowType, qualifiedName))
 		for i, param := range mf.Parameters {
 			paramType := "Object"
 			if param.Type != nil {
@@ -510,7 +609,7 @@ func renderMicroflowMDL(
 		}
 		lines = append(lines, ")")
 	} else {
-		lines = append(lines, fmt.Sprintf("create or modify microflow %s ()", qualifiedName))
+		lines = append(lines, fmt.Sprintf("create or modify %s %s ()", flowType, qualifiedName))
 	}
 
 	if mf.ReturnType != nil {
@@ -550,13 +649,21 @@ func renderMicroflowMDL(
 			roles[i] = string(r)
 		}
 		lines = append(lines, "")
-		lines = append(lines, fmt.Sprintf("grant execute on microflow %s.%s to %s;",
-			name.Module, name.Name, strings.Join(roles, ", ")))
+		lines = append(lines, fmt.Sprintf("grant execute on %s %s.%s to %s;",
+			flowType, name.Module, name.Name, strings.Join(roles, ", ")))
 	}
 
 	lines = append(lines, "/")
 
 	return strings.Join(lines, "\n")
+}
+
+func microflowHasReturnValue(mf *microflows.Microflow) bool {
+	if mf == nil || mf.ReturnType == nil {
+		return false
+	}
+	_, isVoid := mf.ReturnType.(*microflows.VoidType)
+	return !isVoid
 }
 
 // formatMicroflowDataType formats a microflow data type for MDL output.

@@ -150,6 +150,39 @@ func buildCallMicroflowStatement(ctx parser.ICallMicroflowStatementContext) *ast
 	return stmt
 }
 
+// buildCallNanoflowStatement converts CALL NANOFLOW statement context to CallNanoflowStmt.
+// Grammar: (VARIABLE EQUALS)? CALL NANOFLOW qualifiedName LPAREN callArgumentList? RPAREN onErrorClause?
+func buildCallNanoflowStatement(ctx parser.ICallNanoflowStatementContext) *ast.CallNanoflowStmt {
+	if ctx == nil {
+		return nil
+	}
+	callCtx := ctx.(*parser.CallNanoflowStatementContext)
+
+	stmt := &ast.CallNanoflowStmt{}
+
+	// Get result variable if present
+	if v := callCtx.VARIABLE(); v != nil {
+		stmt.OutputVariable = strings.TrimPrefix(v.GetText(), "$")
+	}
+
+	// Get nanoflow name
+	if qn := callCtx.QualifiedName(); qn != nil {
+		stmt.NanoflowName = buildQualifiedName(qn)
+	}
+
+	// Get arguments from callArgumentList
+	if argList := callCtx.CallArgumentList(); argList != nil {
+		stmt.Arguments = buildCallArgumentList(argList)
+	}
+
+	// Check for ON ERROR clause
+	if errClause := callCtx.OnErrorClause(); errClause != nil {
+		stmt.ErrorHandling = buildOnErrorClause(errClause)
+	}
+
+	return stmt
+}
+
 // buildCallJavaActionStatement converts CALL JAVA ACTION statement context to CallJavaActionStmt.
 // Grammar: (VARIABLE EQUALS)? CALL JAVA ACTION qualifiedName LPAREN callArgumentList? RPAREN
 func buildCallJavaActionStatement(ctx parser.ICallJavaActionStatementContext) *ast.CallJavaActionStmt {
@@ -166,6 +199,39 @@ func buildCallJavaActionStatement(ctx parser.ICallJavaActionStatementContext) *a
 	}
 
 	// Get java action name
+	if qn := callCtx.QualifiedName(); qn != nil {
+		stmt.ActionName = buildQualifiedName(qn)
+	}
+
+	// Get arguments from callArgumentList
+	if argList := callCtx.CallArgumentList(); argList != nil {
+		stmt.Arguments = buildCallArgumentList(argList)
+	}
+
+	// Check for ON ERROR clause
+	if errClause := callCtx.OnErrorClause(); errClause != nil {
+		stmt.ErrorHandling = buildOnErrorClause(errClause)
+	}
+
+	return stmt
+}
+
+// buildCallJavaScriptActionStatement converts CALL JAVASCRIPT ACTION statement context to CallJavaScriptActionStmt.
+// Grammar: (VARIABLE EQUALS)? CALL JAVASCRIPT ACTION qualifiedName LPAREN callArgumentList? RPAREN
+func buildCallJavaScriptActionStatement(ctx parser.ICallJavaScriptActionStatementContext) *ast.CallJavaScriptActionStmt {
+	if ctx == nil {
+		return nil
+	}
+	callCtx := ctx.(*parser.CallJavaScriptActionStatementContext)
+
+	stmt := &ast.CallJavaScriptActionStmt{}
+
+	// Get result variable if present
+	if v := callCtx.VARIABLE(); v != nil {
+		stmt.OutputVariable = strings.TrimPrefix(v.GetText(), "$")
+	}
+
+	// Get javascript action name
 	if qn := callCtx.QualifiedName(); qn != nil {
 		stmt.ActionName = buildQualifiedName(qn)
 	}
@@ -810,6 +876,23 @@ func buildShowMessageStatement(ctx parser.IShowMessageStatementContext) *ast.Sho
 		}
 	}
 
+	return stmt
+}
+
+// buildDownloadFileStatement converts downloadFileStatement context to DownloadFileStmt.
+func buildDownloadFileStatement(ctx parser.IDownloadFileStatementContext) *ast.DownloadFileStmt {
+	if ctx == nil {
+		return nil
+	}
+	dlCtx := ctx.(*parser.DownloadFileStatementContext)
+	stmt := &ast.DownloadFileStmt{}
+	if variable := dlCtx.VARIABLE(); variable != nil {
+		stmt.FileDocument = strings.TrimPrefix(variable.GetText(), "$")
+	}
+	stmt.ShowInBrowser = dlCtx.BROWSER() != nil
+	if errClause := dlCtx.OnErrorClause(); errClause != nil {
+		stmt.ErrorHandling = buildOnErrorClause(errClause)
+	}
 	return stmt
 }
 

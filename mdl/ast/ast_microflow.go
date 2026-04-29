@@ -65,6 +65,28 @@ type DropMicroflowStmt struct {
 
 func (s *DropMicroflowStmt) isStatement() {}
 
+// CreateNanoflowStmt represents: CREATE NANOFLOW Module.Name (params) RETURNS type BEGIN body END
+type CreateNanoflowStmt struct {
+	Name           QualifiedName
+	Parameters     []MicroflowParam
+	ReturnType     *MicroflowReturnType
+	Body           []MicroflowStatement
+	Documentation  string
+	Comment        string
+	Folder         string // Folder path within module
+	CreateOrModify bool
+	Excluded       bool // @excluded — document excluded from project
+}
+
+func (s *CreateNanoflowStmt) isStatement() {}
+
+// DropNanoflowStmt represents: DROP NANOFLOW Module.Name
+type DropNanoflowStmt struct {
+	Name QualifiedName
+}
+
+func (s *DropNanoflowStmt) isStatement() {}
+
 // ============================================================================
 // Microflow Body Statements
 // ============================================================================
@@ -325,6 +347,17 @@ type CallMicroflowStmt struct {
 
 func (s *CallMicroflowStmt) isMicroflowStatement() {}
 
+// CallNanoflowStmt represents: [$Result =] CALL NANOFLOW Name (args) [ON ERROR ...]
+type CallNanoflowStmt struct {
+	OutputVariable string               // Optional output variable
+	NanoflowName   QualifiedName        // Nanoflow to call
+	Arguments      []CallArgument       // Arguments
+	ErrorHandling  *ErrorHandlingClause // Optional ON ERROR clause
+	Annotations    *ActivityAnnotations // Optional @position, @caption, @color, @annotation
+}
+
+func (s *CallNanoflowStmt) isMicroflowStatement() {}
+
 // CallJavaActionStmt represents: CALL JAVA ACTION Name (args) [ON ERROR ...]
 type CallJavaActionStmt struct {
 	OutputVariable string               // Optional output variable
@@ -335,6 +368,17 @@ type CallJavaActionStmt struct {
 }
 
 func (s *CallJavaActionStmt) isMicroflowStatement() {}
+
+// CallJavaScriptActionStmt represents: CALL JAVASCRIPT ACTION Name (args) [ON ERROR ...]
+type CallJavaScriptActionStmt struct {
+	OutputVariable string               // Optional output variable
+	ActionName     QualifiedName        // JavaScript action name
+	Arguments      []CallArgument       // Arguments
+	ErrorHandling  *ErrorHandlingClause // Optional ON ERROR clause
+	Annotations    *ActivityAnnotations // Optional @position, @caption, @color, @annotation
+}
+
+func (s *CallJavaScriptActionStmt) isMicroflowStatement() {}
 
 // ExecuteDatabaseQueryStmt represents: EXECUTE DATABASE QUERY Module.Connection.QueryName ...
 type ExecuteDatabaseQueryStmt struct {
@@ -571,6 +615,16 @@ type ShowMessageStmt struct {
 }
 
 func (s *ShowMessageStmt) isMicroflowStatement() {}
+
+// DownloadFileStmt represents: DOWNLOAD FILE $FileDocument [SHOW IN BROWSER]
+type DownloadFileStmt struct {
+	FileDocument  string               // File document variable without $ prefix
+	ShowInBrowser bool                 // Whether the file opens in the browser
+	ErrorHandling *ErrorHandlingClause // Optional ON ERROR clause
+	Annotations   *ActivityAnnotations // Optional @position, @caption, @color, @annotation
+}
+
+func (s *DownloadFileStmt) isMicroflowStatement() {}
 
 // ValidationFeedbackStmt represents: VALIDATION FEEDBACK $Var/Attr MESSAGE 'message' OBJECTS [$Var1, $Var2];
 type ValidationFeedbackStmt struct {

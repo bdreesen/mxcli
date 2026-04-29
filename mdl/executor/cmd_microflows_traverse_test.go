@@ -3,6 +3,7 @@
 package executor
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/mendixlabs/mxcli/model"
@@ -43,15 +44,17 @@ func TestTraverseFlow_LinearSequence(t *testing.T) {
 	visited := make(map[model.ID]bool)
 	e.traverseFlow(mkID("start"), activityMap, flowsByOrigin, nil, visited, nil, nil, &lines, 1, nil, 0, nil)
 
-	// StartEvent produces no output, EndEvent with no return produces no output.
-	// Each activity now has a @position line before it.
-	if len(lines) != 4 {
-		t.Fatalf("expected 4 lines, got %d: %v", len(lines), lines)
+	// StartEvent produces no output. Void EndEvent emits an explicit return.
+	// Each emitted activity has a @position line before it.
+	if len(lines) != 6 {
+		t.Fatalf("expected 6 lines, got %d: %v", len(lines), lines)
 	}
 	assertContains(t, lines[0], "@position(0, 0)")
 	assertContains(t, lines[1], "$Obj = create Mod.Entity;")
 	assertContains(t, lines[2], "@position(0, 0)")
 	assertContains(t, lines[3], "commit $Obj;")
+	assertContains(t, lines[4], "@position(0, 0)")
+	assertContains(t, lines[5], "return;")
 }
 
 // =============================================================================
@@ -124,6 +127,62 @@ func TestTraverseFlow_IfElse(t *testing.T) {
 	}
 }
 
+// TestTraverseFlow_IfWithoutElse verifies that when the FALSE branch jumps
+// straight to the merge point (as emitted by the builder for `if X then ... end if`),
+// the describer does not print an empty `else` — the previous behavior produced
+// `if X then ... else end if;` which re-parses as an IF with an empty else body
+// that is indistinguishable from the original.
+func TestTraverseFlow_IfWithoutElse(t *testing.T) {
+	e := newTestExecutor()
+
+	activityMap := map[model.ID]microflows.MicroflowObject{
+		mkID("start"): &microflows.StartEvent{BaseMicroflowObject: mkObj("start")},
+		mkID("split"): &microflows.ExclusiveSplit{
+			BaseMicroflowObject: mkObj("split"),
+			SplitCondition:      &microflows.ExpressionSplitCondition{Expression: "$x > 0"},
+		},
+		mkID("true_act"): &microflows.ActionActivity{
+			BaseActivity: microflows.BaseActivity{BaseMicroflowObject: mkObj("true_act")},
+			Action:       &microflows.LogMessageAction{LogLevel: "Info", LogNodeName: "'App'", MessageTemplate: &model.Text{Translations: map[string]string{"en_US": "positive"}}},
+		},
+		mkID("merge"): &microflows.ExclusiveMerge{BaseMicroflowObject: mkObj("merge")},
+		mkID("end"):   &microflows.EndEvent{BaseMicroflowObject: mkObj("end")},
+	}
+
+	flowsByOrigin := map[model.ID][]*microflows.SequenceFlow{
+		mkID("start"): {mkFlow("start", "split")},
+		mkID("split"): {
+			mkBranchFlow("split", "true_act", &microflows.ExpressionCase{Expression: "true"}),
+			mkBranchFlow("split", "merge", &microflows.ExpressionCase{Expression: "false"}),
+		},
+		mkID("true_act"): {mkFlow("true_act", "merge")},
+		mkID("merge"):    {mkFlow("merge", "end")},
+	}
+
+	splitMergeMap := map[model.ID]model.ID{
+		mkID("split"): mkID("merge"),
+	}
+
+	var lines []string
+	visited := make(map[model.ID]bool)
+	e.traverseFlow(mkID("start"), activityMap, flowsByOrigin, splitMergeMap, visited, nil, nil, &lines, 1, nil, 0, nil)
+
+	for _, line := range lines {
+		if contains(line, "else") {
+			t.Errorf("expected no else branch in output, got: %v", lines)
+		}
+	}
+	foundENDIF := false
+	for _, line := range lines {
+		if contains(line, "end if;") {
+			foundENDIF = true
+		}
+	}
+	if !foundENDIF {
+		t.Errorf("expected end if in output: %v", lines)
+	}
+}
+
 // =============================================================================
 // collectErrorHandlerStatements
 // =============================================================================
@@ -150,11 +209,12 @@ func TestCollectErrorHandlerStatements_Simple(t *testing.T) {
 	}
 
 	stmts := e.collectErrorHandlerStatements(mkID("err_log"), activityMap, flowsByOrigin, nil, nil)
-	if len(stmts) != 1 {
-		t.Fatalf("expected 1 statement, got %d: %v", len(stmts), stmts)
+	if len(stmts) != 2 {
+		t.Fatalf("expected 2 statements, got %d: %v", len(stmts), stmts)
 	}
 	assertContains(t, stmts[0], "log error")
 	assertContains(t, stmts[0], "Something failed")
+	assertContains(t, stmts[1], "return;")
 }
 
 func TestCollectErrorHandlerStatements_StopsAtMerge(t *testing.T) {
@@ -272,5 +332,132 @@ func TestTraverseFlowWithSourceMap_RecordsRange(t *testing.T) {
 	}
 	if entry.EndLine != 6 {
 		t.Errorf("expected EndLine=6, got %d", entry.EndLine)
+	}
+}
+
+// =============================================================================
+// negateIfCondition
+// =============================================================================
+
+func TestNegateIfCondition(t *testing.T) {
+	tests := []struct {
+		in, want string
+	}{
+		{"if $Active then", "if not($Active) then"},
+		{"if $X = 42 then", "if not($X = 42) then"},
+		{"if not($Done) then", "if $Done then"},                           // double-negation removal
+		{"if not($A and $B) then", "if $A and $B then"},                   // unwrap not()
+		{"if true then", "if not(true) then"},                             // literal
+		{"something else", "something else"},                              // no match — passthrough
+		{"if find($S,'{{') >= 0 then", "if not(find($S,'{{') >= 0) then"}, // complex expression
+		{"if not($A) or $B) then", "if not(not($A) or $B)) then"},         // unbalanced — do NOT unwrap
+	}
+	for _, tt := range tests {
+		got := negateIfCondition(tt.in)
+		if got != tt.want {
+			t.Errorf("negateIfCondition(%q) = %q, want %q", tt.in, got, tt.want)
+		}
+	}
+}
+
+// =============================================================================
+// Empty-then swap: true branch → merge produces negated condition
+// =============================================================================
+
+func TestTraverseFlow_EmptyThenSwap(t *testing.T) {
+	e := newTestExecutor()
+
+	// Graph: start → split → (true) → merge → end
+	//                      → (false) → log → merge
+	// Without swap: if cond then else log end if;
+	// With swap: if not(cond) then log end if;
+	activityMap := map[model.ID]microflows.MicroflowObject{
+		mkID("start"): &microflows.StartEvent{BaseMicroflowObject: mkObj("start")},
+		mkID("split"): &microflows.ExclusiveSplit{
+			BaseMicroflowObject: mkObj("split"),
+			SplitCondition:      &microflows.ExpressionSplitCondition{Expression: "$Active"},
+		},
+		mkID("log"): &microflows.ActionActivity{
+			BaseActivity: microflows.BaseActivity{BaseMicroflowObject: mkObj("log")},
+			Action: &microflows.LogMessageAction{
+				LogLevel:    "Info",
+				LogNodeName: "'Test'",
+			},
+		},
+		mkID("merge"): &microflows.ExclusiveMerge{BaseMicroflowObject: mkObj("merge")},
+		mkID("end"):   &microflows.EndEvent{BaseMicroflowObject: mkObj("end")},
+	}
+
+	flowsByOrigin := map[model.ID][]*microflows.SequenceFlow{
+		mkID("start"): {{OriginID: mkID("start"), DestinationID: mkID("split")}},
+		mkID("split"): {
+			{OriginID: mkID("split"), DestinationID: mkID("merge"), CaseValue: microflows.EnumerationCase{Value: "true"}},
+			{OriginID: mkID("split"), DestinationID: mkID("log"), CaseValue: microflows.EnumerationCase{Value: "false"}},
+		},
+		mkID("log"):   {{OriginID: mkID("log"), DestinationID: mkID("merge")}},
+		mkID("merge"): {{OriginID: mkID("merge"), DestinationID: mkID("end")}},
+	}
+	splitMergeMap := map[model.ID]model.ID{mkID("split"): mkID("merge")}
+
+	var lines []string
+	visited := map[model.ID]bool{}
+
+	e.traverseFlow(mkID("start"), activityMap, flowsByOrigin, splitMergeMap, visited, nil, nil, &lines, 0, nil, 0, nil)
+
+	output := ""
+	for _, l := range lines {
+		output += l + "\n"
+	}
+
+	if !strings.Contains(output, "not($Active)") {
+		t.Errorf("expected negated condition 'not($Active)', got:\n%s", output)
+	}
+	if !strings.Contains(output, "log info") {
+		t.Errorf("expected 'log info' in output, got:\n%s", output)
+	}
+	if strings.Contains(output, "else") {
+		t.Errorf("expected no empty else block, got:\n%s", output)
+	}
+}
+
+func TestTraverseFlow_BothBranchesToMerge_NoSwap(t *testing.T) {
+	e := newTestExecutor()
+
+	// Graph: start → split → (true) → merge → end
+	//                      → (false) → merge
+	// Both branches empty — no swap should occur, condition stays positive.
+	activityMap := map[model.ID]microflows.MicroflowObject{
+		mkID("start"): &microflows.StartEvent{BaseMicroflowObject: mkObj("start")},
+		mkID("split"): &microflows.ExclusiveSplit{
+			BaseMicroflowObject: mkObj("split"),
+			SplitCondition:      &microflows.ExpressionSplitCondition{Expression: "$Flag"},
+		},
+		mkID("merge"): &microflows.ExclusiveMerge{BaseMicroflowObject: mkObj("merge")},
+		mkID("end"):   &microflows.EndEvent{BaseMicroflowObject: mkObj("end")},
+	}
+
+	flowsByOrigin := map[model.ID][]*microflows.SequenceFlow{
+		mkID("start"): {{OriginID: mkID("start"), DestinationID: mkID("split")}},
+		mkID("split"): {
+			{OriginID: mkID("split"), DestinationID: mkID("merge"), CaseValue: microflows.EnumerationCase{Value: "true"}},
+			{OriginID: mkID("split"), DestinationID: mkID("merge"), CaseValue: microflows.EnumerationCase{Value: "false"}},
+		},
+		mkID("merge"): {{OriginID: mkID("merge"), DestinationID: mkID("end")}},
+	}
+	splitMergeMap := map[model.ID]model.ID{mkID("split"): mkID("merge")}
+
+	var lines []string
+	visited := map[model.ID]bool{}
+
+	e.traverseFlow(mkID("start"), activityMap, flowsByOrigin, splitMergeMap, visited, nil, nil, &lines, 0, nil, 0, nil)
+
+	output := ""
+	for _, l := range lines {
+		output += l + "\n"
+	}
+
+	// Condition should NOT be negated — both branches are empty
+	if strings.Contains(output, "not($Flag)") {
+		t.Errorf("expected no negation when both branches go to merge, got:\n%s", output)
 	}
 }

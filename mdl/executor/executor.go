@@ -7,6 +7,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -32,6 +34,7 @@ type executorCache struct {
 
 	// Track items created during this session (not yet visible via reader)
 	createdMicroflows map[string]*createdMicroflowInfo // qualifiedName -> info
+	createdNanoflows  map[string]*createdNanoflowInfo  // qualifiedName -> info
 	createdPages      map[string]*createdPageInfo      // qualifiedName -> info
 	createdSnippets   map[string]*createdSnippetInfo   // qualifiedName -> info
 
@@ -43,6 +46,7 @@ type executorCache struct {
 	// rewrites. Reusing both keeps the rewrite semantically equivalent to an
 	// in-place update.
 	droppedMicroflows map[string]*droppedUnitInfo // qualifiedName -> original IDs
+	droppedNanoflows  map[string]*droppedUnitInfo // qualifiedName -> original IDs
 
 	// Track domain models modified during this session for finalization
 	modifiedDomainModels map[model.ID]string // domain model unit ID -> module name
@@ -60,6 +64,15 @@ type createdMicroflowInfo struct {
 	ModuleName       string
 	ContainerID      model.ID
 	ReturnEntityName string // Qualified entity name from return type (e.g., "Module.Entity")
+}
+
+// createdNanoflowInfo tracks a nanoflow created during this session.
+type createdNanoflowInfo struct {
+	ID               model.ID
+	Name             string
+	ModuleName       string
+	ContainerID      model.ID
+	ReturnEntityName string
 }
 
 // createdPageInfo tracks a page created during this session.
@@ -160,9 +173,31 @@ const (
 	// maxOutputLines is the per-statement line limit. Statements that produce more
 	// lines than this are aborted to prevent runaway output from infinite loops.
 	maxOutputLines = 10_000
-	// executeTimeout is the maximum wall-clock time allowed for a single statement.
-	executeTimeout = 5 * time.Minute
+	// defaultExecuteTimeout is the maximum wall-clock time allowed for a single
+	// statement when MXCLI_EXEC_TIMEOUT is not set.
+	defaultExecuteTimeout = 5 * time.Minute
 )
+
+// configuredExecuteTimeout returns the per-statement wall-clock timeout. The
+// value is read from the MXCLI_EXEC_TIMEOUT environment variable on every call
+// so long-running audits can opt into a higher ceiling without recompiling.
+//
+// Accepts either a Go duration ("12m", "2h30m") or a bare number of seconds
+// ("900"). Falls back to defaultExecuteTimeout when the variable is unset,
+// empty, or fails to parse.
+func configuredExecuteTimeout() time.Duration {
+	raw := os.Getenv("MXCLI_EXEC_TIMEOUT")
+	if raw == "" {
+		return defaultExecuteTimeout
+	}
+	if d, err := time.ParseDuration(raw); err == nil && d > 0 {
+		return d
+	}
+	if seconds, err := strconv.Atoi(raw); err == nil && seconds > 0 {
+		return time.Duration(seconds) * time.Second
+	}
+	return defaultExecuteTimeout
+}
 
 // BackendFactory creates a new backend instance for connecting to a project.
 type BackendFactory func() backend.FullBackend
@@ -221,7 +256,7 @@ func (e *Executor) SetLogger(l *diaglog.Logger) {
 
 // Execute runs a single MDL statement with output-line and wall-clock guards.
 // Each statement gets a fresh line budget. If the statement exceeds maxOutputLines
-// lines of output or runs longer than executeTimeout, it is aborted with an error.
+// lines of output or runs longer than the configured timeout, it is aborted with an error.
 func (e *Executor) Execute(stmt ast.Statement) error {
 	start := time.Now()
 
@@ -233,6 +268,7 @@ func (e *Executor) Execute(stmt ast.Statement) error {
 	// Enforce wall-clock timeout via context.WithTimeout.
 	// The goroutine pattern is retained because handlers are not yet
 	// context-aware; threading context through handlers is a follow-up.
+	executeTimeout := configuredExecuteTimeout()
 	ctx, cancel := context.WithTimeout(context.Background(), executeTimeout)
 	defer cancel()
 
@@ -374,5 +410,38 @@ func consumeDroppedMicroflow(ctx *ExecContext, qualifiedName string) *droppedUni
 		return nil
 	}
 	delete(ctx.Cache.droppedMicroflows, qualifiedName)
+	return info
+}
+
+// rememberDroppedNanoflow records the UnitID and ContainerID of a nanoflow
+// that is about to be deleted so a subsequent CREATE OR REPLACE/MODIFY can reuse them.
+func rememberDroppedNanoflow(ctx *ExecContext, qualifiedName string, id, containerID model.ID, allowedRoles []model.ID) {
+	if ctx == nil || qualifiedName == "" || id == "" {
+		return
+	}
+	if ctx.Cache == nil {
+		ctx.Cache = &executorCache{}
+	}
+	if ctx.Cache.droppedNanoflows == nil {
+		ctx.Cache.droppedNanoflows = make(map[string]*droppedUnitInfo)
+	}
+	ctx.Cache.droppedNanoflows[qualifiedName] = &droppedUnitInfo{
+		ID:           id,
+		ContainerID:  containerID,
+		AllowedRoles: cloneRoleIDs(allowedRoles),
+	}
+}
+
+// consumeDroppedNanoflow returns the original IDs of a nanoflow dropped
+// earlier in this session (if any) and removes the entry.
+func consumeDroppedNanoflow(ctx *ExecContext, qualifiedName string) *droppedUnitInfo {
+	if ctx == nil || ctx.Cache == nil || ctx.Cache.droppedNanoflows == nil {
+		return nil
+	}
+	info, ok := ctx.Cache.droppedNanoflows[qualifiedName]
+	if !ok {
+		return nil
+	}
+	delete(ctx.Cache.droppedNanoflows, qualifiedName)
 	return info
 }

@@ -109,6 +109,7 @@ createStatement
       | createConsumedMCPServiceStatement
       | createKnowledgeBaseStatement
       | createAgentStatement
+      | createNanoflowStatement
       )
     ;
 
@@ -357,6 +358,8 @@ securityStatement
     | revokeEntityAccessStatement
     | grantMicroflowAccessStatement
     | revokeMicroflowAccessStatement
+    | grantNanoflowAccessStatement
+    | revokeNanoflowAccessStatement
     | grantPageAccessStatement
     | revokePageAccessStatement
     | grantWorkflowAccessStatement
@@ -410,6 +413,14 @@ grantMicroflowAccessStatement
 
 revokeMicroflowAccessStatement
     : REVOKE EXECUTE ON MICROFLOW qualifiedName FROM moduleRoleList
+    ;
+
+grantNanoflowAccessStatement
+    : GRANT EXECUTE ON NANOFLOW qualifiedName TO moduleRoleList
+    ;
+
+revokeNanoflowAccessStatement
+    : REVOKE EXECUTE ON NANOFLOW qualifiedName FROM moduleRoleList
     ;
 
 grantPageAccessStatement
@@ -1169,6 +1180,29 @@ createMicroflowStatement
     ;
 
 /**
+ * Nanoflow creation — mirrors microflow syntax but targets client-side execution.
+ * Nanoflows cannot contain server-side actions (Java, REST, workflow, etc.).
+ *
+ * @example Basic nanoflow
+ * ```mdl
+ * CREATE NANOFLOW MyModule.ShowWelcome($UserName: String NOT NULL)
+ * BEGIN
+ *     show message "Welcome, " + $UserName;
+ * END;
+ * ```
+ *
+ * @see createMicroflowStatement for shared parameter/return type syntax
+ * @see microflowBody for available activities
+ */
+createNanoflowStatement
+    : NANOFLOW qualifiedName
+      LPAREN microflowParameterList? RPAREN
+      microflowReturnType?
+      microflowOptions?
+      BEGIN microflowBody END SEMICOLON? SLASH?
+    ;
+
+/**
  * Java Action creation with inline Java source code.
  *
  * @example Basic Java action
@@ -1249,6 +1283,12 @@ microflowBody
     : microflowStatement*
     ;
 
+/**
+ * Body shared by both microflow and nanoflow creation.
+ * CALL NANOFLOW is valid in both contexts (microflows can call nanoflows).
+ * Nanoflow-specific action restrictions are enforced at the executor level,
+ * not at the grammar level.
+ */
 microflowStatement
     : annotation* declareStatement SEMICOLON?
     | annotation* setStatement SEMICOLON?
@@ -1268,13 +1308,16 @@ microflowStatement
     | annotation* raiseErrorStatement SEMICOLON?
     | annotation* logStatement SEMICOLON?
     | annotation* callMicroflowStatement SEMICOLON?
+    | annotation* callNanoflowStatement SEMICOLON?
     | annotation* callJavaActionStatement SEMICOLON?
+    | annotation* callJavaScriptActionStatement SEMICOLON?
     | annotation* executeDatabaseQueryStatement SEMICOLON?
     | annotation* callExternalActionStatement SEMICOLON?
     | annotation* showPageStatement SEMICOLON?
     | annotation* closePageStatement SEMICOLON?
     | annotation* showHomePageStatement SEMICOLON?
     | annotation* showMessageStatement SEMICOLON?
+    | annotation* downloadFileStatement SEMICOLON?
     | annotation* throwStatement SEMICOLON?
     | annotation* listOperationStatement SEMICOLON?
     | annotation* aggregateListStatement SEMICOLON?
@@ -1432,9 +1475,18 @@ callMicroflowStatement
     : (VARIABLE EQUALS)? CALL MICROFLOW qualifiedName LPAREN callArgumentList? RPAREN onErrorClause?
     ;
 
+callNanoflowStatement
+    : (VARIABLE EQUALS)? CALL NANOFLOW qualifiedName LPAREN callArgumentList? RPAREN onErrorClause?
+    ;
+
 // $Result = CALL JAVA ACTION CustomActivities.ExecuteOQL(OqlStatement = '...');
 callJavaActionStatement
     : (VARIABLE EQUALS)? CALL JAVA ACTION qualifiedName LPAREN callArgumentList? RPAREN onErrorClause?
+    ;
+
+// $Result = CALL JAVASCRIPT ACTION Module.JSAction(Param = 'value');
+callJavaScriptActionStatement
+    : (VARIABLE EQUALS)? CALL JAVASCRIPT ACTION qualifiedName LPAREN callArgumentList? RPAREN onErrorClause?
     ;
 
 // $Result = EXECUTE DATABASE QUERY Module.Connection.QueryName (param = 'value');
@@ -1556,6 +1608,10 @@ showHomePageStatement
 // SHOW MESSAGE 'Hello {1}' TYPE Information OBJECTS [$Name];
 showMessageStatement
     : SHOW MESSAGE expression (TYPE identifierOrKeyword)? (OBJECTS LBRACKET expressionList RBRACKET)?
+    ;
+
+downloadFileStatement
+    : DOWNLOAD FILE_KW VARIABLE (SHOW IN BROWSER)? onErrorClause?
     ;
 
 throwStatement
@@ -3061,6 +3117,7 @@ showStatement
     | showOrList ACCESS ON MICROFLOW qualifiedName
     | showOrList ACCESS ON PAGE qualifiedName
     | showOrList ACCESS ON WORKFLOW qualifiedName
+    | showOrList ACCESS ON NANOFLOW qualifiedName
     | showOrList SECURITY MATRIX (IN (qualifiedName | IDENTIFIER))?
     | showOrList ODATA CLIENTS (IN (qualifiedName | IDENTIFIER))?
     | showOrList ODATA SERVICES (IN (qualifiedName | IDENTIFIER))?
@@ -3792,8 +3849,8 @@ annotationParenValue
  */
 keyword
     // DDL / DML
-    : ADD | ALTER | BATCH | CHANGE | CLOSE | COMMIT | CREATE | DECLARE | DELETE | DESCRIBE
-    | DROP | EXECUTE | EXPORT | GENERATE | IMPORT | INSERT | INTO | MODIFY | MOVE | REFRESH
+    : ADD | ALTER | BATCH | BROWSER | CHANGE | CLOSE | COMMIT | CREATE | DECLARE | DELETE | DESCRIBE
+    | DOWNLOAD | DROP | EXECUTE | EXPORT | GENERATE | IMPORT | INSERT | INTO | MODIFY | MOVE | REFRESH
     | REMOVE | RENAME | REPLACE | RETRIEVE | RETURN | ROLLBACK | SET | UPDATE
 
     // Entity / Domain model

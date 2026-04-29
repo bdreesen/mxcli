@@ -126,10 +126,7 @@ func (fb *flowBuilder) addIfStatement(s *ast.IfStmt) model.ID {
 					// Destination: prefer the first statement's own @anchor(to: ...) if it
 					// has one; otherwise fall back to trueBranchAnchor.To.
 					flow := newHorizontalFlowWithCase(splitID, actID, "true")
-					applyUserAnchors(flow, trueBranchAnchor, trueBranchAnchor)
-					if thisAnchor != nil && thisAnchor.To != ast.AnchorSideUnset {
-						flow.DestinationConnectionIndex = int(thisAnchor.To)
-					}
+					applyUserAnchors(flow, trueBranchAnchor, branchDestinationAnchor(trueBranchAnchor, thisAnchor))
 					fb.flows = append(fb.flows, flow)
 				} else {
 					flow := newHorizontalFlow(lastThenID, actID)
@@ -156,9 +153,11 @@ func (fb *flowBuilder) addIfStatement(s *ast.IfStmt) model.ID {
 				applyUserAnchors(flow, prevThenAnchor, nil)
 				fb.flows = append(fb.flows, flow)
 			} else {
-				// Empty THEN body - connect split directly to merge with true case
+				// Empty THEN body - connect split directly to merge with true case.
+				// Pass trueBranchAnchor as destination too so the @anchor(true: (..., to: Y))
+				// from the describer round-trips into the merge side of the flow.
 				flow := newHorizontalFlowWithCase(splitID, mergeID, "true")
-				applyUserAnchors(flow, trueBranchAnchor, nil)
+				applyUserAnchors(flow, trueBranchAnchor, trueBranchAnchor)
 				fb.flows = append(fb.flows, flow)
 			}
 		}
@@ -180,10 +179,7 @@ func (fb *flowBuilder) addIfStatement(s *ast.IfStmt) model.ID {
 					// First statement in ELSE - connect from split going down (false path).
 					// Same compositional rule as the THEN branch.
 					flow := newDownwardFlowWithCase(splitID, actID, "false")
-					applyUserAnchors(flow, falseBranchAnchor, falseBranchAnchor)
-					if thisAnchor != nil && thisAnchor.To != ast.AnchorSideUnset {
-						flow.DestinationConnectionIndex = int(thisAnchor.To)
-					}
+					applyUserAnchors(flow, falseBranchAnchor, branchDestinationAnchor(falseBranchAnchor, thisAnchor))
 					fb.flows = append(fb.flows, flow)
 				} else {
 					flow := newHorizontalFlow(lastElseID, actID)
@@ -216,9 +212,11 @@ func (fb *flowBuilder) addIfStatement(s *ast.IfStmt) model.ID {
 		// This keeps the "do nothing" path straight and the "do something" path below
 
 		if needMerge {
-			// FALSE path: connect split directly to merge horizontally
+			// FALSE path: connect split directly to merge horizontally.
+			// Pass falseBranchAnchor as destination too so @anchor(false: (..., to: Y))
+			// round-trips through the merge side of the split-to-merge flow.
 			flow := newHorizontalFlowWithCase(splitID, mergeID, "false")
-			applyUserAnchors(flow, falseBranchAnchor, nil)
+			applyUserAnchors(flow, falseBranchAnchor, falseBranchAnchor)
 			fb.flows = append(fb.flows, flow)
 		}
 		// When !needMerge (thenReturns): FALSE flow is deferred — the parent will
@@ -240,10 +238,7 @@ func (fb *flowBuilder) addIfStatement(s *ast.IfStmt) model.ID {
 				if lastThenID == "" {
 					// First statement in THEN - connect from split going down with "true" case
 					flow := newDownwardFlowWithCase(splitID, actID, "true")
-					applyUserAnchors(flow, trueBranchAnchor, trueBranchAnchor)
-					if thisAnchor != nil && thisAnchor.To != ast.AnchorSideUnset {
-						flow.DestinationConnectionIndex = int(thisAnchor.To)
-					}
+					applyUserAnchors(flow, trueBranchAnchor, branchDestinationAnchor(trueBranchAnchor, thisAnchor))
 					fb.flows = append(fb.flows, flow)
 				} else {
 					flow := newHorizontalFlow(lastThenID, actID)
@@ -270,9 +265,11 @@ func (fb *flowBuilder) addIfStatement(s *ast.IfStmt) model.ID {
 				applyUserAnchors(flow, prevThenAnchor, nil)
 				fb.flows = append(fb.flows, flow)
 			} else {
-				// Empty THEN body - connect split directly to merge going down and back up
+				// Empty THEN body - connect split directly to merge going down and back up.
+				// Pass trueBranchAnchor as destination too so @anchor(true: (..., to: Y))
+				// round-trips into the merge side of the flow.
 				flow := newDownwardFlowWithCase(splitID, mergeID, "true")
-				applyUserAnchors(flow, trueBranchAnchor, nil)
+				applyUserAnchors(flow, trueBranchAnchor, trueBranchAnchor)
 				fb.flows = append(fb.flows, flow)
 			}
 		}
@@ -443,9 +440,150 @@ func (fb *flowBuilder) addLoopStatement(s *ast.LoopStmt) model.ID {
 	return loop.ID
 }
 
+func isManualWhileTrueCandidate(s *ast.WhileStmt) bool {
+	if s == nil || containsBreakForCurrentLoop(s.Body) || (!containsContinueStmt(s.Body) && !containsTerminalStmt(s.Body)) {
+		return false
+	}
+	lit, ok := s.Condition.(*ast.LiteralExpr)
+	if !ok || lit.Kind != ast.LiteralBoolean {
+		return false
+	}
+	value, ok := lit.Value.(bool)
+	return ok && value
+}
+
+func containsBreakForCurrentLoop(stmts []ast.MicroflowStatement) bool {
+	for _, stmt := range stmts {
+		switch s := stmt.(type) {
+		case *ast.BreakStmt:
+			return true
+		case *ast.IfStmt:
+			if containsBreakForCurrentLoop(s.ThenBody) || containsBreakForCurrentLoop(s.ElseBody) {
+				return true
+			}
+		case *ast.LoopStmt, *ast.WhileStmt:
+			// A break inside a nested loop exits that nested loop, not this
+			// manual while-true back-edge.
+			continue
+		}
+	}
+	return false
+}
+
+func containsContinueStmt(stmts []ast.MicroflowStatement) bool {
+	for _, stmt := range stmts {
+		switch s := stmt.(type) {
+		case *ast.ContinueStmt:
+			return true
+		case *ast.IfStmt:
+			if containsContinueStmt(s.ThenBody) || containsContinueStmt(s.ElseBody) {
+				return true
+			}
+		case *ast.LoopStmt:
+			if containsContinueStmt(s.Body) {
+				return true
+			}
+		case *ast.WhileStmt:
+			if containsContinueStmt(s.Body) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (fb *flowBuilder) addManualWhileTrueStatement(s *ast.WhileStmt) model.ID {
+	mergeX := fb.posX
+	mergeY := fb.posY
+	if s.Annotations != nil && s.Annotations.Position != nil {
+		mergeX = s.Annotations.Position.X
+		mergeY = s.Annotations.Position.Y
+	}
+
+	merge := &microflows.ExclusiveMerge{
+		BaseMicroflowObject: microflows.BaseMicroflowObject{
+			BaseElement: model.BaseElement{ID: model.ID(types.GenerateID())},
+			Position:    model.Point{X: mergeX, Y: mergeY},
+			Size:        model.Size{Width: MergeSize, Height: MergeSize},
+		},
+	}
+	fb.objects = append(fb.objects, merge)
+	if fb.pendingAnnotations != nil {
+		fb.applyAnnotations(merge.ID, fb.pendingAnnotations)
+		fb.pendingAnnotations = nil
+	}
+
+	savedBackTarget := fb.manualLoopBackTarget
+	fb.manualLoopBackTarget = merge.ID
+	defer func() { fb.manualLoopBackTarget = savedBackTarget }()
+
+	fb.posX = mergeX + MergeSize + HorizontalSpacing/2
+	fb.posY = mergeY
+
+	lastBodyID := merge.ID
+	var pendingBodyCase string
+	var pendingBodyAnchor *ast.FlowAnchors
+	var prevBodyAnchor *ast.FlowAnchors
+	for _, stmt := range s.Body {
+		thisAnchor := stmtOwnAnchor(stmt)
+		actID := fb.addStatement(stmt)
+		if actID == "" {
+			continue
+		}
+		if fb.pendingAnnotations != nil {
+			fb.applyAnnotations(actID, fb.pendingAnnotations)
+			fb.pendingAnnotations = nil
+		}
+		if lastBodyID != "" && lastBodyID != actID {
+			var flow *microflows.SequenceFlow
+			if pendingBodyCase != "" {
+				flow = newHorizontalFlowWithCase(lastBodyID, actID, pendingBodyCase)
+				if pendingBodyAnchor != nil {
+					prevBodyAnchor = pendingBodyAnchor
+				}
+				pendingBodyCase = ""
+				pendingBodyAnchor = nil
+			} else {
+				flow = newHorizontalFlow(lastBodyID, actID)
+			}
+			applyUserAnchors(flow, prevBodyAnchor, thisAnchor)
+			fb.flows = append(fb.flows, flow)
+		}
+		prevBodyAnchor = thisAnchor
+		if fb.nextConnectionPoint != "" {
+			lastBodyID = fb.nextConnectionPoint
+			fb.nextConnectionPoint = ""
+			pendingBodyCase = fb.nextFlowCase
+			fb.nextFlowCase = ""
+			pendingBodyAnchor = fb.nextFlowAnchor
+			fb.nextFlowAnchor = nil
+		} else {
+			lastBodyID = actID
+		}
+	}
+
+	if lastBodyID != "" && lastBodyID != merge.ID && !lastStmtIsReturn(s.Body) {
+		var flow *microflows.SequenceFlow
+		if pendingBodyCase != "" {
+			flow = newHorizontalFlowWithCase(lastBodyID, merge.ID, pendingBodyCase)
+		} else {
+			flow = newHorizontalFlow(lastBodyID, merge.ID)
+		}
+		applyUserAnchors(flow, pendingBodyAnchor, pendingBodyAnchor)
+		fb.flows = append(fb.flows, flow)
+	}
+	fb.endsWithReturn = true
+
+	return merge.ID
+}
+
 // addWhileStatement creates a WHILE loop using LoopedActivity with WhileLoopCondition.
 // Layout matches addLoopStatement but without iterator icon space.
 func (fb *flowBuilder) addWhileStatement(s *ast.WhileStmt) model.ID {
+	if isManualWhileTrueCandidate(s) {
+		return fb.addManualWhileTrueStatement(s)
+	}
+
 	// Snapshot & clear this WHILE's own annotations so the body's recursive
 	// addStatement calls can't consume them (see addLoopStatement).
 	savedWhileAnnotations := fb.pendingAnnotations
@@ -530,4 +668,34 @@ func (fb *flowBuilder) addWhileStatement(s *ast.WhileStmt) model.ID {
 	fb.posX = loopLeftX + loopWidth + HorizontalSpacing
 
 	return loop.ID
+}
+
+func (fb *flowBuilder) addBreakEvent() model.ID {
+	event := &microflows.BreakEvent{
+		BaseMicroflowObject: microflows.BaseMicroflowObject{
+			BaseElement: model.BaseElement{ID: model.ID(types.GenerateID())},
+			Position:    model.Point{X: fb.posX, Y: fb.posY},
+			Size:        model.Size{Width: EventSize, Height: EventSize},
+		},
+	}
+	fb.objects = append(fb.objects, event)
+	fb.posX += fb.spacing
+	return event.ID
+}
+
+func (fb *flowBuilder) addContinueEvent() model.ID {
+	if fb.manualLoopBackTarget != "" {
+		return fb.manualLoopBackTarget
+	}
+
+	event := &microflows.ContinueEvent{
+		BaseMicroflowObject: microflows.BaseMicroflowObject{
+			BaseElement: model.BaseElement{ID: model.ID(types.GenerateID())},
+			Position:    model.Point{X: fb.posX, Y: fb.posY},
+			Size:        model.Size{Width: EventSize, Height: EventSize},
+		},
+	}
+	fb.objects = append(fb.objects, event)
+	fb.posX += fb.spacing
+	return event.ID
 }

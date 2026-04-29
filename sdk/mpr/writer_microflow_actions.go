@@ -65,9 +65,9 @@ func serializeMicroflowAction(action microflows.MicroflowAction) bson.D {
 		}
 		// ErrorHandlingType is required (default to Rollback)
 		doc = append(doc, bson.E{Key: "ErrorHandlingType", Value: "Rollback"})
-		// Serialize Items (ChangeActionItem) for InitialMembers
-		// IMPORTANT: Mendix BSON arrays include the count as the first element
-		items := bson.A{int32(len(a.InitialMembers))} // Start with count
+		// Serialize Items (ChangeActionItem) for InitialMembers. Mendix stores
+		// this list with storage-list marker 2, not with the item count.
+		items := bson.A{int32(2)}
 		for _, change := range a.InitialMembers {
 			item := bson.D{
 				{Key: "$ID", Value: idToBsonBinary(string(change.ID))},
@@ -99,10 +99,11 @@ func serializeMicroflowAction(action microflows.MicroflowAction) bson.D {
 			{Key: "$Type", Value: "Microflows$ChangeAction"}, // storageName differs from qualifiedName
 			{Key: "ChangeVariableName", Value: a.ChangeVariable},
 			{Key: "Commit", Value: string(a.Commit)},
+			{Key: "ErrorHandlingType", Value: "Rollback"},
 		}
-		// Serialize Items (ChangeActionItem)
-		// IMPORTANT: Mendix BSON arrays include the count as the first element
-		items := bson.A{int32(len(a.Changes))} // Start with count
+		// Serialize Items (ChangeActionItem). Mendix stores this list with
+		// storage-list marker 2, not with the item count.
+		items := bson.A{int32(2)}
 		for _, change := range a.Changes {
 			item := bson.D{
 				{Key: "$ID", Value: idToBsonBinary(string(change.ID))},
@@ -126,17 +127,14 @@ func serializeMicroflowAction(action microflows.MicroflowAction) bson.D {
 		return doc
 
 	case *microflows.CommitObjectsAction:
-		doc := bson.D{
+		return bson.D{
 			{Key: "$ID", Value: idToBsonBinary(string(a.ID))},
 			{Key: "$Type", Value: "Microflows$CommitAction"},
 			{Key: "CommitVariableName", Value: a.CommitVariable},
+			{Key: "ErrorHandlingType", Value: stringOrDefault(string(a.ErrorHandlingType), "Rollback")},
+			{Key: "RefreshInClient", Value: a.RefreshInClient},
+			{Key: "WithEvents", Value: a.WithEvents},
 		}
-		if a.ErrorHandlingType != "" && a.ErrorHandlingType != microflows.ErrorHandlingTypeRollback {
-			doc = append(doc, bson.E{Key: "ErrorHandlingType", Value: string(a.ErrorHandlingType)})
-		}
-		doc = append(doc, bson.E{Key: "RefreshInClient", Value: a.RefreshInClient})
-		doc = append(doc, bson.E{Key: "WithEvents", Value: a.WithEvents})
-		return doc
 
 	case *microflows.DeleteObjectAction:
 		return bson.D{
@@ -202,8 +200,6 @@ func serializeMicroflowAction(action microflows.MicroflowAction) bson.D {
 			{Key: "$ID", Value: idToBsonBinary(string(a.ID))},
 			{Key: "$Type", Value: "Microflows$MicroflowCallAction"},
 			{Key: "ErrorHandlingType", Value: stringOrDefault(string(a.ErrorHandlingType), "Rollback")},
-			{Key: "ResultVariableName", Value: a.ResultVariableName},
-			{Key: "UseReturnVariable", Value: a.UseReturnVariable},
 		}
 		// Serialize nested MicroflowCall structure
 		if a.MicroflowCall != nil {
@@ -211,7 +207,6 @@ func serializeMicroflowAction(action microflows.MicroflowAction) bson.D {
 				{Key: "$ID", Value: idToBsonBinary(string(a.MicroflowCall.ID))},
 				{Key: "$Type", Value: "Microflows$MicroflowCall"},
 				{Key: "Microflow", Value: a.MicroflowCall.Microflow},
-				{Key: "QueueSettings", Value: nil},
 			}
 			// Serialize parameter mappings within MicroflowCall
 			if len(a.MicroflowCall.ParameterMappings) > 0 {
@@ -221,8 +216,8 @@ func serializeMicroflowAction(action microflows.MicroflowAction) bson.D {
 					mapping := bson.D{
 						{Key: "$ID", Value: idToBsonBinary(string(pm.ID))},
 						{Key: "$Type", Value: "Microflows$MicroflowCallParameterMapping"},
-						{Key: "Parameter", Value: pm.Parameter},
 						{Key: "Argument", Value: pm.Argument},
+						{Key: "Parameter", Value: pm.Parameter},
 					}
 					mappings = append(mappings, mapping)
 				}
@@ -230,7 +225,47 @@ func serializeMicroflowAction(action microflows.MicroflowAction) bson.D {
 			} else {
 				mfCall = append(mfCall, bson.E{Key: "ParameterMappings", Value: bson.A{int32(2)}}) // Empty array with marker
 			}
+			mfCall = append(mfCall, bson.E{Key: "QueueSettings", Value: nil})
 			doc = append(doc, bson.E{Key: "MicroflowCall", Value: mfCall})
+		}
+		doc = append(doc,
+			bson.E{Key: "ResultVariableName", Value: a.ResultVariableName},
+			bson.E{Key: "UseReturnVariable", Value: a.UseReturnVariable},
+		)
+		return doc
+
+	case *microflows.NanoflowCallAction:
+		doc := bson.D{
+			{Key: "$ID", Value: idToBsonBinary(string(a.ID))},
+			{Key: "$Type", Value: "Microflows$NanoflowCallAction"},
+			// Mendix metamodel defaults to "Rollback" for all call actions, including nanoflow calls.
+			{Key: "ErrorHandlingType", Value: stringOrDefault(string(a.ErrorHandlingType), "Rollback")},
+			{Key: "OutputVariableName", Value: a.OutputVariableName},
+			{Key: "UseReturnVariable", Value: a.UseReturnVariable},
+		}
+		if a.NanoflowCall != nil {
+			nfCall := bson.D{
+				{Key: "$ID", Value: idToBsonBinary(string(a.NanoflowCall.ID))},
+				{Key: "$Type", Value: "Microflows$NanoflowCall"},
+				{Key: "Nanoflow", Value: a.NanoflowCall.Nanoflow},
+			}
+			if len(a.NanoflowCall.ParameterMappings) > 0 {
+				var mappings bson.A
+				mappings = append(mappings, int32(2))
+				for _, pm := range a.NanoflowCall.ParameterMappings {
+					mapping := bson.D{
+						{Key: "$ID", Value: idToBsonBinary(string(pm.ID))},
+						{Key: "$Type", Value: "Microflows$NanoflowCallParameterMapping"},
+						{Key: "Parameter", Value: pm.Parameter},
+						{Key: "Argument", Value: pm.Argument},
+					}
+					mappings = append(mappings, mapping)
+				}
+				nfCall = append(nfCall, bson.E{Key: "ParameterMappings", Value: mappings})
+			} else {
+				nfCall = append(nfCall, bson.E{Key: "ParameterMappings", Value: bson.A{int32(2)}})
+			}
+			doc = append(doc, bson.E{Key: "NanoflowCall", Value: nfCall})
 		}
 		return doc
 
@@ -257,6 +292,37 @@ func serializeMicroflowAction(action microflows.MicroflowAction) bson.D {
 				// Serialize Value (CodeActionParameterValue)
 				if pm.Value != nil {
 					mapping = append(mapping, bson.E{Key: "Value", Value: serializeCodeActionParameterValue(pm.Value)})
+				}
+				mappings = append(mappings, mapping)
+			}
+			doc = append(doc, bson.E{Key: "ParameterMappings", Value: mappings})
+		} else {
+			doc = append(doc, bson.E{Key: "ParameterMappings", Value: bson.A{int32(2)}}) // Empty array with marker
+		}
+		return doc
+
+	case *microflows.JavaScriptActionCallAction:
+		doc := bson.D{
+			{Key: "$ID", Value: idToBsonBinary(string(a.ID))},
+			{Key: "$Type", Value: "Microflows$JavaScriptActionCallAction"},
+			{Key: "ErrorHandlingType", Value: stringOrDefault(string(a.ErrorHandlingType), "Rollback")},
+			{Key: "JavaScriptAction", Value: a.JavaScriptAction},
+			{Key: "OutputVariableName", Value: a.OutputVariableName},
+			{Key: "UseReturnVariable", Value: a.UseReturnVariable},
+		}
+		// Serialize parameter mappings
+		if len(a.ParameterMappings) > 0 {
+			var mappings bson.A
+			mappings = append(mappings, int32(2)) // Array marker
+			for _, pm := range a.ParameterMappings {
+				mapping := bson.D{
+					{Key: "$ID", Value: idToBsonBinary(string(pm.ID))},
+					{Key: "$Type", Value: "Microflows$JavaScriptActionParameterMapping"},
+					{Key: "Parameter", Value: pm.Parameter},
+				}
+				// Serialize ParameterValue (CodeActionParameterValue) — JS uses "ParameterValue" key, not "Value"
+				if pm.Value != nil {
+					mapping = append(mapping, bson.E{Key: "ParameterValue", Value: serializeCodeActionParameterValue(pm.Value)})
 				}
 				mappings = append(mappings, mapping)
 			}
@@ -345,15 +411,16 @@ func serializeMicroflowAction(action microflows.MicroflowAction) bson.D {
 			formSettingsID = model.ID(generateUUID())
 		}
 
-		// Build ParameterMappings inside FormSettings
-		paramMappings := bson.A{int32(len(a.PageParameterMappings))}
+		// Build ParameterMappings inside FormSettings. Mendix storage lists use
+		// a marker as the first element; it is not the number of mappings.
+		paramMappings := bson.A{int32(2)}
 		for _, pm := range a.PageParameterMappings {
 			mapping := bson.D{
 				{Key: "$ID", Value: idToBsonBinary(string(pm.ID))},
 				{Key: "$Type", Value: "Forms$PageParameterMapping"}, // Forms$, not Microflows$
 				{Key: "Argument", Value: pm.Argument},
 				{Key: "Parameter", Value: pm.Parameter}, // BY_NAME_REFERENCE
-				{Key: "Variable", Value: nil},
+				{Key: "Variable", Value: emptyPageVariable()},
 			}
 			paramMappings = append(paramMappings, mapping)
 		}
@@ -398,6 +465,15 @@ func serializeMicroflowAction(action microflows.MicroflowAction) bson.D {
 			{Key: "Template", Value: serializeTextTemplate(a.Template, a.TemplateParameters)},
 		}
 		return doc
+
+	case *microflows.DownloadFileAction:
+		return bson.D{
+			{Key: "$ID", Value: idToBsonBinary(string(a.ID))},
+			{Key: "$Type", Value: "Microflows$DownloadFileAction"},
+			{Key: "ErrorHandlingType", Value: stringOrDefault(string(a.ErrorHandlingType), "Rollback")},
+			{Key: "FileDocumentVariableName", Value: a.FileDocument},
+			{Key: "ShowInBrowser", Value: a.ShowInBrowser},
+		}
 
 	case *microflows.ValidationFeedbackAction:
 		doc := bson.D{
@@ -466,6 +542,17 @@ func serializeMicroflowAction(action microflows.MicroflowAction) bson.D {
 
 	default:
 		return nil
+	}
+}
+
+func emptyPageVariable() bson.D {
+	return bson.D{
+		{Key: "$ID", Value: idToBsonBinary(generateUUID())},
+		{Key: "$Type", Value: "Forms$PageVariable"},
+		{Key: "PageParameter", Value: ""},
+		{Key: "SnippetParameter", Value: ""},
+		{Key: "UseAllPages", Value: false},
+		{Key: "Widget", Value: ""},
 	}
 }
 
@@ -792,6 +879,20 @@ func serializeRestResultHandling(rh microflows.ResultHandling, outputVar string)
 			bson.E{Key: "VariableType", Value: varType},
 		)
 		return doc
+
+	case *microflows.ResultHandlingHttpResponse:
+		return bson.D{
+			{Key: "$ID", Value: idToBsonBinary(string(h.ID))},
+			{Key: "$Type", Value: "Microflows$ResultHandling"},
+			{Key: "Bind", Value: outputVar != ""},
+			{Key: "ImportMappingCall", Value: nil},
+			{Key: "ResultVariableName", Value: outputVar},
+			{Key: "VariableType", Value: bson.D{
+				{Key: "$ID", Value: idToBsonBinary(GenerateID())},
+				{Key: "$Type", Value: "DataTypes$ObjectType"},
+				{Key: "Entity", Value: "System.HttpResponse"},
+			}},
+		}
 
 	case *microflows.ResultHandlingNone:
 		return bson.D{
