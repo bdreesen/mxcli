@@ -331,12 +331,13 @@ func (fb *flowBuilder) resolveAssociationPaths(expr ast.Expression) ast.Expressi
 		}
 	case *ast.SourceExpr:
 		if e.Source != "" {
+			// Non-empty Source is the exact expression text to write back.
+			// Rebuilding it here would defeat the whitespace-preservation
+			// purpose of SourceExpr, so keep the parsed tree only for callers
+			// that need semantic inspection.
 			return e
 		}
-		return &ast.SourceExpr{
-			Expression: fb.resolveAssociationPaths(e.Expression),
-			Source:     e.Source,
-		}
+		return fb.resolveAssociationPaths(e.Expression)
 	default:
 		return expr
 	}
