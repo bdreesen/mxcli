@@ -150,12 +150,14 @@ type FlowAnchors struct {
 // ActivityAnnotations holds metadata annotations for microflow activities.
 // These are emitted as @position, @caption, @color, @annotation, @excluded, @anchor lines in MDL.
 type ActivityAnnotations struct {
-	Position       *Position    // @position(x, y)
-	Caption        string       // @caption 'text'
-	Color          string       // @color Green
-	AnnotationText string       // @annotation 'text'
-	Excluded       bool         // @excluded
-	Anchor         *FlowAnchors // @anchor(from: X, to: Y) — anchors of the flow leaving this statement
+	Position        *Position    // @position(x, y)
+	Caption         string       // @caption 'text'
+	Color           string       // @color Green
+	AnnotationText  string       // @annotation 'text'
+	FreeAnnotation  string       // @annotation 'text' before @position/@anchor, kept free-floating
+	FreeAnnotations []string     // Multiple free-floating @annotation lines in source order
+	Excluded        bool         // @excluded
+	Anchor          *FlowAnchors // @anchor(from: X, to: Y) — anchors of the flow leaving this statement
 
 	// Split-specific anchors for IF statements. When the statement is not an
 	// IF these remain nil. The grammar accepts them on IfStmt only:

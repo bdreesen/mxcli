@@ -74,11 +74,7 @@ func (fb *flowBuilder) buildFlowGraph(stmts []ast.MicroflowStatement, returns *a
 
 		activityID := fb.addStatement(stmt)
 		if activityID != "" {
-			// If there are pending annotations, apply them to this activity
-			if fb.pendingAnnotations != nil {
-				fb.applyAnnotations(activityID, fb.pendingAnnotations)
-				fb.pendingAnnotations = nil
-			}
+			fb.applyPendingAnnotations(activityID)
 			// Connect to previous object with horizontal SequenceFlow
 			var flow *microflows.SequenceFlow
 			if pendingCase != "" {
@@ -120,6 +116,9 @@ func (fb *flowBuilder) buildFlowGraph(stmts []ast.MicroflowStatement, returns *a
 
 	// Handle leftover pending annotations (free-floating annotation text)
 	if fb.pendingAnnotations != nil {
+		for _, text := range freeAnnotationTexts(fb.pendingAnnotations) {
+			fb.attachFreeAnnotation(text)
+		}
 		if fb.pendingAnnotations.AnnotationText != "" {
 			fb.attachFreeAnnotation(fb.pendingAnnotations.AnnotationText)
 		}
@@ -427,6 +426,13 @@ func (fb *flowBuilder) addStatement(stmt ast.MicroflowStatement) model.ID {
 	if fb.pendingAnnotations != nil && fb.pendingAnnotations.Position != nil {
 		fb.posX = fb.pendingAnnotations.Position.X
 		fb.posY = fb.pendingAnnotations.Position.Y
+	}
+	if fb.pendingAnnotations != nil {
+		for _, text := range freeAnnotationTexts(fb.pendingAnnotations) {
+			fb.attachFreeAnnotation(text)
+		}
+		fb.pendingAnnotations.FreeAnnotation = ""
+		fb.pendingAnnotations.FreeAnnotations = nil
 	}
 
 	switch s := stmt.(type) {

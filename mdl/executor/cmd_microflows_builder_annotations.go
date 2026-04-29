@@ -119,6 +119,12 @@ func (fb *flowBuilder) mergeStatementAnnotations(stmt ast.MicroflowStatement) {
 	if ann.AnnotationText != "" {
 		fb.pendingAnnotations.AnnotationText = ann.AnnotationText
 	}
+	if texts := freeAnnotationTexts(ann); len(texts) > 0 {
+		fb.pendingAnnotations.FreeAnnotations = append(fb.pendingAnnotations.FreeAnnotations, texts...)
+		if fb.pendingAnnotations.FreeAnnotation == "" {
+			fb.pendingAnnotations.FreeAnnotation = texts[0]
+		}
+	}
 	if ann.Anchor != nil {
 		fb.pendingAnnotations.Anchor = ann.Anchor
 	}
@@ -189,6 +195,14 @@ func (fb *flowBuilder) applyAnnotations(activityID model.ID, ann *ast.ActivityAn
 	if ann.AnnotationText != "" {
 		fb.attachAnnotation(ann.AnnotationText, activityID)
 	}
+}
+
+func (fb *flowBuilder) applyPendingAnnotations(activityID model.ID) {
+	if activityID == "" || fb.pendingAnnotations == nil {
+		return
+	}
+	fb.applyAnnotations(activityID, fb.pendingAnnotations)
+	fb.pendingAnnotations = nil
 }
 
 // addEndEventWithReturn creates an EndEvent with the specified return value.
@@ -274,4 +288,20 @@ func (fb *flowBuilder) attachFreeAnnotation(text string) {
 		Caption: text,
 	}
 	fb.objects = append(fb.objects, annotation)
+}
+
+func freeAnnotationTexts(ann *ast.ActivityAnnotations) []string {
+	if ann == nil {
+		return nil
+	}
+	texts := append([]string(nil), ann.FreeAnnotations...)
+	if ann.FreeAnnotation != "" {
+		for _, text := range texts {
+			if text == ann.FreeAnnotation {
+				return texts
+			}
+		}
+		texts = append(texts, ann.FreeAnnotation)
+	}
+	return texts
 }

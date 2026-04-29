@@ -237,6 +237,7 @@ authentication basic, session
 | Caption | `@caption 'text'` | Custom caption (before activity) |
 | Color | `@color Green` | Background color (before activity) |
 | Annotation | `@annotation 'text'` | Visual note attached to next activity |
+| Free annotation | `@annotation 'text'` before `@position(...)` | Free-floating visual note preserved by order |
 | IF | `if condition then ... [else ...] end if;` | |
 | LOOP | `loop $item in $list begin ... end loop;` | FOR EACH over list |
 | WHILE | `while condition begin ... end while;` | Condition-based loop |

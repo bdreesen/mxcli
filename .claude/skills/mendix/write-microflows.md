@@ -559,6 +559,7 @@ commit $Product;
 
 **Rules:**
 - `@annotation` before an activity attaches the note to that activity
+- `@annotation` before activity-binding metadata such as `@position`, `@caption`, `@color`, `@excluded`, or `@anchor` stays free-floating when later metadata binds the following activity
 - `@annotation` at the end (no following activity) creates a free-floating note
 - Escape single quotes by doubling: `@annotation 'Don''t forget'`
 - `@position` always appears in DESCRIBE output; `@caption` only when custom; `@color` only when not Default

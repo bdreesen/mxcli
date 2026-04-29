@@ -160,6 +160,50 @@ func TestEmitObjectAnnotations_EscapesMultilineText(t *testing.T) {
 	}
 }
 
+func TestPrependFreeAnnotationLines_ModelAnnotationsStayFree(t *testing.T) {
+	oc := &microflows.MicroflowObjectCollection{
+		Objects: []microflows.MicroflowObject{
+			&microflows.Annotation{
+				BaseMicroflowObject: mkObj("free-note"),
+				Caption:             "free synthetic note",
+			},
+			&microflows.Annotation{
+				BaseMicroflowObject: mkObj("attached-note"),
+				Caption:             "attached synthetic note",
+			},
+		},
+		AnnotationFlows: []*microflows.AnnotationFlow{
+			{
+				BaseElement:   model.BaseElement{ID: mkID("annotation-flow")},
+				OriginID:      mkID("attached-note"),
+				DestinationID: mkID("activity"),
+			},
+		},
+	}
+
+	activityLines := []string{
+		"@position(100, 200)",
+		"@annotation 'attached synthetic note'",
+		"log info 'Synthetic' 'message';",
+	}
+
+	gotLines := prependFreeAnnotationLines(oc, activityLines)
+	got := strings.Join(gotLines, "\n")
+
+	want := strings.Join([]string{
+		"@annotation 'free synthetic note'",
+		"@position(100, 200)",
+		"@annotation 'attached synthetic note'",
+		"log info 'Synthetic' 'message';",
+	}, "\n")
+	if got != want {
+		t.Fatalf("free annotation describe output mismatch\nwant:\n%s\n\ngot:\n%s", want, got)
+	}
+	if strings.Count(got, "attached synthetic note") != 1 {
+		t.Fatalf("attached annotation was emitted as free too:\n%s", got)
+	}
+}
+
 // =============================================================================
 // formatErrorHandlingSuffix
 // =============================================================================

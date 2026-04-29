@@ -1589,3 +1589,99 @@ func TestCalculatedAttributeOnNonPersistentEntity(t *testing.T) {
 		t.Error("Value attribute should be calculated")
 	}
 }
+
+func TestAnnotationBeforePositionIsFreeFloating(t *testing.T) {
+	input := `CREATE MICROFLOW Synthetic.Check ()
+RETURNS Boolean AS $Success
+BEGIN
+  @annotation 'free note'
+  @position(100, 200)
+  LOG INFO NODE 'SyntheticLog' 'message';
+  RETURN true;
+END;`
+
+	prog, errs := Build(input)
+	if len(errs) > 0 {
+		t.Fatalf("unexpected parse errors: %v", errs)
+	}
+
+	stmt := prog.Statements[0].(*ast.CreateMicroflowStmt)
+	logStmt, ok := stmt.Body[0].(*ast.LogStmt)
+	if !ok {
+		t.Fatalf("Expected LogStmt, got %T", stmt.Body[0])
+	}
+	if logStmt.Annotations == nil {
+		t.Fatal("expected annotations")
+	}
+	if logStmt.Annotations.FreeAnnotation != "free note" {
+		t.Fatalf("free annotation = %q, want free note", logStmt.Annotations.FreeAnnotation)
+	}
+	if logStmt.Annotations.AnnotationText != "" {
+		t.Fatalf("attached annotation = %q, want empty", logStmt.Annotations.AnnotationText)
+	}
+}
+
+func TestMultipleAnnotationsBeforePositionStayFreeFloating(t *testing.T) {
+	input := `CREATE MICROFLOW Synthetic.Check ()
+RETURNS Boolean AS $Success
+BEGIN
+  @annotation 'first free note'
+  @annotation 'second free note'
+  @annotation 'third free note'
+  @position(100, 200)
+  LOG INFO NODE 'SyntheticLog' 'message';
+  RETURN true;
+END;`
+
+	prog, errs := Build(input)
+	if len(errs) > 0 {
+		t.Fatalf("unexpected parse errors: %v", errs)
+	}
+
+	stmt := prog.Statements[0].(*ast.CreateMicroflowStmt)
+	logStmt, ok := stmt.Body[0].(*ast.LogStmt)
+	if !ok {
+		t.Fatalf("Expected LogStmt, got %T", stmt.Body[0])
+	}
+	if logStmt.Annotations == nil {
+		t.Fatal("expected annotations")
+	}
+	want := []string{"first free note", "second free note", "third free note"}
+	if got := logStmt.Annotations.FreeAnnotations; len(got) != len(want) || got[0] != want[0] || got[1] != want[1] || got[2] != want[2] {
+		t.Fatalf("free annotations = %#v, want %#v", got, want)
+	}
+	if logStmt.Annotations.AnnotationText != "" {
+		t.Fatalf("attached annotation = %q, want empty", logStmt.Annotations.AnnotationText)
+	}
+}
+
+func TestAnnotationAfterPositionStaysAttached(t *testing.T) {
+	input := `CREATE MICROFLOW Synthetic.Check ()
+RETURNS Boolean AS $Success
+BEGIN
+  @position(100, 200)
+  @annotation 'attached note'
+  LOG INFO NODE 'SyntheticLog' 'message';
+  RETURN true;
+END;`
+
+	prog, errs := Build(input)
+	if len(errs) > 0 {
+		t.Fatalf("unexpected parse errors: %v", errs)
+	}
+
+	stmt := prog.Statements[0].(*ast.CreateMicroflowStmt)
+	logStmt, ok := stmt.Body[0].(*ast.LogStmt)
+	if !ok {
+		t.Fatalf("Expected LogStmt, got %T", stmt.Body[0])
+	}
+	if logStmt.Annotations == nil {
+		t.Fatal("expected annotations")
+	}
+	if logStmt.Annotations.AnnotationText != "attached note" {
+		t.Fatalf("attached annotation = %q, want attached note", logStmt.Annotations.AnnotationText)
+	}
+	if logStmt.Annotations.FreeAnnotation != "" {
+		t.Fatalf("free annotation = %q, want empty", logStmt.Annotations.FreeAnnotation)
+	}
+}
