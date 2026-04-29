@@ -974,7 +974,7 @@ func TestFormatAction_JavaScriptActionCall_NilParamValue(t *testing.T) {
 		},
 	}
 	got := e.formatAction(action, nil, nil)
-	want := "call javascript action MyModule.MyJSAction(Input = ...);"
+	want := "call javascript action MyModule.MyJSAction();"
 	if got != want {
 		t.Errorf("got %q, want %q", got, want)
 	}
@@ -1002,6 +1002,105 @@ func TestFormatAction_JavaScriptActionCall_EmptyNameWithParams(t *testing.T) {
 	}
 	got := e.formatAction(action, nil, nil)
 	want := "-- JavaScriptAction: missing action reference (1 param)"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestFormatAction_JavaScriptActionCall_EmptyParamValues(t *testing.T) {
+	e := newTestExecutor()
+	action := &microflows.JavaScriptActionCallAction{
+		JavaScriptAction: "MyModule.MyJSAction",
+		ParameterMappings: []*microflows.JavaScriptActionParameterMapping{
+			{
+				Parameter: "MyModule.MyJSAction.Input",
+				Value:     &microflows.BasicCodeActionParameterValue{Argument: ""},
+			},
+		},
+	}
+	got := e.formatAction(action, nil, nil)
+	want := "call javascript action MyModule.MyJSAction();"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestFormatAction_JavaScriptActionCall_EmptyExpressionParam(t *testing.T) {
+	e := newTestExecutor()
+	action := &microflows.JavaScriptActionCallAction{
+		JavaScriptAction: "MyModule.MyJSAction",
+		ParameterMappings: []*microflows.JavaScriptActionParameterMapping{
+			{
+				Parameter: "MyModule.MyJSAction.Token",
+				Value:     &microflows.ExpressionBasedCodeActionParameterValue{Expression: ""},
+			},
+		},
+	}
+	got := e.formatAction(action, nil, nil)
+	want := "call javascript action MyModule.MyJSAction();"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestFormatAction_JavaScriptActionCall_EmptyEntityParam(t *testing.T) {
+	e := newTestExecutor()
+	action := &microflows.JavaScriptActionCallAction{
+		JavaScriptAction: "MyModule.MyJSAction",
+		ParameterMappings: []*microflows.JavaScriptActionParameterMapping{
+			{
+				Parameter: "MyModule.MyJSAction.EntityType",
+				Value:     &microflows.EntityTypeCodeActionParameterValue{Entity: ""},
+			},
+		},
+	}
+	got := e.formatAction(action, nil, nil)
+	want := "call javascript action MyModule.MyJSAction();"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestFormatAction_JavaScriptActionCall_MixedEmptyAndPopulatedParams(t *testing.T) {
+	e := newTestExecutor()
+	action := &microflows.JavaScriptActionCallAction{
+		JavaScriptAction: "MyModule.MyJSAction",
+		ParameterMappings: []*microflows.JavaScriptActionParameterMapping{
+			{
+				Parameter: "MyModule.MyJSAction.URL",
+				Value:     &microflows.ExpressionBasedCodeActionParameterValue{Expression: "'https://example.com'"},
+			},
+			{
+				Parameter: "MyModule.MyJSAction.UseAuthToken",
+				Value:     &microflows.BasicCodeActionParameterValue{Argument: ""},
+			},
+			{
+				Parameter: "MyModule.MyJSAction.Timeout",
+				Value:     &microflows.ExpressionBasedCodeActionParameterValue{Expression: "30"},
+			},
+		},
+	}
+	got := e.formatAction(action, nil, nil)
+	want := "call javascript action MyModule.MyJSAction(URL = 'https://example.com', Timeout = 30);"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestFormatAction_JavaScriptActionCall_WithOutputAndEmptyParam(t *testing.T) {
+	e := newTestExecutor()
+	action := &microflows.JavaScriptActionCallAction{
+		JavaScriptAction:   "MyModule.MyJSAction",
+		OutputVariableName: "Result",
+		ParameterMappings: []*microflows.JavaScriptActionParameterMapping{
+			{
+				Parameter: "MyModule.MyJSAction.Input",
+				Value:     &microflows.BasicCodeActionParameterValue{Argument: ""},
+			},
+		},
+	}
+	got := e.formatAction(action, nil, nil)
+	want := "$Result = call javascript action MyModule.MyJSAction();"
 	if got != want {
 		t.Errorf("got %q, want %q", got, want)
 	}

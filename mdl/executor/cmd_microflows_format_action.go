@@ -531,26 +531,24 @@ func formatAction(
 				paramName = paramName[idx+1:]
 			}
 			// Get the value based on parameter value type
-			valueStr := "..."
+			valueStr := ""
 			switch v := pm.Value.(type) {
 			case *microflows.StringTemplateParameterValue:
 				if v.TypedTemplate != nil {
-					valueStr = v.TypedTemplate.Text
+					valueStr = mdlQuote(v.TypedTemplate.Text)
 				}
 			case *microflows.ExpressionBasedCodeActionParameterValue:
-				if v.Expression != "" {
-					valueStr = v.Expression
-				}
+				valueStr = v.Expression
 			case *microflows.BasicCodeActionParameterValue:
-				if v.Argument != "" {
-					valueStr = v.Argument
-				}
+				valueStr = v.Argument
 			case *microflows.EntityTypeCodeActionParameterValue:
 				if v.Entity != "" {
 					valueStr = mdlQuote(v.Entity)
 				}
 			}
-			params = append(params, fmt.Sprintf("%s = %s", paramName, valueStr))
+			if valueStr != "" {
+				params = append(params, fmt.Sprintf("%s = %s", paramName, valueStr))
+			}
 		}
 
 		paramStr := ""
@@ -795,7 +793,7 @@ func formatAction(
 			if idx := strings.LastIndex(paramName, "."); idx != -1 {
 				paramName = paramName[idx+1:]
 			}
-			valueStr := "..."
+			valueStr := ""
 			if pm.Value != nil {
 				switch v := pm.Value.(type) {
 				case *microflows.StringTemplateParameterValue:
@@ -810,7 +808,9 @@ func formatAction(
 					valueStr = v.Entity
 				}
 			}
-			params = append(params, fmt.Sprintf("%s = %s", paramName, valueStr))
+			if valueStr != "" {
+				params = append(params, fmt.Sprintf("%s = %s", paramName, valueStr))
+			}
 		}
 
 		paramStr := ""
