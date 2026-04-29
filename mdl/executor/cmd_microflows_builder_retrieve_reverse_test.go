@@ -12,26 +12,26 @@ import (
 	"github.com/mendixlabs/mxcli/sdk/microflows"
 )
 
-func TestAddRetrieveAction_ReverseReferenceOwnerBothUsesAssociationSource(t *testing.T) {
+func TestAddRetrieveAction_ReverseReferenceOwnerBothUsesDatabaseSource(t *testing.T) {
 	fb := newRetrieveAssociationFlowBuilder(domainmodel.AssociationOwnerBoth)
 	fb.varTypes["Child"] = "Sample.Child"
 
 	fb.addRetrieveAction(&ast.RetrieveStmt{
-		Variable:      "Parent",
+		Variable:      "Parents",
 		StartVariable: "Child",
 		Source:        ast.QualifiedName{Module: "Sample", Name: "Parent_Child"},
 	})
 
 	action := onlyRetrieveAction(t, fb)
-	source, ok := action.Source.(*microflows.AssociationRetrieveSource)
+	source, ok := action.Source.(*microflows.DatabaseRetrieveSource)
 	if !ok {
-		t.Fatalf("owner-both reverse retrieve source = %T, want AssociationRetrieveSource", action.Source)
+		t.Fatalf("owner-both reverse retrieve source = %T, want DatabaseRetrieveSource", action.Source)
 	}
-	if source.StartVariable != "Child" || source.AssociationQualifiedName != "Sample.Parent_Child" {
-		t.Fatalf("association source = %#v", source)
+	if source.EntityQualifiedName != "Sample.Parent" || source.XPathConstraint != "[Sample.Parent_Child = $Child]" {
+		t.Fatalf("database source = %#v", source)
 	}
-	if got := fb.varTypes["Parent"]; got != "Sample.Parent" {
-		t.Fatalf("result var type = %q, want Sample.Parent", got)
+	if got := fb.varTypes["Parents"]; got != "List of Sample.Parent" {
+		t.Fatalf("result var type = %q, want List of Sample.Parent", got)
 	}
 }
 
@@ -76,8 +76,31 @@ func TestAddRetrieveAction_ReverseReferenceNonPersistableParentUsesAssociationSo
 	if source.StartVariable != "Child" || source.AssociationQualifiedName != "Sample.Parent_Child" {
 		t.Fatalf("association source = %#v", source)
 	}
-	if got := fb.varTypes["Parents"]; got != "Sample.Parent" {
-		t.Fatalf("result var type = %q, want Sample.Parent", got)
+	if got := fb.varTypes["Parents"]; got != "List of Sample.Parent" {
+		t.Fatalf("result var type = %q, want List of Sample.Parent", got)
+	}
+}
+
+func TestAddRetrieveAction_ReverseReferenceUnknownOwnerPreservesAssociationSource(t *testing.T) {
+	fb := newRetrieveAssociationFlowBuilder("")
+	fb.varTypes["Child"] = "Sample.Child"
+
+	fb.addRetrieveAction(&ast.RetrieveStmt{
+		Variable:      "Parents",
+		StartVariable: "Child",
+		Source:        ast.QualifiedName{Module: "Sample", Name: "Parent_Child"},
+	})
+
+	action := onlyRetrieveAction(t, fb)
+	source, ok := action.Source.(*microflows.AssociationRetrieveSource)
+	if !ok {
+		t.Fatalf("unknown-owner reverse retrieve source = %T, want AssociationRetrieveSource", action.Source)
+	}
+	if source.StartVariable != "Child" || source.AssociationQualifiedName != "Sample.Parent_Child" {
+		t.Fatalf("association source = %#v", source)
+	}
+	if got := fb.varTypes["Parents"]; got != "List of Sample.Parent" {
+		t.Fatalf("result var type = %q, want List of Sample.Parent", got)
 	}
 }
 
