@@ -191,6 +191,64 @@ func TestEnumSplitRoundtripPreservesEmptyGroupedCaseBeforeTerminalCase(t *testin
 	assertOrder(t, out, "case CREATE, DELETE", "case UPDATE", "case (empty)")
 }
 
+func TestEnumSplitRoundtripKeepsTerminalNestedIfElseInsideCase(t *testing.T) {
+	out := describeBuiltEnumSplitBody(t, []ast.MicroflowStatement{
+		&ast.EnumSplitStmt{
+			Variable: "SubjectType",
+			Cases: []ast.EnumSplitCase{
+				{
+					Value: "member",
+					Body: []ast.MicroflowStatement{
+						&ast.IfStmt{
+							Condition: &ast.VariableExpr{Name: "Member"},
+							Annotations: &ast.ActivityAnnotations{
+								FalseBranchAnchor: &ast.FlowAnchors{From: ast.AnchorSideTop, To: ast.AnchorSideBottom},
+							},
+							ThenBody: []ast.MicroflowStatement{
+								&ast.IfStmt{
+									Condition: &ast.VariableExpr{Name: "Company"},
+									ThenBody: []ast.MicroflowStatement{
+										&ast.LogStmt{Level: ast.LogInfo, Message: &ast.LiteralExpr{Kind: ast.LiteralString, Value: "member ok"}},
+										&ast.ReturnStmt{},
+									},
+									ElseBody: []ast.MicroflowStatement{
+										&ast.LogStmt{Level: ast.LogError, Message: &ast.LiteralExpr{Kind: ast.LiteralString, Value: "missing company"}},
+										&ast.ReturnStmt{},
+									},
+								},
+							},
+							ElseBody: []ast.MicroflowStatement{
+								&ast.LogStmt{Level: ast.LogError, Message: &ast.LiteralExpr{Kind: ast.LiteralString, Value: "missing member"}},
+								&ast.ReturnStmt{},
+							},
+						},
+					},
+				},
+				{
+					Value: "app",
+					Body: []ast.MicroflowStatement{
+						&ast.LogStmt{Level: ast.LogInfo, Message: &ast.LiteralExpr{Kind: ast.LiteralString, Value: "app branch"}},
+						&ast.ReturnStmt{},
+					},
+				},
+			},
+		},
+	})
+
+	memberCase := strings.Index(out, "case member")
+	appCase := strings.Index(out, "case app")
+	missingMember := strings.Index(out, "missing member")
+	if memberCase == -1 || appCase == -1 || missingMember == -1 {
+		t.Fatalf("missing expected enum case output:\n%s", out)
+	}
+	if missingMember > appCase {
+		t.Fatalf("member ELSE body leaked outside the member case:\n%s", out)
+	}
+	if !strings.Contains(out[memberCase:appCase], "else") || !strings.Contains(out[memberCase:appCase], "missing member") {
+		t.Fatalf("member ELSE body must stay inside the nested IF:\n%s", out)
+	}
+}
+
 func describeBuiltEnumSplitBody(t *testing.T, body []ast.MicroflowStatement) string {
 	t.Helper()
 

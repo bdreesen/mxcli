@@ -661,7 +661,7 @@ func traverseFlow(
 		}
 
 		trueTerminates := branchFlowTerminatesBeforeMerge(trueFlow, mergeID, activityMap, flowsByOrigin, splitMergeMap)
-		isGuard := trueTerminates && !branchFlowStartsAtTerminal(falseFlow, activityMap)
+		isGuard := trueTerminates && !branchFlowStartsAtTerminal(falseFlow, activityMap) && !hasExplicitFalseBranchAnchor(falseFlow)
 
 		if isGuard {
 			traverseFlowUntilMerge(ctx, trueFlow.DestinationID, mergeID, activityMap, flowsByOrigin, flowsByDest, splitMergeMap, visited, entityNames, microflowNames, lines, indent+1, sourceMap, headerLineCount, annotationsByTarget)
@@ -822,7 +822,7 @@ func traverseFlowUntilMerge(
 		}
 
 		trueTerminates := branchFlowTerminatesBeforeMerge(trueFlow, nestedMergeID, activityMap, flowsByOrigin, splitMergeMap)
-		isGuard := trueTerminates && !branchFlowStartsAtTerminal(falseFlow, activityMap)
+		isGuard := trueTerminates && !branchFlowStartsAtTerminal(falseFlow, activityMap) && !hasExplicitFalseBranchAnchor(falseFlow)
 
 		if isGuard {
 			traverseFlowUntilMerge(ctx, trueFlow.DestinationID, nestedMergeID, activityMap, flowsByOrigin, flowsByDest, splitMergeMap, visited, entityNames, microflowNames, lines, indent+1, sourceMap, headerLineCount, annotationsByTarget)
@@ -1407,6 +1407,13 @@ func branchFlowStartsAtTerminal(flow *microflows.SequenceFlow, activityMap map[m
 	default:
 		return false
 	}
+}
+
+func hasExplicitFalseBranchAnchor(flow *microflows.SequenceFlow) bool {
+	if flow == nil {
+		return false
+	}
+	return flow.OriginConnectionIndex == AnchorTop && flow.DestinationConnectionIndex == AnchorBottom
 }
 
 func objectTerminatesBeforeMerge(
