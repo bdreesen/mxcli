@@ -149,3 +149,65 @@ func TestEnumSplitAllBranchesReturnDoesNotCreateDanglingMerge(t *testing.T) {
 		}
 	}
 }
+
+func TestEnumSplitAllCasesReturnWithoutElseDoesNotCreateFallthrough(t *testing.T) {
+	fb := &flowBuilder{
+		spacing:  HorizontalSpacing,
+		measurer: &layoutMeasurer{},
+	}
+
+	oc := fb.buildFlowGraph([]ast.MicroflowStatement{
+		&ast.IfStmt{
+			Condition: &ast.LiteralExpr{Kind: ast.LiteralBoolean, Value: true},
+			ThenBody: []ast.MicroflowStatement{
+				&ast.EnumSplitStmt{
+					Variable: "Status",
+					Cases: []ast.EnumSplitCase{
+						{Value: "Open", Body: []ast.MicroflowStatement{&ast.ReturnStmt{}}},
+						{Value: "Closed", Body: []ast.MicroflowStatement{&ast.ReturnStmt{}}},
+					},
+				},
+			},
+		},
+		&ast.LogStmt{Level: ast.LogInfo, Message: &ast.LiteralExpr{Kind: ast.LiteralString, Value: "after"}},
+		&ast.ReturnStmt{},
+	}, nil)
+
+	for _, flow := range oc.Flows {
+		if flow.CaseValue == nil {
+			continue
+		}
+		if _, ok := flow.CaseValue.(*microflows.EnumerationCase); ok && flow.DestinationID != "" {
+			dest := objectByID(oc.Objects, flow.DestinationID)
+			if logActivityHasMessage(dest, "after") {
+				t.Fatalf("outer IF continuation was attached as enum default flow: %#v", flow.CaseValue)
+			}
+		}
+	}
+}
+
+func objectByID(objects []microflows.MicroflowObject, id model.ID) microflows.MicroflowObject {
+	for _, obj := range objects {
+		if obj.GetID() == id {
+			return obj
+		}
+	}
+	return nil
+}
+
+func logActivityHasMessage(obj microflows.MicroflowObject, message string) bool {
+	activity, ok := obj.(*microflows.ActionActivity)
+	if !ok {
+		return false
+	}
+	logAction, ok := activity.Action.(*microflows.LogMessageAction)
+	if !ok || logAction.MessageTemplate == nil {
+		return false
+	}
+	for _, text := range logAction.MessageTemplate.Translations {
+		if text == message {
+			return true
+		}
+	}
+	return false
+}

@@ -253,13 +253,22 @@ func isTerminalStmt(stmt ast.MicroflowStatement) bool {
 	case *ast.WhileStmt:
 		return isManualWhileTrueCandidate(s)
 	case *ast.EnumSplitStmt:
-		if len(s.Cases) == 0 || len(s.ElseBody) == 0 || !lastStmtIsReturn(s.ElseBody) {
+		if len(s.Cases) == 0 {
+			return false
+		}
+		if len(s.ElseBody) > 0 && !lastStmtIsReturn(s.ElseBody) {
 			return false
 		}
 		for _, c := range s.Cases {
 			if !lastStmtIsReturn(c.Body) {
 				return false
 			}
+		}
+		if len(s.ElseBody) == 0 {
+			// A described enum split may have no default flow at all. When every
+			// explicit case terminates, there is no split continuation to thread
+			// into the parent flow.
+			return true
 		}
 		return true
 	default:
