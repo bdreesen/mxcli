@@ -75,13 +75,18 @@ syntax covers them.
 - Builder/writer coverage for real `WebServiceCallAction` construction and raw
   BSON preservation.
 - Formatter coverage for qualified-name resolution and raw-ID fallback.
-- Example script: `mdl-examples/doctype-tests/call_web_service.test.mdl`.
+- Example script: `mdl-examples/doctype-tests/call_web_service.mdl`.
 
 ## Resolved Questions
 
 - Service and mapping references are emitted as `Module.Document` names when
   the backend can resolve them. Raw IDs remain the fallback for dangling
   references and incomplete project metadata.
+- The structured syntax uses quoted strings for service and mapping references
+  instead of `qualifiedName` tokens because legacy SOAP projects can contain
+  raw IDs or document names that are not valid MDL identifiers. Resolved
+  references should still be written as `Module.Document` text inside the
+  string literal.
 
 ## Open Questions
 

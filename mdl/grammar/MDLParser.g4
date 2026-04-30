@@ -1490,8 +1490,12 @@ callJavaScriptActionStatement
     : (VARIABLE EQUALS)? CALL JAVASCRIPT ACTION qualifiedName LPAREN callArgumentList? RPAREN onErrorClause?
     ;
 
-// Legacy SOAP call. The preferred structured form uses Module.Document names;
-// raw IDs remain accepted for dangling references and old round-trip output.
+// Legacy SOAP call. The preferred structured form stores service and mapping
+// references in STRING_LITERAL tokens rather than qualifiedName tokens because
+// old projects can contain raw IDs or SOAP document names that are not valid
+// MDL identifiers. DESCRIBE still prefers Module.Document text when references
+// resolve; unresolved values pass through as strings. Raw BSON remains the
+// escape hatch for unsupported SOAP payload details.
 callWebServiceStatement
     : (VARIABLE EQUALS)? CALL WEB SERVICE
       (RAW STRING_LITERAL
