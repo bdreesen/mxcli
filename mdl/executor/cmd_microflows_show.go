@@ -889,33 +889,6 @@ func findMergeForSplit(
 	return selectNearestCommonJoin(activityMap, branchDistances)
 }
 
-// collectReachableNodes collects all nodes reachable from a starting node.
-func collectReachableNodes(
-	ctx *ExecContext,
-	startID model.ID,
-	flowsByOrigin map[model.ID][]*microflows.SequenceFlow,
-	activityMap map[model.ID]microflows.MicroflowObject,
-	visited map[model.ID]bool,
-) map[model.ID]bool {
-	result := make(map[model.ID]bool)
-
-	var traverse func(id model.ID)
-	traverse = func(id model.ID) {
-		if visited[id] {
-			return
-		}
-		visited[id] = true
-		result[id] = true
-
-		for _, flow := range flowsByOrigin[id] {
-			traverse(flow.DestinationID)
-		}
-	}
-
-	traverse(startID)
-	return result
-}
-
 // collectReachableDistances collects the shortest normal-flow distance from a
 // branch start to every reachable node. Error handler flows are excluded because
 // they do not participate in split/merge structural pairing.
