@@ -1,4 +1,4 @@
-// Code generated from MDLParser.g4 by ANTLR 4.13.2. DO NOT EDIT.
+// Code generated from MDLParser.g4 by ANTLR 4.13.1. DO NOT EDIT.
 
 package parser // MDLParser
 import "github.com/antlr4-go/antlr/v4"
@@ -1069,6 +1069,12 @@ func (s *BaseMDLParserListener) EnterCallWebServiceStatement(ctx *CallWebService
 
 // ExitCallWebServiceStatement is called when production callWebServiceStatement is exited.
 func (s *BaseMDLParserListener) ExitCallWebServiceStatement(ctx *CallWebServiceStatementContext) {}
+
+// EnterWebServiceReference is called when production webServiceReference is entered.
+func (s *BaseMDLParserListener) EnterWebServiceReference(ctx *WebServiceReferenceContext) {}
+
+// ExitWebServiceReference is called when production webServiceReference is exited.
+func (s *BaseMDLParserListener) ExitWebServiceReference(ctx *WebServiceReferenceContext) {}
 
 // EnterExecuteDatabaseQueryStatement is called when production executeDatabaseQueryStatement is entered.
 func (s *BaseMDLParserListener) EnterExecuteDatabaseQueryStatement(ctx *ExecuteDatabaseQueryStatementContext) {

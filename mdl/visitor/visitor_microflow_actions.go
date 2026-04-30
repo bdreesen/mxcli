@@ -496,14 +496,9 @@ func buildCallWebServiceStatement(ctx parser.ICallWebServiceStatementContext) *a
 		stmt.OutputVariable = strings.TrimPrefix(v.GetText(), "$")
 	}
 
-	// The grammar fixes the structured CALL WEB SERVICE clause order as:
-	// service, optional operation, optional send mapping, optional receive
-	// mapping. Keep the positional STRING_LITERAL walk in that same order.
-	literals := callCtx.AllSTRING_LITERAL()
-	idx := 0
 	if callCtx.RAW() != nil {
-		if len(literals) > 0 {
-			stmt.RawBSONBase64 = unquoteString(literals[0].GetText())
+		if lit := callCtx.STRING_LITERAL(); lit != nil {
+			stmt.RawBSONBase64 = unquoteString(lit.GetText())
 		}
 		if errClause := callCtx.OnErrorClause(); errClause != nil {
 			stmt.ErrorHandling = buildOnErrorClause(errClause)
@@ -511,20 +506,25 @@ func buildCallWebServiceStatement(ctx parser.ICallWebServiceStatementContext) *a
 		return stmt
 	}
 
-	if len(literals) > idx {
-		stmt.ServiceID = unquoteString(literals[idx].GetText())
+	// The grammar fixes the structured CALL WEB SERVICE clause order as:
+	// service, optional operation, optional send mapping, optional receive
+	// mapping. Keep the positional reference walk in that same order.
+	refs := callCtx.AllWebServiceReference()
+	idx := 0
+	if len(refs) > idx {
+		stmt.ServiceID = webServiceReferenceText(refs[idx])
 		idx++
 	}
-	if callCtx.OPERATION() != nil && len(literals) > idx {
-		stmt.OperationName = unquoteString(literals[idx].GetText())
+	if callCtx.OPERATION() != nil && len(refs) > idx {
+		stmt.OperationName = webServiceReferenceText(refs[idx])
 		idx++
 	}
-	if callCtx.SEND() != nil && len(literals) > idx {
-		stmt.SendMappingID = unquoteString(literals[idx].GetText())
+	if callCtx.SEND() != nil && len(refs) > idx {
+		stmt.SendMappingID = webServiceReferenceText(refs[idx])
 		idx++
 	}
-	if callCtx.RECEIVE() != nil && len(literals) > idx {
-		stmt.ReceiveMappingID = unquoteString(literals[idx].GetText())
+	if callCtx.RECEIVE() != nil && len(refs) > idx {
+		stmt.ReceiveMappingID = webServiceReferenceText(refs[idx])
 	}
 	if expr := callCtx.Expression(); expr != nil {
 		stmt.Timeout = buildExpression(expr)
@@ -534,6 +534,17 @@ func buildCallWebServiceStatement(ctx parser.ICallWebServiceStatementContext) *a
 	}
 
 	return stmt
+}
+
+func webServiceReferenceText(ctx parser.IWebServiceReferenceContext) string {
+	if ctx == nil {
+		return ""
+	}
+	refCtx := ctx.(*parser.WebServiceReferenceContext)
+	if lit := refCtx.STRING_LITERAL(); lit != nil {
+		return unquoteString(lit.GetText())
+	}
+	return getQualifiedNameText(refCtx.QualifiedName())
 }
 
 // buildExecuteDatabaseQueryStatement converts EXECUTE DATABASE QUERY context to ExecuteDatabaseQueryStmt.

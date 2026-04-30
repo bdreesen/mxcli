@@ -7,14 +7,14 @@ Status: Draft
 Add MDL support for legacy Mendix SOAP `Microflows$CallWebServiceAction`.
 
 ```mdl
-$Root = call web service 'SampleSOAP.OrderService'
-operation 'FetchSampleItems'
-send mapping 'SampleSOAP.OrderRequest'
-receive mapping 'SampleSOAP.OrderResponse'
+$Root = call web service SampleSOAP.OrderService
+operation FetchSampleItems
+send mapping SampleSOAP.OrderRequest
+receive mapping SampleSOAP.OrderResponse
 timeout 30;
 
 $Root = call web service 'dangling-service-id'
-operation 'FetchSampleItems'
+operation FetchSampleItems
 send mapping 'dangling-send-mapping-id'
 receive mapping 'dangling-receive-mapping-id';
 
@@ -44,12 +44,17 @@ The immediate goal is therefore fidelity:
 callWebServiceStatement
     : (VARIABLE EQUALS)? CALL WEB SERVICE
       (RAW STRING_LITERAL
-      | STRING_LITERAL
-        (OPERATION STRING_LITERAL)?
-        (SEND MAPPING STRING_LITERAL)?
-        (RECEIVE MAPPING STRING_LITERAL)?
+      | webServiceReference
+        (OPERATION webServiceReference)?
+        (SEND MAPPING webServiceReference)?
+        (RECEIVE MAPPING webServiceReference)?
         (TIMEOUT expression)?)
       onErrorClause?
+    ;
+
+webServiceReference
+    : qualifiedName
+    | STRING_LITERAL
     ;
 ```
 
@@ -62,7 +67,8 @@ and mapping references. During `describe`, mxcli resolves known
 `Module.DocumentName`.
 
 If a reference is dangling or the backend cannot resolve it, mxcli deliberately
-falls back to the raw ID string so unsupported legacy projects still round-trip.
+falls back to a quoted raw ID string so unsupported legacy projects still
+round-trip without pretending the ID is a normal document name.
 
 The `raw` form is an explicit escape hatch. Its string is base64-encoded BSON
 for the complete action payload and is authoritative when re-executed. It exists
@@ -80,13 +86,11 @@ syntax covers them.
 ## Resolved Questions
 
 - Service and mapping references are emitted as `Module.Document` names when
-  the backend can resolve them. Raw IDs remain the fallback for dangling
-  references and incomplete project metadata.
-- The structured syntax uses quoted strings for service and mapping references
-  instead of `qualifiedName` tokens because legacy SOAP projects can contain
-  raw IDs or document names that are not valid MDL identifiers. Resolved
-  references should still be written as `Module.Document` text inside the
-  string literal.
+  the backend can resolve them. Raw IDs remain quoted fallback references for
+  dangling references and incomplete project metadata.
+- Structured resolved references use `qualifiedName` tokens for consistency
+  with other MDL document references. `STRING_LITERAL` is only the fallback for
+  dangling raw IDs and names that cannot be emitted as bare identifiers.
 
 ## Open Questions
 

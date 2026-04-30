@@ -1171,7 +1171,7 @@ func TestFormatAction_WebServiceCallResolvesKnownReferences(t *testing.T) {
 		UseReturnVariable: true,
 	}
 	got := formatAction(ctx, action, nil, nil)
-	want := "$Root = call web service 'SyntheticSOAP.OrderService'\noperation 'FetchOrders'\nsend mapping 'SyntheticSOAP.OrderRequest'\nreceive mapping 'SyntheticSOAP.OrderResponse';"
+	want := "$Root = call web service SyntheticSOAP.OrderService\noperation FetchOrders\nsend mapping SyntheticSOAP.OrderRequest\nreceive mapping SyntheticSOAP.OrderResponse;"
 	if got != want {
 		t.Errorf("got %q, want %q", got, want)
 	}
@@ -1200,7 +1200,7 @@ func TestFormatAction_WebServiceCallKeepsRawReferencesWhenUnknown(t *testing.T) 
 		OutputVariable:   "Root",
 	}
 	got := formatAction(ctx, action, nil, nil)
-	want := "$Root = call web service 'dangling-service-id'\noperation 'FetchOrders'\nsend mapping 'dangling-send-id'\nreceive mapping 'dangling-receive-id';"
+	want := "$Root = call web service 'dangling-service-id'\noperation FetchOrders\nsend mapping 'dangling-send-id'\nreceive mapping 'dangling-receive-id';"
 	if got != want {
 		t.Errorf("got %q, want %q", got, want)
 	}

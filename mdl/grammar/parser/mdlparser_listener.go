@@ -1,4 +1,4 @@
-// Code generated from MDLParser.g4 by ANTLR 4.13.2. DO NOT EDIT.
+// Code generated from MDLParser.g4 by ANTLR 4.13.1. DO NOT EDIT.
 
 package parser // MDLParser
 import "github.com/antlr4-go/antlr/v4"
@@ -501,6 +501,9 @@ type MDLParserListener interface {
 
 	// EnterCallWebServiceStatement is called when entering the callWebServiceStatement production.
 	EnterCallWebServiceStatement(c *CallWebServiceStatementContext)
+
+	// EnterWebServiceReference is called when entering the webServiceReference production.
+	EnterWebServiceReference(c *WebServiceReferenceContext)
 
 	// EnterExecuteDatabaseQueryStatement is called when entering the executeDatabaseQueryStatement production.
 	EnterExecuteDatabaseQueryStatement(c *ExecuteDatabaseQueryStatementContext)
@@ -1836,6 +1839,9 @@ type MDLParserListener interface {
 
 	// ExitCallWebServiceStatement is called when exiting the callWebServiceStatement production.
 	ExitCallWebServiceStatement(c *CallWebServiceStatementContext)
+
+	// ExitWebServiceReference is called when exiting the webServiceReference production.
+	ExitWebServiceReference(c *WebServiceReferenceContext)
 
 	// ExitExecuteDatabaseQueryStatement is called when exiting the executeDatabaseQueryStatement production.
 	ExitExecuteDatabaseQueryStatement(c *ExecuteDatabaseQueryStatementContext)

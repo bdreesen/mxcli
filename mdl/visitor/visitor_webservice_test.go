@@ -9,10 +9,10 @@ import (
 )
 
 func TestCallWebServiceStatement(t *testing.T) {
-	stmt := firstStatement(t, `$Root = call web service 'SampleSOAP.OrderService'
-operation 'FetchSampleItems'
-send mapping 'SampleSOAP.OrderRequest'
-receive mapping 'SampleSOAP.OrderResponse'
+	stmt := firstStatement(t, `$Root = call web service SampleSOAP.OrderService
+operation FetchSampleItems
+send mapping SampleSOAP.OrderRequest
+receive mapping SampleSOAP.OrderResponse
 timeout 30
 on error rollback;`)
 
@@ -40,6 +40,30 @@ on error rollback;`)
 	}
 	if call.ErrorHandling == nil || call.ErrorHandling.Type != ast.ErrorHandlingRollback {
 		t.Fatalf("ErrorHandling = %#v, want rollback", call.ErrorHandling)
+	}
+}
+
+func TestCallWebServiceStatementQuotedFallbackRefs(t *testing.T) {
+	stmt := firstStatement(t, `$Root = call web service 'sample-service-id'
+operation 'FetchSampleItems'
+send mapping 'sample-send-mapping-id'
+receive mapping 'sample-receive-mapping-id';`)
+
+	call, ok := stmt.(*ast.CallWebServiceStmt)
+	if !ok {
+		t.Fatalf("expected CallWebServiceStmt, got %T", stmt)
+	}
+	if call.ServiceID != "sample-service-id" {
+		t.Errorf("ServiceID = %q", call.ServiceID)
+	}
+	if call.OperationName != "FetchSampleItems" {
+		t.Errorf("OperationName = %q", call.OperationName)
+	}
+	if call.SendMappingID != "sample-send-mapping-id" {
+		t.Errorf("SendMappingID = %q", call.SendMappingID)
+	}
+	if call.ReceiveMappingID != "sample-receive-mapping-id" {
+		t.Errorf("ReceiveMappingID = %q", call.ReceiveMappingID)
 	}
 }
 

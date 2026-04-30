@@ -228,7 +228,7 @@ authentication basic, session
 | Call nanoflow | `$Result = call nanoflow Module.Name (Param = $value);` | |
 | Call JS action | `$Result = call javascript action Module.Name (Param = $value);` | JavaScript action (nanoflow/microflow) |
 | Call Java action | `$Result = call java action Module.Name (Param = $value);` | Java action (microflow only) |
-| Call web service | `$Result = call web service 'Module.Service' operation 'OperationName';` | Legacy SOAP; quoted refs preserve raw IDs and legacy names |
+| Call web service | `$Result = call web service Module.Service operation OperationName;` | Legacy SOAP; quoted refs are fallback for dangling raw IDs |
 | Call web service raw | `$Result = call web service raw 'base64-bson';` | Escape hatch for byte-for-byte legacy SOAP round-trip |
 | Show page | `show page Module.PageName ($Param = $value);` | Also accepts `(Param: $value)` |
 | Close page | `close page;` | |

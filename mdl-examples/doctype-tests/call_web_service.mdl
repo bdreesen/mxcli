@@ -8,10 +8,10 @@ create entity SampleSOAP.OrderResponse (
 create microflow SampleSOAP.ACT_FetchItems ()
 returns SampleSOAP.OrderResponse as $Root
 begin
-  $Root = call web service 'SampleSOAP.OrderService'
-  operation 'FetchSampleItems'
-  send mapping 'SampleSOAP.OrderRequest'
-  receive mapping 'SampleSOAP.OrderResponse'
+  $Root = call web service SampleSOAP.OrderService
+  operation FetchSampleItems
+  send mapping SampleSOAP.OrderRequest
+  receive mapping SampleSOAP.OrderResponse
   timeout 30
   on error rollback;
 
@@ -22,9 +22,9 @@ end;
 create microflow SampleSOAP.ACT_FetchItemsDanglingRefs ()
 returns SampleSOAP.OrderResponse as $Root
 begin
-  -- Raw IDs are preserved when describe cannot resolve dangling legacy refs.
+  -- Quoted raw IDs are preserved when describe cannot resolve dangling legacy refs.
   $Root = call web service 'sample-service-id'
-  operation 'FetchSampleItems'
+  operation FetchSampleItems
   send mapping 'sample-send-mapping-id'
   receive mapping 'sample-receive-mapping-id';
 

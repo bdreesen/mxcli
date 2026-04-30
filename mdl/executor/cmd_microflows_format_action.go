@@ -874,20 +874,57 @@ func formatWebServiceCallAction(ctx *ExecContext, a *microflows.WebServiceCallAc
 		return prefix + "call web service raw " + mdlQuote(raw) + ";"
 	}
 
-	parts := []string{prefix + "call web service " + mdlQuote(resolveWebServiceReference(ctx, a.ServiceID))}
+	parts := []string{prefix + "call web service " + formatWebServiceReference(resolveWebServiceReference(ctx, a.ServiceID))}
 	if a.OperationName != "" {
-		parts = append(parts, "operation "+mdlQuote(a.OperationName))
+		parts = append(parts, "operation "+formatWebServiceReference(a.OperationName))
 	}
 	if a.SendMappingID != "" {
-		parts = append(parts, "send mapping "+mdlQuote(resolveWebServiceMappingReference(ctx, a.SendMappingID, true)))
+		parts = append(parts, "send mapping "+formatWebServiceReference(resolveWebServiceMappingReference(ctx, a.SendMappingID, true)))
 	}
 	if a.ReceiveMappingID != "" {
-		parts = append(parts, "receive mapping "+mdlQuote(resolveWebServiceMappingReference(ctx, a.ReceiveMappingID, false)))
+		parts = append(parts, "receive mapping "+formatWebServiceReference(resolveWebServiceMappingReference(ctx, a.ReceiveMappingID, false)))
 	}
 	if a.TimeoutExpression != "" {
 		parts = append(parts, "timeout "+strings.TrimRight(a.TimeoutExpression, " \t\n\r"))
 	}
 	return strings.Join(parts, "\n") + ";"
+}
+
+func formatWebServiceReference(ref string) string {
+	if isBareQualifiedReference(ref) {
+		return ref
+	}
+	return mdlQuote(ref)
+}
+
+func isBareQualifiedReference(ref string) bool {
+	if ref == "" {
+		return false
+	}
+	for _, part := range strings.Split(ref, ".") {
+		if !isBareIdentifier(part) {
+			return false
+		}
+	}
+	return true
+}
+
+func isBareIdentifier(part string) bool {
+	if part == "" {
+		return false
+	}
+	for i, r := range part {
+		if i == 0 {
+			if r != '_' && (r < 'A' || r > 'Z') && (r < 'a' || r > 'z') {
+				return false
+			}
+			continue
+		}
+		if r != '_' && (r < 'A' || r > 'Z') && (r < 'a' || r > 'z') && (r < '0' || r > '9') {
+			return false
+		}
+	}
+	return true
 }
 
 func resolveWebServiceReference(ctx *ExecContext, id model.ID) string {

@@ -1492,19 +1492,23 @@ callJavaScriptActionStatement
 
 // Legacy SOAP call. The preferred structured form stores service and mapping
 // references in STRING_LITERAL tokens rather than qualifiedName tokens because
-// old projects can contain raw IDs or SOAP document names that are not valid
-// MDL identifiers. DESCRIBE still prefers Module.Document text when references
-// resolve; unresolved values pass through as strings. Raw BSON remains the
-// escape hatch for unsupported SOAP payload details.
+// Structured references prefer qualifiedName tokens. STRING_LITERAL remains as
+// a fallback for dangling raw IDs that cannot be represented as identifiers.
+// Raw BSON remains the escape hatch for unsupported SOAP payload details.
 callWebServiceStatement
     : (VARIABLE EQUALS)? CALL WEB SERVICE
       (RAW STRING_LITERAL
-      | STRING_LITERAL
-        (OPERATION STRING_LITERAL)?
-        (SEND MAPPING STRING_LITERAL)?
-        (RECEIVE MAPPING STRING_LITERAL)?
+      | webServiceReference
+        (OPERATION webServiceReference)?
+        (SEND MAPPING webServiceReference)?
+        (RECEIVE MAPPING webServiceReference)?
         (TIMEOUT expression)?)
       onErrorClause?
+    ;
+
+webServiceReference
+    : qualifiedName
+    | STRING_LITERAL
     ;
 
 // $Result = EXECUTE DATABASE QUERY Module.Connection.QueryName (param = 'value');

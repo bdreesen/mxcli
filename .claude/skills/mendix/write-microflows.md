@@ -736,19 +736,17 @@ for new integrations; this syntax exists mainly so existing projects can
 round-trip without dropping SOAP actions.
 
 ```mdl
--- Structured form. SOAP references are quoted strings by design: DESCRIBE
--- prefers Module.Document names when references are resolvable, but raw IDs
--- and legacy document names must also round-trip.
-$Root = call web service 'SampleSOAP.OrderService'
-operation 'FetchSampleItems'
-send mapping 'SampleSOAP.OrderRequest'
-receive mapping 'SampleSOAP.OrderResponse'
+-- Structured form. Resolved SOAP references use normal qualified names.
+$Root = call web service SampleSOAP.OrderService
+operation FetchSampleItems
+send mapping SampleSOAP.OrderRequest
+receive mapping SampleSOAP.OrderResponse
 timeout 30
 on error rollback;
 
--- Raw IDs are accepted when old project references are dangling or unavailable.
+-- Quoted raw IDs are accepted when old project references are dangling or unavailable.
 $Root = call web service 'sample-service-id'
-operation 'FetchSampleItems'
+operation FetchSampleItems
 send mapping 'sample-send-mapping-id'
 receive mapping 'sample-receive-mapping-id';
 
