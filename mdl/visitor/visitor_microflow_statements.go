@@ -1078,14 +1078,38 @@ func whitespaceBetween(input antlr.CharStream, start, end int) string {
 	return gap
 }
 
+// retrieveInterClauseWhitespaceSuffix returns the whitespace gap between a
+// retrieve expression and the next clause keyword (LIMIT/OFFSET), with the
+// trailing newline + indent that the formatter will re-emit stripped off.
+//
+// The formatter writes each subsequent clause on its own line indented by
+// `formatRetrieveContinuationIndent` spaces, so the original source's trailing
+// "\n<indent>" is structural and would duplicate after a roundtrip if kept.
+// Anything before that final newline (blank lines, comments, additional
+// indentation) is preserved as authored. When the gap does not end in a
+// recognisable line-break-then-indent sequence we return "" — the formatter
+// will lay out the clause normally.
 func retrieveInterClauseWhitespaceSuffix(gap string) string {
 	if gap == "" {
 		return ""
 	}
-	for _, suffix := range []string{"\r\n    ", "\n    "} {
-		if strings.HasSuffix(gap, suffix) {
-			return strings.TrimSuffix(gap, suffix)
+	// Trim the trailing newline + structural indentation the formatter will
+	// re-emit. We strip whatever indent (spaces or tabs) follows the final
+	// newline so this stays robust if the formatter changes its indent width.
+	for i := len(gap) - 1; i >= 0; i-- {
+		c := gap[i]
+		if c == ' ' || c == '\t' {
+			continue
 		}
+		if c == '\n' {
+			// Include a preceding \r in the strip so CRLF line endings work.
+			cut := i
+			if cut > 0 && gap[cut-1] == '\r' {
+				cut--
+			}
+			return gap[:cut]
+		}
+		break
 	}
 	return ""
 }
@@ -1263,6 +1287,13 @@ func shouldPreserveExpressionSource(source string) bool {
 			}
 		}
 	}
+	// Mendix's `not(<expr>)` function call has no surrounding spaces in
+	// idiomatic source, but the parser would re-emit it as `not (<expr>)`
+	// (function-call AST node loses the no-space affordance). Preserving the
+	// original source keeps the compact form across describe → exec →
+	// describe. The substring check is intentionally loose; false positives
+	// (e.g. an attribute name containing "not(") only over-preserve and have
+	// no semantic effect since the parsed expression is what runs.
 	if strings.Contains(strings.ToLower(source), "not(") {
 		return true
 	}
