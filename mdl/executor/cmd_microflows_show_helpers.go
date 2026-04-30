@@ -942,6 +942,13 @@ func appendSequenceFlowIfMissing(flows []*microflows.SequenceFlow, candidate *mi
 	return append(flows, candidate)
 }
 
+// sequenceFlowIdentity returns a stable key used to deduplicate flows when
+// merging the parent graph into a loop's local map. Production data always
+// carries a UUID, so the ID branch is the common path. The composite fallback
+// covers test helpers and any other call site that constructs flows without
+// IDs — including CaseValue prevents two split branches with the same
+// origin/destination but different case values from being mistakenly
+// deduplicated.
 func sequenceFlowIdentity(flow *microflows.SequenceFlow) string {
 	if flow == nil {
 		return ""
@@ -949,7 +956,7 @@ func sequenceFlowIdentity(flow *microflows.SequenceFlow) string {
 	if flow.ID != "" {
 		return string(flow.ID)
 	}
-	return fmt.Sprintf("%s>%s:%t:%d:%d", flow.OriginID, flow.DestinationID, flow.IsErrorHandler, flow.OriginConnectionIndex, flow.DestinationConnectionIndex)
+	return fmt.Sprintf("%s>%s:%t:%d:%d:%v", flow.OriginID, flow.DestinationID, flow.IsErrorHandler, flow.OriginConnectionIndex, flow.DestinationConnectionIndex, flow.CaseValue)
 }
 
 func preferLoopBodyStart(candidate, current microflows.MicroflowObject) bool {
