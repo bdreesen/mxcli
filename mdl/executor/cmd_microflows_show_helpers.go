@@ -649,7 +649,7 @@ func traverseFlow(
 		}
 
 		trueTerminates := branchFlowTerminatesBeforeMerge(trueFlow, mergeID, activityMap, flowsByOrigin, splitMergeMap)
-		isGuard := trueTerminates && !branchFlowStartsAtTerminal(falseFlow, activityMap)
+		isGuard := trueTerminates && flowLooksLikeGuardContinuation(falseFlow, obj, activityMap)
 
 		if isGuard {
 			traverseFlowUntilMerge(ctx, trueFlow.DestinationID, mergeID, activityMap, flowsByOrigin, flowsByDest, splitMergeMap, visited, entityNames, microflowNames, lines, indent+1, sourceMap, headerLineCount, annotationsByTarget)
@@ -799,7 +799,7 @@ func traverseFlowUntilMerge(
 		}
 
 		trueTerminates := branchFlowTerminatesBeforeMerge(trueFlow, nestedMergeID, activityMap, flowsByOrigin, splitMergeMap)
-		isGuard := trueTerminates && !branchFlowStartsAtTerminal(falseFlow, activityMap)
+		isGuard := trueTerminates && flowLooksLikeGuardContinuation(falseFlow, obj, activityMap)
 
 		if isGuard {
 			traverseFlowUntilMerge(ctx, trueFlow.DestinationID, nestedMergeID, activityMap, flowsByOrigin, flowsByDest, splitMergeMap, visited, entityNames, microflowNames, lines, indent+1, sourceMap, headerLineCount, annotationsByTarget)
@@ -1203,6 +1203,25 @@ func findBranchFlows(flows []*microflows.SequenceFlow) (trueFlow, falseFlow *mic
 		}
 	}
 	return trueFlow, falseFlow
+}
+
+func flowLooksLikeGuardContinuation(
+	flow *microflows.SequenceFlow,
+	split microflows.MicroflowObject,
+	activityMap map[model.ID]microflows.MicroflowObject,
+) bool {
+	if flow == nil || split == nil {
+		return false
+	}
+	dest := activityMap[flow.DestinationID]
+	if dest == nil {
+		return false
+	}
+	switch dest.(type) {
+	case *microflows.EndEvent, *microflows.ErrorEvent:
+		return false
+	}
+	return dest.GetPosition().Y == split.GetPosition().Y
 }
 
 // findErrorHandlerFlow returns the error handler flow from an activity's outgoing flows.
