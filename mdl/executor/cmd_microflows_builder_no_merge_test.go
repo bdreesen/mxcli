@@ -87,7 +87,7 @@ func TestBuildFlowGraph_NestedNoMergeTailCarriesAnchorToParentMerge(t *testing.T
 		if flow.OriginID != tailID {
 			continue
 		}
-		if _, ok := objectByID(oc, flow.DestinationID).(*microflows.ExclusiveMerge); !ok {
+		if _, ok := noMergeObjectByID(oc, flow.DestinationID).(*microflows.ExclusiveMerge); !ok {
 			continue
 		}
 		if flow.OriginConnectionIndex != AnchorBottom || flow.DestinationConnectionIndex != AnchorTop {
@@ -117,7 +117,7 @@ func findLogActivityIDByMessage(t *testing.T, oc *microflows.MicroflowObjectColl
 	return ""
 }
 
-func objectByID(oc *microflows.MicroflowObjectCollection, id model.ID) microflows.MicroflowObject {
+func noMergeObjectByID(oc *microflows.MicroflowObjectCollection, id model.ID) microflows.MicroflowObject {
 	for _, obj := range oc.Objects {
 		if obj.GetID() == id {
 			return obj
