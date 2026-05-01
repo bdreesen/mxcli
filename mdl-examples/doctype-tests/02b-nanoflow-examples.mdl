@@ -45,7 +45,7 @@ begin
 end;
 /
 
--- Helper page — used by NAV_OpenProductDetail (requires Mendix 11.0+ page params).
+-- Helper page — used by N007_OpenProductDetail (requires Mendix 11.0+ page params).
 create page NanoflowExamples.ProductDetail
 (
     params: {
@@ -64,19 +64,19 @@ create page NanoflowExamples.ProductDetail
 -- ============================================================================
 
 /**
- * Stand-in nanoflow with no logic.
+ * N001: Stand-in nanoflow with no logic.
  * Used as a placeholder during scaffolding.
  */
-create nanoflow NanoflowExamples.NAV_Placeholder () begin end;
+create nanoflow NanoflowExamples.N001_Placeholder () begin end;
 
 /**
- * Validates a Product before it is saved.
+ * N002: Validates a Product before it is saved.
  * Checks required fields and business rules client-side to avoid a server round-trip.
  *
  * @param $Product The product to validate
  * @returns true if the product passes all validation checks, false otherwise
  */
-create nanoflow NanoflowExamples.NAV_ValidateProduct (
+create nanoflow NanoflowExamples.N002_ValidateProduct (
     $Product : NanoflowExamples.Product
 )
 returns Boolean
@@ -94,13 +94,13 @@ begin
 end;
 
 /**
- * Counts the number of products in a list.
+ * N003: Counts the number of products in a list.
  * Demonstrates LOOP with BEGIN/END LOOP, DECLARE, and SET.
  *
  * @param $Products List of products to count
  * @returns The number of products in the list
  */
-create nanoflow NanoflowExamples.NAV_CountProducts (
+create nanoflow NanoflowExamples.N003_CountProducts (
     $Products : list of NanoflowExamples.Product
 )
 returns Integer
@@ -115,14 +115,14 @@ begin
 end;
 
 /**
- * Creates and returns a new (uncommitted) Product with the given name and price.
+ * N004: Creates and returns a new (uncommitted) Product with the given name and price.
  * Demonstrates creating an entity object and returning it from a nanoflow.
  *
  * @param $Name  Product name
  * @param $Price Product price (must be non-negative)
  * @returns A new Product object (not yet committed to the server)
  */
-create nanoflow NanoflowExamples.NAV_BuildProduct (
+create nanoflow NanoflowExamples.N004_BuildProduct (
     $Name  : String,
     $Price : Decimal
 )
@@ -138,12 +138,12 @@ begin
 end;
 
 /**
- * Shows a status message of the appropriate severity.
+ * N005: Shows a status message of the appropriate severity.
  * Demonstrates SHOW MESSAGE with different type keywords.
  *
  * @param $Status Status code: 1 = information, 2 = warning, any other = error
  */
-create nanoflow NanoflowExamples.NAV_ShowStatusMessage (
+create nanoflow NanoflowExamples.N005_ShowStatusMessage (
     $Status : Integer
 )
 folder 'UI'
@@ -160,19 +160,19 @@ begin
 end;
 
 /**
- * Validates and saves a product via a server-side microflow.
+ * N006: Validates and saves a product via a server-side microflow.
  * Demonstrates calling another nanoflow, calling a microflow with ON ERROR CONTINUE,
  * conditional messaging, and closing the current page on success.
  *
  * @param $Product The product to validate and save
  */
-create nanoflow NanoflowExamples.NAV_SaveProduct (
+create nanoflow NanoflowExamples.N006_SaveProduct (
     $Product : NanoflowExamples.Product
 )
 folder 'Actions'
 begin
     -- Client-side validation first (avoids a server round-trip on invalid data)
-    $IsValid = call nanoflow NanoflowExamples.NAV_ValidateProduct ($Product = $Product);
+    $IsValid = call nanoflow NanoflowExamples.N002_ValidateProduct ($Product = $Product);
     if not ($IsValid) then
         return;
     end if;
@@ -192,12 +192,12 @@ begin
 end;
 
 /**
- * Opens the product detail page for the given product.
+ * N007: Opens the product detail page for the given product.
  * Demonstrates SHOW PAGE with a page parameter.
  *
  * @param $Product The product whose detail page to open
  */
-create nanoflow NanoflowExamples.NAV_OpenProductDetail (
+create nanoflow NanoflowExamples.N007_OpenProductDetail (
     $Product : NanoflowExamples.Product
 )
 folder 'Navigation'
@@ -206,14 +206,14 @@ begin
 end;
 
 /**
- * Formats a price as a currency string.
+ * N008: Formats a price as a currency string.
  * Uses CREATE OR MODIFY so repeated execution is idempotent.
  *
  * @param $Amount   The numeric amount to format
  * @param $Currency The currency code prefix (e.g. 'USD', 'EUR')
  * @returns A formatted string like 'EUR 12.50'
  */
-create or modify nanoflow NanoflowExamples.NAV_FormatPrice (
+create or modify nanoflow NanoflowExamples.N008_FormatPrice (
     $Amount   : Decimal,
     $Currency : String
 )
@@ -227,13 +227,13 @@ end;
 -- MARK: Security
 -- ============================================================================
 
-grant execute on nanoflow NanoflowExamples.NAV_ValidateProduct  to NanoflowExamples.User;
-grant execute on nanoflow NanoflowExamples.NAV_CountProducts    to NanoflowExamples.User;
-grant execute on nanoflow NanoflowExamples.NAV_BuildProduct     to NanoflowExamples.User;
-grant execute on nanoflow NanoflowExamples.NAV_ShowStatusMessage to NanoflowExamples.User;
-grant execute on nanoflow NanoflowExamples.NAV_SaveProduct      to NanoflowExamples.User;
-grant execute on nanoflow NanoflowExamples.NAV_OpenProductDetail to NanoflowExamples.User;
-grant execute on nanoflow NanoflowExamples.NAV_FormatPrice      to NanoflowExamples.User, NanoflowExamples.Admin;
+grant execute on nanoflow NanoflowExamples.N002_ValidateProduct   to NanoflowExamples.User;
+grant execute on nanoflow NanoflowExamples.N003_CountProducts     to NanoflowExamples.User;
+grant execute on nanoflow NanoflowExamples.N004_BuildProduct      to NanoflowExamples.User;
+grant execute on nanoflow NanoflowExamples.N005_ShowStatusMessage to NanoflowExamples.User;
+grant execute on nanoflow NanoflowExamples.N006_SaveProduct       to NanoflowExamples.User;
+grant execute on nanoflow NanoflowExamples.N007_OpenProductDetail to NanoflowExamples.User;
+grant execute on nanoflow NanoflowExamples.N008_FormatPrice       to NanoflowExamples.User, NanoflowExamples.Admin;
 
 -- ============================================================================
 -- MARK: Discovery commands
@@ -241,19 +241,19 @@ grant execute on nanoflow NanoflowExamples.NAV_FormatPrice      to NanoflowExamp
 
 show nanoflows;
 show nanoflows in NanoflowExamples;
-describe nanoflow NanoflowExamples.NAV_ValidateProduct;
-show access on nanoflow NanoflowExamples.NAV_ValidateProduct;
+describe nanoflow NanoflowExamples.N002_ValidateProduct;
+show access on nanoflow NanoflowExamples.N002_ValidateProduct;
 
 -- ============================================================================
 -- MARK: Lifecycle — rename, move, drop
 -- ============================================================================
 
-rename nanoflow NanoflowExamples.NAV_Placeholder to NAV_Unused;
-move nanoflow NanoflowExamples.NAV_Unused to NanoflowExamples;
-drop nanoflow NanoflowExamples.NAV_Unused;
+rename nanoflow NanoflowExamples.N001_Placeholder to N001_Unused;
+move nanoflow NanoflowExamples.N001_Unused to NanoflowExamples;
+drop nanoflow NanoflowExamples.N001_Unused;
 
 -- ============================================================================
 -- MARK: Access management
 -- ============================================================================
 
-revoke execute on nanoflow NanoflowExamples.NAV_ValidateProduct from NanoflowExamples.User;
+revoke execute on nanoflow NanoflowExamples.N002_ValidateProduct from NanoflowExamples.User;
