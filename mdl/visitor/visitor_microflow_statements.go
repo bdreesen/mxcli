@@ -43,8 +43,8 @@ func buildMicroflowStatement(ctx parser.IMicroflowStatementContext) ast.Microflo
 	// Check each statement type
 	if decl := mfCtx.DeclareStatement(); decl != nil {
 		stmt = buildDeclareStatement(decl)
-	} else if enumSplit := mfCtx.EnumSplitStatement(); enumSplit != nil {
-		stmt = buildEnumSplitStatement(enumSplit)
+	} else if caseStmt := mfCtx.CaseStatement(); caseStmt != nil {
+		stmt = buildCaseStatement(caseStmt)
 	} else if set := mfCtx.SetStatement(); set != nil {
 		stmt = buildSetStatement(set)
 	} else if createList := mfCtx.CreateListStatement(); createList != nil {
@@ -154,14 +154,14 @@ func buildMicroflowStatement(ctx parser.IMicroflowStatementContext) ast.Microflo
 	return stmt
 }
 
-func buildEnumSplitStatement(ctx parser.IEnumSplitStatementContext) *ast.EnumSplitStmt {
+func buildCaseStatement(ctx parser.ICaseStatementContext) *ast.EnumSplitStmt {
 	if ctx == nil {
 		return nil
 	}
-	enumCtx := ctx.(*parser.EnumSplitStatementContext)
+	caseCtx := ctx.(*parser.CaseStatementContext)
 
 	stmt := &ast.EnumSplitStmt{}
-	if source := enumCtx.EnumSplitSource(); source != nil {
+	if source := caseCtx.EnumSplitSource(); source != nil {
 		sourceCtx := source.(*parser.EnumSplitSourceContext)
 		if attr := sourceCtx.AttributePath(); attr != nil {
 			stmt.Variable = strings.TrimPrefix(attr.GetText(), "$")
@@ -170,24 +170,41 @@ func buildEnumSplitStatement(ctx parser.IEnumSplitStatementContext) *ast.EnumSpl
 		}
 	}
 
-	for _, caseCtx := range enumCtx.AllEnumSplitCase() {
-		c := caseCtx.(*parser.EnumSplitCaseContext)
-		values := make([]string, 0, len(c.AllEnumSplitCaseValue()))
-		for _, valueCtx := range c.AllEnumSplitCaseValue() {
-			values = append(values, enumSplitCaseValueText(valueCtx))
+	// Reconstruct per-WHEN groups from the flat child list.
+	// Grammar: (WHEN caseValue (, caseValue)* THEN microflowBody)+ (ELSE microflowBody)?
+	// AllEnumSplitCaseValue() is flat across all WHEN clauses, so we walk children
+	// and bucket values by their nearest preceding WHEN token.
+	type whenGroup struct{ values []string }
+	var groups []whenGroup
+	var cur *whenGroup
+	for _, child := range caseCtx.GetChildren() {
+		switch c := child.(type) {
+		case antlr.TerminalNode:
+			if c.GetSymbol().GetTokenType() == parser.MDLParserWHEN {
+				groups = append(groups, whenGroup{})
+				cur = &groups[len(groups)-1]
+			}
+		case parser.IEnumSplitCaseValueContext:
+			if cur != nil {
+				cur.values = append(cur.values, enumSplitCaseValueText(c))
+			}
 		}
-		if len(values) == 0 {
+	}
+
+	bodies := caseCtx.AllMicroflowBody()
+	for i, g := range groups {
+		if len(g.values) == 0 || i >= len(bodies) {
 			continue
 		}
 		stmt.Cases = append(stmt.Cases, ast.EnumSplitCase{
-			Value:  values[0],
-			Values: values,
-			Body:   buildMicroflowBody(c.MicroflowBody()),
+			Value:  g.values[0],
+			Values: g.values,
+			Body:   buildMicroflowBody(bodies[i]),
 		})
 	}
 
-	if enumCtx.ELSE() != nil && enumCtx.MicroflowBody() != nil {
-		stmt.ElseBody = buildMicroflowBody(enumCtx.MicroflowBody())
+	if caseCtx.ELSE() != nil && len(bodies) > len(groups) {
+		stmt.ElseBody = buildMicroflowBody(bodies[len(bodies)-1])
 	}
 
 	return stmt

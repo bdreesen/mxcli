@@ -1,20 +1,20 @@
 # Proposal: Microflow ENUM SPLIT Statement
 
-Status: Draft
+Status: Implemented
 
 ## Summary
 
-Add round-trip MDL support for enumeration decisions:
+Round-trip MDL support for enumeration decisions using SQL/OQL-style `CASE WHEN THEN` syntax:
 
 ```mdl
-split enum $Status
-  case Open, Pending
+case $Status
+  when Open, Pending then
     return true;
-  case (empty)
+  when (empty) then
     return false;
   else
     return false;
-end split;
+end case;
 ```
 
 ## Motivation
@@ -23,11 +23,11 @@ Studio Pro represents enumeration decisions as exclusive splits whose outgoing s
 
 ## Semantics
 
-`split enum` evaluates an enumeration variable or attribute path. Each `case` lists one or more enumeration values that enter the same branch. `(empty)` represents the Mendix empty enumeration case. `else` is optional and maps to the outgoing flow without an explicit case value.
+`case` evaluates an enumeration variable or attribute path. Each `when` lists one or more enumeration values (bare identifiers, consistent with all other enum value references in MDL) that enter the same branch. `(empty)` represents the Mendix empty enumeration case. `else` is optional and maps to the outgoing flow without an explicit case value. The enum type is inferred from the variable's declared type — no explicit type annotation is needed at the call site. Maximum 16 cases are supported; a clear error is raised if exceeded.
 
 ## Tests And Examples
 
-`mdl-examples/doctype-tests/enum_split_statement.test.mdl` demonstrates parser syntax. Go regression tests cover AST parsing, builder generation of enumeration case flows, and describer output for existing split graphs.
+`mdl-examples/doctype-tests/enum_split_statement.mdl` demonstrates parser syntax. Go regression tests cover AST parsing, builder generation of enumeration case flows, and describer output for existing split graphs.
 
 ## Open Questions
 

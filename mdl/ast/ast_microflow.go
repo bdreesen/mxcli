@@ -108,7 +108,7 @@ type EnumSplitCase struct {
 	Body   []MicroflowStatement
 }
 
-// EnumSplitStmt represents: SPLIT ENUM $Var ... END SPLIT
+// EnumSplitStmt represents: CASE $Var WHEN value THEN body ... END CASE
 type EnumSplitStmt struct {
 	Variable    string // Variable or attribute path without $ prefix (e.g. EventType or Event/EventType)
 	Cases       []EnumSplitCase

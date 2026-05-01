@@ -50,11 +50,11 @@ func TestTraverseFlow_EnumSplit(t *testing.T) {
 	visited := make(map[model.ID]bool)
 	e.traverseFlow(mkID("split"), activityMap, flowsByOrigin, splitMergeMap, visited, nil, nil, &lines, 1, nil, 0, nil)
 
-	assertContainsAny(t, lines, "split enum $Status")
-	assertContainsAny(t, lines, "case Open")
-	assertContainsAny(t, lines, "case Closed")
+	assertContainsAny(t, lines, "case $Status")
+	assertContainsAny(t, lines, "when Open")
+	assertContainsAny(t, lines, "when Closed")
 	assertContainsAny(t, lines, "else")
-	assertContainsAny(t, lines, "end split;")
+	assertContainsAny(t, lines, "end case;")
 }
 
 func TestTraverseFlow_EnumSplitPreservesExplicitCaseOrder(t *testing.T) {
@@ -98,9 +98,9 @@ func TestTraverseFlow_EnumSplitPreservesExplicitCaseOrder(t *testing.T) {
 	e.traverseFlow(mkID("split"), activityMap, flowsByOrigin, splitMergeMap, visited, nil, nil, &lines, 1, nil, 0, nil)
 
 	out := strings.Join(lines, "\n")
-	emptyIdx := strings.Index(out, "case (empty)")
-	readyIdx := strings.Index(out, "case Ready")
-	blockedIdx := strings.Index(out, "case Blocked")
+	emptyIdx := strings.Index(out, "when (empty)")
+	readyIdx := strings.Index(out, "when Ready")
+	blockedIdx := strings.Index(out, "when Blocked")
 	if emptyIdx == -1 || readyIdx == -1 || blockedIdx == -1 {
 		t.Fatalf("missing expected cases:\n%s", out)
 	}
@@ -148,7 +148,7 @@ func TestEnumSplitRoundtripPreservesEmptyCaseBeforeNamedCases(t *testing.T) {
 		},
 	})
 
-	assertOrder(t, out, "case (empty)", "case Cover", "case Logo")
+	assertOrder(t, out, "when (empty)", "when Cover", "when Logo")
 }
 
 func TestEnumSplitRoundtripPreservesEmptyGroupedCaseBeforeTerminalCase(t *testing.T) {
@@ -188,7 +188,7 @@ func TestEnumSplitRoundtripPreservesEmptyGroupedCaseBeforeTerminalCase(t *testin
 		&ast.LogStmt{Level: ast.LogInfo, Message: &ast.LiteralExpr{Kind: ast.LiteralString, Value: "shared tail"}},
 	})
 
-	assertOrder(t, out, "case CREATE, DELETE", "case UPDATE", "case (empty)")
+	assertOrder(t, out, "when CREATE, DELETE", "when UPDATE", "when (empty)")
 }
 
 func TestEnumSplitRoundtripKeepsTerminalNestedIfElseInsideCase(t *testing.T) {
@@ -235,8 +235,8 @@ func TestEnumSplitRoundtripKeepsTerminalNestedIfElseInsideCase(t *testing.T) {
 		},
 	})
 
-	memberCase := strings.Index(out, "case member")
-	appCase := strings.Index(out, "case app")
+	memberCase := strings.Index(out, "when member")
+	appCase := strings.Index(out, "when app")
 	missingMember := strings.Index(out, "missing member")
 	if memberCase == -1 || appCase == -1 || missingMember == -1 {
 		t.Fatalf("missing expected enum case output:\n%s", out)

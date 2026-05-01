@@ -323,22 +323,22 @@ if $entity/status = empty then
 end if;
 ```
 
-### ENUM SPLIT Statements
+### CASE Statements (Enum Split)
 
-Use `split enum` when a microflow branches on an enumeration value.
+Use `case` when a microflow branches on an enumeration value.
 
 ```mdl
-split enum $Status
-  case Open, Pending
+case $Status
+  when Open, Pending then
     return true;
-  case (empty)
+  when (empty) then
     return false;
   else
     return false;
-end split;
+end case;
 ```
 
-`(empty)` represents an unset enumeration value. Multiple values can share one branch by separating them with commas.
+`(empty)` represents an unset enumeration value. Multiple values can share one `when` branch by separating them with commas. Case values are bare identifiers — do **not** quote them.
 
 ### LOOP Statements
 

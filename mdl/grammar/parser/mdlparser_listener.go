@@ -1,4 +1,4 @@
-// Code generated from MDLParser.g4 by ANTLR 4.13.1. DO NOT EDIT.
+// Code generated from MDLParser.g4 by ANTLR 4.13.2. DO NOT EDIT.
 
 package parser // MDLParser
 import "github.com/antlr4-go/antlr/v4"
@@ -418,14 +418,11 @@ type MDLParserListener interface {
 	// EnterDeclareStatement is called when entering the declareStatement production.
 	EnterDeclareStatement(c *DeclareStatementContext)
 
-	// EnterEnumSplitStatement is called when entering the enumSplitStatement production.
-	EnterEnumSplitStatement(c *EnumSplitStatementContext)
+	// EnterCaseStatement is called when entering the caseStatement production.
+	EnterCaseStatement(c *CaseStatementContext)
 
 	// EnterEnumSplitSource is called when entering the enumSplitSource production.
 	EnterEnumSplitSource(c *EnumSplitSourceContext)
-
-	// EnterEnumSplitCase is called when entering the enumSplitCase production.
-	EnterEnumSplitCase(c *EnumSplitCaseContext)
 
 	// EnterEnumSplitCaseValue is called when entering the enumSplitCaseValue production.
 	EnterEnumSplitCaseValue(c *EnumSplitCaseValueContext)
@@ -1768,14 +1765,11 @@ type MDLParserListener interface {
 	// ExitDeclareStatement is called when exiting the declareStatement production.
 	ExitDeclareStatement(c *DeclareStatementContext)
 
-	// ExitEnumSplitStatement is called when exiting the enumSplitStatement production.
-	ExitEnumSplitStatement(c *EnumSplitStatementContext)
+	// ExitCaseStatement is called when exiting the caseStatement production.
+	ExitCaseStatement(c *CaseStatementContext)
 
 	// ExitEnumSplitSource is called when exiting the enumSplitSource production.
 	ExitEnumSplitSource(c *EnumSplitSourceContext)
-
-	// ExitEnumSplitCase is called when exiting the enumSplitCase production.
-	ExitEnumSplitCase(c *EnumSplitCaseContext)
 
 	// ExitEnumSplitCaseValue is called when exiting the enumSplitCaseValue production.
 	ExitEnumSplitCaseValue(c *EnumSplitCaseValueContext)

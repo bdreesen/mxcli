@@ -1208,7 +1208,7 @@ func emitEnumSplitStatement(
 	annotationsByTarget map[model.ID][]string,
 ) {
 	indentStr := strings.Repeat("  ", indent)
-	*lines = append(*lines, indentStr+"split enum $"+variable)
+	*lines = append(*lines, indentStr+"case $"+variable)
 
 	type enumBranch struct {
 		values []string
@@ -1232,15 +1232,15 @@ func emitEnumSplitStatement(
 	}
 
 	for _, branch := range branches {
-		*lines = append(*lines, indentStr+"case "+formatEnumSplitCaseValues(branch.values))
+		*lines = append(*lines, indentStr+"  when "+formatEnumSplitCaseValues(branch.values)+" then")
 		traverseFlowUntilMerge(ctx, branch.flow.DestinationID, mergeID, activityMap, flowsByOrigin, flowsByDest, splitMergeMap, cloneVisited(visited), entityNames, microflowNames, lines, indent+1, sourceMap, headerLineCount, annotationsByTarget)
 	}
 	if elseFlow != nil {
-		*lines = append(*lines, indentStr+"else")
+		*lines = append(*lines, indentStr+"  else")
 		traverseFlowUntilMerge(ctx, elseFlow.DestinationID, mergeID, activityMap, flowsByOrigin, flowsByDest, splitMergeMap, cloneVisited(visited), entityNames, microflowNames, lines, indent+1, sourceMap, headerLineCount, annotationsByTarget)
 	}
 
-	*lines = append(*lines, indentStr+"end split;")
+	*lines = append(*lines, indentStr+"end case;")
 }
 
 func enumSplitVariable(split *microflows.ExclusiveSplit) (string, bool) {
@@ -1413,6 +1413,12 @@ func branchFlowStartsAtTerminal(flow *microflows.SequenceFlow, activityMap map[m
 	}
 }
 
+// hasExplicitFalseBranchAnchor reports whether a flow is the false-branch anchor
+// of a boolean ExclusiveSplit (origin=top, destination=bottom). This heuristic
+// distinguishes boolean false-branch flows from enum-split flows inside isGuard,
+// because both share a nil CaseValue but differ in their anchor positions.
+// Limitation: a custom @anchor that happens to use (top, bottom) would be
+// misclassified; this is accepted because it is an unlikely user choice.
 func hasExplicitFalseBranchAnchor(flow *microflows.SequenceFlow) bool {
 	if flow == nil {
 		return false

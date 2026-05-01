@@ -283,6 +283,12 @@ func (fb *flowBuilder) addChangeObjectAction(s *ast.ChangeObjectStmt) model.ID {
 }
 
 func (fb *flowBuilder) addEnumSplit(s *ast.EnumSplitStmt) model.ID {
+	if len(s.Cases) > len(splitCaseOrderAnchors) {
+		fb.addError("case statement on '$%s' has %d cases; maximum supported is %d",
+			s.Variable, len(s.Cases), len(splitCaseOrderAnchors))
+		return ""
+	}
+
 	if fb.measurer == nil {
 		fb.measurer = &layoutMeasurer{varTypes: fb.varTypes}
 	}

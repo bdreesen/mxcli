@@ -12,13 +12,13 @@ create microflow EnumSplitExample.RouteStatus (
 )
 returns boolean
 begin
-  split enum $Status
-    case Open, Pending
+  case $Status
+    when Open then
       return true;
-    case Closed
+    when Pending then
+      return true;
+    when Closed then
       return false;
-    else
-      return false;
-  end split;
+  end case;
 end;
 /

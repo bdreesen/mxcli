@@ -1,4 +1,4 @@
-// Code generated from MDLParser.g4 by ANTLR 4.13.1. DO NOT EDIT.
+// Code generated from MDLParser.g4 by ANTLR 4.13.2. DO NOT EDIT.
 
 package parser // MDLParser
 import "github.com/antlr4-go/antlr/v4"
@@ -900,23 +900,17 @@ func (s *BaseMDLParserListener) EnterDeclareStatement(ctx *DeclareStatementConte
 // ExitDeclareStatement is called when production declareStatement is exited.
 func (s *BaseMDLParserListener) ExitDeclareStatement(ctx *DeclareStatementContext) {}
 
-// EnterEnumSplitStatement is called when production enumSplitStatement is entered.
-func (s *BaseMDLParserListener) EnterEnumSplitStatement(ctx *EnumSplitStatementContext) {}
+// EnterCaseStatement is called when production caseStatement is entered.
+func (s *BaseMDLParserListener) EnterCaseStatement(ctx *CaseStatementContext) {}
 
-// ExitEnumSplitStatement is called when production enumSplitStatement is exited.
-func (s *BaseMDLParserListener) ExitEnumSplitStatement(ctx *EnumSplitStatementContext) {}
+// ExitCaseStatement is called when production caseStatement is exited.
+func (s *BaseMDLParserListener) ExitCaseStatement(ctx *CaseStatementContext) {}
 
 // EnterEnumSplitSource is called when production enumSplitSource is entered.
 func (s *BaseMDLParserListener) EnterEnumSplitSource(ctx *EnumSplitSourceContext) {}
 
 // ExitEnumSplitSource is called when production enumSplitSource is exited.
 func (s *BaseMDLParserListener) ExitEnumSplitSource(ctx *EnumSplitSourceContext) {}
-
-// EnterEnumSplitCase is called when production enumSplitCase is entered.
-func (s *BaseMDLParserListener) EnterEnumSplitCase(ctx *EnumSplitCaseContext) {}
-
-// ExitEnumSplitCase is called when production enumSplitCase is exited.
-func (s *BaseMDLParserListener) ExitEnumSplitCase(ctx *EnumSplitCaseContext) {}
 
 // EnterEnumSplitCaseValue is called when production enumSplitCaseValue is entered.
 func (s *BaseMDLParserListener) EnterEnumSplitCaseValue(ctx *EnumSplitCaseValueContext) {}

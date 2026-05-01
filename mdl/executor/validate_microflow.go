@@ -90,7 +90,25 @@ func (v *microflowValidator) walkBody(body []ast.MicroflowStatement) {
 			v.walkBody(stmt.ThenBody)
 			v.walkBody(stmt.ElseBody)
 		case *ast.EnumSplitStmt:
+			// Mendix enumeration splits map to exclusive splits with one outgoing
+			// flow per enum value. Multiple values per branch and a default (else)
+			// flow are not supported — Studio Pro will reject both with CE errors.
+			if len(stmt.ElseBody) > 0 {
+				v.addViolation("MDL008", linter.SeverityError,
+					fmt.Sprintf("case statement on '$%s' has an else branch; "+
+						"Mendix enumeration splits do not support a default case. "+
+						"Add an explicit when branch for every enum value instead.",
+						stmt.Variable),
+					"Add an explicit when branch for every enum value instead of using else")
+			}
 			for _, c := range stmt.Cases {
+				if len(c.Values) > 1 {
+					v.addViolation("MDL009", linter.SeverityError,
+						fmt.Sprintf("case statement on '$%s': when branch lists %d values (%s); "+
+							"Mendix enumeration splits require exactly one value per branch.",
+							stmt.Variable, len(c.Values), strings.Join(c.Values, ", ")),
+						"Split into separate when branches, one per enum value")
+				}
 				v.walkBody(c.Body)
 			}
 			v.walkBody(stmt.ElseBody)
@@ -293,7 +311,11 @@ func bodyReturns(stmts []ast.MicroflowStatement) bool {
 	case *ast.WhileStmt:
 		return isUnconditionalTrueWhile(s) && !containsBreakForCurrentLoop(s.Body)
 	case *ast.EnumSplitStmt:
-		if len(s.ElseBody) == 0 || !bodyReturns(s.ElseBody) {
+		// else is not supported by Mendix; treat the split as exhaustive if
+		// every explicit case ends with a return. Unhandled enum values fall
+		// through to the next statement, so callers should add a return after
+		// end case when the split may not cover all values.
+		if len(s.Cases) == 0 {
 			return false
 		}
 		for _, c := range s.Cases {
@@ -301,7 +323,7 @@ func bodyReturns(stmts []ast.MicroflowStatement) bool {
 				return false
 			}
 		}
-		return len(s.Cases) > 0
+		return true
 	}
 	return false
 }

@@ -264,12 +264,12 @@ func isTerminalStmt(stmt ast.MicroflowStatement) bool {
 				return false
 			}
 		}
-		if len(s.ElseBody) == 0 {
-			// A described enum split may have no default flow at all. When every
-			// explicit case terminates, there is no split continuation to thread
-			// into the parent flow.
-			return true
-		}
+		// Both paths return true intentionally. isTerminalStmt diverges from
+		// bodyReturns here: bodyReturns requires an ELSE to guarantee all paths
+		// return (a valid Mendix requirement), but isTerminalStmt only needs to
+		// know whether the flow builder must thread a continuation edge past this
+		// statement. When every explicit case terminates the split has no outgoing
+		// merge edge regardless of whether an ELSE exists, so we are always terminal.
 		return true
 	default:
 		return false

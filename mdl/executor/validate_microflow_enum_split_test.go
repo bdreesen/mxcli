@@ -25,6 +25,29 @@ func TestValidateMicroflow_EnumSplitAllBranchesReturn(t *testing.T) {
 						&ast.ReturnStmt{Value: &ast.LiteralExpr{Kind: ast.LiteralBoolean, Value: false}},
 					}},
 				},
+			},
+		},
+	}
+
+	violations := ValidateMicroflow(stmt)
+	for _, v := range violations {
+		if v.RuleID == "MDL003" {
+			t.Fatalf("enum split with all cases returning must not trigger MDL003: %#v", v)
+		}
+	}
+}
+
+func TestValidateMicroflow_EnumSplitElseForbidden(t *testing.T) {
+	stmt := &ast.CreateMicroflowStmt{
+		Name: ast.QualifiedName{Module: "Sample", Name: "Route"},
+		Body: []ast.MicroflowStatement{
+			&ast.EnumSplitStmt{
+				Variable: "Status",
+				Cases: []ast.EnumSplitCase{
+					{Values: []string{"Open"}, Body: []ast.MicroflowStatement{
+						&ast.ReturnStmt{Value: &ast.LiteralExpr{Kind: ast.LiteralBoolean, Value: true}},
+					}},
+				},
 				ElseBody: []ast.MicroflowStatement{
 					&ast.ReturnStmt{Value: &ast.LiteralExpr{Kind: ast.LiteralBoolean, Value: false}},
 				},
@@ -33,11 +56,36 @@ func TestValidateMicroflow_EnumSplitAllBranchesReturn(t *testing.T) {
 	}
 
 	violations := ValidateMicroflow(stmt)
-	for _, violation := range violations {
-		if violation.RuleID == "MDL003" {
-			t.Fatalf("ENUM split with exhaustive returning branches must satisfy return validation: %#v", violation)
+	for _, v := range violations {
+		if v.RuleID == "MDL008" {
+			return
 		}
 	}
+	t.Fatalf("expected MDL008 for enum split with else branch, got %#v", violations)
+}
+
+func TestValidateMicroflow_EnumSplitMultipleValuesForbidden(t *testing.T) {
+	stmt := &ast.CreateMicroflowStmt{
+		Name: ast.QualifiedName{Module: "Sample", Name: "Route"},
+		Body: []ast.MicroflowStatement{
+			&ast.EnumSplitStmt{
+				Variable: "Status",
+				Cases: []ast.EnumSplitCase{
+					{Values: []string{"Open", "Pending"}, Body: []ast.MicroflowStatement{
+						&ast.ReturnStmt{Value: &ast.LiteralExpr{Kind: ast.LiteralBoolean, Value: true}},
+					}},
+				},
+			},
+		},
+	}
+
+	violations := ValidateMicroflow(stmt)
+	for _, v := range violations {
+		if v.RuleID == "MDL009" {
+			return
+		}
+	}
+	t.Fatalf("expected MDL009 for enum split with multiple values per branch, got %#v", violations)
 }
 
 func TestValidateMicroflow_EnumSplitBranchScopedVariable(t *testing.T) {
@@ -60,8 +108,8 @@ func TestValidateMicroflow_EnumSplitBranchScopedVariable(t *testing.T) {
 	}
 
 	violations := ValidateMicroflow(stmt)
-	for _, violation := range violations {
-		if violation.RuleID == "MDL005" {
+	for _, v := range violations {
+		if v.RuleID == "MDL005" {
 			return
 		}
 	}
