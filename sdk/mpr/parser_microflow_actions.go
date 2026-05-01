@@ -737,6 +737,10 @@ func parseImportXmlAction(raw map[string]any) *microflows.ImportXmlAction {
 			if rangeMap := toMap(call["Range"]); rangeMap != nil {
 				handling.SingleObject = extractBool(rangeMap["SingleObject"], false)
 			}
+			// Older XML import mappings may omit Range and encode single-object
+			// handling only through ForceSingleOccurrence. REST result handling
+			// stores Range consistently, so this compatibility fallback stays
+			// XML-specific.
 			if !handling.SingleObject {
 				handling.SingleObject = forceSingleOccurrence
 			}

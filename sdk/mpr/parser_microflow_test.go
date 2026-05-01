@@ -185,6 +185,39 @@ func TestSerializeImportXmlActionPreservesSingleObjectRange(t *testing.T) {
 	}
 }
 
+func TestParseImportXmlActionUsesRangeForSingleObject(t *testing.T) {
+	got := parseImportXmlAction(map[string]any{
+		"$ID":                     "import-action-1",
+		"XmlDocumentVariable":     "LatestHttpResponse",
+		"XmlDocumentVariableName": "LatestHttpResponse",
+		"ResultHandling": map[string]any{
+			"$ID":                "result-handling-1",
+			"ResultVariableName": "ErrorResponse",
+			"ImportMappingCall": map[string]any{
+				"ReturnValueMapping":    "SampleRest.IMM_ErrorResponse",
+				"ForceSingleOccurrence": false,
+				"Range": map[string]any{
+					"SingleObject": true,
+				},
+				"VariableType": map[string]any{
+					"$Type":  "DataTypes$ObjectType",
+					"Entity": "SampleRest.Error",
+				},
+			},
+		},
+	})
+
+	if got.ResultHandling == nil {
+		t.Fatal("ResultHandling missing")
+	}
+	if !got.ResultHandling.SingleObject {
+		t.Fatal("Range.SingleObject=true must make XML import result object-valued")
+	}
+	if got.ResultHandling.ForceSingleOccurrence == nil || *got.ResultHandling.ForceSingleOccurrence {
+		t.Fatalf("ForceSingleOccurrence = %v, want explicit false", got.ResultHandling.ForceSingleOccurrence)
+	}
+}
+
 func bsonDMap(doc primitive.D) map[string]any {
 	out := make(map[string]any, len(doc))
 	for _, elem := range doc {
