@@ -37,6 +37,9 @@ var scriptKnownCEErrors = map[string][]string{
 	"02-microflow-examples.mdl": {
 		"CE0117", // Expression error in LOG WARNING on Mendix 10.x (string concat syntax difference)
 	},
+	"02b-nanoflow-examples.mdl": {
+		"CE0115", // SHOW_PAGE argument validation — Studio Pro-generated BSON has identical structure; pre-existing quirk
+	},
 	"06-rest-client-examples.mdl": {
 		"CE0061", // No entity selected (JSON response/body mapping without entity)
 		"CE6035", // RestOperationCallAction error handling not supported
