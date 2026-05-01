@@ -696,8 +696,12 @@ func statementErrorHandling(stmt ast.MicroflowStatement) *ast.ErrorHandlingClaus
 	}
 }
 
-// containsContinueForCurrentLoop mirrors containsBreakForCurrentLoop:
-// a continue inside a nested loop targets that nested loop, not this one.
+// containsContinueForCurrentLoop reports whether stmts contain a continue
+// that targets the enclosing loop — i.e. one that is NOT inside a nested
+// LoopStmt/WhileStmt. Nested loops trap their own continues just like they
+// trap their own breaks, so the scan stops at nested-loop boundaries.
+// This mirrors containsBreakForCurrentLoop in intent; it differs only in
+// which statement type it looks for.
 func containsContinueForCurrentLoop(stmts []ast.MicroflowStatement) bool {
 	for _, stmt := range stmts {
 		switch s := stmt.(type) {
