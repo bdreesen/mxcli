@@ -71,3 +71,15 @@ func TestHelp_Mock(t *testing.T) {
 	assertContainsStr(t, out, "MDL Commands")
 	assertContainsStr(t, out, "connect local")
 }
+
+// ---------------------------------------------------------------------------
+// EXECUTE SCRIPT — depth limit
+// ---------------------------------------------------------------------------
+
+func TestExecuteScript_DepthLimitExceeded(t *testing.T) {
+	ctx, _ := newMockCtx(t)
+	ctx.ScriptDepth = maxScriptDepth
+	err := execExecuteScript(ctx, &ast.ExecuteScriptStmt{Path: "/some/script.mdl"})
+	assertError(t, err)
+	assertContainsStr(t, err.Error(), "maximum script nesting depth")
+}

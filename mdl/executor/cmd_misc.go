@@ -390,8 +390,15 @@ func execExit(ctx *ExecContext) error {
 	return ErrExit
 }
 
+// maxScriptDepth is the maximum allowed EXECUTE SCRIPT nesting level.
+const maxScriptDepth = 16
+
 // execExecuteScript handles EXECUTE SCRIPT statements.
 func execExecuteScript(ctx *ExecContext, s *ast.ExecuteScriptStmt) error {
+	if ctx.ScriptDepth >= maxScriptDepth {
+		return mdlerrors.NewValidationf("maximum script nesting depth (%d) exceeded — possible recursive EXECUTE SCRIPT", maxScriptDepth)
+	}
+
 	// Resolve path relative to current working directory
 	scriptPath := s.Path
 	if !filepath.IsAbs(scriptPath) {
@@ -426,6 +433,8 @@ func execExecuteScript(ctx *ExecContext, s *ast.ExecuteScriptStmt) error {
 	if ctx.ExecuteFn == nil {
 		return mdlerrors.NewBackend("execute script", errors.New("ExecuteFn not set — ExecContext was not created via Executor dispatch"))
 	}
+	ctx.ScriptDepth++
+	defer func() { ctx.ScriptDepth-- }()
 	for _, stmt := range prog.Statements {
 		if err := ctx.ExecuteFn(stmt); err != nil {
 			// Exit within a script just stops the script, doesn't exit mxcli
