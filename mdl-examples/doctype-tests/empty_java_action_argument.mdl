@@ -8,7 +8,8 @@ create java action SampleModule.Recalculate(
   CompanyId: string,
   RecalculateAll: boolean not null,
   ItemList: list of SampleModule.Item
-) returns void;
+) returns void as $$
+$$;
 
 create microflow SampleModule.ACT_RecalculateOpenItems ()
 returns Void

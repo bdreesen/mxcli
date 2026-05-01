@@ -17,17 +17,6 @@ jobs:
         run: make build
       - name: Test
         run: make test
-      - name: Setup mxbuild
-        run: ./bin/mxcli setup mxbuild --version 11.9.0
-      - name: Integration tests
-        run: make test-integration
-        timeout-minutes: 30
-      - name: Lint Go
-        run: make lint-go
-      - name: Vulnerability scan
-        run: |
-          go install golang.org/x/vuln/cmd/govulncheck@latest
-          govulncheck ./...
       - name: Check MDL example scripts
         run: |
           FAILED=0
@@ -44,3 +33,14 @@ jobs:
             echo "::endgroup::"
           done
           exit $FAILED
+      - name: Setup mxbuild
+        run: ./bin/mxcli setup mxbuild --version 11.9.0
+      - name: Integration tests
+        run: make test-integration
+        timeout-minutes: 30
+      - name: Lint Go
+        run: make lint-go
+      - name: Vulnerability scan
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
