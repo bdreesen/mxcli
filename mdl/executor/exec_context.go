@@ -87,6 +87,11 @@ type ExecContext struct {
 	// It lets activity formatting distinguish a terminal void EndEvent from an
 	// empty EndEvent in a value-returning microflow, where bare `return;` is invalid.
 	DescribingMicroflowHasReturnValue bool
+
+	// ScriptDepth tracks the current EXECUTE SCRIPT nesting level.
+	// Incremented on each recursive call; execExecuteScript rejects calls
+	// that exceed maxScriptDepth to prevent infinite self-referencing scripts.
+	ScriptDepth int
 }
 
 // Connected returns true if a project is connected via the Backend.
