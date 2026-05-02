@@ -3401,14 +3401,14 @@ func mdlparserParserInit() {
 		5631, 1, 0, 0, 0, 5633, 5634, 1, 0, 0, 0, 5634, 5637, 1, 0, 0, 0, 5635,
 		5633, 1, 0, 0, 0, 5636, 5627, 1, 0, 0, 0, 5636, 5628, 1, 0, 0, 0, 5637,
 		5638, 1, 0, 0, 0, 5638, 5639, 5, 562, 0, 0, 5639, 629, 1, 0, 0, 0, 5640,
-		5643, 5, 579, 0, 0, 5641, 5642, 5, 77, 0, 0, 5642, 5644, 5, 575, 0, 0,
+		5643, 3, 858, 429, 0, 5641, 5642, 5, 77, 0, 0, 5642, 5644, 5, 575, 0, 0,
 		5643, 5641, 1, 0, 0, 0, 5643, 5644, 1, 0, 0, 0, 5644, 5646, 1, 0, 0, 0,
 		5645, 5647, 3, 632, 316, 0, 5646, 5645, 1, 0, 0, 0, 5646, 5647, 1, 0, 0,
-		0, 5647, 631, 1, 0, 0, 0, 5648, 5649, 5, 561, 0, 0, 5649, 5654, 5, 579,
-		0, 0, 5650, 5651, 5, 559, 0, 0, 5651, 5653, 5, 579, 0, 0, 5652, 5650, 1,
-		0, 0, 0, 5653, 5656, 1, 0, 0, 0, 5654, 5652, 1, 0, 0, 0, 5654, 5655, 1,
-		0, 0, 0, 5655, 5657, 1, 0, 0, 0, 5656, 5654, 1, 0, 0, 0, 5657, 5658, 5,
-		562, 0, 0, 5658, 633, 1, 0, 0, 0, 5659, 5660, 5, 26, 0, 0, 5660, 5661,
+		0, 5647, 631, 1, 0, 0, 0, 5648, 5649, 5, 561, 0, 0, 5649, 5654, 3, 858,
+		429, 0, 5650, 5651, 5, 559, 0, 0, 5651, 5653, 3, 858, 429, 0, 5652, 5650,
+		1, 0, 0, 0, 5653, 5656, 1, 0, 0, 0, 5654, 5652, 1, 0, 0, 0, 5654, 5655,
+		1, 0, 0, 0, 5655, 5657, 1, 0, 0, 0, 5656, 5654, 1, 0, 0, 0, 5657, 5658,
+		5, 562, 0, 0, 5658, 633, 1, 0, 0, 0, 5659, 5660, 5, 26, 0, 0, 5660, 5661,
 		5, 23, 0, 0, 5661, 5662, 3, 856, 428, 0, 5662, 5663, 5, 72, 0, 0, 5663,
 		5664, 5, 339, 0, 0, 5664, 5665, 5, 368, 0, 0, 5665, 5666, 3, 856, 428,
 		0, 5666, 5667, 5, 561, 0, 0, 5667, 5672, 3, 618, 309, 0, 5668, 5669, 5,
@@ -82757,7 +82757,7 @@ func (p *MDLParser) ExposeClause() (localctx IExposeClauseContext) {
 			}
 		}
 
-	case MDLParserIDENTIFIER:
+	case MDLParserIS_NOT_NULL, MDLParserIS_NULL, MDLParserNOT_NULL, MDLParserGROUP_BY, MDLParserORDER_BY, MDLParserSORT_BY, MDLParserNON_PERSISTENT, MDLParserREFERENCE_SET, MDLParserLIST_OF, MDLParserDELETE_AND_REFERENCES, MDLParserDELETE_BUT_KEEP_REFERENCES, MDLParserDELETE_IF_NO_REFERENCES, MDLParserCREATE, MDLParserALTER, MDLParserDROP, MDLParserRENAME, MDLParserMOVE, MDLParserMODIFY, MDLParserENTITY, MDLParserPERSISTENT, MDLParserVIEW, MDLParserEXTERNAL, MDLParserASSOCIATION, MDLParserENUMERATION, MDLParserMODULE, MDLParserMICROFLOW, MDLParserNANOFLOW, MDLParserWORKFLOW, MDLParserPAGE, MDLParserSNIPPET, MDLParserLAYOUT, MDLParserNOTEBOOK, MDLParserCONSTANT, MDLParserATTRIBUTE, MDLParserCOLUMN, MDLParserCOLUMNS, MDLParserINDEX, MDLParserOWNER, MDLParserSTORE, MDLParserREFERENCE, MDLParserGENERALIZATION, MDLParserEXTENDS, MDLParserADD, MDLParserSET, MDLParserPOSITION, MDLParserDOCUMENTATION, MDLParserSTORAGE, MDLParserTABLE, MDLParserDELETE_BEHAVIOR, MDLParserCASCADE, MDLParserPREVENT, MDLParserCONNECT, MDLParserDISCONNECT, MDLParserLOCAL, MDLParserPROJECT, MDLParserRUNTIME, MDLParserBRANCH, MDLParserTOKEN, MDLParserHOST, MDLParserPORT, MDLParserSHOW, MDLParserLIST_KW, MDLParserDESCRIBE, MDLParserUSE, MDLParserINTROSPECT, MDLParserDEBUG, MDLParserSELECT, MDLParserFROM, MDLParserWHERE, MDLParserHAVING, MDLParserOFFSET, MDLParserLIMIT, MDLParserAS, MDLParserRETURNS, MDLParserRETURNING, MDLParserCASE, MDLParserWHEN, MDLParserTHEN, MDLParserELSE, MDLParserEND, MDLParserDISTINCT, MDLParserALL, MDLParserJOIN, MDLParserLEFT, MDLParserRIGHT, MDLParserINNER, MDLParserOUTER, MDLParserFULL, MDLParserCROSS, MDLParserON, MDLParserASC, MDLParserDESC, MDLParserTOP, MDLParserBOTTOM, MDLParserANCHOR, MDLParserBEGIN, MDLParserDECLARE, MDLParserCHANGE, MDLParserRETRIEVE, MDLParserDELETE, MDLParserCOMMIT, MDLParserROLLBACK, MDLParserLOOP, MDLParserWHILE, MDLParserIF, MDLParserELSIF, MDLParserELSEIF, MDLParserCONTINUE, MDLParserBREAK, MDLParserRETURN, MDLParserTHROW, MDLParserLOG, MDLParserCALL, MDLParserDOWNLOAD, MDLParserBROWSER, MDLParserWEB, MDLParserRAW, MDLParserJAVA, MDLParserJAVASCRIPT, MDLParserACTION, MDLParserACTIONS, MDLParserCLOSE, MDLParserNODE, MDLParserEVENTS, MDLParserHEAD, MDLParserTAIL, MDLParserFIND, MDLParserSORT, MDLParserUNION, MDLParserINTERSECT, MDLParserSUBTRACT, MDLParserCONTAINS, MDLParserAVERAGE, MDLParserMINIMUM, MDLParserMAXIMUM, MDLParserLIST, MDLParserREMOVE, MDLParserEQUALS_OP, MDLParserINFO, MDLParserWARNING, MDLParserTRACE, MDLParserCRITICAL, MDLParserWITH, MDLParserEMPTY, MDLParserOBJECT, MDLParserOBJECTS, MDLParserPAGES, MDLParserLAYOUTS, MDLParserSNIPPETS, MDLParserNOTEBOOKS, MDLParserPLACEHOLDER, MDLParserSNIPPETCALL, MDLParserLAYOUTGRID, MDLParserDATAGRID, MDLParserDATAVIEW, MDLParserLISTVIEW, MDLParserGALLERY, MDLParserCONTAINER, MDLParserROW, MDLParserITEM, MDLParserCONTROLBAR, MDLParserSEARCH, MDLParserSEARCHBAR, MDLParserNAVIGATIONLIST, MDLParserACTIONBUTTON, MDLParserLINKBUTTON, MDLParserBUTTON, MDLParserTITLE, MDLParserDYNAMICTEXT, MDLParserDYNAMIC, MDLParserSTATICTEXT, MDLParserLABEL, MDLParserTEXTBOX, MDLParserTEXTAREA, MDLParserDATEPICKER, MDLParserRADIOBUTTONS, MDLParserDROPDOWN, MDLParserCOMBOBOX, MDLParserCHECKBOX, MDLParserREFERENCESELECTOR, MDLParserINPUTREFERENCESETSELECTOR, MDLParserFILEINPUT, MDLParserIMAGEINPUT, MDLParserCUSTOMWIDGET, MDLParserPLUGGABLEWIDGET, MDLParserTEXTFILTER, MDLParserNUMBERFILTER, MDLParserDROPDOWNFILTER, MDLParserDATEFILTER, MDLParserDROPDOWNSORT, MDLParserFILTER, MDLParserWIDGET, MDLParserWIDGETS, MDLParserCAPTION, MDLParserICON, MDLParserTOOLTIP, MDLParserDATASOURCE, MDLParserSOURCE_KW, MDLParserSELECTION, MDLParserFOOTER, MDLParserHEADER, MDLParserCONTENT, MDLParserRENDERMODE, MDLParserBINDS, MDLParserATTR, MDLParserCONTENTPARAMS, MDLParserCAPTIONPARAMS, MDLParserPARAMS, MDLParserVARIABLES_KW, MDLParserDESKTOPWIDTH, MDLParserTABLETWIDTH, MDLParserPHONEWIDTH, MDLParserCLASS, MDLParserSTYLE, MDLParserBUTTONSTYLE, MDLParserDESIGN, MDLParserPROPERTIES, MDLParserDESIGNPROPERTIES, MDLParserSTYLING, MDLParserCLEAR, MDLParserWIDTH, MDLParserHEIGHT, MDLParserAUTOFILL, MDLParserURL, MDLParserFOLDER, MDLParserPASSING, MDLParserCONTEXT, MDLParserEDITABLE, MDLParserREADONLY, MDLParserATTRIBUTES, MDLParserFILTERTYPE, MDLParserIMAGE, MDLParserCOLLECTION, MDLParserMODEL, MDLParserMODELS, MDLParserAGENT, MDLParserAGENTS, MDLParserTOOL, MDLParserKNOWLEDGE, MDLParserBASES, MDLParserCONSUMED, MDLParserMCP, MDLParserSTATICIMAGE, MDLParserDYNAMICIMAGE, MDLParserCUSTOMCONTAINER, MDLParserTABCONTAINER, MDLParserTABPAGE, MDLParserGROUPBOX, MDLParserVISIBLE, MDLParserSAVECHANGES, MDLParserSAVE_CHANGES, MDLParserCANCEL_CHANGES, MDLParserCLOSE_PAGE, MDLParserSHOW_PAGE, MDLParserDELETE_ACTION, MDLParserDELETE_OBJECT, MDLParserCREATE_OBJECT, MDLParserCALL_MICROFLOW, MDLParserCALL_NANOFLOW, MDLParserOPEN_LINK, MDLParserSIGN_OUT, MDLParserCANCEL, MDLParserPRIMARY, MDLParserSUCCESS, MDLParserDANGER, MDLParserWARNING_STYLE, MDLParserINFO_STYLE, MDLParserTEMPLATE, MDLParserONCLICK, MDLParserONCHANGE, MDLParserTABINDEX, MDLParserH1, MDLParserH2, MDLParserH3, MDLParserH4, MDLParserH5, MDLParserH6, MDLParserPARAGRAPH, MDLParserSTRING_TYPE, MDLParserINTEGER_TYPE, MDLParserLONG_TYPE, MDLParserDECIMAL_TYPE, MDLParserBOOLEAN_TYPE, MDLParserDATETIME_TYPE, MDLParserDATE_TYPE, MDLParserAUTONUMBER_TYPE, MDLParserAUTOOWNER_TYPE, MDLParserAUTOCHANGEDBY_TYPE, MDLParserAUTOCREATEDDATE_TYPE, MDLParserAUTOCHANGEDDATE_TYPE, MDLParserBINARY_TYPE, MDLParserHASHEDSTRING_TYPE, MDLParserCURRENCY_TYPE, MDLParserFLOAT_TYPE, MDLParserSTRINGTEMPLATE_TYPE, MDLParserENUM_TYPE, MDLParserCOUNT, MDLParserSUM, MDLParserAVG, MDLParserMIN, MDLParserMAX, MDLParserLENGTH, MDLParserTRIM, MDLParserCOALESCE, MDLParserCAST, MDLParserAND, MDLParserOR, MDLParserNOT, MDLParserNULL, MDLParserIN, MDLParserBETWEEN, MDLParserLIKE, MDLParserMATCH, MDLParserEXISTS, MDLParserUNIQUE, MDLParserDEFAULT, MDLParserTRUE, MDLParserFALSE, MDLParserVALIDATION, MDLParserFEEDBACK, MDLParserRULE, MDLParserREQUIRED, MDLParserERROR, MDLParserRAISE, MDLParserRANGE, MDLParserREGEX, MDLParserPATTERN, MDLParserEXPRESSION, MDLParserXPATH, MDLParserCONSTRAINT, MDLParserCALCULATED, MDLParserREST, MDLParserSERVICE, MDLParserSERVICES, MDLParserODATA, MDLParserOPENAPI, MDLParserBASE, MDLParserAUTH, MDLParserAUTHENTICATION, MDLParserBASIC, MDLParserNOTHING, MDLParserOAUTH, MDLParserOPERATION, MDLParserMETHOD, MDLParserPATH, MDLParserTIMEOUT, MDLParserBODY, MDLParserRESPONSE, MDLParserREQUEST, MDLParserSEND, MDLParserRECEIVE, MDLParserDEPRECATED, MDLParserRESOURCE, MDLParserJSON, MDLParserXML, MDLParserSTATUS, MDLParserFILE_KW, MDLParserVERSION, MDLParserGET, MDLParserPOST, MDLParserPUT, MDLParserPATCH, MDLParserAPI, MDLParserCLIENT, MDLParserCLIENTS, MDLParserPUBLISH, MDLParserPUBLISHED, MDLParserEXPOSE, MDLParserCONTRACT, MDLParserNAMESPACE_KW, MDLParserSESSION, MDLParserGUEST, MDLParserPAGING, MDLParserNOT_SUPPORTED, MDLParserUSERNAME, MDLParserPASSWORD, MDLParserCONNECTION, MDLParserDATABASE, MDLParserQUERY, MDLParserMAP, MDLParserMAPPING, MDLParserMAPPINGS, MDLParserIMPORT, MDLParserVIA, MDLParserKEY, MDLParserINTO, MDLParserBATCH, MDLParserLINK, MDLParserEXPORT, MDLParserGENERATE, MDLParserCONNECTOR, MDLParserEXEC, MDLParserTABLES, MDLParserVIEWS, MDLParserEXPOSED, MDLParserPARAMETER, MDLParserPARAMETERS, MDLParserHEADERS, MDLParserNAVIGATION, MDLParserMENU_KW, MDLParserHOMES, MDLParserHOME, MDLParserLOGIN, MDLParserFOUND, MDLParserMODULES, MDLParserENTITIES, MDLParserASSOCIATIONS, MDLParserMICROFLOWS, MDLParserNANOFLOWS, MDLParserWORKFLOWS, MDLParserENUMERATIONS, MDLParserCONSTANTS, MDLParserCONNECTIONS, MDLParserDEFINE, MDLParserFRAGMENT, MDLParserFRAGMENTS, MDLParserLANGUAGES, MDLParserINSERT, MDLParserBEFORE, MDLParserAFTER, MDLParserUPDATE, MDLParserREFRESH, MDLParserCHECK, MDLParserBUILD, MDLParserEXECUTE, MDLParserSCRIPT, MDLParserLINT, MDLParserRULES, MDLParserTEXT, MDLParserSARIF, MDLParserMESSAGE, MDLParserMESSAGES, MDLParserCHANNELS, MDLParserCOMMENT, MDLParserCUSTOM_NAME_MAP, MDLParserCATALOG, MDLParserFORCE, MDLParserBACKGROUND, MDLParserCALLERS, MDLParserCALLEES, MDLParserREFERENCES, MDLParserTRANSITIVE, MDLParserIMPACT, MDLParserDEPTH, MDLParserSTRUCTURE, MDLParserSTRUCTURES, MDLParserSCHEMA, MDLParserTYPE, MDLParserVALUE, MDLParserVALUES, MDLParserSINGLE, MDLParserMULTIPLE, MDLParserNONE, MDLParserBOTH, MDLParserTO, MDLParserOF, MDLParserOVER, MDLParserFOR, MDLParserREPLACE, MDLParserMEMBERS, MDLParserATTRIBUTE_NAME, MDLParserFORMAT, MDLParserSQL, MDLParserWITHOUT, MDLParserDRY, MDLParserRUN, MDLParserWIDGETTYPE, MDLParserBUSINESS, MDLParserEVENT, MDLParserHANDLER, MDLParserSUBSCRIBE, MDLParserSETTINGS, MDLParserCONFIGURATION, MDLParserFEATURES, MDLParserADDED, MDLParserSINCE, MDLParserSECURITY, MDLParserROLE, MDLParserROLES, MDLParserGRANT, MDLParserREVOKE, MDLParserPRODUCTION, MDLParserPROTOTYPE, MDLParserMANAGE, MDLParserDEMO, MDLParserMATRIX, MDLParserAPPLY, MDLParserACCESS, MDLParserLEVEL, MDLParserUSER, MDLParserTASK, MDLParserDECISION, MDLParserSPLIT, MDLParserOUTCOME, MDLParserOUTCOMES, MDLParserTARGETING, MDLParserNOTIFICATION, MDLParserTIMER, MDLParserJUMP, MDLParserDUE, MDLParserOVERVIEW, MDLParserDATE, MDLParserCHANGED, MDLParserCREATED, MDLParserPARALLEL, MDLParserWAIT, MDLParserANNOTATION, MDLParserBOUNDARY, MDLParserINTERRUPTING, MDLParserNON, MDLParserMULTI, MDLParserBY, MDLParserREAD, MDLParserWRITE, MDLParserDESCRIPTION, MDLParserDISPLAY, MDLParserACTIVITY, MDLParserCONDITION, MDLParserOFF, MDLParserUSERS, MDLParserGROUPS, MDLParserDATA, MDLParserTRANSFORM, MDLParserTRANSFORMER, MDLParserTRANSFORMERS, MDLParserJSLT, MDLParserXSLT, MDLParserRECORDS, MDLParserNOTIFY, MDLParserPAUSE, MDLParserUNPAUSE, MDLParserABORT, MDLParserRETRY, MDLParserRESTART, MDLParserLOCK, MDLParserUNLOCK, MDLParserREASON, MDLParserOPEN, MDLParserCOMPLETE_TASK, MDLParserMOD, MDLParserDIV, MDLParserIDENTIFIER, MDLParserQUOTED_IDENTIFIER:
 		{
 			p.SetState(5628)
 			p.ExposeMember()
@@ -82825,7 +82825,7 @@ type IExposeMemberContext interface {
 	GetParser() antlr.Parser
 
 	// Getter signatures
-	IDENTIFIER() antlr.TerminalNode
+	IdentifierOrKeyword() IIdentifierOrKeywordContext
 	AS() antlr.TerminalNode
 	STRING_LITERAL() antlr.TerminalNode
 	ExposeMemberOptions() IExposeMemberOptionsContext
@@ -82866,8 +82866,20 @@ func NewExposeMemberContext(parser antlr.Parser, parent antlr.ParserRuleContext,
 
 func (s *ExposeMemberContext) GetParser() antlr.Parser { return s.parser }
 
-func (s *ExposeMemberContext) IDENTIFIER() antlr.TerminalNode {
-	return s.GetToken(MDLParserIDENTIFIER, 0)
+func (s *ExposeMemberContext) IdentifierOrKeyword() IIdentifierOrKeywordContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(IIdentifierOrKeywordContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(IIdentifierOrKeywordContext)
 }
 
 func (s *ExposeMemberContext) AS() antlr.TerminalNode {
@@ -82922,11 +82934,7 @@ func (p *MDLParser) ExposeMember() (localctx IExposeMemberContext) {
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(5640)
-		p.Match(MDLParserIDENTIFIER)
-		if p.HasError() {
-			// Recognition error - abort rule
-			goto errorExit
-		}
+		p.IdentifierOrKeyword()
 	}
 	p.SetState(5643)
 	p.GetErrorHandler().Sync(p)
@@ -82991,8 +82999,8 @@ type IExposeMemberOptionsContext interface {
 
 	// Getter signatures
 	LPAREN() antlr.TerminalNode
-	AllIDENTIFIER() []antlr.TerminalNode
-	IDENTIFIER(i int) antlr.TerminalNode
+	AllIdentifierOrKeyword() []IIdentifierOrKeywordContext
+	IdentifierOrKeyword(i int) IIdentifierOrKeywordContext
 	RPAREN() antlr.TerminalNode
 	AllCOMMA() []antlr.TerminalNode
 	COMMA(i int) antlr.TerminalNode
@@ -83037,12 +83045,45 @@ func (s *ExposeMemberOptionsContext) LPAREN() antlr.TerminalNode {
 	return s.GetToken(MDLParserLPAREN, 0)
 }
 
-func (s *ExposeMemberOptionsContext) AllIDENTIFIER() []antlr.TerminalNode {
-	return s.GetTokens(MDLParserIDENTIFIER)
+func (s *ExposeMemberOptionsContext) AllIdentifierOrKeyword() []IIdentifierOrKeywordContext {
+	children := s.GetChildren()
+	len := 0
+	for _, ctx := range children {
+		if _, ok := ctx.(IIdentifierOrKeywordContext); ok {
+			len++
+		}
+	}
+
+	tst := make([]IIdentifierOrKeywordContext, len)
+	i := 0
+	for _, ctx := range children {
+		if t, ok := ctx.(IIdentifierOrKeywordContext); ok {
+			tst[i] = t.(IIdentifierOrKeywordContext)
+			i++
+		}
+	}
+
+	return tst
 }
 
-func (s *ExposeMemberOptionsContext) IDENTIFIER(i int) antlr.TerminalNode {
-	return s.GetToken(MDLParserIDENTIFIER, i)
+func (s *ExposeMemberOptionsContext) IdentifierOrKeyword(i int) IIdentifierOrKeywordContext {
+	var t antlr.RuleContext
+	j := 0
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(IIdentifierOrKeywordContext); ok {
+			if j == i {
+				t = ctx.(antlr.RuleContext)
+				break
+			}
+			j++
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(IIdentifierOrKeywordContext)
 }
 
 func (s *ExposeMemberOptionsContext) RPAREN() antlr.TerminalNode {
@@ -83093,11 +83134,7 @@ func (p *MDLParser) ExposeMemberOptions() (localctx IExposeMemberOptionsContext)
 	}
 	{
 		p.SetState(5649)
-		p.Match(MDLParserIDENTIFIER)
-		if p.HasError() {
-			// Recognition error - abort rule
-			goto errorExit
-		}
+		p.IdentifierOrKeyword()
 	}
 	p.SetState(5654)
 	p.GetErrorHandler().Sync(p)
@@ -83117,11 +83154,7 @@ func (p *MDLParser) ExposeMemberOptions() (localctx IExposeMemberOptionsContext)
 		}
 		{
 			p.SetState(5651)
-			p.Match(MDLParserIDENTIFIER)
-			if p.HasError() {
-				// Recognition error - abort rule
-				goto errorExit
-			}
+			p.IdentifierOrKeyword()
 		}
 
 		p.SetState(5656)

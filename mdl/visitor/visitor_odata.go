@@ -387,12 +387,12 @@ func parseExposeMembers(ctx parser.IExposeClauseContext) []*ast.PublishedMemberD
 		member := memberCtx.(*parser.ExposeMemberContext)
 
 		// Guard against incomplete parse (e.g., user typing in LSP)
-		if member.IDENTIFIER() == nil {
+		if member.IdentifierOrKeyword() == nil {
 			continue
 		}
 
 		m := &ast.PublishedMemberDef{
-			Name: member.IDENTIFIER().GetText(),
+			Name: member.IdentifierOrKeyword().GetText(),
 		}
 
 		// Optional AS 'ExposedName'
@@ -403,13 +403,13 @@ func parseExposeMembers(ctx parser.IExposeClauseContext) []*ast.PublishedMemberD
 		// Optional options (Filterable, Sortable, IsPartOfKey)
 		if opts := member.ExposeMemberOptions(); opts != nil {
 			optsCtx := opts.(*parser.ExposeMemberOptionsContext)
-			for _, id := range optsCtx.AllIDENTIFIER() {
+			for _, id := range optsCtx.AllIdentifierOrKeyword() {
 				switch strings.ToLower(id.GetText()) {
 				case "filterable":
 					m.Filterable = true
 				case "sortable":
 					m.Sortable = true
-				case "ispartofkey":
+				case "key", "ispartofkey":
 					m.IsPartOfKey = true
 				}
 			}

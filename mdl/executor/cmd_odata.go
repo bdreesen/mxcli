@@ -425,7 +425,7 @@ func outputPublishedODataServiceMDL(ctx *ExecContext, svc *model.PublishedODataS
 						modifiers = append(modifiers, "Sortable")
 					}
 					if m.IsPartOfKey {
-						modifiers = append(modifiers, "Key")
+						modifiers = append(modifiers, "IsPartOfKey")
 					}
 
 					line := fmt.Sprintf("    %s as '%s'", m.Name, m.ExposedName)

@@ -2808,11 +2808,11 @@ exposeClause
     ;
 
 exposeMember
-    : IDENTIFIER (AS STRING_LITERAL)? exposeMemberOptions?
+    : identifierOrKeyword (AS STRING_LITERAL)? exposeMemberOptions?
     ;
 
 exposeMemberOptions
-    : LPAREN IDENTIFIER (COMMA IDENTIFIER)* RPAREN
+    : LPAREN identifierOrKeyword (COMMA identifierOrKeyword)* RPAREN
     ;
 
 /**

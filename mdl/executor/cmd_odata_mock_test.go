@@ -7,6 +7,7 @@ import (
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
 	"github.com/mendixlabs/mxcli/mdl/backend/mock"
+	"github.com/mendixlabs/mxcli/mdl/visitor"
 	"github.com/mendixlabs/mxcli/model"
 )
 
@@ -199,6 +200,62 @@ func TestDescribeODataService_NotFound(t *testing.T) {
 	}
 	ctx, _ := newMockCtx(t, withBackend(mb))
 	assertError(t, describeODataService(ctx, ast.QualifiedName{Module: "X", Name: "NoSuch"}))
+}
+
+// TestDescribeODataService_ExposeRoundtrip verifies that DESCRIBE ODATA SERVICE
+// output for entities with key/filterable/sortable members is valid MDL that
+// the parser can re-parse (issue #400).
+func TestDescribeODataService_ExposeRoundtrip(t *testing.T) {
+	mod := mkModule("MyModule")
+	svc := &model.PublishedODataService{
+		BaseElement:  model.BaseElement{ID: nextID("pos")},
+		ContainerID:  mod.ID,
+		Name:         "CatalogService",
+		Path:         "/odata/v1",
+		Version:      "1.0",
+		ODataVersion: "4.0",
+		EntityTypes: []*model.PublishedEntityType{
+			{
+				Entity:      "MyModule.Order",
+				ExposedName: "Orders",
+				Members: []*model.PublishedMember{
+					{Name: "Id", ExposedName: "Id", IsPartOfKey: true},
+					{Name: "Name", ExposedName: "Name", Filterable: true, Sortable: true},
+				},
+			},
+		},
+		EntitySets: []*model.PublishedEntitySet{
+			{
+				ExposedName:    "Orders",
+				EntityTypeName: "MyModule.Order",
+				ReadMode:       "Readable",
+				InsertMode:     "NotSupported",
+			},
+		},
+	}
+	h := mkHierarchy(mod)
+	withContainer(h, svc.ContainerID, mod.ID)
+
+	mb := &mock.MockBackend{
+		IsConnectedFunc: func() bool { return true },
+		ListPublishedODataServicesFunc: func() ([]*model.PublishedODataService, error) {
+			return []*model.PublishedODataService{svc}, nil
+		},
+	}
+
+	ctx, buf := newMockCtx(t, withBackend(mb), withHierarchy(h))
+	assertNoError(t, describeODataService(ctx, ast.QualifiedName{Module: "MyModule", Name: "CatalogService"}))
+
+	out := buf.String()
+	assertContainsStr(t, out, "IsPartOfKey")
+
+	_, errs := visitor.Build(out)
+	if len(errs) > 0 {
+		t.Errorf("DESCRIBE output failed to parse (roundtrip broken):\n%s\nErrors:", out)
+		for _, e := range errs {
+			t.Errorf("  %v", e)
+		}
+	}
 }
 
 func TestCreateODataClient_InvalidMetadataURL(t *testing.T) {
