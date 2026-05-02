@@ -563,6 +563,9 @@ func TestTraverseFlow_SequentialIfWithoutElseKeepsContinuationOutsideFirstIf(t *
 
 func TestTraverseFlow_GuardBranchWithMultipleActivitiesKeepsContinuationOutsideElse(t *testing.T) {
 	e := newTestExecutor()
+	falseFlow := mkBranchFlow("split", "tail_log", &microflows.ExpressionCase{Expression: "false"})
+	falseFlow.OriginConnectionIndex = AnchorRight
+	falseFlow.DestinationConnectionIndex = AnchorLeft
 
 	activityMap := map[model.ID]microflows.MicroflowObject{
 		mkID("start"): &microflows.StartEvent{BaseMicroflowObject: mkObj("start")},
@@ -585,7 +588,7 @@ func TestTraverseFlow_GuardBranchWithMultipleActivitiesKeepsContinuationOutsideE
 		mkID("start"): {mkFlow("start", "split")},
 		mkID("split"): {
 			mkBranchFlow("split", "then_log", &microflows.ExpressionCase{Expression: "true"}),
-			mkBranchFlow("split", "tail_log", &microflows.ExpressionCase{Expression: "false"}),
+			falseFlow,
 		},
 		mkID("then_log"): {mkFlow("then_log", "then_return")},
 		mkID("tail_log"): {mkFlow("tail_log", "end")},
@@ -604,6 +607,47 @@ func TestTraverseFlow_GuardBranchWithMultipleActivitiesKeepsContinuationOutsideE
 	}
 	if strings.Index(out, "end if;") > strings.Index(out, "shared tail") {
 		t.Fatalf("shared tail must be emitted after the guard IF closes:\n%s", out)
+	}
+}
+
+func TestTraverseFlow_TerminalFalseBranchIsNotGuardContinuation(t *testing.T) {
+	e := newTestExecutor()
+
+	activityMap := map[model.ID]microflows.MicroflowObject{
+		mkID("start"): &microflows.StartEvent{BaseMicroflowObject: mkObj("start")},
+		mkID("split"): &microflows.ExclusiveSplit{
+			BaseMicroflowObject: mkObj("split"),
+			SplitCondition:      &microflows.ExpressionSplitCondition{Expression: "$IsAllowed"},
+		},
+		mkID("then_log"): &microflows.ActionActivity{
+			BaseActivity: microflows.BaseActivity{BaseMicroflowObject: mkObj("then_log")},
+			Action:       &microflows.LogMessageAction{LogLevel: "Info", LogNodeName: "'App'", MessageTemplate: &model.Text{Translations: map[string]string{"en_US": "allowed"}}},
+		},
+		mkID("then_return"):  &microflows.EndEvent{BaseMicroflowObject: mkObj("then_return")},
+		mkID("false_log"):    &microflows.ActionActivity{BaseActivity: microflows.BaseActivity{BaseMicroflowObject: mkObj("false_log")}, Action: &microflows.LogMessageAction{LogLevel: "Info", LogNodeName: "'App'", MessageTemplate: &model.Text{Translations: map[string]string{"en_US": "blocked"}}}},
+		mkID("false_return"): &microflows.EndEvent{BaseMicroflowObject: mkObj("false_return")},
+	}
+
+	flowsByOrigin := map[model.ID][]*microflows.SequenceFlow{
+		mkID("start"): {mkFlow("start", "split")},
+		mkID("split"): {
+			mkBranchFlow("split", "then_log", &microflows.ExpressionCase{Expression: "true"}),
+			mkBranchFlow("split", "false_log", &microflows.ExpressionCase{Expression: "false"}),
+		},
+		mkID("then_log"):  {mkFlow("then_log", "then_return")},
+		mkID("false_log"): {mkFlow("false_log", "false_return")},
+	}
+
+	var lines []string
+	visited := make(map[model.ID]bool)
+	e.traverseFlow(mkID("start"), activityMap, flowsByOrigin, nil, visited, nil, nil, &lines, 0, nil, 0, nil)
+
+	out := strings.Join(lines, "\n")
+	if !strings.Contains(out, "\nelse\n") {
+		t.Fatalf("terminal false branch must stay inside an explicit ELSE:\n%s", out)
+	}
+	if strings.Index(out, "blocked") < strings.Index(out, "else") {
+		t.Fatalf("false branch body was emitted outside ELSE:\n%s", out)
 	}
 }
 

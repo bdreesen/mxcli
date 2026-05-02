@@ -1442,10 +1442,13 @@ func flowLooksLikeGuardContinuation(
 		return false
 	}
 	// Builder-generated guard continuations sit on the split's horizontal
-	// centerline. This intentionally relies on mxcli's layout contract so a
-	// real branch that returns to a merge below the split is not collapsed into
-	// a guard-style continuation during describe.
-	return dest.GetPosition().Y == split.GetPosition().Y
+	// centerline and use the builder's horizontal split→tail flow. This
+	// intentionally relies on mxcli's layout/anchor contract so a real false
+	// branch whose activities happen to be aligned with the split is not
+	// collapsed into a guard-style continuation during describe.
+	return dest.GetPosition().Y == split.GetPosition().Y &&
+		flow.OriginConnectionIndex == AnchorRight &&
+		flow.DestinationConnectionIndex == AnchorLeft
 }
 
 // findErrorHandlerFlow returns the error handler flow from an activity's outgoing flows.
