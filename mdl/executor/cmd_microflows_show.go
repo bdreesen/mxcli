@@ -390,6 +390,11 @@ func describeNanoflow(ctx *ExecContext, name ast.QualifiedName) error {
 		lines = append(lines, " */")
 	}
 
+	// @excluded annotation
+	if targetNf.Excluded {
+		lines = append(lines, "@excluded")
+	}
+
 	// CREATE NANOFLOW header
 	qualifiedName := name.Module + "." + name.Name
 	if len(targetNf.Parameters) > 0 {

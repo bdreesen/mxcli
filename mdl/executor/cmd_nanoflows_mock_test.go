@@ -865,3 +865,25 @@ func TestCreateNanoflow_Mock_EmptyName(t *testing.T) {
 	assertError(t, err)
 	assertContainsStr(t, err.Error(), "must not be empty")
 }
+
+func TestDescribeNanoflow_Mock_Excluded(t *testing.T) {
+	mod := mkModule("MyModule")
+	nf := mkNanoflow(mod.ID, "NF_Excluded")
+	nf.Excluded = true
+
+	h := mkHierarchy(mod)
+	withContainer(h, nf.ContainerID, mod.ID)
+
+	mb := &mock.MockBackend{
+		IsConnectedFunc:      func() bool { return true },
+		ListNanoflowsFunc:    func() ([]*microflows.Nanoflow, error) { return []*microflows.Nanoflow{nf}, nil },
+		ListDomainModelsFunc: func() ([]*domainmodel.DomainModel, error) { return nil, nil },
+		ListModulesFunc:      func() ([]*model.Module, error) { return []*model.Module{mod}, nil },
+	}
+
+	ctx, buf := newMockCtx(t, withBackend(mb), withHierarchy(h))
+	assertNoError(t, describeNanoflow(ctx, ast.QualifiedName{Module: "MyModule", Name: "NF_Excluded"}))
+
+	out := buf.String()
+	assertContainsStr(t, out, "@excluded")
+}
