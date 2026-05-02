@@ -274,6 +274,16 @@ alter workflow WFTest.OrderApproval
       'Denied' { }
   ;
 
+-- ANNOTATION activity (workflow-level note / label)
+alter workflow WFTest.OrderApproval
+  insert after GroupApproval annotation 'Approval phase complete';
+
+-- NON INTERRUPTING TIMER boundary event (compare with INTERRUPTING above)
+alter workflow WFTest.OrderApproval
+  insert boundary event on GroupApproval non interrupting timer 'addHours([%CurrentDateTime%], 48)' {
+    call microflow WFTest.ACT_Notify;
+  };
+
 alter workflow WFTest.OrderApproval
   insert outcome 'Retry' on ReviewOrder@1 {
     jump to ReviewOrder;
@@ -291,7 +301,34 @@ alter workflow WFTest.OrderApproval
 
 
 -- ############################################################################
--- PART B: USER TARGETING — all targeting variants
+-- PART B-EXTRA: QUOTED IDENTIFIER NAMES — issue #403 regression
+-- ############################################################################
+--
+-- The grammar previously required bare IDENTIFIER tokens for user task names
+-- and JUMP TO targets.  Using "double-quoted" names caused a nil pointer
+-- dereference in buildWorkflowUserTask.  These examples verify both forms are
+-- accepted by the parser after the grammar was extended with QUOTED_IDENTIFIER.
+--
+
+create workflow WFTest.QuotedNamesWF
+  parameter $WorkflowContext: WFTest.OrderContext
+  display 'Quoted Names Demo'
+begin
+  -- User task with quoted identifier name (issue #403 regression)
+  user task "ReviewStep" 'Review'
+    page WFTest.TaskPage
+    outcomes
+      'Approve' { }
+      'Reject' { jump to "ReviewStep"; }
+  ;
+
+  -- JUMP TO with quoted identifier target
+  jump to "ReviewStep";
+end workflow;
+/
+
+-- ############################################################################
+-- PART C: USER TARGETING — all targeting variants
 -- ############################################################################
 --
 -- Covers USER TASK and MULTI USER TASK with:
@@ -396,7 +433,7 @@ end workflow;
 
 
 -- ############################################################################
--- PART C: WORKFLOW ACTION TYPES IN MICROFLOWS — all 11 types
+-- PART D: WORKFLOW ACTION TYPES IN MICROFLOWS — all 11 types
 -- ############################################################################
 
 create persistent entity TestModule.DeliveryContext (
