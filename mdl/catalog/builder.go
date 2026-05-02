@@ -336,6 +336,10 @@ func (b *Builder) Build(progress ProgressFunc) error {
 		return fmt.Errorf("failed to build entities: %w", err)
 	}
 
+	if err := b.buildAssociations(); err != nil {
+		return fmt.Errorf("failed to build associations: %w", err)
+	}
+
 	if err := b.buildEnumerations(); err != nil {
 		return fmt.Errorf("failed to build enumerations: %w", err)
 	}

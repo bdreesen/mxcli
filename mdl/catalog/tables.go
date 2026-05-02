@@ -84,6 +84,28 @@ func (c *Catalog) createTables() error {
 			SourceRevision TEXT
 		)`,
 
+		// Associations table - stores domain model associations
+		`CREATE TABLE IF NOT EXISTS associations (
+			Id TEXT PRIMARY KEY,
+			Name TEXT,
+			QualifiedName TEXT,
+			ModuleName TEXT,
+			FromEntity TEXT,
+			ToEntity TEXT,
+			AssociationType TEXT,
+			Owner TEXT,
+			StorageFormat TEXT,
+			Description TEXT,
+			ProjectId TEXT,
+			ProjectName TEXT,
+			SnapshotId TEXT,
+			SnapshotDate TEXT,
+			SnapshotSource TEXT,
+			SourceId TEXT,
+			SourceBranch TEXT,
+			SourceRevision TEXT
+		)`,
+
 		// Attributes table - stores entity attribute details
 		`CREATE TABLE IF NOT EXISTS attributes (
 			Id TEXT PRIMARY KEY,

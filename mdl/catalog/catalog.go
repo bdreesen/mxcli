@@ -102,6 +102,7 @@ func (c *Catalog) Tables() []string {
 	return []string{
 		"CATALOG.MODULES",
 		"CATALOG.ENTITIES",
+		"CATALOG.ASSOCIATIONS",
 		"CATALOG.ATTRIBUTES",
 		"CATALOG.MICROFLOWS",
 		"CATALOG.NANOFLOWS",
