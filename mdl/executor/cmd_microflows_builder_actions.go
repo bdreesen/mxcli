@@ -134,12 +134,7 @@ func (fb *flowBuilder) addCreateObjectAction(s *ast.CreateObjectStmt) model.ID {
 	fb.objects = append(fb.objects, activity)
 	fb.posX += fb.spacing
 
-	// Build custom error handler flow if present
-	if s.ErrorHandling != nil && len(s.ErrorHandling.Body) > 0 {
-		errorY := fb.posY + VerticalSpacing
-		mergeID := fb.addErrorHandlerFlow(activity.ID, activityX, s.ErrorHandling.Body)
-		fb.handleErrorHandlerMerge(mergeID, activity.ID, errorY)
-	}
+	fb.finishCustomErrorHandler(activity.ID, activityX, s.ErrorHandling, s.Variable)
 
 	return activity.ID
 }
@@ -170,12 +165,7 @@ func (fb *flowBuilder) addCommitAction(s *ast.MfCommitStmt) model.ID {
 	fb.objects = append(fb.objects, activity)
 	fb.posX += fb.spacing
 
-	// Build custom error handler flow if present
-	if s.ErrorHandling != nil && len(s.ErrorHandling.Body) > 0 {
-		errorY := fb.posY + VerticalSpacing
-		mergeID := fb.addErrorHandlerFlow(activity.ID, activityX, s.ErrorHandling.Body)
-		fb.handleErrorHandlerMerge(mergeID, activity.ID, errorY)
-	}
+	fb.finishCustomErrorHandler(activity.ID, activityX, s.ErrorHandling, "")
 
 	return activity.ID
 }
@@ -204,12 +194,7 @@ func (fb *flowBuilder) addDeleteAction(s *ast.DeleteObjectStmt) model.ID {
 	fb.objects = append(fb.objects, activity)
 	fb.posX += fb.spacing
 
-	// Build custom error handler flow if present
-	if s.ErrorHandling != nil && len(s.ErrorHandling.Body) > 0 {
-		errorY := fb.posY + VerticalSpacing
-		mergeID := fb.addErrorHandlerFlow(activity.ID, activityX, s.ErrorHandling.Body)
-		fb.handleErrorHandlerMerge(mergeID, activity.ID, errorY)
-	}
+	fb.finishCustomErrorHandler(activity.ID, activityX, s.ErrorHandling, "")
 
 	return activity.ID
 }
@@ -287,9 +272,8 @@ func (fb *flowBuilder) addChangeObjectAction(s *ast.ChangeObjectStmt) model.ID {
 }
 
 func (fb *flowBuilder) addEnumSplit(s *ast.EnumSplitStmt) model.ID {
-	if len(s.Cases) > len(splitCaseOrderAnchors) {
-		fb.addError("case statement on '$%s' has %d cases; maximum supported is %d",
-			s.Variable, len(s.Cases), len(splitCaseOrderAnchors))
+	if count := enumSplitBranchCount(s); count > maxEnumSplitBranches {
+		fb.addError("enum split has %d branches; at most %d branches are supported", count, maxEnumSplitBranches)
 		return ""
 	}
 
@@ -361,7 +345,9 @@ func (fb *flowBuilder) addEnumSplit(s *ast.EnumSplitStmt) model.ID {
 
 		lastID := model.ID("")
 		pendingCase := ""
+		var prevAnchor *ast.FlowAnchors
 		for _, stmt := range br.body {
+			thisAnchor := stmtOwnAnchor(stmt)
 			actID := fb.addStatement(stmt)
 			if actID == "" {
 				continue
@@ -372,14 +358,26 @@ func (fb *flowBuilder) addEnumSplit(s *ast.EnumSplitStmt) model.ID {
 			}
 			if lastID == "" {
 				fb.addGroupedEnumSplitFlows(splitID, actID, br.values, i, splitX+SplitWidth+HorizontalSpacing/4, branchY)
+				// The first statement in a case can carry @anchor(from:…,
+				// to:…) that should apply to the split→firstActivity flow.
+				// addGroupedEnumSplitFlows appends one flow per case value;
+				// anchor the last one so `@anchor(to: top)` etc. round-trips
+				// through describe → exec without silently dropping.
+				if thisAnchor != nil && len(fb.flows) > 0 {
+					applyUserAnchors(fb.flows[len(fb.flows)-1], nil, thisAnchor)
+				}
 			} else {
+				var flow *microflows.SequenceFlow
 				if pendingCase != "" {
-					fb.flows = append(fb.flows, newHorizontalFlowWithCase(lastID, actID, pendingCase))
+					flow = newHorizontalFlowWithCase(lastID, actID, pendingCase)
 					pendingCase = ""
 				} else {
-					fb.flows = append(fb.flows, newHorizontalFlow(lastID, actID))
+					flow = newHorizontalFlow(lastID, actID)
 				}
+				applyUserAnchors(flow, prevAnchor, thisAnchor)
+				fb.flows = append(fb.flows, flow)
 			}
+			prevAnchor = thisAnchor
 			if fb.nextConnectionPoint != "" {
 				lastID = fb.nextConnectionPoint
 				fb.nextConnectionPoint = ""
@@ -471,6 +469,8 @@ var splitCaseOrderAnchors = []splitCaseOrderAnchor{
 	{AnchorLeft, AnchorBottom},
 }
 
+var maxEnumSplitBranches = len(splitCaseOrderAnchors)
+
 func applySplitCaseOrder(flow *microflows.SequenceFlow, order int) {
 	if flow == nil || order < 0 || order >= len(splitCaseOrderAnchors) {
 		return
@@ -488,6 +488,17 @@ func enumSplitCaseValues(c ast.EnumSplitCase) []string {
 		return []string{c.Value}
 	}
 	return nil
+}
+
+func enumSplitBranchCount(s *ast.EnumSplitStmt) int {
+	if s == nil {
+		return 0
+	}
+	count := len(s.Cases)
+	if len(s.ElseBody) > 0 {
+		count++
+	}
+	return count
 }
 
 func appendEnumBodies(s *ast.EnumSplitStmt) []ast.MicroflowStatement {
@@ -617,6 +628,7 @@ func (fb *flowBuilder) addRetrieveAction(s *ast.RetrieveStmt) model.ID {
 			for _, col := range s.SortColumns {
 				// Resolve attribute path - if just a simple name, prefix with entity
 				attrPath := col.Attribute
+				var entityRefSteps []microflows.EntityRefStep
 				if !strings.Contains(attrPath, ".") {
 					attrPath = entityQN + "." + attrPath
 				} else {
@@ -627,20 +639,24 @@ func (fb *flowBuilder) addRetrieveAction(s *ast.RetrieveStmt) model.ID {
 						// Extract entity from attribute path (first two parts)
 						attrEntityQN := parts[0] + "." + parts[1]
 						if attrEntityQN != entityQN {
-							fb.addError("sort by attribute '%s' does not belong to entity '%s'", col.Attribute, entityQN)
-							continue // Skip this sort column but continue processing others
+							entityRefSteps = fb.inferSortEntityRefSteps(entityQN, attrPath)
+							if len(entityRefSteps) == 0 {
+								fb.addError("sort by attribute '%s' does not belong to entity '%s'", col.Attribute, entityQN)
+								continue // Skip this sort column but continue processing others
+							}
 						}
 					}
 				}
 
 				direction := microflows.SortDirectionAscending
-				if col.Order == "desc" {
+				if strings.EqualFold(col.Order, "desc") {
 					direction = microflows.SortDirectionDescending
 				}
 
 				dbSource.Sorting = append(dbSource.Sorting, &microflows.SortItem{
 					BaseElement:            model.BaseElement{ID: model.ID(types.GenerateID())},
 					AttributeQualifiedName: attrPath,
+					EntityRefSteps:         entityRefSteps,
 					Direction:              direction,
 				})
 			}
@@ -684,14 +700,57 @@ func (fb *flowBuilder) addRetrieveAction(s *ast.RetrieveStmt) model.ID {
 	fb.objects = append(fb.objects, activity)
 	fb.posX += fb.spacing
 
-	// Build custom error handler flow if present
-	if s.ErrorHandling != nil && len(s.ErrorHandling.Body) > 0 {
-		errorY := fb.posY + VerticalSpacing
-		mergeID := fb.addErrorHandlerFlow(activity.ID, activityX, s.ErrorHandling.Body)
-		fb.handleErrorHandlerMerge(mergeID, activity.ID, errorY)
-	}
+	fb.finishCustomErrorHandler(activity.ID, activityX, s.ErrorHandling, s.Variable)
 
 	return activity.ID
+}
+
+func (fb *flowBuilder) inferSortEntityRefSteps(sourceEntityQN, attrPath string) []microflows.EntityRefStep {
+	attrEntityQN := entityQualifiedNameFromAttribute(attrPath)
+	if attrEntityQN == "" || attrEntityQN == sourceEntityQN {
+		return nil
+	}
+	parts := strings.SplitN(sourceEntityQN, ".", 2)
+	if len(parts) != 2 || parts[0] == "" {
+		return nil
+	}
+	if fb.backend == nil {
+		return nil
+	}
+	mod, err := fb.backend.GetModuleByName(parts[0])
+	if err != nil || mod == nil {
+		return nil
+	}
+	dm, err := fb.backend.GetDomainModel(mod.ID)
+	if err != nil || dm == nil {
+		return nil
+	}
+	entityNames := make(map[model.ID]string, len(dm.Entities))
+	for _, e := range dm.Entities {
+		entityNames[e.ID] = parts[0] + "." + e.Name
+	}
+	for _, assoc := range dm.Associations {
+		parentQN := entityNames[assoc.ParentID]
+		childQN := entityNames[assoc.ChildID]
+		if parentQN == sourceEntityQN && childQN == attrEntityQN {
+			return []microflows.EntityRefStep{{Association: parts[0] + "." + assoc.Name, DestinationEntity: childQN}}
+		}
+	}
+	for _, assoc := range dm.CrossAssociations {
+		parentQN := entityNames[assoc.ParentID]
+		if parentQN == sourceEntityQN && assoc.ChildRef == attrEntityQN {
+			return []microflows.EntityRefStep{{Association: parts[0] + "." + assoc.Name, DestinationEntity: assoc.ChildRef}}
+		}
+	}
+	return nil
+}
+
+func entityQualifiedNameFromAttribute(attrPath string) string {
+	parts := strings.Split(attrPath, ".")
+	if len(parts) < 3 {
+		return ""
+	}
+	return parts[0] + "." + parts[1]
 }
 
 // addListOperationAction creates list operations like HEAD, TAIL, FIND, etc.
@@ -1143,6 +1202,8 @@ func (fb *flowBuilder) resolveMemberChange(mc *microflows.MemberChange, memberNa
 				if strings.Contains(memberName, ".") {
 					// Already qualified, don't double-qualify
 					mc.AttributeQualifiedName = memberName
+				} else if attrQN, ok := fb.resolveAttributeInEntityHierarchy(entityQN, memberName); ok {
+					mc.AttributeQualifiedName = attrQN
 				} else {
 					mc.AttributeQualifiedName = entityQN + "." + memberName
 				}
@@ -1152,6 +1213,43 @@ func (fb *flowBuilder) resolveMemberChange(mc *microflows.MemberChange, memberNa
 	}
 
 	resolveMemberChangeFallback(mc, memberName, entityQN)
+}
+
+func (fb *flowBuilder) resolveAttributeInEntityHierarchy(entityQN, attrName string) (string, bool) {
+	if fb == nil || fb.backend == nil || entityQN == "" || attrName == "" {
+		return "", false
+	}
+	seen := make(map[string]bool)
+	for currentQN := entityQN; currentQN != ""; {
+		if seen[currentQN] {
+			return "", false
+		}
+		seen[currentQN] = true
+
+		parts := strings.SplitN(currentQN, ".", 2)
+		if len(parts) != 2 {
+			return "", false
+		}
+		mod, err := fb.backend.GetModuleByName(parts[0])
+		if err != nil || mod == nil {
+			return "", false
+		}
+		dm, err := fb.backend.GetDomainModel(mod.ID)
+		if err != nil || dm == nil {
+			return "", false
+		}
+		entity := dm.FindEntityByName(parts[1])
+		if entity == nil {
+			return "", false
+		}
+		for _, attr := range entity.Attributes {
+			if attr != nil && attr.Name == attrName {
+				return currentQN + "." + attrName, true
+			}
+		}
+		currentQN = entity.GeneralizationRef
+	}
+	return "", false
 }
 
 // resolveMemberChangeFallback preserves the authored member name shape when the

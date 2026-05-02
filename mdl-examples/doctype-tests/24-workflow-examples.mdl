@@ -1,20 +1,29 @@
 -- ============================================================================
--- ALTER WORKFLOW — Full syntax & activity type coverage
+-- Workflow Examples — CREATE, ALTER, and microflow integration
 -- ============================================================================
 --
--- Covers all alterWorkflowAction grammar alternatives AND all workflow
--- activity types: USER TASK, MULTI USER TASK, CALL MICROFLOW, CALL WORKFLOW,
--- DECISION, PARALLEL SPLIT, JUMP TO, WAIT FOR TIMER, WAIT FOR NOTIFICATION,
--- ANNOTATION, BOUNDARY EVENT (with CALL MICROFLOW sub-flow).
---
--- Each INSERT KEEPS its result visible in the final workflow.
--- mx check should produce 0 new errors (DummySystem baseline only).
+-- Document types covered:
+--   CREATE WORKFLOW / CREATE OR REPLACE WORKFLOW
+--   ALTER WORKFLOW (SET, INSERT, DROP, REPLACE)
+--   Workflow activities: USER TASK, MULTI USER TASK, CALL MICROFLOW,
+--     CALL WORKFLOW, DECISION, PARALLEL SPLIT, JUMP TO,
+--     WAIT FOR TIMER, WAIT FOR NOTIFICATION, ANNOTATION, BOUNDARY EVENT
+--   User/group targeting variants (USERS/GROUPS MICROFLOW/XPATH, legacy forms)
+--   Workflow action types in microflows (all 11 types)
 --
 -- ============================================================================
 
+
 -- ############################################################################
--- PREREQUISITES
+-- PART A: ALTER WORKFLOW — full syntax and activity type coverage
 -- ############################################################################
+--
+-- Covers all alterWorkflowAction grammar alternatives AND all workflow
+-- activity types. Each INSERT keeps its result visible in the final workflow.
+-- mx check should produce 0 new errors (DummySystem baseline only).
+--
+
+-- Prerequisites
 
 create persistent entity WFTest.OrderContext (
   status: string(200),
@@ -129,9 +138,7 @@ begin
 end workflow;
 /
 
--- ############################################################################
--- INITIAL WORKFLOW — simple starting point, all richness added via ALTER
--- ############################################################################
+-- Initial workflow — simple starting point, all richness added via ALTER
 
 create or replace workflow WFTest.OrderApproval
   parameter $WorkflowContext: WFTest.OrderContext
@@ -164,9 +171,7 @@ begin
 end workflow;
 /
 
--- ############################################################################
--- PART 1: SET WORKFLOW-LEVEL PROPERTIES (6 alternatives)
--- ############################################################################
+-- SET workflow-level properties
 
 alter workflow WFTest.OrderApproval set display 'Updated Order Approval';
 alter workflow WFTest.OrderApproval set description 'Updated workflow description';
@@ -175,14 +180,12 @@ alter workflow WFTest.OrderApproval set due date '';
 alter workflow WFTest.OrderApproval set overview page WFTest.OverviewPage;
 alter workflow WFTest.OrderApproval set parameter $WorkflowContext: WFTest.OrderContext;
 
--- Bonus: multiple SET in one statement
+-- Multiple SET in one statement
 alter workflow WFTest.OrderApproval
   set display 'Final Order Approval'
   set description 'Final description';
 
--- ############################################################################
--- PART 2: SET ACTIVITY PROPERTIES (5 alternatives + string literal ref)
--- ############################################################################
+-- SET activity properties
 
 alter workflow WFTest.OrderApproval set activity ReviewOrder page WFTest.AlternateTaskPage;
 alter workflow WFTest.OrderApproval set activity ReviewOrder description 'Updated instructions';
@@ -191,110 +194,78 @@ alter workflow WFTest.OrderApproval set activity ReviewOrder targeting microflow
 alter workflow WFTest.OrderApproval set activity ReviewOrder due date '';
 alter workflow WFTest.OrderApproval set activity 'Review the order' description 'Referenced by caption';
 
--- ############################################################################
--- PART 3: INSERT / DROP / REPLACE ACTIVITIES
--- ############################################################################
+-- INSERT / DROP / REPLACE activities
 
--- INSERT CALL MICROFLOW (KEPT)
 alter workflow WFTest.OrderApproval
   insert after ReviewOrder call microflow WFTest.ACT_Escalate;
 
--- INSERT + DROP to demo DROP
 alter workflow WFTest.OrderApproval
   insert after ACT_Escalate call microflow WFTest.ACT_Notify;
 alter workflow WFTest.OrderApproval
   drop activity ACT_Notify@1;
 
--- REPLACE (KEPT)
 alter workflow WFTest.OrderApproval
   replace activity ACT_Validate with call microflow WFTest.ACT_Process;
 
--- ############################################################################
--- PART 4: INSERT / DROP OUTCOME
--- ############################################################################
+-- INSERT / DROP outcome
 
--- INSERT OUTCOME with sub-activities (KEPT)
 alter workflow WFTest.OrderApproval
   insert outcome 'Escalate' on ReviewOrder {
     call microflow WFTest.ACT_Review;
   };
 
--- DROP 'Hold' (the extra one)
 alter workflow WFTest.OrderApproval
   drop outcome 'Hold' on ReviewOrder;
 
--- ############################################################################
--- PART 5: INSERT / DROP PATH
--- ############################################################################
+-- INSERT / DROP path
 
--- INSERT PATH with sub-activities (KEPT)
 alter workflow WFTest.OrderApproval
   insert path on 'Parallel split' {
     call microflow WFTest.ACT_Finalize;
   };
 
--- DROP empty PATH 3
 alter workflow WFTest.OrderApproval
   drop path 'Path 3' on 'Parallel split';
 
--- ############################################################################
--- PART 6: INSERT / DROP CONDITION
--- ############################################################################
+-- INSERT / DROP condition
 
--- INSERT DEFAULT branch (KEPT)
 alter workflow WFTest.OrderApproval
   insert condition 'Default' on 'Decision' {
     call microflow WFTest.ACT_Review;
   };
 
--- ############################################################################
--- PART 7: INSERT / DROP BOUNDARY EVENT
--- Boundary event uses CALL MICROFLOW (not JUMP TO)
--- ############################################################################
+-- INSERT / DROP boundary event
 
--- INSERT BOUNDARY EVENT with CALL MICROFLOW sub-flow (KEPT)
--- Interrupting boundary event sub-flow must end with JUMP TO (CE6665)
 alter workflow WFTest.OrderApproval
   insert boundary event on ReviewOrder interrupting timer 'addHours([%CurrentDateTime%], 2)' {
     call microflow WFTest.ACT_BoundaryHandler;
     jump to ReviewOrder;
   };
 
--- INSERT + DROP on another activity to demo DROP
 alter workflow WFTest.OrderApproval
   insert boundary event on ACT_Escalate@1 interrupting timer;
 alter workflow WFTest.OrderApproval
   drop boundary event on ACT_Escalate@1;
 
--- ############################################################################
--- PART 8: INSERT INTO NESTED FLOWS
--- ############################################################################
+-- INSERT into nested flows
 
--- INSERT inside Decision TRUE branch (KEPT)
 alter workflow WFTest.OrderApproval
   insert after ACT_Process@1 call microflow WFTest.ACT_Finalize;
 
--- INSERT inside ParallelSplit PATH 1 (KEPT)
 alter workflow WFTest.OrderApproval
   insert after ACT_Process@2 call microflow WFTest.ACT_Review;
 
--- ############################################################################
--- PART 9: ALL REMAINING ACTIVITY TYPES (KEPT in final workflow)
--- ############################################################################
+-- All remaining activity types
 
--- WAIT FOR TIMER (KEPT)
 alter workflow WFTest.OrderApproval
   insert after ACT_Escalate@1 wait for timer 'addHours([%CurrentDateTime%], 1)' comment 'WaitOneHour';
 
--- WAIT FOR NOTIFICATION (KEPT)
 alter workflow WFTest.OrderApproval
   insert after WaitOneHour wait for notification comment 'WaitForApproval';
 
--- CALL WORKFLOW (KEPT — calls WFTest.SubProcess)
 alter workflow WFTest.OrderApproval
   insert after WaitForApproval call workflow WFTest.SubProcess;
 
--- MULTI USER TASK (KEPT — full user task with page and outcomes)
 alter workflow WFTest.OrderApproval
   insert after SubProcess multi user task GroupApproval 'Group Approval'
     page WFTest.TaskPage
@@ -303,22 +274,183 @@ alter workflow WFTest.OrderApproval
       'Denied' { }
   ;
 
--- JUMP TO inside Retry outcome (KEPT — at end of sub-flow)
 alter workflow WFTest.OrderApproval
   insert outcome 'Retry' on ReviewOrder@1 {
     jump to ReviewOrder;
   };
 
--- ############################################################################
--- PART 10: POSITIONAL DISAMBIGUATION (@N syntax)
--- ############################################################################
+-- Positional disambiguation (@N syntax)
 
 alter workflow WFTest.OrderApproval
   set activity ACT_Escalate@1 description 'Disambiguated by @1';
 
--- ############################################################################
--- PART 11: STRING LITERAL activity reference
--- ############################################################################
+-- String literal activity reference
 
 alter workflow WFTest.OrderApproval
   set activity 'Review the order' description 'Final description via caption';
+
+
+-- ############################################################################
+-- PART B: USER TARGETING — all targeting variants
+-- ############################################################################
+--
+-- Covers USER TASK and MULTI USER TASK with:
+--   TARGETING USERS MICROFLOW   (user targeting via microflow)
+--   TARGETING USERS XPATH       (user targeting via XPath)
+--   TARGETING GROUPS MICROFLOW  (group targeting via microflow)
+--   TARGETING GROUPS XPATH      (group targeting via XPath)
+--   TARGETING MICROFLOW         (legacy short form, still valid)
+--   TARGETING XPATH             (legacy short form, still valid)
+--
+
+create persistent entity WFTarget.Request (
+  Status: string(200)
+);
+
+-- Targeting microflows: (System.Workflow, context) -> List of System.User
+create microflow WFTarget.ACT_GetUsers (
+  $Workflow: System.Workflow,
+  $Context: WFTarget.Request
+)
+returns list of System.User as $Users
+begin
+  @position(200,200)
+  retrieve $Users from System.User;
+  @position(400,200) return $Users;
+end;
+/
+
+create microflow WFTarget.ACT_GetGroups (
+  $Workflow: System.Workflow,
+  $Context: WFTarget.Request
+)
+returns list of System.WorkflowGroup as $Groups
+begin
+  @position(200,200)
+  retrieve $Groups from System.WorkflowGroup;
+  @position(400,200) return $Groups;
+end;
+/
+
+create page WFTarget.TaskPage (
+  title: 'Task Page',
+  layout: Atlas_Core.Atlas_Default,
+  params: { $WorkflowUserTask: System.WorkflowUserTask }
+) {
+  layoutgrid g1 {
+    row r1 {
+      column c1 (desktopwidth: 12) {
+        dynamictext txt1 (content: 'Task', rendermode: H2)
+      }
+    }
+  }
+}
+
+create workflow WFTarget.TargetingDemo
+  parameter $WorkflowContext: WFTarget.Request
+begin
+  -- TARGETING USERS MICROFLOW (explicit user targeting)
+  user task ByUserMF 'User microflow targeting'
+    page WFTarget.TaskPage
+    targeting users microflow WFTarget.ACT_GetUsers
+    outcomes 'Done' { };
+
+  -- TARGETING USERS XPATH (explicit user xpath targeting)
+  user task ByUserXP 'User xpath targeting'
+    page WFTarget.TaskPage
+    targeting users xpath '[Name = ''admin'']'
+    outcomes 'Done' { };
+
+  -- TARGETING GROUPS MICROFLOW (group microflow targeting)
+  user task ByGroupMF 'Group microflow targeting'
+    page WFTarget.TaskPage
+    targeting groups microflow WFTarget.ACT_GetGroups
+    outcomes 'Done' { };
+
+  -- TARGETING GROUPS XPATH (group xpath targeting)
+  user task ByGroupXP 'Group xpath targeting'
+    page WFTarget.TaskPage
+    targeting groups xpath '[Name = ''Administrators'']'
+    outcomes 'Done' { };
+
+  -- TARGETING MICROFLOW (legacy short form)
+  user task LegacyMF 'Legacy microflow targeting'
+    page WFTarget.TaskPage
+    targeting microflow WFTarget.ACT_GetUsers
+    outcomes 'Done' { };
+
+  -- TARGETING XPATH (legacy short form)
+  user task LegacyXP 'Legacy xpath targeting'
+    page WFTarget.TaskPage
+    targeting xpath '[Name = ''admin'']'
+    outcomes 'Done' { };
+
+  -- MULTI USER TASK with group targeting
+  multi user task MultiByGroup 'Multi group targeting'
+    page WFTarget.TaskPage
+    targeting groups microflow WFTarget.ACT_GetGroups
+    outcomes 'Done' { };
+
+end workflow;
+/
+
+
+-- ############################################################################
+-- PART C: WORKFLOW ACTION TYPES IN MICROFLOWS — all 11 types
+-- ############################################################################
+
+create persistent entity TestModule.DeliveryContext (
+  OrderID: string(50),
+  status: string(100)
+);
+
+create microflow TestModule.ACT_Stub ($DeliveryContext: TestModule.DeliveryContext)
+begin
+  @position(200,200) return;
+end;
+/
+
+create workflow TestModule.WF_DeliveryDelay
+  parameter $WorkflowContext: TestModule.DeliveryContext
+  display 'Delivery Delay'
+begin
+  call microflow TestModule.ACT_Stub;
+end workflow;
+/
+
+create microflow TestModule.MF_WorkflowActions (
+  $workflow: System.Workflow,
+  $ContextObj: TestModule.DeliveryContext,
+  $UserTask: System.WorkflowUserTask
+)
+returns nothing
+begin
+  -- Get workflow data
+  $Issue = get workflow data $workflow as TestModule.WF_DeliveryDelay;
+
+  -- Call workflow
+  $WfInstance = call workflow TestModule.WF_DeliveryDelay (WorkflowContext = $ContextObj);
+
+  -- Get workflows
+  $workflows = get workflows for $ContextObj;
+
+  -- Get activity records
+  $records = get workflow activity records $workflow;
+
+  -- Set task outcome
+  set task outcome $UserTask 'Approve';
+
+  -- Open user task
+  open user task $UserTask;
+
+  -- Workflow operations
+  workflow operation pause $workflow;
+  workflow operation continue $workflow;
+  workflow operation abort $workflow reason 'No longer needed';
+  workflow operation restart $workflow;
+  workflow operation retry $workflow;
+  workflow operation unpause $workflow;
+
+  -- Open workflow admin page
+  open workflow $workflow;
+end;

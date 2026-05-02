@@ -841,6 +841,60 @@ func TestResolveNestedMergeID_KeepsIndependentNestedJoin(t *testing.T) {
 	}
 }
 
+func TestTraverseFlow_LoopBodyUsesNestedAnnotationFlows(t *testing.T) {
+	e := newTestExecutor()
+
+	split := &microflows.ExclusiveSplit{
+		BaseMicroflowObject: microflows.BaseMicroflowObject{
+			BaseElement: model.BaseElement{ID: mkID("split")},
+			Position:    model.Point{X: 100, Y: 100},
+		},
+		SplitCondition: &microflows.ExpressionSplitCondition{Expression: "$Item/IsActive"},
+	}
+	note := &microflows.Annotation{
+		BaseMicroflowObject: microflows.BaseMicroflowObject{
+			BaseElement: model.BaseElement{ID: mkID("note")},
+			Position:    model.Point{X: 1000, Y: 100},
+		},
+		Caption: "nested split note",
+	}
+	loopObjects := &microflows.MicroflowObjectCollection{
+		Objects: []microflows.MicroflowObject{split, note},
+		AnnotationFlows: []*microflows.AnnotationFlow{
+			{
+				BaseElement:   model.BaseElement{ID: mkID("note-flow")},
+				OriginID:      mkID("note"),
+				DestinationID: mkID("split"),
+			},
+		},
+	}
+	annotationsByTarget := mergeAnnotationsByTarget(
+		buildAnnotationsByTarget(&microflows.MicroflowObjectCollection{}),
+		buildAnnotationsByTarget(loopObjects),
+	)
+
+	var lines []string
+	e.traverseFlow(
+		mkID("split"),
+		map[model.ID]microflows.MicroflowObject{mkID("split"): split},
+		nil,
+		nil,
+		make(map[model.ID]bool),
+		nil,
+		nil,
+		&lines,
+		0,
+		nil,
+		0,
+		annotationsByTarget,
+	)
+
+	out := strings.Join(lines, "\n")
+	if !strings.Contains(out, "@annotation 'nested split note'") {
+		t.Fatalf("expected nested loop annotation in output:\n%s", out)
+	}
+}
+
 // =============================================================================
 // collectErrorHandlerStatements
 // =============================================================================
@@ -899,6 +953,44 @@ func TestCollectErrorHandlerStatements_StopsAtMerge(t *testing.T) {
 	// Should stop at merge, not include "after"
 	if len(stmts) != 1 {
 		t.Fatalf("expected 1 statement (stop at merge), got %d: %v", len(stmts), stmts)
+	}
+}
+
+func TestCollectErrorHandlerStatements_StructuredIfEmitsEndIf(t *testing.T) {
+	e := newTestExecutor()
+
+	activityMap := map[model.ID]microflows.MicroflowObject{
+		mkID("split"): &microflows.ExclusiveSplit{
+			BaseMicroflowObject: mkObj("split"),
+			SplitCondition:      &microflows.ExpressionSplitCondition{Expression: "$latestHttpResponse != empty"},
+		},
+		mkID("return_error"): &microflows.EndEvent{
+			BaseMicroflowObject: mkObj("return_error"),
+			ReturnValue:         "latestHttpResponse",
+		},
+		mkID("merge"): &microflows.ExclusiveMerge{BaseMicroflowObject: mkObj("merge")},
+		mkID("after"): &microflows.ActionActivity{
+			BaseActivity: microflows.BaseActivity{BaseMicroflowObject: mkObj("after")},
+			Action:       &microflows.LogMessageAction{LogLevel: "Info", LogNodeName: "'Synthetic'", MessageTemplate: &model.Text{Translations: map[string]string{"en_US": "after"}}},
+		},
+	}
+	flowsByOrigin := map[model.ID][]*microflows.SequenceFlow{
+		mkID("split"): {
+			mkBranchFlow("split", "return_error", &microflows.ExpressionCase{Expression: "true"}),
+			mkBranchFlow("split", "merge", &microflows.ExpressionCase{Expression: "false"}),
+		},
+		mkID("merge"): {mkFlow("merge", "after")},
+	}
+
+	stmts := e.collectErrorHandlerStatements(mkID("split"), activityMap, flowsByOrigin, nil, nil)
+	got := strings.Join(stmts, "\n")
+
+	assertContains(t, got, "if $latestHttpResponse != empty then")
+	assertContains(t, got, "return $latestHttpResponse;")
+	assertContains(t, got, "else")
+	assertContains(t, got, "end if;")
+	if strings.Contains(got, "after") {
+		t.Fatalf("error handler traversal crossed the rejoin merge: %s", got)
 	}
 }
 

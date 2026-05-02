@@ -542,6 +542,41 @@ END;`
 	t.Log("IF/THEN/ELSE parsed correctly - actions in correct branches")
 }
 
+func TestIfThenEmptyElsePreservesElsePresence(t *testing.T) {
+	input := `create microflow Test.EmptyElse()
+returns String
+begin
+  if $latestHttpResponse != empty then
+    return 'error';
+  else
+  end if;
+  return empty;
+end;`
+
+	prog, errs := Build(input)
+	if len(errs) > 0 {
+		for _, err := range errs {
+			t.Errorf("Parse error: %v", err)
+		}
+		return
+	}
+
+	stmt := prog.Statements[0].(*ast.CreateMicroflowStmt)
+	if len(stmt.Body) == 0 {
+		t.Fatal("expected microflow body")
+	}
+	ifStmt, ok := stmt.Body[0].(*ast.IfStmt)
+	if !ok {
+		t.Fatalf("expected first statement to be IfStmt, got %T", stmt.Body[0])
+	}
+	if !ifStmt.HasElse {
+		t.Fatal("expected explicit empty else to be preserved")
+	}
+	if len(ifStmt.ElseBody) != 0 {
+		t.Fatalf("empty else body length = %d, want 0", len(ifStmt.ElseBody))
+	}
+}
+
 // TestValidationFeedbackInsideIf verifies VALIDATION FEEDBACK works inside IF blocks.
 // Bug Report: "VALIDATION FEEDBACK Not Recognized"
 func TestValidationFeedbackInsideIf(t *testing.T) {
@@ -603,6 +638,89 @@ END;`
 	}
 
 	t.Log("VALIDATION FEEDBACK inside IF block parsed correctly")
+}
+
+func TestValidationFeedbackObjectAndAssociationTargets(t *testing.T) {
+	input := `CREATE MICROFLOW Sales.ValidateOrder ($OrderForm: Sales.OrderForm)
+RETURNS Boolean
+BEGIN
+  VALIDATION FEEDBACK $OrderForm MESSAGE 'Select a value';
+  VALIDATION FEEDBACK $OrderForm/Sales.OrderForm_Customer MESSAGE 'Select a customer';
+  RETURN false;
+END;`
+
+	prog, errs := Build(input)
+	if len(errs) > 0 {
+		for _, err := range errs {
+			t.Errorf("Parse error: %v", err)
+		}
+		return
+	}
+
+	stmt := prog.Statements[0].(*ast.CreateMicroflowStmt)
+	if len(stmt.Body) < 2 {
+		t.Fatalf("Expected at least two body statements, got %d", len(stmt.Body))
+	}
+
+	objectFeedback, ok := stmt.Body[0].(*ast.ValidationFeedbackStmt)
+	if !ok {
+		t.Fatalf("Expected object-only validation feedback, got %T", stmt.Body[0])
+	}
+	if objectFeedback.AttributePath == nil {
+		t.Fatal("Expected object-only AttributePath to be set")
+	}
+	if objectFeedback.AttributePath.Variable != "OrderForm" {
+		t.Errorf("Expected object-only variable 'OrderForm', got %q", objectFeedback.AttributePath.Variable)
+	}
+	if len(objectFeedback.AttributePath.Path) != 0 || len(objectFeedback.AttributePath.Segments) != 0 {
+		t.Errorf("Expected object-only validation feedback to have no path, got path=%v segments=%v",
+			objectFeedback.AttributePath.Path, objectFeedback.AttributePath.Segments)
+	}
+
+	associationFeedback, ok := stmt.Body[1].(*ast.ValidationFeedbackStmt)
+	if !ok {
+		t.Fatalf("Expected association validation feedback, got %T", stmt.Body[1])
+	}
+	if associationFeedback.AttributePath == nil {
+		t.Fatal("Expected association AttributePath to be set")
+	}
+	if associationFeedback.AttributePath.Variable != "OrderForm" {
+		t.Errorf("Expected association variable 'OrderForm', got %q", associationFeedback.AttributePath.Variable)
+	}
+	if len(associationFeedback.AttributePath.Path) != 1 || associationFeedback.AttributePath.Path[0] != "Sales.OrderForm_Customer" {
+		t.Errorf("Expected association path Sales.OrderForm_Customer, got %v", associationFeedback.AttributePath.Path)
+	}
+	if len(associationFeedback.AttributePath.Segments) != 1 ||
+		associationFeedback.AttributePath.Segments[0].Separator != "/" ||
+		associationFeedback.AttributePath.Segments[0].Name != "Sales.OrderForm_Customer" {
+		t.Errorf("Expected slash-qualified association segment, got %v", associationFeedback.AttributePath.Segments)
+	}
+}
+
+func TestSharedAttributePathKeepsQualifiedSlashSegment(t *testing.T) {
+	input := `CREATE MICROFLOW Sales.UpdateOrder ($Order: Sales.Order)
+RETURNS Boolean
+BEGIN
+  SET $Order/Sales.Order_Customer = empty;
+  RETURN true;
+END;`
+
+	prog, errs := Build(input)
+	if len(errs) > 0 {
+		for _, err := range errs {
+			t.Errorf("Parse error: %v", err)
+		}
+		return
+	}
+
+	stmt := prog.Statements[0].(*ast.CreateMicroflowStmt)
+	setStmt, ok := stmt.Body[0].(*ast.MfSetStmt)
+	if !ok {
+		t.Fatalf("Expected MfSetStmt, got %T", stmt.Body[0])
+	}
+	if setStmt.Target != "$Order/Sales.Order_Customer" {
+		t.Fatalf("Target = %q, want $Order/Sales.Order_Customer", setStmt.Target)
+	}
 }
 
 // TestRollbackStatement verifies the ROLLBACK statement parses correctly.
@@ -1613,8 +1731,8 @@ END;`
 	if logStmt.Annotations == nil {
 		t.Fatal("expected annotations")
 	}
-	if logStmt.Annotations.FreeAnnotation != "free note" {
-		t.Fatalf("free annotation = %q, want free note", logStmt.Annotations.FreeAnnotation)
+	if got := logStmt.Annotations.FreeAnnotations; len(got) != 1 || got[0] != "free note" {
+		t.Fatalf("free annotations = %#v, want [free note]", got)
 	}
 	if logStmt.Annotations.AnnotationText != "" {
 		t.Fatalf("attached annotation = %q, want empty", logStmt.Annotations.AnnotationText)
@@ -1681,8 +1799,8 @@ END;`
 	if logStmt.Annotations.AnnotationText != "attached note" {
 		t.Fatalf("attached annotation = %q, want attached note", logStmt.Annotations.AnnotationText)
 	}
-	if logStmt.Annotations.FreeAnnotation != "" {
-		t.Fatalf("free annotation = %q, want empty", logStmt.Annotations.FreeAnnotation)
+	if len(logStmt.Annotations.FreeAnnotations) != 0 {
+		t.Fatalf("free annotations = %#v, want empty", logStmt.Annotations.FreeAnnotations)
 	}
 }
 

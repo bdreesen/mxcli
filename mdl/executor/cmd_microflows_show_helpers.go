@@ -21,13 +21,8 @@ func buildAnnotationsByTarget(oc *microflows.MicroflowObjectCollection) map[mode
 		return result
 	}
 
-	// Build a map of annotation IDs to their captions
 	annotCaptions := make(map[model.ID]string)
-	for _, obj := range oc.Objects {
-		if annot, ok := obj.(*microflows.Annotation); ok {
-			annotCaptions[annot.ID] = annot.Caption
-		}
-	}
+	collectAnnotationCaptions(oc, annotCaptions)
 
 	// Map each annotation flow's destination (the activity) to the annotation's caption
 	for _, af := range oc.AnnotationFlows {
@@ -37,6 +32,46 @@ func buildAnnotationsByTarget(oc *microflows.MicroflowObjectCollection) map[mode
 	}
 
 	return result
+}
+
+func collectAnnotationCaptions(oc *microflows.MicroflowObjectCollection, captions map[model.ID]string) {
+	if oc == nil {
+		return
+	}
+	for _, obj := range oc.Objects {
+		if annot, ok := obj.(*microflows.Annotation); ok {
+			captions[annot.ID] = annot.Caption
+			continue
+		}
+		if loop, ok := obj.(*microflows.LoopedActivity); ok {
+			collectAnnotationCaptions(loop.ObjectCollection, captions)
+		}
+	}
+}
+
+// mergeAnnotationsByTarget combines parent-level annotations with the
+// loop-local overlay so each activity gets every caption that points at it,
+// regardless of which collection the annotation flow lives in.
+//
+// When one side is empty the function returns the other map by reference (no
+// copy). The current callers — emitLoopBody passing a freshly built overlay,
+// or a freshly inherited parent map — never mutate the result, so aliasing is
+// safe. New callers that intend to mutate the result must copy first.
+func mergeAnnotationsByTarget(base, overlay map[model.ID][]string) map[model.ID][]string {
+	if len(base) == 0 {
+		return overlay
+	}
+	if len(overlay) == 0 {
+		return base
+	}
+	merged := make(map[model.ID][]string, len(base)+len(overlay))
+	for id, captions := range base {
+		merged[id] = captions
+	}
+	for id, captions := range overlay {
+		merged[id] = append(merged[id], captions...)
+	}
+	return merged
 }
 
 // collectFreeAnnotations returns captions for annotations not referenced by any AnnotationFlow.
@@ -1057,6 +1092,8 @@ func emitLoopBody(
 		return
 	}
 
+	loopAnnotationsByTarget := mergeAnnotationsByTarget(annotationsByTarget, buildAnnotationsByTarget(loop.ObjectCollection))
+
 	// Build a map of objects in the loop body
 	loopActivityMap := make(map[model.ID]microflows.MicroflowObject)
 	for _, loopObj := range loop.ObjectCollection.Objects {
@@ -1124,7 +1161,7 @@ func emitLoopBody(
 		loopVisited := make(map[model.ID]bool)
 		// Build split→merge map for ExclusiveSplit handling inside the loop
 		loopSplitMergeMap := findSplitMergePoints(ctx, loop.ObjectCollection, loopActivityMap)
-		traverseLoopBody(ctx, firstID, loopActivityMap, loopFlowsByOrigin, loopFlowsByDest, loopSplitMergeMap, loopVisited, entityNames, microflowNames, lines, indent+1, sourceMap, headerLineCount, annotationsByTarget)
+		traverseLoopBody(ctx, firstID, loopActivityMap, loopFlowsByOrigin, loopFlowsByDest, loopSplitMergeMap, loopVisited, entityNames, microflowNames, lines, indent+1, sourceMap, headerLineCount, loopAnnotationsByTarget)
 	}
 }
 
@@ -1623,40 +1660,103 @@ func collectErrorHandlerStatements(
 ) []string {
 	var statements []string
 	visited := make(map[model.ID]bool)
+	stopID := firstReachableErrorHandlerMerge(startID, activityMap, flowsByOrigin)
+	splitMergeMap := findErrorHandlerSplitMergePoints(ctx, activityMap, flowsByOrigin)
 
-	var traverse func(id model.ID)
-	traverse = func(id model.ID) {
-		if id == "" || visited[id] {
+	var traverse func(id model.ID, boundary model.ID, indent int)
+	traverse = func(id model.ID, boundary model.ID, indent int) {
+		if id == "" || id == boundary || visited[id] {
 			return
 		}
-
 		obj := activityMap[id]
 		if obj == nil {
 			return
 		}
-
-		// Stop at merge points (rejoin with main flow) or end events
 		if _, isMerge := obj.(*microflows.ExclusiveMerge); isMerge {
 			return
 		}
-
 		visited[id] = true
 
-		stmt := formatActivity(ctx, obj, entityNames, microflowNames)
-		if stmt != "" {
-			statements = append(statements, stmt)
+		indentStr := strings.Repeat("  ", indent)
+		if _, isSplit := obj.(*microflows.ExclusiveSplit); isSplit {
+			stmt := formatActivity(ctx, obj, entityNames, microflowNames)
+			if stmt != "" {
+				statements = append(statements, indentStr+stmt)
+			}
+			nestedMergeID := splitMergeMap[id]
+			trueFlow, falseFlow := findBranchFlows(flowsByOrigin[id])
+			if trueFlow != nil {
+				traverse(trueFlow.DestinationID, nestedMergeID, indent+1)
+			}
+			if falseFlow != nil {
+				statements = append(statements, indentStr+"else")
+				if falseFlow.DestinationID != nestedMergeID {
+					traverse(falseFlow.DestinationID, nestedMergeID, indent+1)
+				}
+			}
+			if stmt != "" {
+				statements = append(statements, indentStr+"end if;")
+			}
+			if nestedMergeID != "" && nestedMergeID != boundary {
+				visited[nestedMergeID] = true
+				for _, flow := range findNormalFlows(flowsByOrigin[nestedMergeID]) {
+					traverse(flow.DestinationID, boundary, indent)
+				}
+			}
+			return
 		}
 
-		// Follow normal (non-error) flows
-		flows := flowsByOrigin[id]
-		normalFlows := findNormalFlows(flows)
-		for _, flow := range normalFlows {
-			traverse(flow.DestinationID)
+		if stmt := formatActivity(ctx, obj, entityNames, microflowNames); stmt != "" {
+			statements = append(statements, indentStr+stmt)
+		}
+		for _, flow := range findNormalFlows(flowsByOrigin[id]) {
+			traverse(flow.DestinationID, boundary, indent)
 		}
 	}
 
-	traverse(startID)
+	traverse(startID, stopID, 0)
 	return statements
+}
+
+func findErrorHandlerSplitMergePoints(
+	ctx *ExecContext,
+	activityMap map[model.ID]microflows.MicroflowObject,
+	flowsByOrigin map[model.ID][]*microflows.SequenceFlow,
+) map[model.ID]model.ID {
+	result := make(map[model.ID]model.ID)
+	for id, obj := range activityMap {
+		if _, isSplit := obj.(*microflows.ExclusiveSplit); !isSplit {
+			continue
+		}
+		if mergeID := findMergeForSplit(ctx, id, flowsByOrigin, activityMap); mergeID != "" {
+			result[id] = mergeID
+		}
+	}
+	return result
+}
+
+func firstReachableErrorHandlerMerge(
+	startID model.ID,
+	activityMap map[model.ID]microflows.MicroflowObject,
+	flowsByOrigin map[model.ID][]*microflows.SequenceFlow,
+) model.ID {
+	visited := make(map[model.ID]bool)
+	queue := []model.ID{startID}
+	for len(queue) > 0 {
+		id := queue[0]
+		queue = queue[1:]
+		if id == "" || visited[id] {
+			continue
+		}
+		visited[id] = true
+		if _, isMerge := activityMap[id].(*microflows.ExclusiveMerge); isMerge {
+			return id
+		}
+		for _, flow := range findNormalFlows(flowsByOrigin[id]) {
+			queue = append(queue, flow.DestinationID)
+		}
+	}
+	return ""
 }
 
 // loopEndKeyword returns "END WHILE" for WHILE loops and "END LOOP" for FOR-EACH loops.

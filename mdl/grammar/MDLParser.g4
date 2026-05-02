@@ -1382,8 +1382,11 @@ changeObjectStatement
     : CHANGE VARIABLE (LPAREN memberAssignmentList? RPAREN)? REFRESH?
     ;
 
+// Shared by SET, LOOP, aggregate expressions, and validation feedback targets.
+// The segment is a qualifiedName so `$Obj/Module.Association` remains a
+// single slash segment rather than being split at the dot.
 attributePath
-    : VARIABLE ((SLASH | DOT) (IDENTIFIER | qualifiedName))+
+    : VARIABLE ((SLASH | DOT) qualifiedName)+
     ;
 
 // COMMIT $Product; or COMMIT $Product WITH EVENTS; or COMMIT $Product REFRESH;
@@ -1509,9 +1512,8 @@ callJavaScriptActionStatement
     ;
 
 // Legacy SOAP call. The preferred structured form stores service and mapping
-// references in STRING_LITERAL tokens rather than qualifiedName tokens because
-// Structured references prefer qualifiedName tokens. STRING_LITERAL remains as
-// a fallback for dangling raw IDs that cannot be represented as identifiers.
+// references as qualified names. STRING_LITERAL remains as a fallback for
+// dangling raw IDs that cannot be represented as identifiers.
 // Raw BSON remains the escape hatch for unsupported SOAP payload details.
 callWebServiceStatement
     : (VARIABLE EQUALS)? CALL WEB SERVICE
@@ -1661,7 +1663,7 @@ throwStatement
 // VALIDATION FEEDBACK $Product/Code MESSAGE 'Product code cannot be empty';
 // VALIDATION FEEDBACK $Product/Code MESSAGE '{1}' OBJECTS [$Var1, $Var2];
 validationFeedbackStatement
-    : VALIDATION FEEDBACK attributePath MESSAGE expression (OBJECTS LBRACKET expressionList RBRACKET)?
+    : VALIDATION FEEDBACK (attributePath | VARIABLE) MESSAGE expression (OBJECTS LBRACKET expressionList RBRACKET)?
     ;
 
 // =============================================================================

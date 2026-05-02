@@ -2464,3 +2464,25 @@ move snippet PgTest.CustomerSidebar to folder 'Shared' in PgTest2;
 --
 -- ============================================================================
 
+-- MARK: Workflow task completion buttons
+
+-- ACTIONBUTTON with action: complete_task 'OutcomeName' submits a workflow
+-- user task outcome directly from the page. Used on pages bound to
+-- System.WorkflowUserTask.
+
+create page PgTest.UserTaskPage (
+  title: 'User Task Page',
+  layout: Atlas_Core.Atlas_Default,
+  params: { $WorkflowUserTask: System.WorkflowUserTask }
+) {
+  actionbutton btnApprove (
+    caption: 'Approve',
+    action: complete_task 'Approve',
+    buttonstyle: success
+  )
+  actionbutton btnReject (
+    caption: 'Reject',
+    action: complete_task 'Reject',
+    buttonstyle: danger
+  )
+}

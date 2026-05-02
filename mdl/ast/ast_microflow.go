@@ -171,7 +171,6 @@ type ActivityAnnotations struct {
 	Caption         string       // @caption 'text'
 	Color           string       // @color Green
 	AnnotationText  string       // @annotation 'text'
-	FreeAnnotation  string       // @annotation 'text' before @position/@anchor, kept free-floating
 	FreeAnnotations []string     // Multiple free-floating @annotation lines in source order
 	Excluded        bool         // @excluded
 	Anchor          *FlowAnchors // @anchor(from: X, to: Y) — anchors of the flow leaving this statement
@@ -267,6 +266,7 @@ type IfStmt struct {
 	Condition   Expression           // IF condition
 	ThenBody    []MicroflowStatement // THEN branch
 	ElseBody    []MicroflowStatement // ELSE branch (optional)
+	HasElse     bool                 // true when the source contained ELSE, even if the body is empty
 	Annotations *ActivityAnnotations // Optional @position, @caption, @color, @annotation
 }
 
