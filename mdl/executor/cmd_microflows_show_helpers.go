@@ -633,12 +633,7 @@ func traverseFlow(
 			emitObjectAnnotations(obj, lines, indentStr, annotationsByTarget, flowsByOrigin, flowsByDest, activityMap)
 			emitEnumSplitStatement(ctx, currentID, mergeID, variable, activityMap, flowsByOrigin, flowsByDest, splitMergeMap, visited, entityNames, microflowNames, lines, indent, sourceMap, headerLineCount, annotationsByTarget)
 			recordSourceMap(sourceMap, currentID, startLine, len(*lines)+headerLineCount-1)
-			if mergeID != "" {
-				visited[mergeID] = true
-				for _, flow := range flowsByOrigin[mergeID] {
-					traverseFlow(ctx, flow.DestinationID, activityMap, flowsByOrigin, flowsByDest, splitMergeMap, visited, entityNames, microflowNames, lines, indent, sourceMap, headerLineCount, annotationsByTarget)
-				}
-			}
+			continueAfterSplitJoin(ctx, mergeID, activityMap, flowsByOrigin, flowsByDest, splitMergeMap, visited, entityNames, microflowNames, lines, indent, sourceMap, headerLineCount, annotationsByTarget)
 			return
 		}
 		if stmt != "" {
@@ -796,12 +791,7 @@ func traverseFlowUntilMerge(
 			emitObjectAnnotations(obj, lines, indentStr, annotationsByTarget, flowsByOrigin, flowsByDest, activityMap)
 			emitEnumSplitStatement(ctx, currentID, nestedMergeID, variable, activityMap, flowsByOrigin, flowsByDest, splitMergeMap, visited, entityNames, microflowNames, lines, indent, sourceMap, headerLineCount, annotationsByTarget)
 			recordSourceMap(sourceMap, currentID, startLine, len(*lines)+headerLineCount-1)
-			if nestedMergeID != "" && nestedMergeID != mergeID {
-				visited[nestedMergeID] = true
-				for _, flow := range flowsByOrigin[nestedMergeID] {
-					traverseFlowUntilMerge(ctx, flow.DestinationID, mergeID, activityMap, flowsByOrigin, flowsByDest, splitMergeMap, visited, entityNames, microflowNames, lines, indent, sourceMap, headerLineCount, annotationsByTarget)
-				}
-			}
+			continueAfterNestedSplitJoin(ctx, nestedMergeID, mergeID, activityMap, flowsByOrigin, flowsByDest, splitMergeMap, visited, entityNames, microflowNames, lines, indent, sourceMap, headerLineCount, annotationsByTarget)
 			return
 		}
 		if stmt != "" {

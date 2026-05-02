@@ -493,6 +493,109 @@ func TestTraverseFlow_CommonActivityJoinKeepsTailOutsideBranches(t *testing.T) {
 	}
 }
 
+func TestTraverseFlow_EnumSplitPartialJoinKeepsSharedTailOutsideCases(t *testing.T) {
+	e := newTestExecutor()
+
+	logAction := func(id, message string) *microflows.ActionActivity {
+		return &microflows.ActionActivity{
+			BaseActivity: microflows.BaseActivity{BaseMicroflowObject: mkObj(id)},
+			Action: &microflows.LogMessageAction{
+				LogLevel:        "Info",
+				LogNodeName:     "'Synthetic'",
+				MessageTemplate: &model.Text{Translations: map[string]string{"en_US": message}},
+			},
+		}
+	}
+
+	activityMap := map[model.ID]microflows.MicroflowObject{
+		mkID("start"): &microflows.StartEvent{BaseMicroflowObject: mkObj("start")},
+		mkID("kind_split"): &microflows.ExclusiveSplit{
+			BaseMicroflowObject: mkObj("kind_split"),
+			SplitCondition:      &microflows.ExpressionSplitCondition{Expression: "$Kind"},
+		},
+		mkID("case_a"):      logAction("case_a", "case A"),
+		mkID("case_b"):      logAction("case_b", "case B"),
+		mkID("case_c"):      logAction("case_c", "case C terminal"),
+		mkID("shared_tail"): logAction("shared_tail", "shared tail"),
+		mkID("end"):         &microflows.EndEvent{BaseMicroflowObject: mkObj("end")},
+	}
+	flowsByOrigin := map[model.ID][]*microflows.SequenceFlow{
+		mkID("start"): {mkFlow("start", "kind_split")},
+		mkID("kind_split"): {
+			mkBranchFlow("kind_split", "case_a", microflows.EnumerationCase{Value: "A"}),
+			mkBranchFlow("kind_split", "case_b", microflows.EnumerationCase{Value: "B"}),
+			mkBranchFlow("kind_split", "case_c", microflows.EnumerationCase{Value: "C"}),
+		},
+		mkID("case_a"):      {mkFlow("case_a", "shared_tail")},
+		mkID("case_b"):      {mkFlow("case_b", "shared_tail")},
+		mkID("case_c"):      {mkFlow("case_c", "end")},
+		mkID("shared_tail"): {mkFlow("shared_tail", "end")},
+	}
+
+	joinID := findMergeForSplit(nil, mkID("kind_split"), flowsByOrigin, activityMap)
+	if joinID != mkID("shared_tail") {
+		t.Fatalf("enum split paired with %q, want shared tail %q", joinID, mkID("shared_tail"))
+	}
+
+	splitMergeMap := map[model.ID]model.ID{mkID("kind_split"): joinID}
+	var lines []string
+	visited := make(map[model.ID]bool)
+	e.traverseFlow(mkID("start"), activityMap, flowsByOrigin, splitMergeMap, visited, nil, nil, &lines, 0, nil, 0, nil)
+
+	out := strings.Join(lines, "\n")
+	if got := strings.Count(out, "shared tail"); got != 1 {
+		t.Fatalf("shared tail emitted %d times, want once:\n%s", got, out)
+	}
+	endCase := strings.Index(out, "end case;")
+	sharedTail := strings.Index(out, "shared tail")
+	if endCase == -1 || sharedTail == -1 || endCase > sharedTail {
+		t.Fatalf("shared tail must be emitted after enum split closes:\n%s", out)
+	}
+}
+
+func TestFindMergeForSplit_SkipsJoinBypassedByNestedBranch(t *testing.T) {
+	activityMap := map[model.ID]microflows.MicroflowObject{
+		mkID("outer_split"): &microflows.ExclusiveSplit{
+			BaseMicroflowObject: mkObj("outer_split"),
+			SplitCondition:      &microflows.ExpressionSplitCondition{Expression: "$HasExisting"},
+		},
+		mkID("inner_split"): &microflows.ExclusiveSplit{
+			BaseMicroflowObject: mkObj("inner_split"),
+			SplitCondition:      &microflows.ExpressionSplitCondition{Expression: "$CanUpdate"},
+		},
+		mkID("early_join"): &microflows.ExclusiveMerge{BaseMicroflowObject: mkObj("early_join")},
+		mkID("clear"): &microflows.ActionActivity{
+			BaseActivity: microflows.BaseActivity{BaseMicroflowObject: mkObj("clear")},
+			Action:       &microflows.LogMessageAction{LogLevel: "Info", LogNodeName: "'Synthetic'", MessageTemplate: &model.Text{Translations: map[string]string{"en_US": "clear"}}},
+		},
+		mkID("shared_tail"): &microflows.ExclusiveMerge{BaseMicroflowObject: mkObj("shared_tail")},
+		mkID("retrieve"): &microflows.ActionActivity{
+			BaseActivity: microflows.BaseActivity{BaseMicroflowObject: mkObj("retrieve")},
+			Action:       &microflows.LogMessageAction{LogLevel: "Info", LogNodeName: "'Synthetic'", MessageTemplate: &model.Text{Translations: map[string]string{"en_US": "retrieve"}}},
+		},
+		mkID("end"): &microflows.EndEvent{BaseMicroflowObject: mkObj("end")},
+	}
+	flowsByOrigin := map[model.ID][]*microflows.SequenceFlow{
+		mkID("outer_split"): {
+			mkBranchFlow("outer_split", "early_join", &microflows.ExpressionCase{Expression: "true"}),
+			mkBranchFlow("outer_split", "inner_split", &microflows.ExpressionCase{Expression: "false"}),
+		},
+		mkID("inner_split"): {
+			mkBranchFlow("inner_split", "shared_tail", &microflows.ExpressionCase{Expression: "true"}),
+			mkBranchFlow("inner_split", "early_join", &microflows.ExpressionCase{Expression: "false"}),
+		},
+		mkID("early_join"):  {mkFlow("early_join", "clear")},
+		mkID("clear"):       {mkFlow("clear", "shared_tail")},
+		mkID("shared_tail"): {mkFlow("shared_tail", "retrieve")},
+		mkID("retrieve"):    {mkFlow("retrieve", "end")},
+	}
+
+	joinID := findMergeForSplit(nil, mkID("outer_split"), flowsByOrigin, activityMap)
+	if joinID != mkID("shared_tail") {
+		t.Fatalf("outer split paired with %q, want downstream shared tail %q", joinID, mkID("shared_tail"))
+	}
+}
+
 func TestTraverseFlow_SequentialIfWithoutElseKeepsContinuationOutsideFirstIf(t *testing.T) {
 	e := newTestExecutor()
 
