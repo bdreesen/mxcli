@@ -864,6 +864,10 @@ func createODataClient(ctx *ExecContext, stmt *ast.CreateODataClientStmt) error 
 		return mdlerrors.NewValidation("module name required: use create odata client Module.Name (...)")
 	}
 
+	if err := validateMetadataURL(stmt.MetadataUrl); err != nil {
+		return err
+	}
+
 	module, err := findModule(ctx, stmt.Name.Module)
 	if err != nil {
 		return err
@@ -1419,6 +1423,26 @@ func validateServiceURL(url string) error {
 		return mdlerrors.NewValidation("ServiceUrl must be a constant reference (e.g., @Module.ServiceUrlConstant) — Studio Pro CE6825: 'Service url' must be a constant")
 	}
 	return nil
+}
+
+// validateMetadataURL returns an error if the MetadataUrl is obviously malformed.
+// A valid value must be an http/https URL, a file:// URL, or a path that contains
+// at least one path separator or dot (indicating an extension or subdirectory).
+// Bare words like "not-a-url" are rejected to prevent silently creating broken OData client configurations.
+func validateMetadataURL(rawURL string) error {
+	if rawURL == "" {
+		return nil
+	}
+	if strings.HasPrefix(rawURL, "http://") || strings.HasPrefix(rawURL, "https://") {
+		return nil
+	}
+	if strings.HasPrefix(rawURL, "file://") {
+		return nil
+	}
+	if strings.ContainsAny(rawURL, "/\\.") {
+		return nil
+	}
+	return mdlerrors.NewValidationf("MetadataUrl %q is not a valid URL or file path: use an http/https URL, a file:// URL, or a relative path (e.g. './service/$metadata.xml')", rawURL)
 }
 
 // formatExprValue formats a Mendix expression value for MDL output.

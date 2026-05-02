@@ -200,3 +200,42 @@ func TestDescribeODataService_NotFound(t *testing.T) {
 	ctx, _ := newMockCtx(t, withBackend(mb))
 	assertError(t, describeODataService(ctx, ast.QualifiedName{Module: "X", Name: "NoSuch"}))
 }
+
+func TestCreateODataClient_InvalidMetadataURL(t *testing.T) {
+	mb := &mock.MockBackend{
+		IsConnectedFunc: func() bool { return true },
+	}
+	ctx, _ := newMockCtx(t, withBackend(mb))
+	stmt := &ast.CreateODataClientStmt{
+		Name:        ast.QualifiedName{Module: "MyModule", Name: "BadClient"},
+		MetadataUrl: "not-a-url",
+	}
+	err := createODataClient(ctx, stmt)
+	assertError(t, err)
+	assertContainsStr(t, err.Error(), "MetadataUrl")
+}
+
+func TestCreateODataClient_ValidMetadataURLs(t *testing.T) {
+	for _, validURL := range []string{
+		"https://example.com/odata/$metadata",
+		"http://localhost:8080/$metadata",
+		"file:///tmp/metadata.xml",
+		"./metadata.xml",
+		"../service/metadata.xml",
+		"/abs/path/metadata.xml",
+	} {
+		err := validateMetadataURL(validURL)
+		if err != nil {
+			t.Errorf("expected %q to be valid, got error: %v", validURL, err)
+		}
+	}
+}
+
+func TestValidateMetadataURL_RejectsBarWords(t *testing.T) {
+	for _, bad := range []string{"not-a-url", "justword", "no-scheme-no-dots"} {
+		err := validateMetadataURL(bad)
+		if err == nil {
+			t.Errorf("expected %q to be rejected, but got nil error", bad)
+		}
+	}
+}
