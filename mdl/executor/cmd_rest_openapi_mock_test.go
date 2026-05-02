@@ -182,13 +182,12 @@ func TestCreateRestClientFromSpec_OrModifyPreservesID(t *testing.T) {
 		return nil
 	}
 
-	ctx, _ := newMockCtx(t, withBackend(mb), withHierarchy(h))
+	ctx, buf := newMockCtx(t, withBackend(mb), withHierarchy(h))
 	stmt := &ast.CreateRestClientStmt{
 		Name:           ast.QualifiedName{Module: "PetModule", Name: "PetStoreAPI"},
 		OpenApiPath:    srv.URL,
 		CreateOrModify: true,
 	}
-
 	assertNoError(t, createRestClient(ctx, stmt))
 
 	if deletedID != existingID {
@@ -200,6 +199,7 @@ func TestCreateRestClientFromSpec_OrModifyPreservesID(t *testing.T) {
 	if created.ID != existingID {
 		t.Errorf("expected recreated service to reuse existing ID %v, got %v", existingID, created.ID)
 	}
+	assertContainsStr(t, buf.String(), "Modified rest client")
 }
 
 func TestCreateRestClientFromSpec_DuplicateWithoutOrModify(t *testing.T) {

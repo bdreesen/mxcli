@@ -320,6 +320,7 @@ func createRestClient(ctx *ExecContext, stmt *ast.CreateRestClientStmt) error {
 	}
 
 	var preservedID model.ID
+	wasModified := false
 	for _, existing := range existingServices {
 		existModID := h.FindModuleID(existing.ContainerID)
 		existModName := h.GetModuleName(existModID)
@@ -327,6 +328,7 @@ func createRestClient(ctx *ExecContext, stmt *ast.CreateRestClientStmt) error {
 			if stmt.CreateOrModify {
 				// Preserve the existing ID so SEND REST REQUEST references stay valid after replace.
 				preservedID = existing.ID
+				wasModified = true
 				if err := ctx.Backend.DeleteConsumedRestService(existing.ID); err != nil {
 					return mdlerrors.NewBackend("delete existing rest client", err)
 				}
@@ -409,7 +411,11 @@ func createRestClient(ctx *ExecContext, stmt *ast.CreateRestClientStmt) error {
 		return mdlerrors.NewBackend("create rest client", err)
 	}
 
-	fmt.Fprintf(ctx.Output, "Created rest client: %s.%s (%d operations)\n", moduleName, stmt.Name.Name, len(svc.Operations))
+	verb := "Created"
+	if wasModified {
+		verb = "Modified"
+	}
+	fmt.Fprintf(ctx.Output, "%s rest client: %s.%s (%d operations)\n", verb, moduleName, stmt.Name.Name, len(svc.Operations))
 	return nil
 }
 
@@ -675,6 +681,7 @@ func createRestClientFromSpec(ctx *ExecContext, stmt *ast.CreateRestClientStmt) 
 	if err != nil {
 		return mdlerrors.NewBackend("build hierarchy", err)
 	}
+	openAPIWasModified := false
 	for _, existing := range existingServices {
 		existModID := h.FindModuleID(existing.ContainerID)
 		existModName := h.GetModuleName(existModID)
@@ -682,6 +689,7 @@ func createRestClientFromSpec(ctx *ExecContext, stmt *ast.CreateRestClientStmt) 
 			if stmt.CreateOrModify {
 				// Reuse the existing ID so microflow references stay valid.
 				svc.ID = existing.ID
+				openAPIWasModified = true
 				if err := ctx.Backend.DeleteConsumedRestService(existing.ID); err != nil {
 					return mdlerrors.NewBackend("delete existing rest client", err)
 				}
@@ -696,8 +704,12 @@ func createRestClientFromSpec(ctx *ExecContext, stmt *ast.CreateRestClientStmt) 
 		return mdlerrors.NewBackend("create rest client", err)
 	}
 
-	fmt.Fprintf(ctx.Output, "Created rest client: %s.%s (%d operations from OpenAPI spec)\n",
-		moduleName, stmt.Name.Name, len(svc.Operations))
+	openAPIVerb := "Created"
+	if openAPIWasModified {
+		openAPIVerb = "Modified"
+	}
+	fmt.Fprintf(ctx.Output, "%s rest client: %s.%s (%d operations from OpenAPI spec)\n",
+		openAPIVerb, moduleName, stmt.Name.Name, len(svc.Operations))
 	return nil
 }
 
