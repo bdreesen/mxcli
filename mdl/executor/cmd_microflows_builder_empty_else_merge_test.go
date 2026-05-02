@@ -53,7 +53,7 @@ func TestIfEmptyElseBodyWithContinuingThenEmitsFalseFlowToMerge(t *testing.T) {
 		if flow.OriginID != split.ID || flow.DestinationID != merge.ID {
 			continue
 		}
-		if ec, ok := flow.CaseValue.(microflows.EnumerationCase); ok && ec.Value == "false" {
+		if flowCaseString(flow.CaseValue) == "false" {
 			hasFalseFlow = true
 		}
 	}
