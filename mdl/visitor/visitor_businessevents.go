@@ -39,8 +39,8 @@ func (b *Builder) ExitCreateBusinessEventServiceStatement(ctx *parser.CreateBusi
 		}
 
 		msg := &ast.BusinessEventMessageDef{}
-		if id := msgDef.IDENTIFIER(); id != nil {
-			msg.MessageName = id.GetText()
+		if iok := msgDef.IdentifierOrKeyword(); iok != nil {
+			msg.MessageName = identifierOrKeywordText(iok)
 		}
 
 		// Parse operation (PUBLISH or SUBSCRIBE)
@@ -71,8 +71,8 @@ func (b *Builder) ExitCreateBusinessEventServiceStatement(ctx *parser.CreateBusi
 			attr := &ast.BusinessEventAttributeDef{
 				TypeName: dataTypeSimpleName(attrDef.DataType()),
 			}
-			if id := attrDef.IDENTIFIER(); id != nil {
-				attr.Name = id.GetText()
+			if iok := attrDef.IdentifierOrKeyword(); iok != nil {
+				attr.Name = identifierOrKeywordText(iok)
 			}
 			msg.Attributes = append(msg.Attributes, attr)
 		}

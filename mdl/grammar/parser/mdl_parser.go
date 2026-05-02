@@ -3446,7 +3446,7 @@ func mdlparserParserInit() {
 		5750, 3, 646, 323, 0, 5749, 5748, 1, 0, 0, 0, 5750, 5751, 1, 0, 0, 0, 5751,
 		5749, 1, 0, 0, 0, 5751, 5752, 1, 0, 0, 0, 5752, 5753, 1, 0, 0, 0, 5753,
 		5754, 5, 564, 0, 0, 5754, 645, 1, 0, 0, 0, 5755, 5756, 5, 435, 0, 0, 5756,
-		5757, 5, 579, 0, 0, 5757, 5758, 5, 561, 0, 0, 5758, 5763, 3, 648, 324,
+		5757, 3, 856, 428, 0, 5757, 5758, 5, 561, 0, 0, 5758, 5763, 3, 648, 324,
 		0, 5759, 5760, 5, 559, 0, 0, 5760, 5762, 3, 648, 324, 0, 5761, 5759, 1,
 		0, 0, 0, 5762, 5765, 1, 0, 0, 0, 5763, 5761, 1, 0, 0, 0, 5763, 5764, 1,
 		0, 0, 0, 5764, 5766, 1, 0, 0, 0, 5765, 5763, 1, 0, 0, 0, 5766, 5767, 5,
@@ -3454,12 +3454,12 @@ func mdlparserParserInit() {
 		3, 854, 427, 0, 5770, 5768, 1, 0, 0, 0, 5770, 5771, 1, 0, 0, 0, 5771, 5774,
 		1, 0, 0, 0, 5772, 5773, 5, 30, 0, 0, 5773, 5775, 3, 854, 427, 0, 5774,
 		5772, 1, 0, 0, 0, 5774, 5775, 1, 0, 0, 0, 5775, 5776, 1, 0, 0, 0, 5776,
-		5777, 5, 558, 0, 0, 5777, 647, 1, 0, 0, 0, 5778, 5779, 5, 579, 0, 0, 5779,
-		5780, 5, 567, 0, 0, 5780, 5781, 3, 130, 65, 0, 5781, 649, 1, 0, 0, 0, 5782,
-		5783, 5, 32, 0, 0, 5783, 5788, 3, 854, 427, 0, 5784, 5785, 5, 400, 0, 0,
-		5785, 5786, 5, 578, 0, 0, 5786, 5787, 5, 567, 0, 0, 5787, 5789, 3, 854,
-		427, 0, 5788, 5784, 1, 0, 0, 0, 5788, 5789, 1, 0, 0, 0, 5789, 5792, 1,
-		0, 0, 0, 5790, 5791, 5, 521, 0, 0, 5791, 5793, 5, 575, 0, 0, 5792, 5790,
+		5777, 5, 558, 0, 0, 5777, 647, 1, 0, 0, 0, 5778, 5779, 3, 856, 428, 0,
+		5779, 5780, 5, 567, 0, 0, 5780, 5781, 3, 130, 65, 0, 5781, 649, 1, 0, 0,
+		0, 5782, 5783, 5, 32, 0, 0, 5783, 5788, 3, 854, 427, 0, 5784, 5785, 5,
+		400, 0, 0, 5785, 5786, 5, 578, 0, 0, 5786, 5787, 5, 567, 0, 0, 5787, 5789,
+		3, 854, 427, 0, 5788, 5784, 1, 0, 0, 0, 5788, 5789, 1, 0, 0, 0, 5789, 5792,
+		1, 0, 0, 0, 5790, 5791, 5, 521, 0, 0, 5791, 5793, 5, 575, 0, 0, 5792, 5790,
 		1, 0, 0, 0, 5792, 5793, 1, 0, 0, 0, 5793, 5796, 1, 0, 0, 0, 5794, 5795,
 		5, 520, 0, 0, 5795, 5797, 5, 575, 0, 0, 5796, 5794, 1, 0, 0, 0, 5796, 5797,
 		1, 0, 0, 0, 5797, 5801, 1, 0, 0, 0, 5798, 5799, 5, 393, 0, 0, 5799, 5800,
@@ -84789,7 +84789,7 @@ type IBusinessEventMessageDefContext interface {
 
 	// Getter signatures
 	MESSAGE() antlr.TerminalNode
-	IDENTIFIER() antlr.TerminalNode
+	IdentifierOrKeyword() IIdentifierOrKeywordContext
 	LPAREN() antlr.TerminalNode
 	AllBusinessEventAttrDef() []IBusinessEventAttrDefContext
 	BusinessEventAttrDef(i int) IBusinessEventAttrDefContext
@@ -84844,8 +84844,20 @@ func (s *BusinessEventMessageDefContext) MESSAGE() antlr.TerminalNode {
 	return s.GetToken(MDLParserMESSAGE, 0)
 }
 
-func (s *BusinessEventMessageDefContext) IDENTIFIER() antlr.TerminalNode {
-	return s.GetToken(MDLParserIDENTIFIER, 0)
+func (s *BusinessEventMessageDefContext) IdentifierOrKeyword() IIdentifierOrKeywordContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(IIdentifierOrKeywordContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(IIdentifierOrKeywordContext)
 }
 
 func (s *BusinessEventMessageDefContext) LPAREN() antlr.TerminalNode {
@@ -85002,11 +85014,7 @@ func (p *MDLParser) BusinessEventMessageDef() (localctx IBusinessEventMessageDef
 	}
 	{
 		p.SetState(5756)
-		p.Match(MDLParserIDENTIFIER)
-		if p.HasError() {
-			// Recognition error - abort rule
-			goto errorExit
-		}
+		p.IdentifierOrKeyword()
 	}
 	{
 		p.SetState(5757)
@@ -85141,7 +85149,7 @@ type IBusinessEventAttrDefContext interface {
 	GetParser() antlr.Parser
 
 	// Getter signatures
-	IDENTIFIER() antlr.TerminalNode
+	IdentifierOrKeyword() IIdentifierOrKeywordContext
 	COLON() antlr.TerminalNode
 	DataType() IDataTypeContext
 
@@ -85181,8 +85189,20 @@ func NewBusinessEventAttrDefContext(parser antlr.Parser, parent antlr.ParserRule
 
 func (s *BusinessEventAttrDefContext) GetParser() antlr.Parser { return s.parser }
 
-func (s *BusinessEventAttrDefContext) IDENTIFIER() antlr.TerminalNode {
-	return s.GetToken(MDLParserIDENTIFIER, 0)
+func (s *BusinessEventAttrDefContext) IdentifierOrKeyword() IIdentifierOrKeywordContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(IIdentifierOrKeywordContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(IIdentifierOrKeywordContext)
 }
 
 func (s *BusinessEventAttrDefContext) COLON() antlr.TerminalNode {
@@ -85231,11 +85251,7 @@ func (p *MDLParser) BusinessEventAttrDef() (localctx IBusinessEventAttrDefContex
 	p.EnterOuterAlt(localctx, 1)
 	{
 		p.SetState(5778)
-		p.Match(MDLParserIDENTIFIER)
-		if p.HasError() {
-			// Recognition error - abort rule
-			goto errorExit
-		}
+		p.IdentifierOrKeyword()
 	}
 	{
 		p.SetState(5779)

@@ -870,3 +870,22 @@ func TestValidateMicroflowReferencesReportsIncludedMissingMicroflow(t *testing.T
 		t.Fatalf("unexpected validation error: %v", err)
 	}
 }
+
+// =============================================================================
+// Issue #476: Business event MESSAGE attribute names reject reserved keywords
+// =============================================================================
+
+// TestBusinessEvent_KeywordAttributeNames verifies that reserved keywords (Date,
+// Amount, etc.) are accepted as MESSAGE attribute names and message names.
+func TestBusinessEvent_KeywordAttributeNames(t *testing.T) {
+	input := `CREATE BUSINESS EVENT SERVICE MyModule.Events
+(ServiceName: 'Svc', EventNamePrefix: 'com.test')
+{
+  MESSAGE OrderCreated (Date: DateTime, Amount: Decimal) PUBLISH ENTITY MyModule.Order;
+};`
+
+	_, errs := visitor.Build(input)
+	if len(errs) > 0 {
+		t.Fatalf("issue #476: keyword attribute names rejected: %v", errs[0])
+	}
+}

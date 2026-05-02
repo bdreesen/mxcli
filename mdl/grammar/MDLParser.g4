@@ -2874,7 +2874,7 @@ createBusinessEventServiceStatement
     ;
 
 businessEventMessageDef
-    : MESSAGE IDENTIFIER
+    : MESSAGE identifierOrKeyword
       LPAREN businessEventAttrDef (COMMA businessEventAttrDef)* RPAREN
       (PUBLISH | SUBSCRIBE)
       (ENTITY qualifiedName)?
@@ -2883,7 +2883,7 @@ businessEventMessageDef
     ;
 
 businessEventAttrDef
-    : IDENTIFIER COLON dataType
+    : identifierOrKeyword COLON dataType
     ;
 
 // =============================================================================
