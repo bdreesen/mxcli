@@ -571,11 +571,20 @@ func astDataTypeToJavaActionReturnType(dt ast.DataType) javaactions.CodeActionRe
 	case ast.TypeEntity, ast.TypeEnumeration:
 		// TypeEnumeration with a qualified name is treated as entity type here,
 		// since the visitor can't distinguish entity types from enumeration types.
+		// "void" parses as a bare qualified name; treat it as VoidType.
 		entityName := ""
 		if dt.EntityRef != nil {
 			entityName = dt.EntityRef.Module + "." + dt.EntityRef.Name
 		} else if dt.EnumRef != nil {
 			entityName = dt.EnumRef.Module + "." + dt.EnumRef.Name
+		}
+		if strings.EqualFold(strings.TrimPrefix(entityName, "."), "void") {
+			return &javaactions.VoidType{
+				BaseElement: model.BaseElement{
+					ID:       model.ID(types.GenerateID()),
+					TypeName: "CodeActions$VoidType",
+				},
+			}
 		}
 		return &javaactions.EntityType{
 			BaseElement: model.BaseElement{
