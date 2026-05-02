@@ -9,7 +9,7 @@ require (
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/chzyer/readline v1.5.1
-	github.com/fsnotify/fsnotify v1.9.0
+	github.com/fsnotify/fsnotify v1.10.0
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/mattn/go-runewidth v0.0.23
 	github.com/microsoft/go-mssqldb v1.10.0
