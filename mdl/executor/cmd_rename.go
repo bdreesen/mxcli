@@ -58,14 +58,19 @@ func execRenameEntity(ctx *ExecContext, s *ast.RenameStmt) error {
 	}
 
 	found := false
+	collision := false
 	for _, ent := range dm.Entities {
 		if ent.Name == s.Name.Name {
 			found = true
-			break
+		} else if ent.Name == s.NewName {
+			collision = true
 		}
 	}
 	if !found {
 		return mdlerrors.NewNotFound("entity", s.Name.String())
+	}
+	if collision {
+		return mdlerrors.NewValidationf("entity %s already exists in module %s", s.NewName, s.Name.Module)
 	}
 
 	oldQualifiedName := s.Name.Module + "." + s.Name.Name
@@ -165,56 +170,80 @@ func execRenameDocument(ctx *ExecContext, s *ast.RenameStmt, docType string) err
 	}
 
 	found := false
+	collision := false
 	switch docType {
 	case "microflow":
 		mfs, _ := ctx.Backend.ListMicroflows()
 		for _, mf := range mfs {
 			modID := h.FindModuleID(mf.ContainerID)
-			if h.GetModuleName(modID) == s.Name.Module && mf.Name == s.Name.Name {
+			if h.GetModuleName(modID) != s.Name.Module {
+				continue
+			}
+			if mf.Name == s.Name.Name {
 				found = true
-				break
+			} else if mf.Name == s.NewName {
+				collision = true
 			}
 		}
 	case "nanoflow":
 		nfs, _ := ctx.Backend.ListNanoflows()
 		for _, nf := range nfs {
 			modID := h.FindModuleID(nf.ContainerID)
-			if h.GetModuleName(modID) == s.Name.Module && nf.Name == s.Name.Name {
+			if h.GetModuleName(modID) != s.Name.Module {
+				continue
+			}
+			if nf.Name == s.Name.Name {
 				found = true
-				break
+			} else if nf.Name == s.NewName {
+				collision = true
 			}
 		}
 	case "page":
 		pgs, _ := ctx.Backend.ListPages()
 		for _, pg := range pgs {
 			modID := h.FindModuleID(pg.ContainerID)
-			if h.GetModuleName(modID) == s.Name.Module && pg.Name == s.Name.Name {
+			if h.GetModuleName(modID) != s.Name.Module {
+				continue
+			}
+			if pg.Name == s.Name.Name {
 				found = true
-				break
+			} else if pg.Name == s.NewName {
+				collision = true
 			}
 		}
 	case "constant":
 		cs, _ := ctx.Backend.ListConstants()
 		for _, c := range cs {
 			modID := h.FindModuleID(c.ContainerID)
-			if h.GetModuleName(modID) == s.Name.Module && c.Name == s.Name.Name {
+			if h.GetModuleName(modID) != s.Name.Module {
+				continue
+			}
+			if c.Name == s.Name.Name {
 				found = true
-				break
+			} else if c.Name == s.NewName {
+				collision = true
 			}
 		}
 	case "workflow":
 		wfs, _ := ctx.Backend.ListWorkflows()
 		for _, wf := range wfs {
 			modID := h.FindModuleID(wf.ContainerID)
-			if h.GetModuleName(modID) == s.Name.Module && wf.Name == s.Name.Name {
+			if h.GetModuleName(modID) != s.Name.Module {
+				continue
+			}
+			if wf.Name == s.Name.Name {
 				found = true
-				break
+			} else if wf.Name == s.NewName {
+				collision = true
 			}
 		}
 	}
 
 	if !found {
 		return mdlerrors.NewNotFound(s.ObjectType, oldQualifiedName)
+	}
+	if collision {
+		return mdlerrors.NewValidationf("%s %s already exists in module %s", docType, s.NewName, s.Name.Module)
 	}
 
 	// The reference scanner will also update the document's own Name field
@@ -261,15 +290,23 @@ func execRenameEnumeration(ctx *ExecContext, s *ast.RenameStmt) error {
 		return err
 	}
 	found := false
+	collision := false
 	for _, en := range enums {
 		modID := h.FindModuleID(en.ContainerID)
-		if h.GetModuleName(modID) == s.Name.Module && en.Name == s.Name.Name {
+		if h.GetModuleName(modID) != s.Name.Module {
+			continue
+		}
+		if en.Name == s.Name.Name {
 			found = true
-			break
+		} else if en.Name == s.NewName {
+			collision = true
 		}
 	}
 	if !found {
 		return mdlerrors.NewNotFound("enumeration", oldQualifiedName)
+	}
+	if collision {
+		return mdlerrors.NewValidationf("enumeration %s already exists in module %s", s.NewName, s.Name.Module)
 	}
 
 	hits, err := ctx.Backend.RenameReferences(oldQualifiedName, newQualifiedName, s.DryRun)
@@ -318,14 +355,19 @@ func execRenameAssociation(ctx *ExecContext, s *ast.RenameStmt) error {
 	}
 
 	found := false
+	collision := false
 	for _, assoc := range dm.Associations {
 		if assoc.Name == s.Name.Name {
 			found = true
-			break
+		} else if assoc.Name == s.NewName {
+			collision = true
 		}
 	}
 	if !found {
 		return mdlerrors.NewNotFound("association", oldQualifiedName)
+	}
+	if collision {
+		return mdlerrors.NewValidationf("association %s already exists in module %s", s.NewName, s.Name.Module)
 	}
 
 	hits, err := ctx.Backend.RenameReferences(oldQualifiedName, newQualifiedName, s.DryRun)
@@ -374,15 +416,23 @@ func execRenameJavaAction(ctx *ExecContext, s *ast.RenameStmt) error {
 		return err
 	}
 	found := false
+	collision := false
 	for _, ja := range jas {
 		modID := h.FindModuleID(ja.ContainerID)
-		if h.GetModuleName(modID) == s.Name.Module && ja.Name == s.Name.Name {
+		if h.GetModuleName(modID) != s.Name.Module {
+			continue
+		}
+		if ja.Name == s.Name.Name {
 			found = true
-			break
+		} else if ja.Name == s.NewName {
+			collision = true
 		}
 	}
 	if !found {
 		return mdlerrors.NewNotFound("java action", oldQualifiedName)
+	}
+	if collision {
+		return mdlerrors.NewValidationf("java action %s already exists in module %s", s.NewName, s.Name.Module)
 	}
 
 	hits, err := ctx.Backend.RenameReferences(oldQualifiedName, newQualifiedName, s.DryRun)

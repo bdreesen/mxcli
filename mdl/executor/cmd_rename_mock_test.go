@@ -425,6 +425,79 @@ func TestRename_Workflow_Success(t *testing.T) {
 // Rename workflow — not found
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Collision detection — renaming to an existing name must fail
+// ---------------------------------------------------------------------------
+
+func TestRename_Nanoflow_CollisionError(t *testing.T) {
+	mod := mkModule("MyModule")
+	nf1 := mkNanoflow(mod.ID, "NF1")
+	nf2 := mkNanoflow(mod.ID, "NF2")
+	mb := &mock.MockBackend{
+		IsConnectedFunc:  func() bool { return true },
+		ListModulesFunc:  func() ([]*model.Module, error) { return []*model.Module{mod}, nil },
+		ListFoldersFunc:  func() ([]*types.FolderInfo, error) { return nil, nil },
+		ListNanoflowsFunc: func() ([]*microflows.Nanoflow, error) {
+			return []*microflows.Nanoflow{nf1, nf2}, nil
+		},
+	}
+	h := mkHierarchy(mod)
+	withContainer(h, nf1.ContainerID, mod.ID)
+	withContainer(h, nf2.ContainerID, mod.ID)
+	ctx, _ := newMockCtx(t, withBackend(mb), withHierarchy(h))
+	err := execRename(ctx, &ast.RenameStmt{
+		ObjectType: "nanoflow",
+		Name:       ast.QualifiedName{Module: "MyModule", Name: "NF1"},
+		NewName:    "NF2",
+	})
+	assertError(t, err)
+	assertContainsStr(t, err.Error(), "already exists")
+}
+
+func TestRename_Microflow_CollisionError(t *testing.T) {
+	mod := mkModule("MyModule")
+	mf1 := mkMicroflow(mod.ID, "MF1")
+	mf2 := mkMicroflow(mod.ID, "MF2")
+	mb := &mock.MockBackend{
+		IsConnectedFunc:    func() bool { return true },
+		ListModulesFunc:    func() ([]*model.Module, error) { return []*model.Module{mod}, nil },
+		ListFoldersFunc:    func() ([]*types.FolderInfo, error) { return nil, nil },
+		ListMicroflowsFunc: func() ([]*microflows.Microflow, error) { return []*microflows.Microflow{mf1, mf2}, nil },
+	}
+	h := mkHierarchy(mod)
+	withContainer(h, mf1.ContainerID, mod.ID)
+	withContainer(h, mf2.ContainerID, mod.ID)
+	ctx, _ := newMockCtx(t, withBackend(mb), withHierarchy(h))
+	err := execRename(ctx, &ast.RenameStmt{
+		ObjectType: "microflow",
+		Name:       ast.QualifiedName{Module: "MyModule", Name: "MF1"},
+		NewName:    "MF2",
+	})
+	assertError(t, err)
+	assertContainsStr(t, err.Error(), "already exists")
+}
+
+func TestRename_Entity_CollisionError(t *testing.T) {
+	mod := mkModule("MyModule")
+	ent1 := mkEntity(mod.ID, "EntityA")
+	ent2 := mkEntity(mod.ID, "EntityB")
+	dm := mkDomainModel(mod.ID, ent1, ent2)
+	mb := &mock.MockBackend{
+		IsConnectedFunc:    func() bool { return true },
+		ListModulesFunc:    func() ([]*model.Module, error) { return []*model.Module{mod}, nil },
+		GetDomainModelFunc: func(id model.ID) (*domainmodel.DomainModel, error) { return dm, nil },
+	}
+	h := mkHierarchy(mod)
+	ctx, _ := newMockCtx(t, withBackend(mb), withHierarchy(h))
+	err := execRename(ctx, &ast.RenameStmt{
+		ObjectType: "entity",
+		Name:       ast.QualifiedName{Module: "MyModule", Name: "EntityA"},
+		NewName:    "EntityB",
+	})
+	assertError(t, err)
+	assertContainsStr(t, err.Error(), "already exists")
+}
+
 func TestRename_Workflow_NotFound(t *testing.T) {
 	mod := mkModule("BPModule")
 	mb := &mock.MockBackend{
