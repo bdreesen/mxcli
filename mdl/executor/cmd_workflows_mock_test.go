@@ -7,6 +7,7 @@ import (
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
 	"github.com/mendixlabs/mxcli/mdl/backend/mock"
+	"github.com/mendixlabs/mxcli/mdl/visitor"
 	"github.com/mendixlabs/mxcli/sdk/workflows"
 )
 
@@ -47,8 +48,14 @@ func TestDescribeWorkflow_Mock(t *testing.T) {
 	assertNoError(t, describeWorkflow(ctx, ast.QualifiedName{Module: "Sales", Name: "ApproveOrder"}))
 
 	out := buf.String()
-	assertContainsStr(t, out, "workflow")
+	assertContainsStr(t, out, "create workflow")
 	assertContainsStr(t, out, "Sales.ApproveOrder")
+
+	// Roundtrip: DESCRIBE output must be parseable as valid MDL (issue #478)
+	_, parseErrs := visitor.Build(out)
+	if len(parseErrs) > 0 {
+		t.Errorf("describe workflow output is not valid MDL: %v\nOutput:\n%s", parseErrs[0], out)
+	}
 }
 
 func TestDescribeWorkflow_NotFound(t *testing.T) {
