@@ -185,7 +185,7 @@ func describeWorkflowToString(ctx *ExecContext, name ast.QualifiedName) (string,
 	}
 	lines = append(lines, "")
 
-	lines = append(lines, fmt.Sprintf("workflow %s", qualifiedName))
+	lines = append(lines, fmt.Sprintf("create workflow %s", qualifiedName))
 
 	// Context parameter
 	if targetWf.Parameter != nil && targetWf.Parameter.EntityRef != "" {
