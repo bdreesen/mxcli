@@ -83,7 +83,7 @@ func describeAgentEditorConsumedMCPService(ctx *ExecContext, name ast.QualifiedN
 
 	var lines []string
 	if c.ProtocolVersion != "" {
-		lines = append(lines, fmt.Sprintf("  ProtocolVersion: %s", c.ProtocolVersion))
+		lines = append(lines, fmt.Sprintf("  ProtocolVersion: '%s'", escapeSQLString(c.ProtocolVersion)))
 	}
 	if c.Version != "" {
 		lines = append(lines, fmt.Sprintf("  Version: '%s'", escapeSQLString(c.Version)))

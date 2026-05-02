@@ -7,6 +7,7 @@ import (
 
 	"github.com/mendixlabs/mxcli/mdl/ast"
 	"github.com/mendixlabs/mxcli/mdl/backend/mock"
+	"github.com/mendixlabs/mxcli/mdl/visitor"
 	"github.com/mendixlabs/mxcli/model"
 	"github.com/mendixlabs/mxcli/sdk/agenteditor"
 )
@@ -524,7 +525,14 @@ func TestDescribeAgentEditorConsumedMCPService_Mock(t *testing.T) {
 
 	out := buf.String()
 	assertContainsStr(t, out, "create consumed mcp service")
-	assertContainsStr(t, out, "ProtocolVersion")
+	// ProtocolVersion with a date value must be quoted so the output is re-parseable (issue #435)
+	assertContainsStr(t, out, "ProtocolVersion: '2025-03-26'")
+
+	// Roundtrip: DESCRIBE output must parse without errors
+	_, parseErrs := visitor.Build(out)
+	if len(parseErrs) > 0 {
+		t.Errorf("describe output is not valid MDL: %v\nOutput:\n%s", parseErrs[0], out)
+	}
 }
 
 // ---------------------------------------------------------------------------
