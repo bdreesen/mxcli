@@ -284,6 +284,72 @@ The validation gate is deterministic so the escalation decision is mechanical. A
 
 ---
 
+### 8. Generation Time — Speed Is a Capability, Not a Convenience
+
+The preceding sections focus on token and monetary cost. Time is a third cost dimension — and for the buyer who has waited a full working day for a PED-generated app, it is the most visceral one.
+
+**Why PED is slow by construction.**
+
+Every MCP tool call is a sequential round-trip with model inference in the loop:
+
+```
+agent decides → sends tool call → Studio Pro responds →
+agent receives → agent reasons → agent decides next call → repeat
+```
+
+Each cycle pays: Opus inference latency (large model, slow per-token output) + API network round-trip + Studio Pro processing. These cannot be pipelined — each call depends on the result of the previous one because of index tracking and dependency ordering. A non-trivial app generates hundreds to over a thousand sequential tool calls:
+
+| Component | Approx. tool calls |
+|---|---|
+| Domain model, 50 entities | ~250 (schema fetch + navigate + create/update + check per group) |
+| 20 microflows | ~300 |
+| 30 pages | ~600 |
+| Error recovery (+20–30%) | ~300 |
+| **Total** | **~1,450** |
+
+At 5–15 seconds per call (Opus latency + network + SP processing), that is **2–6 hours of wall-clock time** for tool I/O alone, before accounting for re-reads and correction loops. User reports of full-day generation times are consistent with this structure — they are not outliers.
+
+**Why MDL is fast by construction.**
+
+The agent generates the MDL script in one inference pass (or a handful of short ones). Execution is then a single local subprocess call:
+
+```
+mxcli check   →  1–3 seconds   (local validation, no inference)
+mxcli exec    →  10–30 seconds (local SQLite writes, no inference)
+```
+
+A 50-entity domain model with all attributes and associations executes in the same call as a 5-attribute entity — execution time is disk I/O, not inference latency. For the same complex app:
+
+| Step | Time |
+|---|---|
+| Script generation (1–2 inference passes) | 2–5 minutes |
+| Validation + execution | < 1 minute |
+| **Total** | **5–10 minutes** |
+
+The wall-clock ratio is approximately **20–100× faster**.
+
+**The human experience difference.**
+
+A full-day generation changes the interaction model fundamentally:
+
+- The developer is **blocked** for the duration — no feedback, no steering, no correction mid-flight
+- If the output misunderstood a requirement, the entire day is lost before that is discovered
+- Cognitively expensive: the developer has to re-engage after a context break measured in hours
+
+MDL at 5–10 minutes enables a qualitatively different working model:
+
+- The developer reviews the **script before execution** and catches intent errors early — before any project is touched
+- A first result arrives fast enough to **iterate**: 10–20 generation-review-refine cycles fit in a single working day
+- Co-creation replaces delegation-and-wait
+
+**The developer time cost compounds the API cost.**
+
+API token cost is visible on a bill. Developer time cost is invisible but larger. A senior developer waiting a full day for a generation attempt costs €600–1,000 of salary, independent of API fees. At MDL speeds, a generation attempt costs 10 minutes of developer attention. For a platform team running daily generation or modification tasks across a portfolio, this is the line item that makes the business case.
+
+**Iteration quality.** MDL-generated applications will systematically be better than PED-generated ones — not because the model is smarter, but because the team can afford to iterate, refine, and correct. One PED attempt per day vs. ten MDL iterations per hour is a difference in outcome quality that compounds over a project.
+
+---
+
 ## At enterprise scale: a capability ceiling, not just a cost ceiling
 
 Mendix customers exist with projects comprising **100+ modules, 1,000+ entities, 1,000+ microflows, and 500+ pages**. At this scale the thesis stops being about efficiency and becomes about what is mathematically possible inside a single agent session.
@@ -351,6 +417,7 @@ Query cost is ~500 tokens in, ~200–2k out, regardless of project size. The age
 - **Skill docs address knowledge problems, not execution complexity.** PED skill documents can raise reliability for simple and moderate MCP operations by encoding schema patterns, ordering rules, and error recovery recipes. They cannot address runtime state management — the index tracking, reference computation, and partial state diagnosis that drive Opus dependency on complex tasks. The ceiling moves with better skill docs; it does not disappear.
 - **catalog.db coverage must be invested in** for the query-as-composition argument to hold. Shallow metadata limits the reach.
 - **Mendix testing maturity is a gating variable.** The testing advantage only lands for customers who invest in test suites. Meeting customers where they are — scaffolding, generators, patterns — is part of the product, not just a documentation problem.
+- **Generation time estimates are architectural, not measured.** The 5–15 seconds per MCP tool call and the 20–100× wall-clock ratio are derived from observed Opus latency and tool call counts, not from a controlled benchmark. The MCP BSON benchmark proposal (`docs/11-proposals/PROPOSAL_mcp_bson_benchmark.md`) is designed to produce measured data. Until then, treat the time claims as directionally correct and order-of-magnitude reliable, not as cited figures.
 
 ---
 
@@ -587,3 +654,37 @@ Index tracking, dynamic reference resolution, and partial state diagnosis under 
 - Removes a meaningful compliance blocker for financial services and government
 
 **Slide message:** *"Local models for free. Sonnet for most. Opus only when you need it. And your project data stays on your hardware."*
+
+---
+
+## Slide 9 — Generation Time: A Full Day vs. Ten Minutes
+
+**Thesis:** time is the cost dimension the API bill doesn't show. For the buyer who has waited a full working day for a PED-generated app, it is the most memorable argument in this deck.
+
+**Why PED is slow by construction:**
+
+Every MCP tool call is a sequential round-trip with Opus inference in the loop. A non-trivial app (50 entities, 20 microflows, 30 pages) generates ~1,200–1,500 sequential tool calls. At 5–15 seconds per call, that is 2–6 hours of tool I/O alone — before error recovery loops. Full-day generation times are not outliers; they are the expected outcome of the architecture.
+
+**Why MDL is fast by construction:**
+
+Script generation is one inference pass (2–5 minutes). Execution is a single local subprocess call: `mxcli exec` runs in 10–30 seconds regardless of app size — execution time is disk I/O, not inference latency.
+
+```
+PED complex app:   2–8 hours  (sequential tool calls + Opus latency)
+MDL complex app:   5–10 minutes  (one inference pass + local exec)
+Ratio:             20–100×
+```
+
+**The interaction model shift:**
+
+PED forces delegation-and-wait: the developer hands off, waits hours, then discovers whether requirements were understood correctly. MDL enables co-creation: the developer reviews the script before execution, sees a result in minutes, and runs 10–20 refinement cycles in a single working day.
+
+**The hidden cost — developer time:**
+
+API fees appear on the bill. Developer time does not. A senior developer blocked for a full day costs €600–1,000 of salary per generation attempt, independent of what Anthropic charges. At MDL speeds, the same attempt costs 10 minutes of developer attention.
+
+**The quality consequence:**
+
+MDL-generated applications will be better — not because the model is more capable, but because the team can afford to iterate. One PED attempt per day vs. ten MDL cycles per hour is a compounding quality advantage across a project.
+
+**Slide message:** *"One shot per day, or twenty iterations per hour. The answer determines whether your team ships or waits."*
