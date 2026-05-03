@@ -3,6 +3,8 @@
 package mpr
 
 import (
+	"strings"
+
 	"github.com/mendixlabs/mxcli/model"
 	"github.com/mendixlabs/mxcli/sdk/microflows"
 
@@ -701,48 +703,98 @@ func serializeWebServiceCallAction(a *microflows.WebServiceCallAction) bson.D {
 		}
 	}
 
+	// ServiceName: use the local part of the qualified name (after the last dot).
+	serviceName := string(a.ServiceID)
+	if idx := strings.LastIndex(serviceName, "."); idx >= 0 {
+		serviceName = serviceName[idx+1:]
+	}
+
 	doc := bson.D{
 		{Key: "$ID", Value: idToBsonBinary(string(a.ID))},
 		{Key: "$Type", Value: "Microflows$CallWebServiceAction"},
 		{Key: "ErrorHandlingType", Value: stringOrDefault(string(a.ErrorHandlingType), "Rollback")},
+		{Key: "HttpConfiguration", Value: bson.D{
+			{Key: "$ID", Value: idToBsonBinary(GenerateID())},
+			{Key: "$Type", Value: "Microflows$HttpConfiguration"},
+			{Key: "ClientCertificate", Value: ""},
+			{Key: "CustomLocation", Value: ""},
+			{Key: "CustomLocationTemplate", Value: nil},
+			{Key: "HttpAuthenticationPassword", Value: ""},
+			{Key: "HttpAuthenticationUserName", Value: ""},
+			{Key: "HttpHeaderEntries", Value: bson.A{int32(3)}},
+			{Key: "HttpMethod", Value: "Post"},
+			{Key: "OverrideLocation", Value: false},
+			{Key: "UseHttpAuthentication", Value: false},
+		}},
+		// ImportedService is a BY_NAME_REFERENCE qualified name string, not a binary UUID.
 		{Key: "ImportedService", Value: string(a.ServiceID)},
-		{Key: "OperationName", Value: a.OperationName},
-		{Key: "TimeOutExpression", Value: a.TimeoutExpression},
-		{Key: "UseRequestTimeOut", Value: a.TimeoutExpression != ""},
+		{Key: "IsValidationRequired", Value: false},
 	}
-	if a.SendMappingID != "" {
-		doc = append(doc, bson.E{Key: "RequestHandling", Value: bson.D{
+
+	// NewResultHandling uses Microflows$ResultHandling (same type as REST result handling).
+	bind := a.OutputVariable != ""
+	resultHandling := bson.D{
+		{Key: "$ID", Value: idToBsonBinary(GenerateID())},
+		{Key: "$Type", Value: "Microflows$ResultHandling"},
+		{Key: "Bind", Value: bind},
+	}
+	if a.ReceiveMappingID != "" {
+		// ReturnValueMapping is a BY_NAME_REFERENCE string, not a binary UUID.
+		resultHandling = append(resultHandling, bson.E{Key: "ImportMappingCall", Value: bson.D{
 			{Key: "$ID", Value: idToBsonBinary(GenerateID())},
-			{Key: "$Type", Value: "Microflows$WebServiceOperationAdvancedRequestHandling"},
-			{Key: "ExportMappingCall", Value: bson.D{
+			{Key: "$Type", Value: "Microflows$ImportMappingCall"},
+			{Key: "Commit", Value: "YesWithoutEvents"},
+			{Key: "ContentType", Value: "Json"},
+			{Key: "ForceSingleOccurrence", Value: false},
+			{Key: "ObjectHandlingBackup", Value: "Create"},
+			{Key: "ParameterVariableName", Value: ""},
+			{Key: "Range", Value: bson.D{
 				{Key: "$ID", Value: idToBsonBinary(GenerateID())},
-				{Key: "$Type", Value: "Microflows$ExportMappingCall"},
-				{Key: "Mapping", Value: string(a.SendMappingID)},
-				// Mendix storage lists encode their first element as a
-				// constant storage-list-type marker (`2` for object lists),
-				// NOT the element count. The empty ExportMappingCall shape
-				// used by other writers in this file follows the same
-				// convention; see #338 / #374 for prior fixes that aligned
-				// other writers on this marker.
-				{Key: "ParameterMappings", Value: bson.A{int32(2)}},
+				{Key: "$Type", Value: "Microflows$ConstantRange"},
+				{Key: "SingleObject", Value: true},
 			}},
+			{Key: "ReturnValueMapping", Value: string(a.ReceiveMappingID)},
 		}})
+	} else {
+		resultHandling = append(resultHandling, bson.E{Key: "ImportMappingCall", Value: nil})
 	}
-	if a.OutputVariable != "" || a.ReceiveMappingID != "" {
-		resultHandling := bson.D{
+	resultHandling = append(resultHandling,
+		bson.E{Key: "ResultVariableName", Value: a.OutputVariable},
+		bson.E{Key: "VariableType", Value: bson.D{
 			{Key: "$ID", Value: idToBsonBinary(GenerateID())},
-			{Key: "$Type", Value: "Microflows$WebServiceOperationResultHandling"},
-			{Key: "ResultVariableName", Value: a.OutputVariable},
-		}
-		if a.ReceiveMappingID != "" {
-			resultHandling = append(resultHandling, bson.E{Key: "ImportMappingCall", Value: bson.D{
-				{Key: "$ID", Value: idToBsonBinary(GenerateID())},
-				{Key: "$Type", Value: "Microflows$ImportMappingCall"},
-				{Key: "ReturnValueMapping", Value: string(a.ReceiveMappingID)},
-			}})
-		}
-		doc = append(doc, bson.E{Key: "NewResultHandling", Value: resultHandling})
-	}
+			{Key: "$Type", Value: "DataTypes$VoidType"},
+		}},
+	)
+	doc = append(doc, bson.E{Key: "NewResultHandling", Value: resultHandling})
+
+	doc = append(doc, bson.E{Key: "OperationName", Value: a.OperationName})
+	doc = append(doc, bson.E{Key: "ProxyConfiguration", Value: nil})
+
+	// RequestBodyHandling: always SimpleRequestHandling. Mendix$AdvancedRequestHandling
+	// (used when a send mapping is configured) requires a Studio Pro-generated example
+	// to determine the correct type storage name; use the raw BSON escape hatch for
+	// complex SOAP operations that need a send mapping until that is resolved.
+	doc = append(doc, bson.E{Key: "RequestBodyHandling", Value: bson.D{
+		{Key: "$ID", Value: idToBsonBinary(GenerateID())},
+		{Key: "$Type", Value: "Microflows$SimpleRequestHandling"},
+		{Key: "NullValueOption", Value: "LeaveOutElement"},
+		{Key: "ParameterMappings", Value: bson.A{int32(2)}},
+	}})
+
+	// RequestHeaderHandling is always SimpleRequestHandling.
+	doc = append(doc, bson.E{Key: "RequestHeaderHandling", Value: bson.D{
+		{Key: "$ID", Value: idToBsonBinary(GenerateID())},
+		{Key: "$Type", Value: "Microflows$SimpleRequestHandling"},
+		{Key: "NullValueOption", Value: "LeaveOutElement"},
+		{Key: "ParameterMappings", Value: bson.A{int32(2)}},
+	}})
+
+	doc = append(doc, bson.E{Key: "RequestProxyType", Value: "DefaultProxy"})
+	doc = append(doc, bson.E{Key: "ServiceName", Value: serviceName})
+	doc = append(doc,
+		bson.E{Key: "TimeOutExpression", Value: stringOrDefault(a.TimeoutExpression, "300")},
+		bson.E{Key: "UseRequestTimeOut", Value: true},
+	)
 	return doc
 }
 

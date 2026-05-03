@@ -48,7 +48,7 @@ create nanoflow NanoflowExamples.NF_FormatPrice
     returns String
     folder 'Helpers'
 begin
-    return $Currency + ' ' + formatDecimal($Amount, 2);
+    return $Currency + ' ' + toString($Amount);
 end;
 
 -- Security

@@ -110,20 +110,20 @@ func buildWorkflowOperationStatement(ctx parser.IWorkflowOperationStatementConte
 		}
 
 		if ot.ABORT() != nil {
-			stmt.OperationType = "ABORT"
+			stmt.OperationType = "abort"
 			if expr := ot.Expression(); expr != nil {
 				stmt.Reason = buildExpression(expr)
 			}
 		} else if ot.CONTINUE() != nil {
-			stmt.OperationType = "CONTINUE"
+			stmt.OperationType = "continue"
 		} else if ot.PAUSE() != nil {
-			stmt.OperationType = "PAUSE"
+			stmt.OperationType = "pause"
 		} else if ot.RESTART() != nil {
-			stmt.OperationType = "RESTART"
+			stmt.OperationType = "restart"
 		} else if ot.RETRY() != nil {
-			stmt.OperationType = "RETRY"
+			stmt.OperationType = "retry"
 		} else if ot.UNPAUSE() != nil {
-			stmt.OperationType = "UNPAUSE"
+			stmt.OperationType = "unpause"
 		}
 	}
 	if errClause := c.OnErrorClause(); errClause != nil {

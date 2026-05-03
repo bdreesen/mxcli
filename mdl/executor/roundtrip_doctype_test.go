@@ -31,33 +31,10 @@ var scriptModuleDeps = map[string][]string{
 // headers etc. that full validation requires.
 var scriptKnownCEErrors = map[string][]string{
 	"03-page-examples.mdl": {
-		"CE0115", // Page action-argument refresh warnings in showcase snippets
 		"CE3637", // Data view listen to gallery in sibling layout-grid column — Mendix scoping limitation
-		"CE5601", // URL parameter segment omitted in a syntax showcase page
 	},
-	"02b-nanoflow-examples.mdl": {
-		"CE0115", // SHOW_PAGE argument validation — Studio Pro-generated BSON has identical structure; pre-existing quirk
-		"CE0117", // Expression validation differences in nanoflow showcase EndEvents on Studio Pro 11.9
-		"CE6035", // Some showcase validation-feedback/decision actions serialize unsupported nanoflow error handling
-	},
-	"02-microflow-examples.mdl": {
-		"CE0117", // Expression error in LOG WARNING on Mendix 10.x (string concat syntax difference)
-	},
-	"06-rest-client-examples.mdl": {
-		"CE0061", // No entity selected (JSON response/body mapping without entity)
-		"CE6035", // RestOperationCallAction error handling not supported
-		"CE7056", // Undefined parameter (dynamic header {1} placeholder)
-		"CE7062", // Missing Accept header
-		"CE7064", // POST/PUT must include body
-		"CE7073", // Constant needs to be defined (auth with $ConstantName)
-		"CE7247", // Name cannot be empty (body mapping without entity)
-	},
-	"17-custom-widget-examples.mdl": {
-		"CE0463", // Widget definition changed (TEXTFILTER template property count mismatch)
-		"CE1613", // ComboBox enum attribute written as association pointer
-	},
-	"workflow-user-targeting.mdl": {
-		"CE1613", // System.UserGroup does not exist in the test Mendix version
+	"06b-soap-examples.mdl": {
+		"CE1613", // Dangling service/mapping refs — no web service defined in the test project
 	},
 }
 

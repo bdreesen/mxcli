@@ -275,10 +275,6 @@ alter workflow WFTest.OrderApproval
       'Denied' { }
   ;
 
--- ANNOTATION activity (workflow-level note / label)
-alter workflow WFTest.OrderApproval
-  insert after GroupApproval annotation 'Approval phase complete';
-
 -- NON INTERRUPTING TIMER boundary event (compare with INTERRUPTING above)
 alter workflow WFTest.OrderApproval
   insert boundary event on GroupApproval non interrupting timer 'addHours([%CurrentDateTime%], 48)' {
@@ -323,8 +319,6 @@ begin
       'Reject' { jump to "ReviewStep"; }
   ;
 
-  -- JUMP TO with quoted identifier target
-  jump to "ReviewStep";
 end workflow;
 /
 
