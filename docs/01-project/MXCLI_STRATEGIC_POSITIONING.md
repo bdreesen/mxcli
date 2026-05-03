@@ -192,7 +192,57 @@ The strategic case above focuses on the execution phase (generating and applying
 
 ---
 
-### 6. Model Tier Requirements and the Compound Cost Multiplier
+### 6. Why DSL Generation Is Cognitively Simpler Than Tool Orchestration
+
+The preceding sections quantify the token and cost difference. There is a deeper explanation for why the gap is structural — one that connects to a well-understood principle in how LLMs best interact with complex systems.
+
+**Multi-layer sequential dependency vs. single-layer token prediction**
+
+MCP tool orchestration requires the LLM to maintain coherence across multiple dependent sequential layers for every operation:
+
+1. **Intent** — parse user intent
+2. **Plan** — sequence of operations required
+3. **Tool selection** — which tool for this step
+4. **Parameter construction** — exact parameters, given current state
+5. **State update** — track UUIDs, array indices, reference paths after each tool response
+6. **Dependency management** — ordering constraints, cross-reference consistency
+7. **Error recovery** — diagnose partial failure, replan, repair
+8. **Repeat** — each subsequent operation restarts at layer 3 with updated state
+
+Each layer is stochastic, and errors compound upward. A UUID mis-tracked in layer 5 silently corrupts the parameter construction in layer 4 of the next call. The LLM is simulating a stateful interpreter across many sequential, mutually dependent steps — which is not what transformer next-token prediction is trained to do reliably.
+
+MDL generation reduces this to a single coherent inference pass:
+
+**Intent → tokens**
+
+State is already embedded in the generated text. After writing `create entity Customer`, the entity name is directly in context — no UUID tracking, no index recomputation, no state extracted from a history of tool responses. The compiler handles all the deterministic layers: reference resolution, UUID assignment, dependency ordering.
+
+**The "generate code to compute" analogy**
+
+When an LLM is asked to compute the 1000th prime or perform complex arithmetic, the reliable approach is to write Python and execute it — not to iterate the computation inside the context window. LLMs are trained to generate correct code; they are not trained to maintain arithmetic state across sequential steps.
+
+MCP orchestration puts LLMs in "compute it yourself" mode: track UUIDs, recompute array indices, maintain cross-document consistency across 50+ turns. MDL puts LLMs in "generate the script" mode: understand intent, emit declarative statements, let the compiler execute. The same principle applies to both: externalise the deterministic computation to the right tool, keep the LLM in the regime it was trained for.
+
+**The pattern appears across the industry**
+
+This is not a novel insight. DSL or scripting layers have emerged independently in every domain where LLMs have been applied to complex stateful systems:
+
+- **3D and CAD**: Blender generates `bpy` Python scripts, not sequences of UI tool calls. Maya uses MEL scripts. AutoCAD uses AutoLISP.
+- **Infrastructure**: Terraform HCL and CloudFormation YAML, not sequential cloud API calls. Each resource references IDs from previous ones — the same cross-reference problem MDL externalises to the compiler.
+- **Data transformation**: dbt SQL models, not step-by-step ETL calls. The dependency DAG is declared; the engine resolves execution order.
+- **General computation**: GitHub Copilot, Codex, AlphaCode — all "generate code," not "call tools." The canonical case.
+
+In every domain where pure tool-call orchestration has been pushed hard, a DSL or scripting layer has emerged. Tool calls become the *implementation* of the compiler — not what the LLM authors. mxcli + MDL is the application of this established pattern to Mendix.
+
+**Why this directly explains the model tier and capability gaps**
+
+The multi-layer sequential state management of MCP is exactly the task class where smaller models degrade systematically: errors compound across layers, state diverges mid-session, and the model needs Opus-tier capacity just to maintain coherence. Single-pass text generation against a learnable grammar is exactly the task class where 32B local models are competitive with frontier models.
+
+The model tier gap (Section 7), the local model viability (Section 8), and the generation time difference (Section 9) are all downstream consequences of this architectural difference. MDL is not a productivity shortcut over MCP — it is a different computational model: LLM as code generator, compiler as executor.
+
+---
+
+### 7. Model Tier Requirements and the Compound Cost Multiplier
 
 The preceding analysis focuses on token count. There is a second cost dimension that changes the strategic picture significantly: which model tier is required to execute the task reliably.
 
@@ -237,7 +287,7 @@ MDL allows the full workflow to run on Sonnet. MCP forces Opus on the two most t
 
 ---
 
-### 7. Local Model Compatibility
+### 8. Local Model Compatibility
 
 MDL's declarative structure opens a capability that is structurally out of reach for MCP: **reliable execution by local, on-device models**.
 
@@ -284,7 +334,7 @@ The validation gate is deterministic so the escalation decision is mechanical. A
 
 ---
 
-### 8. Generation Time — Speed Is a Capability, Not a Convenience
+### 9. Generation Time — Speed Is a Capability, Not a Convenience
 
 The preceding sections focus on token and monetary cost. Time is a third cost dimension — and for the buyer who has waited a full working day for a PED-generated app, it is the most visceral one.
 
@@ -350,7 +400,7 @@ API token cost is visible on a bill. Developer time cost is invisible but larger
 
 ---
 
-### 9. A Three-Layer Architecture: Compiler, Starlark, Skills
+### 10. A Three-Layer Architecture: Compiler, Starlark, Skills
 
 The linting system already embodies the right design principle: Starlark handles quantitative rules (naming conventions, complexity thresholds, structural checks); skill files handle qualitative guidance (architectural judgment, design heuristics). The same split applies to generation — and once applied, it clarifies exactly what belongs in the compiler itself.
 
@@ -533,7 +583,7 @@ Query cost is ~500 tokens in, ~200–2k out, regardless of project size. The age
 
 # Summary for slides
 
-A focused six-slide deck. Slide 1 sets the axis — the dual-backend refactor means "live vs offline" is no longer what separates the tools. Slide 2 frames the territory. Slide 3 makes the efficiency case. Slide 4 is the architectural moat. Slide 5 is the safety upgrade. Slide 6 is the enterprise closer.
+An eleven-slide deck with a core six-slide arc (Slides 1–6) and five deep-dive slides (Slides 7–11) for technical audiences. Slide 1 sets the axis — the dual-backend refactor means "live vs offline" is no longer what separates the tools. Slide 2 frames the territory. Slide 3 makes the efficiency case. Slide 4 is the architectural moat. Slide 5 is the safety upgrade. Slide 6 is the enterprise closer. Slides 7–11 cover: why DSL generation is the industry-validated pattern for agentic work, the compound cost multiplier, local model viability, generation time, and the three-layer compiler/Starlark/skills architecture.
 
 ## Slide 1 — Interaction Protocol Is the Real Axis
 
@@ -676,7 +726,38 @@ Every stage except "agent writes MDL" runs outside the agent's context. Pass/fai
 
 ---
 
-## Slide 7 — The Compound Cost Multiplier: Tokens × Model Tier
+## Slide 7 — DSL Generation: The Industry-Validated Pattern
+
+**Thesis:** The MDL approach is not a Mendix-specific optimisation. It is the standard solution to a fundamental limitation of multi-step tool orchestration — arrived at independently in every domain where LLMs drive complex stateful systems.
+
+**Why tool orchestration is architecturally hard for LLMs:**
+
+MCP requires the LLM to maintain coherence across 7+ dependent sequential layers per operation: intent → plan → tool selection → parameter construction → state tracking → dependency management → error recovery → repeat. Each layer is stochastic; errors compound upward. The LLM simulates a stateful interpreter — which is not what transformer next-token prediction is trained to do reliably.
+
+**Why DSL generation is in the LLM's natural regime:**
+
+MDL is a single coherent inference pass: intent → tokens. State is embedded in the generated text. The compiler handles what the LLM is bad at — UUID assignment, reference resolution, ordering. The LLM does what it is trained for: generating correct text against a known grammar.
+
+**The "generate code to compute" analogy:**
+
+LLMs don't compute the 1000th prime by iterating in context — they write Python. The same principle applies: generate MDL and execute it, rather than simulate the execution step by step.
+
+**Market validation:**
+
+| Domain | DSL layer | Replaced |
+|---|---|---|
+| 3D / CAD | `bpy` Python, MEL, AutoLISP | Sequential UI tool calls |
+| Infrastructure | Terraform HCL, CloudFormation | Sequential cloud API calls |
+| Data transformation | dbt SQL models | Step-by-step ETL calls |
+| General computation | Copilot / Codex / AlphaCode | In-weight computation |
+
+**The conclusion:** In every domain where tool-call orchestration has been pushed hard, a DSL layer has emerged. Tool calls become the compiler's implementation — not what the LLM authors. The model tier gap, the local model viability, and the generation time difference in the following slides are all downstream consequences of this one architectural difference.
+
+**Slide message:** *"The right answer for 'LLM drives a complex stateful system' is always a DSL layer. The industry validated this pattern before we needed it for Mendix."*
+
+---
+
+## Slide 8 — The Compound Cost Multiplier: Tokens × Model Tier
 
 **Thesis:** the token efficiency argument understates the real cost difference. MCP forces Opus; MDL runs on Sonnet. Multiply the token ratio by the model price ratio and the cost difference is 40–200×, not 10–50×.
 
@@ -700,7 +781,7 @@ User data: 500M+ tokens/month at Opus prices reported for PED-heavy workflows. T
 
 ---
 
-## Slide 8 — Local Models: The Cost Floor Reaches Zero
+## Slide 9 — Local Models: The Cost Floor Reaches Zero
 
 **Thesis:** MDL's declarative structure enables effective use of local, on-device models for routine work. MCP cannot. This creates a three-tier cost structure with a zero-cost floor — and removes the cloud-data constraint that blocks enterprise adoption.
 
@@ -732,7 +813,7 @@ Index tracking, dynamic reference resolution, and partial state diagnosis under 
 
 ---
 
-## Slide 9 — Generation Time: A Full Day vs. Ten Minutes
+## Slide 10 — Generation Time: A Full Day vs. Ten Minutes
 
 **Thesis:** time is the cost dimension the API bill doesn't show. For the buyer who has waited a full working day for a PED-generated app, it is the most memorable argument in this deck.
 
@@ -766,7 +847,7 @@ MDL-generated applications will be better — not because the model is more capa
 
 ---
 
-## Slide 10 — Three Layers: Compiler, Starlark, Skills
+## Slide 11 — Three Layers: Compiler, Starlark, Skills
 
 **Thesis:** the linting system already shows the right design. Quantitative rules go in Starlark; qualitative judgment stays in skills. Apply the same split to generation — and the result is a three-layer architecture where each layer does exactly what it is good at.
 
