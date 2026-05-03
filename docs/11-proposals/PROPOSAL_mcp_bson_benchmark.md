@@ -226,10 +226,12 @@ cmd/mxcli/
 
 ---
 
+## Resolved Questions
+
+1. **Studio Pro project path** — the mx-demo-1 MCP server project is at `./mx-test-projects/test6-app/`, which is accessible on the local filesystem. It is v2 format with 373 mxunit files. Both sides of the comparison can be done as direct BSON file reads — no `ped_read_document` JSON proxy needed.
+
 ## Open Questions
 
-1. **Studio Pro project path for MCP path** — does the mx-demo-1 MCP server project share a filesystem path accessible to the benchmark runner? If so, we can read its mxunit files directly after each MCP run. If not, we compare via `ped_read_document` JSON (less precise but sufficient for Phase 1).
-
-2. **Project reset between runs** — the MCP path modifies the live Studio Pro project. Between benchmark runs, do we reset by reverting the mprcontents git state, or does Studio Pro need to close and reopen a clean copy?
+2. **Project reset between runs** — the MCP path modifies the live Studio Pro project (`test6-app`). Between benchmark runs, do we reset by reverting the mprcontents state with `git checkout -- mx-test-projects/test6-app/mprcontents`, or does Studio Pro need to close and reopen a clean copy?
 
 3. **Token measurement precision** — for Phase 1, estimating from payload JSON sizes is sufficient. For Phase 2+, running via the Claude API with `usage` reporting gives exact counts. Worth deciding whether Phase 1 uses the estimation approach or sets up the API harness from the start.
