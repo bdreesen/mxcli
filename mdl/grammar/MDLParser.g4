@@ -3303,6 +3303,7 @@ catalogJoinClause
 catalogTableName
     : MODULES
     | ENTITIES
+    | ASSOCIATIONS  // keyword token — must be listed explicitly
     | MICROFLOWS
     | NANOFLOWS
     | PAGES
@@ -3312,9 +3313,11 @@ catalogTableName
     | ATTRIBUTES
     | WIDGETS
     | WORKFLOWS
-    | SOURCE_KW   // For CATALOG.SOURCE FTS table
-    | ODATA       // For CATALOG.ODATA_CLIENTS and CATALOG.ODATA_SERVICES (via IDENTIFIER)
-    | IDENTIFIER  // For tables like activities, xpath_expressions, objects, projects, snapshots, refs, strings, odata_clients, odata_services, java_actions
+    | CONSTANTS     // keyword token — must be listed explicitly
+    | OBJECTS       // keyword token — must be listed explicitly
+    | SOURCE_KW     // For CATALOG.SOURCE FTS table
+    | ODATA         // For CATALOG.ODATA_CLIENTS and CATALOG.ODATA_SERVICES (via IDENTIFIER)
+    | IDENTIFIER    // For tables like activities, xpath_expressions, projects, snapshots, refs, strings, odata_clients, odata_services, java_actions
     ;
 
 // =============================================================================
