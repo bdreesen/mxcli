@@ -40,6 +40,11 @@ Types:
   imagecollection  Describe an image collection (also: "image collection")
   businesseventservice  Describe a business event service (also: "business event service")
   databaseconnection    Describe a database connection (also: "database connection")
+  agent            Describe an AI agent (also: "agent")
+  aimodel          Describe an AI model (also: "model", "ai model")
+  knowledgebase    Describe a knowledge base (also: "knowledge base")
+  consumedmcpservice  Describe a consumed MCP service (also: "consumed mcp service")
+  datatransformer  Describe a data transformer (also: "data transformer")
   modulerole       Describe a module role
   userrole         Describe a user role
   projectsecurity  Show project security settings
@@ -61,6 +66,11 @@ Example:
   mxcli describe -p app.mpr settings Settings
   mxcli describe -p app.mpr navigation Responsive
   mxcli describe -p app.mpr --format elk systemoverview SystemOverview
+  mxcli describe -p app.mpr agent MyModule.MyAgent
+  mxcli describe -p app.mpr model MyModule.GPT4
+  mxcli describe -p app.mpr knowledge base MyModule.ProductDocs
+  mxcli describe -p app.mpr consumed mcp service MyModule.FilesystemMCP
+  mxcli describe -p app.mpr data transformer MyModule.TransformCustomer
 `,
 	Args: cobra.MinimumNArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -135,12 +145,22 @@ Example:
 			mdlCmd = fmt.Sprintf("DESCRIBE NAVIGATION %s", name)
 		case "NAVPROFILE":
 			mdlCmd = fmt.Sprintf("DESCRIBE NAVIGATION %s", name)
+		case "AGENT":
+			mdlCmd = fmt.Sprintf("DESCRIBE AGENT %s", name)
+		case "AIMODEL", "AI MODEL", "MODEL":
+			mdlCmd = fmt.Sprintf("DESCRIBE MODEL %s", name)
+		case "KNOWLEDGEBASE", "KNOWLEDGE BASE":
+			mdlCmd = fmt.Sprintf("DESCRIBE KNOWLEDGE BASE %s", name)
+		case "CONSUMEDMCPSERVICE", "CONSUMED MCP SERVICE", "MCP SERVICE":
+			mdlCmd = fmt.Sprintf("DESCRIBE CONSUMED MCP SERVICE %s", name)
+		case "DATATRANSFORMER", "DATA TRANSFORMER":
+			mdlCmd = fmt.Sprintf("DESCRIBE DATA TRANSFORMER %s", name)
 		case "SYSTEMOVERVIEW":
 			mdlCmd = "" // handled directly by format-specific path
 		default:
 			fmt.Fprintf(os.Stderr, "Unknown type: %s\n", strings.Join(args[:len(args)-1], " "))
-			fmt.Fprintln(os.Stderr, "Valid types: module, entity, association, enumeration, constant, microflow, nanoflow, workflow, page, snippet, layout, javaaction, jsonstructure, importmapping, exportmapping, restclient, odataclient, odataservice, imagecollection, businesseventservice, databaseconnection, modulerole, userrole, projectsecurity, settings, demouser, navigation, systemoverview")
-			fmt.Fprintln(os.Stderr, "Multi-word types also accepted: json structure, import mapping, export mapping, rest client, image collection, business event service, etc.")
+			fmt.Fprintln(os.Stderr, "Valid types: module, entity, association, enumeration, constant, microflow, nanoflow, workflow, page, snippet, layout, javaaction, jsonstructure, importmapping, exportmapping, restclient, odataclient, odataservice, imagecollection, businesseventservice, databaseconnection, agent, aimodel, knowledgebase, consumedmcpservice, datatransformer, modulerole, userrole, projectsecurity, settings, demouser, navigation, systemoverview")
+			fmt.Fprintln(os.Stderr, "Multi-word types also accepted: json structure, import mapping, export mapping, rest client, image collection, business event service, agent, model, knowledge base, consumed mcp service, data transformer, etc.")
 			os.Exit(1)
 		}
 

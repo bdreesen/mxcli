@@ -99,11 +99,11 @@ export class MendixProjectTreeProvider implements vscode.TreeDataProvider<Mendix
 			};
 		}
 
-		// Openable types: leaf nodes with qualifiedName, plus projectsecurity/navprofile (non-leaf but openable)
+		// Openable types: leaf nodes with qualifiedName, plus non-leaf types that still have a DESCRIBE command
 		const openableNonLeaf = element.type === 'projectsecurity' || element.type === 'navprofile'
 			|| element.type === 'odataservice' || element.type === 'odataclient'
 			|| element.type === 'publishedrestservice' || element.type === 'businesseventservice'
-			|| element.type === 'databaseconnection';
+			|| element.type === 'databaseconnection' || element.type === 'restclient';
 		if (element.type !== 'systemoverview' && (isLeaf || openableNonLeaf) && element.qualifiedName && element.type !== 'module') {
 			item.command = {
 				command: 'mendix.openElement',
@@ -329,6 +329,16 @@ export class MendixProjectTreeProvider implements vscode.TreeDataProvider<Mendix
 				return new vscode.ThemeIcon('list-tree');
 			case 'navmenuitem':
 				return new vscode.ThemeIcon('circle-outline');
+			case 'agent':
+				return new vscode.ThemeIcon('robot');
+			case 'aimodel':
+				return new vscode.ThemeIcon('sparkle');
+			case 'knowledgebase':
+				return new vscode.ThemeIcon('book');
+			case 'consumedmcpservice':
+				return new vscode.ThemeIcon('plug');
+			case 'datatransformer':
+				return new vscode.ThemeIcon('symbol-function');
 			default:
 				return new vscode.ThemeIcon('file');
 		}

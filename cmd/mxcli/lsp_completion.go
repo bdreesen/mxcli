@@ -370,6 +370,26 @@ func objectTypeToCompletionKind(objectType string) (protocol.CompletionItemKind,
 		return protocol.CompletionItemKindMethod, "java action"
 	case "WORKFLOW":
 		return protocol.CompletionItemKindEvent, "workflow"
+	case "CONSTANT":
+		return protocol.CompletionItemKindConstant, "constant"
+	case "JSON_STRUCTURE":
+		return protocol.CompletionItemKindFile, "json structure"
+	case "IMPORT_MAPPING":
+		return protocol.CompletionItemKindFile, "import mapping"
+	case "EXPORT_MAPPING":
+		return protocol.CompletionItemKindFile, "export mapping"
+	case "REST_CLIENT":
+		return protocol.CompletionItemKindInterface, "rest client"
+	case "PUBLISHED_REST_SERVICE":
+		return protocol.CompletionItemKindInterface, "published rest service"
+	case "ODATA_CLIENT":
+		return protocol.CompletionItemKindInterface, "odata client"
+	case "ODATA_SERVICE":
+		return protocol.CompletionItemKindInterface, "odata service"
+	case "DATABASE_CONNECTION":
+		return protocol.CompletionItemKindInterface, "database connection"
+	case "BUSINESS_EVENT_SERVICE":
+		return protocol.CompletionItemKindEvent, "business event service"
 	case "MODULE":
 		return protocol.CompletionItemKindModule, "module"
 	default:

@@ -893,7 +893,19 @@ func (c *Catalog) createTables() error {
 			UNION ALL
 			SELECT Id, 'CONTRACT_MESSAGE' as ObjectType, MessageName as Name, ServiceQualifiedName || '.' || MessageName as QualifiedName, ModuleName, '' as Folder, '' as Description,
 				ProjectId, '' as ProjectName, SnapshotId, SnapshotDate, SnapshotSource
-			FROM contract_messages`,
+			FROM contract_messages
+			UNION ALL
+			SELECT CAST(Id AS TEXT), 'JSON_STRUCTURE' as ObjectType, Name, QualifiedName, ModuleName, Folder, Documentation as Description,
+				ProjectId, ProjectName, SnapshotId, SnapshotDate, SnapshotSource
+			FROM json_structures
+			UNION ALL
+			SELECT CAST(Id AS TEXT), 'IMPORT_MAPPING' as ObjectType, Name, QualifiedName, ModuleName, Folder, Documentation as Description,
+				ProjectId, ProjectName, SnapshotId, SnapshotDate, SnapshotSource
+			FROM import_mappings
+			UNION ALL
+			SELECT CAST(Id AS TEXT), 'EXPORT_MAPPING' as ObjectType, Name, QualifiedName, ModuleName, Folder, Documentation as Description,
+				ProjectId, ProjectName, SnapshotId, SnapshotDate, SnapshotSource
+			FROM export_mappings`,
 
 		// FTS5 virtual tables for full-text search
 		`CREATE VIRTUAL TABLE IF NOT EXISTS strings USING fts5(
