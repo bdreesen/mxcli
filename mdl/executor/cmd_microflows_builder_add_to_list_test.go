@@ -58,6 +58,37 @@ func TestCollectObjectInputVariablesSeesAddExpressionValue(t *testing.T) {
 	}
 }
 
+func TestErrorHandlerStatementVarRefsSeesAddExpressionValue(t *testing.T) {
+	stmt := &ast.AddToListStmt{
+		Value: &ast.FunctionCallExpr{
+			Name: "head",
+			Arguments: []ast.Expression{
+				&ast.VariableExpr{Name: "SourceItems"},
+			},
+		},
+		List: "Items",
+	}
+
+	refs := errorHandlerStatementVarRefs(stmt)
+
+	seenSource := false
+	seenList := false
+	for _, r := range refs {
+		if r == "SourceItems" {
+			seenSource = true
+		}
+		if r == "Items" {
+			seenList = true
+		}
+	}
+	if !seenSource {
+		t.Errorf("expected $SourceItems to be tracked from add expression: %v", refs)
+	}
+	if !seenList {
+		t.Errorf("expected $Items (list) to be tracked: %v", refs)
+	}
+}
+
 func lastChangeListAction(t *testing.T, fb *flowBuilder) *microflows.ChangeListAction {
 	t.Helper()
 
