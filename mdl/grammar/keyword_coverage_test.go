@@ -3,6 +3,7 @@ package grammar
 import (
 	"bufio"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -15,7 +16,7 @@ import (
 // which would prevent it from being used as an identifier.
 func TestKeywordRuleCoverage(t *testing.T) {
 	allTokens := parseLexerTokens(t, "parser/MDLLexer.tokens")
-	keywordTokens := parseKeywordRule(t, "MDLParser.g4")
+	keywordTokens := parseKeywordRule(t)
 
 	// Structural tokens that should NOT be in the keyword rule.
 	excluded := map[string]bool{
@@ -65,7 +66,7 @@ func TestKeywordRuleCoverage(t *testing.T) {
 
 	if len(missing) > 0 {
 		t.Errorf("tokens in lexer but missing from keyword rule (%d):\n  %s\n"+
-			"Add them to the keyword rule in MDLParser.g4 or to the excluded set in this test.",
+			"Add them to the keyword rule in MDLSettings.g4 or to the excluded set in this test.",
 			len(missing), strings.Join(missing, ", "))
 	}
 	if len(extra) > 0 {
@@ -101,34 +102,49 @@ func parseLexerTokens(t *testing.T, path string) []string {
 	return tokens
 }
 
-// parseKeywordRule reads MDLParser.g4, extracts the `keyword` rule body, and
-// returns the set of token names referenced in it.
-func parseKeywordRule(t *testing.T, path string) map[string]bool {
+// parseKeywordRule searches MDLParser.g4 and all domain files in domains/ for
+// the `keyword` rule body, then returns the set of token names referenced in it.
+// The keyword rule now lives in domains/MDLSettings.g4 but we search all files
+// so the test stays correct even if the rule is ever moved again.
+func parseKeywordRule(t *testing.T) map[string]bool {
 	t.Helper()
-	data, err := os.ReadFile(path)
+
+	// Gather all grammar files to search: master + all domain files.
+	candidates := []string{"MDLParser.g4"}
+	domainFiles, err := filepath.Glob("domains/*.g4")
 	if err != nil {
-		t.Fatalf("read %s: %v", path, err)
+		t.Fatalf("glob domains/*.g4: %v", err)
 	}
-	text := string(data)
+	candidates = append(candidates, domainFiles...)
 
-	// Find the keyword rule: starts with "keyword" at the beginning of a line,
-	// ends with ";".
 	re := regexp.MustCompile(`(?m)^keyword\b([\s\S]*?);`)
-	m := re.FindStringSubmatch(text)
-	if m == nil {
-		t.Fatal("keyword rule not found in MDLParser.g4")
+
+	for _, path := range candidates {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read %s: %v", path, err)
+		}
+		text := string(data)
+
+		m := re.FindStringSubmatch(text)
+		if m == nil {
+			continue
+		}
+
+		// Strip single-line comments (// ...) to avoid matching words in comments.
+		body := regexp.MustCompile(`//[^\n]*`).ReplaceAllString(m[1], "")
+
+		// Extract all UPPERCASE token references (e.g., ADD, ALTER, STRING_TYPE).
+		tokenRe := regexp.MustCompile(`\b([A-Z][A-Z0-9_]*)\b`)
+		matches := tokenRe.FindAllStringSubmatch(body, -1)
+
+		result := make(map[string]bool, len(matches))
+		for _, match := range matches {
+			result[match[1]] = true
+		}
+		return result
 	}
 
-	// Strip single-line comments (// ...) to avoid matching words in comments.
-	body := regexp.MustCompile(`//[^\n]*`).ReplaceAllString(m[1], "")
-
-	// Extract all UPPERCASE token references (e.g., ADD, ALTER, STRING_TYPE).
-	tokenRe := regexp.MustCompile(`\b([A-Z][A-Z0-9_]*)\b`)
-	matches := tokenRe.FindAllStringSubmatch(body, -1)
-
-	result := make(map[string]bool, len(matches))
-	for _, match := range matches {
-		result[match[1]] = true
-	}
-	return result
+	t.Fatal("keyword rule not found in MDLParser.g4 or any domains/*.g4 file")
+	return nil
 }
