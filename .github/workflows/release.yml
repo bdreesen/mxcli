@@ -19,6 +19,15 @@ jobs:
         with:
           go-version: '1.26'
       - uses: oven-sh/setup-bun@v2
+      - name: Cache ANTLR4 JAR
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository/org/antlr/antlr4
+          key: antlr4-4.13.2
+      - name: Install ANTLR4
+        run: pip install 'antlr4-tools==0.2.2'
+      - name: Generate parser
+        run: make grammar
       - name: Build release binaries
         run: make release
       - name: Create GitHub Release
