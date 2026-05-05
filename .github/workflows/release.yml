@@ -28,6 +28,8 @@ jobs:
         run: pip install 'antlr4-tools==0.2.2'
       - name: Generate parser
         run: make grammar
+        env:
+          ANTLR4_TOOLS_ANTLR_VERSION: '4.13.2'
       - name: Build release binaries
         run: make release
       - name: Create GitHub Release

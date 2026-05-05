@@ -33,6 +33,8 @@ jobs:
         run: pip install 'antlr4-tools==0.2.2'
       - name: Generate parser
         run: make grammar
+        env:
+          ANTLR4_TOOLS_ANTLR_VERSION: '4.13.2'
       - name: Build
         run: make build
 
@@ -69,6 +71,8 @@ jobs:
         run: pip install 'antlr4-tools==0.2.2'
       - name: Generate parser
         run: make grammar
+        env:
+          ANTLR4_TOOLS_ANTLR_VERSION: '4.13.2'
 
       - name: Check for new commits since last nightly
         id: check
