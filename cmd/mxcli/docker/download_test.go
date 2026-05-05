@@ -18,6 +18,15 @@ func setTestHomeDir(t *testing.T, dir string) {
 	}
 }
 
+// setTestApplicationsDir redirects the macOS Applications directory scan to dir
+// so tests that set up cached binaries are not confused by real Studio Pro installs.
+func setTestApplicationsDir(t *testing.T, dir string) {
+	t.Helper()
+	prev := macOSApplicationsDir
+	macOSApplicationsDir = dir
+	t.Cleanup(func() { macOSApplicationsDir = prev })
+}
+
 func TestMxBuildCDNURL_ARM64(t *testing.T) {
 	url := MxBuildCDNURL("11.6.3", "arm64")
 	expected := "https://cdn.mendix.com/runtime/arm64-mxbuild-11.6.3.tar.gz"

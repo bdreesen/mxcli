@@ -36,6 +36,11 @@ import (
 	"strings"
 )
 
+// macOSApplicationsDir is the root directory scanned for Studio Pro .app bundles
+// on macOS. It is a package-level variable so tests can redirect it to a temp dir
+// to avoid interference from real Studio Pro installations on the test host.
+var macOSApplicationsDir = "/Applications"
+
 // mxbuildBinaryName returns the platform-specific mxbuild binary name.
 func mxbuildBinaryName() string {
 	if runtime.GOOS == "windows" {
@@ -164,7 +169,7 @@ func ResolveStudioProDir(version string) string {
 // where X.Y.Z is the base version (e.g., "11.10.0-rc.7 Beta" for 11.10.0).
 // Returns the bundle's Contents directory, or "" if not found.
 func resolveStudioProDirMacOS(version string) string {
-	matches, _ := filepath.Glob("/Applications/Mendix Studio Pro *.app")
+	matches, _ := filepath.Glob(filepath.Join(macOSApplicationsDir, "Mendix Studio Pro *.app"))
 	re := regexp.MustCompile(`^Mendix Studio Pro (\d+\.\d+\.\d+)`)
 	for _, match := range matches {
 		base := strings.TrimSuffix(filepath.Base(match), ".app")
@@ -217,7 +222,7 @@ func mendixSearchPaths(binaryName string) []string {
 		}
 		return paths
 	case "darwin":
-		return []string{"/Applications/Mendix Studio Pro *.app/Contents/modeler/" + binaryName}
+		return []string{filepath.Join(macOSApplicationsDir, "Mendix Studio Pro *.app", "Contents", "modeler", binaryName)}
 	default: // linux
 		paths := []string{filepath.Join("/opt/mendix/*/modeler", binaryName)}
 		if home, err := os.UserHomeDir(); err == nil {
