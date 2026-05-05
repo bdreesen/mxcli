@@ -527,8 +527,10 @@ create page Module.Customer_Overview
 }
 /
 
--- Step 3: Replace snippet with full navigation (pages now exist)
-create or replace snippet Module.NavigationMenu
+-- Step 3: Fill in the snippet with real content (pages now exist)
+-- Use CREATE OR MODIFY (preserves the snippet's ID → page bindings stay valid)
+-- Do NOT use CREATE OR REPLACE — that would assign a new ID and break existing page references
+create or modify snippet Module.NavigationMenu
 {
   layoutgrid navGrid {
     row row1 {
@@ -543,15 +545,19 @@ create or replace snippet Module.NavigationMenu
 
 ### Key Points
 
-- The placeholder snippet must exist before pages are created (for SNIPPETCALL to resolve)
-- Use `create or replace snippet` to update the placeholder after pages exist
-- Page references in the final snippet will resolve correctly because pages already exist
+- The placeholder snippet must exist before pages are created (for `snippetcall` to resolve)
+- Use `create or modify snippet` for the fill-in step — it preserves the snippet's UUID so pages that already reference it remain valid
+- **Do not use `create or replace snippet`** — that deletes the placeholder and creates a fresh UUID, silently breaking every page that references the old one
+- Page references in the final snippet resolve correctly because pages already exist
+
+See [Resolve Forward References](./resolve-forward-references.md) for the full pattern including page→page and microflow→page cases, declaration ordering rules, and the choice between `CREATE OR MODIFY` and `ALTER SNIPPET`.
 
 ## Related Skills
 
 - [Create Page](./create-page.md) - Basic page creation syntax
 - [ALTER PAGE/SNIPPET](./alter-page.md) - Modify existing pages/snippets in-place (SET, INSERT, DROP, REPLACE)
 - [Master-Detail Pages](./master-detail-pages.md) - Selection binding pattern
+- [Resolve Forward References](./resolve-forward-references.md) - Placeholder pattern, declaration ordering
 
 ## Snippet Commands Reference
 

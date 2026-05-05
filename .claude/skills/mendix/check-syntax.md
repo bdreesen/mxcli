@@ -219,6 +219,36 @@ widgets (
 
 ## Troubleshooting Parse Errors
 
+### Error: "snippet not found" / "page not found"
+
+A reference to a document that hasn't been created yet in the script:
+
+```
+Error: snippet not found: MyModule.NavMenu
+Error: page not found: MyModule.Customer_NewEdit
+```
+
+Script execution is sequential — each `CREATE` commits immediately. Forward references
+fail because the target doesn't exist in the database at the moment the referencing
+document is created.
+
+**Fix options:**
+1. **Reorder** — move the target document's `CREATE` earlier in the script (simplest fix)
+2. **Placeholder pattern** — for circular dependencies (e.g. a snippet that shows pages
+   that embed the snippet), create a minimal placeholder first, then create the referencing
+   documents, then fill in the placeholder with `CREATE OR MODIFY` — which preserves the
+   original UUID so all existing bindings remain valid
+   (see [Resolve Forward References](./resolve-forward-references.md))
+
+Declaration order that avoids most forward references:
+```
+enumerations → entities → snippets (placeholder) → pages → snippets (fill-in) → microflows → navigation
+```
+
+> **Never use `CREATE OR REPLACE` for the placeholder fill-in step.** OR REPLACE deletes
+> the placeholder and creates a new document with a different UUID, silently breaking
+> every page or snippet that references it.
+
 ### Error: "mismatched input 'X'"
 
 The word `X` is either:
@@ -244,4 +274,5 @@ Extra tokens found:
 
 - [/write-microflows](./write-microflows.md) - Detailed microflow syntax
 - [/overview-pages](./overview-pages.md) - Page building syntax
+- [/resolve-forward-references](./resolve-forward-references.md) - Placeholder pattern and declaration ordering
 - [/migrate-oracle-forms](./migrate-oracle-forms.md) - Migration-specific guidance
