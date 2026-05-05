@@ -478,6 +478,14 @@ func validateFlowBodyReferences(ctx *ExecContext, body []ast.MicroflowStatement,
 	if len(refs.javaActions) > 0 {
 		known := buildJavaActionQualifiedNames(ctx)
 		for _, ref := range refs.javaActions {
+			// System.* Java actions (e.g. System.VerifyPassword,
+			// System.GenerateRandomString) are runtime-provided and never
+			// appear in the project's MPR. Skip them to avoid false
+			// positives — Studio Pro's `mx check` resolves these against
+			// the runtime, which `mxcli check` cannot reach.
+			if isBuiltinModuleEntity(qualifiedNameModule(ref)) {
+				continue
+			}
 			if !known[ref] {
 				errors = append(errors, fmt.Sprintf("java action not found: %s (referenced by call java action)", ref))
 			}
@@ -487,6 +495,9 @@ func validateFlowBodyReferences(ctx *ExecContext, body []ast.MicroflowStatement,
 	if len(refs.javaScriptActions) > 0 {
 		known := buildJavaScriptActionQualifiedNames(ctx)
 		for _, ref := range refs.javaScriptActions {
+			if isBuiltinModuleEntity(qualifiedNameModule(ref)) {
+				continue
+			}
 			if !known[ref] {
 				errors = append(errors, fmt.Sprintf("javascript action not found: %s (referenced by call javascript action)", ref))
 			}
@@ -503,6 +514,15 @@ func validateFlowBodyReferences(ctx *ExecContext, body []ast.MicroflowStatement,
 	}
 
 	return errors
+}
+
+// qualifiedNameModule returns the module portion of a "Module.Name" qualified
+// name. It returns an empty string when the input has no dot.
+func qualifiedNameModule(qn string) string {
+	if i := strings.Index(qn, "."); i >= 0 {
+		return qn[:i]
+	}
+	return ""
 }
 
 // flowRefCollector collects qualified name references from flow body statements.
