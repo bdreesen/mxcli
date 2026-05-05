@@ -541,6 +541,14 @@ func (fb *flowBuilder) addRetrieveAction(s *ast.RetrieveStmt) model.ID {
 
 		outputUsedAsList := fb.listInputVariables != nil && fb.listInputVariables[s.Variable]
 		outputUsedAsObject := fb.objectInputVariables != nil && fb.objectInputVariables[s.Variable]
+		// startsFromChildSide is true when the retrieve's start variable is the
+		// child side of the association (or a subclass of it). Inheritance has
+		// to be honoured so traversals like `$httpRequest/System.HttpHeaders`
+		// — where HttpRequest extends HttpMessage and HttpHeaders has child
+		// HttpMessage — are still classified as reverse traversal.
+		startsFromChildSide := assocInfo != nil &&
+			assocInfo.childEntityQN != "" &&
+			fb.entityIsSubtypeOf(startVarType, assocInfo.childEntityQN)
 		// Owner-both Reference associations need later usage context: the same
 		// compact retrieve can be consumed as either a list or a single object.
 		// Owner="" means metadata was unavailable, so keep the association source.
@@ -549,7 +557,7 @@ func (fb *flowBuilder) addRetrieveAction(s *ast.RetrieveStmt) model.ID {
 			assocInfo.Owner != "" &&
 			assocInfo.parentPersistable &&
 			assocInfo.childEntityQN != "" &&
-			startVarType == assocInfo.childEntityQN &&
+			startsFromChildSide &&
 			(assocInfo.Owner != domainmodel.AssociationOwnerBoth || (outputUsedAsList && !outputUsedAsObject))
 
 		if expandReverseReference {
@@ -577,10 +585,10 @@ func (fb *flowBuilder) addRetrieveAction(s *ast.RetrieveStmt) model.ID {
 					// non-persistable reverse traversal can still use association
 					// source syntax, but keeps list typing for downstream actions.
 					otherEntity := assocInfo.childEntityQN
-					if startVarType == assocInfo.childEntityQN {
+					if startsFromChildSide {
 						otherEntity = assocInfo.parentEntityQN
 					}
-					if startVarType == assocInfo.childEntityQN && !outputUsedAsObject {
+					if startsFromChildSide && !outputUsedAsObject {
 						fb.varTypes[s.Variable] = "List of " + otherEntity
 					} else {
 						fb.varTypes[s.Variable] = otherEntity
@@ -589,7 +597,7 @@ func (fb *flowBuilder) addRetrieveAction(s *ast.RetrieveStmt) model.ID {
 					// ReferenceSet traversal returns a list of the entity on the other side,
 					// not a list typed as the association itself.
 					otherEntity := assocInfo.childEntityQN
-					if startVarType == assocInfo.childEntityQN {
+					if startsFromChildSide {
 						otherEntity = assocInfo.parentEntityQN
 					}
 					if otherEntity != "" {
@@ -1282,6 +1290,49 @@ func (fb *flowBuilder) resolveAttributeInEntityHierarchy(entityQN, attrName stri
 		currentQN = entity.GeneralizationRef
 	}
 	return "", false
+}
+
+// entityIsSubtypeOf reports whether candidateQN is the same as ancestorQN or
+// inherits from it through the generalization chain. The walk consults the
+// domain model the same way resolveAttributeInEntityHierarchy does.
+func (fb *flowBuilder) entityIsSubtypeOf(candidateQN, ancestorQN string) bool {
+	if candidateQN == "" || ancestorQN == "" {
+		return false
+	}
+	if candidateQN == ancestorQN {
+		return true
+	}
+	if fb == nil || fb.backend == nil {
+		return false
+	}
+	seen := make(map[string]bool)
+	for currentQN := candidateQN; currentQN != ""; {
+		if seen[currentQN] {
+			return false
+		}
+		seen[currentQN] = true
+		if currentQN == ancestorQN {
+			return true
+		}
+		parts := strings.SplitN(currentQN, ".", 2)
+		if len(parts) != 2 {
+			return false
+		}
+		mod, err := fb.backend.GetModuleByName(parts[0])
+		if err != nil || mod == nil {
+			return false
+		}
+		dm, err := fb.backend.GetDomainModel(mod.ID)
+		if err != nil || dm == nil {
+			return false
+		}
+		entity := dm.FindEntityByName(parts[1])
+		if entity == nil {
+			return false
+		}
+		currentQN = entity.GeneralizationRef
+	}
+	return false
 }
 
 // resolveMemberChangeFallback preserves the authored member name shape when the
