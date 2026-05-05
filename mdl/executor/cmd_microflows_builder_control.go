@@ -683,7 +683,7 @@ func (fb *flowBuilder) addLoopStatement(s *ast.LoopStmt) model.ID {
 }
 
 func isManualWhileTrueCandidate(s *ast.WhileStmt) bool {
-	if s == nil || containsBreakForCurrentLoop(s.Body) || (!containsContinueStmt(s.Body) && !containsTerminalStmt(s.Body)) {
+	if s == nil || containsBreakForCurrentLoop(s.Body) || (!containsContinueForCurrentLoop(s.Body) && !containsTerminalStmt(s.Body)) {
 		return false
 	}
 	lit, ok := s.Condition.(*ast.LiteralExpr)
@@ -753,23 +753,23 @@ func statementErrorHandling(stmt ast.MicroflowStatement) *ast.ErrorHandlingClaus
 	}
 }
 
-func containsContinueStmt(stmts []ast.MicroflowStatement) bool {
+// containsContinueForCurrentLoop reports whether stmts contain a continue
+// that targets the enclosing loop — i.e. one that is NOT inside a nested
+// LoopStmt/WhileStmt. Nested loops trap their own continues just like they
+// trap their own breaks, so the scan stops at nested-loop boundaries.
+// This mirrors containsBreakForCurrentLoop in intent; it differs only in
+// which statement type it looks for.
+func containsContinueForCurrentLoop(stmts []ast.MicroflowStatement) bool {
 	for _, stmt := range stmts {
 		switch s := stmt.(type) {
 		case *ast.ContinueStmt:
 			return true
 		case *ast.IfStmt:
-			if containsContinueStmt(s.ThenBody) || containsContinueStmt(s.ElseBody) {
+			if containsContinueForCurrentLoop(s.ThenBody) || containsContinueForCurrentLoop(s.ElseBody) {
 				return true
 			}
-		case *ast.LoopStmt:
-			if containsContinueStmt(s.Body) {
-				return true
-			}
-		case *ast.WhileStmt:
-			if containsContinueStmt(s.Body) {
-				return true
-			}
+		case *ast.LoopStmt, *ast.WhileStmt:
+			continue
 		}
 	}
 	return false
