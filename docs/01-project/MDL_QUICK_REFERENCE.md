@@ -49,7 +49,7 @@ create persistent entity Module.Photo (
 | Show entities | `show entities [in module];` | List all or filter by module |
 | Create enumeration | `create [or modify] enumeration Module.Name (Value1 'caption', ...);` | |
 | Drop enumeration | `drop enumeration Module.Name;` | |
-| Create association | `create association Module.Name from Parent to Child type reference\|ReferenceSet [owner default\|both] [delete_behavior ...];` | |
+| Create association | `create [or modify] association Module.Name from Parent to Child type reference\|ReferenceSet [owner default\|both] [delete_behavior ...];` | OR MODIFY updates existing association in-place |
 | Drop association | `drop association Module.Name;` | |
 
 ## ALTER ENTITY
@@ -481,7 +481,7 @@ the `AgentEditorCommons` marketplace module and Mendix 11.9+.
 |-----------|--------|-------|
 | List models | `list models [in module];` | Also `show models` |
 | Describe model | `describe model Module.Name;` | Full MDL output |
-| Create model | `create model Module.Name (Provider: MxCloudGenAI, key: Module.Const);` | Key must be a String constant |
+| Create model | `create [or modify] model Module.Name (Provider: MxCloudGenAI, key: Module.Const);` | OR MODIFY updates existing model, preserves UUID |
 | Drop model | `drop model Module.Name;` | |
 
 **Knowledge Base**
@@ -490,7 +490,7 @@ the `AgentEditorCommons` marketplace module and Mendix 11.9+.
 |-----------|--------|-------|
 | List knowledge bases | `list knowledge bases [in module];` | Also `show knowledge bases` |
 | Describe knowledge base | `describe knowledge base Module.Name;` | Full MDL output |
-| Create knowledge base | `create knowledge base Module.Name (Provider: MxCloudGenAI, key: Module.Const);` | Key must be a String constant |
+| Create knowledge base | `create [or modify] knowledge base Module.Name (Provider: MxCloudGenAI, key: Module.Const);` | OR MODIFY updates existing KB, preserves UUID |
 | Drop knowledge base | `drop knowledge base Module.Name;` | |
 
 **Consumed MCP Service**
@@ -499,7 +499,7 @@ the `AgentEditorCommons` marketplace module and Mendix 11.9+.
 |-----------|--------|-------|
 | List MCP services | `list consumed mcp services [in module];` | Also `show consumed mcp services` |
 | Describe MCP service | `describe consumed mcp service Module.Name;` | Full MDL output |
-| Create MCP service | `create consumed mcp service Module.Name (ProtocolVersion: v2025_03_26, version: '1.0', ConnectionTimeoutSeconds: 30, documentation: 'text');` | |
+| Create MCP service | `create [or modify] consumed mcp service Module.Name (ProtocolVersion: v2025_03_26, version: '1.0', ConnectionTimeoutSeconds: 30, documentation: 'text');` | OR MODIFY updates existing service, preserves UUID |
 | Drop MCP service | `drop consumed mcp service Module.Name;` | |
 
 **Agent**
@@ -509,6 +509,7 @@ the `AgentEditorCommons` marketplace module and Mendix 11.9+.
 | List agents | `list agents [in module];` | Also `show agents` |
 | Describe agent | `describe agent Module.Name;` | Full MDL output, re-executable |
 | Create agent | See example below | Requires a Model document |
+| Create or modify | `create or modify agent Module.Name (...) { ... };` | Updates existing agent, preserves UUID |
 | Drop agent | `drop agent Module.Name;` | Drop agents before their Model/KB/MCP dependencies |
 
 ```sql
@@ -690,6 +691,7 @@ Requires Mendix 11.9+. Steps: `jslt`, `xslt`. Single-line: `jslt '...'`. Multi-l
 | List transformers | `list data transformers [in module];` | |
 | Describe transformer | `describe data transformer Module.Name;` | Re-executable CREATE |
 | Create transformer | See syntax below | |
+| Create or modify | `create or modify data transformer Module.Name ...;` | Updates existing transformer, preserves UUID |
 | Drop transformer | `drop data transformer Module.Name;` | |
 
 ```sql
@@ -724,6 +726,7 @@ source json '{"latitude": 51.9, "current": {"temp": 12.8}}'
 | Show mappings | `show import mappings [in module];` | List all or filter by module |
 | Describe mapping | `describe import mapping Module.Name;` | Re-executable CREATE statement |
 | Create mapping | See below | Assignment syntax: `attr = jsonField` |
+| Create or modify | `create or modify import mapping Module.Name ...;` | Updates existing mapping, preserves UUID |
 | Drop mapping | `drop import mapping Module.Name;` | |
 
 ```sql
@@ -755,6 +758,7 @@ create Module.OrderResponse_CustomerInfo/Module.CustomerInfo = customer {
 | Show mappings | `show export mappings [in module];` | List all or filter by module |
 | Describe mapping | `describe export mapping Module.Name;` | Re-executable CREATE statement |
 | Create mapping | See below | Assignment syntax: `jsonField = attr` |
+| Create or modify | `create or modify export mapping Module.Name ...;` | Updates existing mapping, preserves UUID |
 | Drop mapping | `drop export mapping Module.Name;` | |
 
 ```sql
@@ -784,7 +788,7 @@ Module.OrderResponse_CustomerInfo/Module.CustomerInfo as customer {
 |-----------|--------|-------|
 | Show Java actions | `show java actions [in module];` | List all or filtered by module |
 | Describe Java action | `describe java action Module.Name;` | Full MDL output with signature |
-| Create Java action | `create java action Module.Name(params) returns type as $$ ... $$;` | Inline Java code |
+| Create Java action | `create [or modify] java action Module.Name(params) returns type as $$ ... $$;` | OR MODIFY updates signature/body, preserves UUID |
 | Create with type params | `create java action Module.Name(EntityType: entity <pEntity>, Obj: pEntity) ...;` | Generic type parameters |
 | Create exposed action | `... exposed as 'caption' in 'Category' as $$ ... $$;` | Toolbox-visible in Studio Pro |
 | Rename Java action | `rename java action Module.Old to New;` | Renames BSON unit and .java source file |
@@ -792,6 +796,8 @@ Module.OrderResponse_CustomerInfo/Module.CustomerInfo as customer {
 | Drop Java action | `drop java action Module.Name;` | Deletes MPR unit and .java source file |
 | Call from microflow | `$Result = call java action Module.Name(Param = value);` | Inside BEGIN...END |
 | Empty argument | `call java action Module.Name(Param = empty);` | Unbound code-action parameter preserved as empty mapping |
+
+**`AS $$ ... $$` is mandatory** — the body cannot be omitted. Omitting it causes `no viable alternative at input '...'`. Use `as $$ return false; $$;` as a stub.
 
 **Parameter Types:** `string`, `integer`, `long`, `decimal`, `boolean`, `datetime`, `Module.Entity`, `list of Module.Entity`, `enum Module.EnumName`, `enumeration(Module.EnumName)`, `stringtemplate(sql)`, `stringtemplate(Oql)`, `entity <pEntity>` (type parameter declaration), bare `pEntity` (type parameter reference).
 

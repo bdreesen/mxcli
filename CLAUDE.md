@@ -313,7 +313,8 @@ New MDL commands or language features must be wired through the full pipeline:
 
 ### Documentation
 - [ ] **Skills** — new features documented in `.claude/skills/` (syntax, examples, gotchas)
-- [ ] **CLI help** — `mxcli` command help text updated (Cobra `Short`/`long`/`Example` fields)
+- [ ] **CLI help (Cobra)** — `mxcli` subcommand help text updated (Cobra `Short`/`Long`/`Example` fields)
+- [ ] **CLI help (syntax topics)** — `cmd/mxcli/syntax/features_*.go` updated with new/changed MDL syntax; new `SyntaxFeature` entries added for new document types; `OR MODIFY` / `OR REPLACE` variants reflected in existing `Syntax` fields; accessible via `mxcli syntax <topic>` and REPL `help`
 - [ ] **Syntax reference** — `docs/01-project/MDL_QUICK_REFERENCE.md` updated with new statement syntax
 - [ ] **MDL examples** — working examples added to `mdl-examples/` for new commands
 - [ ] **Site docs** — `docs-site/src/` pages added or updated for user-facing features
