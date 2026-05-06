@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/mendixlabs/mxcli/mdl/ast"
 	"github.com/mendixlabs/mxcli/mdl/backend/mock"
 	"github.com/mendixlabs/mxcli/model"
 	"github.com/mendixlabs/mxcli/sdk/domainmodel"
@@ -112,4 +113,88 @@ func TestShowAssociations_JSON(t *testing.T) {
 	assertNoError(t, listAssociations(ctx, ""))
 	assertValidJSON(t, buf.String())
 	assertContainsStr(t, buf.String(), "A_B")
+}
+
+func TestCreateAssociation_OrModify_UpdatesInPlace(t *testing.T) {
+	mod := mkModule("MyModule")
+	ent1 := mkEntity(mod.ID, "Order")
+	ent2 := mkEntity(mod.ID, "Customer")
+	assocID := nextID("assoc")
+	existingAssoc := mkAssociation(mod.ID, "Order_Customer", ent1.ID, ent2.ID)
+	existingAssoc.ID = assocID
+
+	dm := &domainmodel.DomainModel{
+		BaseElement:  model.BaseElement{ID: nextID("dm")},
+		ContainerID:  mod.ID,
+		Entities:     []*domainmodel.Entity{ent1, ent2},
+		Associations: []*domainmodel.Association{existingAssoc},
+	}
+	h := mkHierarchy(mod)
+	withContainer(h, dm.ID, mod.ID)
+	withContainer(h, ent1.ContainerID, dm.ID)
+	withContainer(h, ent2.ContainerID, dm.ID)
+
+	updateCalled := false
+	mb := &mock.MockBackend{
+		IsConnectedFunc:      func() bool { return true },
+		ListModulesFunc:      func() ([]*model.Module, error) { return []*model.Module{mod}, nil },
+		ListDomainModelsFunc: func() ([]*domainmodel.DomainModel, error) { return []*domainmodel.DomainModel{dm}, nil },
+		GetDomainModelFunc:   func(id model.ID) (*domainmodel.DomainModel, error) { return dm, nil },
+		UpdateDomainModelFunc: func(d *domainmodel.DomainModel) error {
+			updateCalled = true
+			return nil
+		},
+		ReconcileMemberAccessesFunc: func(dmID model.ID, moduleName string) (int, error) { return 0, nil },
+	}
+
+	ctx, buf := newMockCtx(t, withBackend(mb), withHierarchy(h))
+	err := execCreateAssociation(ctx, &ast.CreateAssociationStmt{
+		Name:           ast.QualifiedName{Module: "MyModule", Name: "Order_Customer"},
+		Parent:         ast.QualifiedName{Module: "MyModule", Name: "Order"},
+		Child:          ast.QualifiedName{Module: "MyModule", Name: "Customer"},
+		Type:           ast.AssocReference,
+		CreateOrModify: true,
+	})
+	assertNoError(t, err)
+	assertContainsStr(t, buf.String(), "Modified association")
+	if !updateCalled {
+		t.Fatal("UpdateDomainModel was not called")
+	}
+	// Verify the existing association UUID is preserved
+	if existingAssoc.ID != assocID {
+		t.Errorf("Association ID changed from %q to %q", assocID, existingAssoc.ID)
+	}
+}
+
+func TestCreateAssociation_AlreadyExists_NoOrModify(t *testing.T) {
+	mod := mkModule("MyModule")
+	ent1 := mkEntity(mod.ID, "Order")
+	ent2 := mkEntity(mod.ID, "Customer")
+	existingAssoc := mkAssociation(mod.ID, "Order_Customer", ent1.ID, ent2.ID)
+
+	dm := &domainmodel.DomainModel{
+		BaseElement:  model.BaseElement{ID: nextID("dm")},
+		ContainerID:  mod.ID,
+		Entities:     []*domainmodel.Entity{ent1, ent2},
+		Associations: []*domainmodel.Association{existingAssoc},
+	}
+	h := mkHierarchy(mod)
+	withContainer(h, dm.ID, mod.ID)
+	withContainer(h, ent1.ContainerID, dm.ID)
+	withContainer(h, ent2.ContainerID, dm.ID)
+
+	mb := &mock.MockBackend{
+		IsConnectedFunc:      func() bool { return true },
+		ListModulesFunc:      func() ([]*model.Module, error) { return []*model.Module{mod}, nil },
+		ListDomainModelsFunc: func() ([]*domainmodel.DomainModel, error) { return []*domainmodel.DomainModel{dm}, nil },
+		GetDomainModelFunc:   func(id model.ID) (*domainmodel.DomainModel, error) { return dm, nil },
+	}
+
+	ctx, _ := newMockCtx(t, withBackend(mb), withHierarchy(h))
+	err := execCreateAssociation(ctx, &ast.CreateAssociationStmt{
+		Name:   ast.QualifiedName{Module: "MyModule", Name: "Order_Customer"},
+		Parent: ast.QualifiedName{Module: "MyModule", Name: "Order"},
+		Child:  ast.QualifiedName{Module: "MyModule", Name: "Customer"},
+	})
+	assertError(t, err)
 }

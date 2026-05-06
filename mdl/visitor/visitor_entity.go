@@ -31,8 +31,8 @@ func (b *Builder) ExitCreateEntityStatement(ctx *parser.CreateEntityStatementCon
 	// Navigate to parent CreateStatement to get annotations and doc comment
 	createStmt := findParentCreateStatement(ctx)
 	if createStmt != nil {
-		// Check for CREATE OR MODIFY
-		if createStmt.OR() != nil && createStmt.MODIFY() != nil {
+		// REPLACE is treated as MODIFY for entities — changing the UUID would drop the database table.
+		if createStmt.OR() != nil && (createStmt.MODIFY() != nil || createStmt.REPLACE() != nil) {
 			stmt.CreateOrModify = true
 		}
 

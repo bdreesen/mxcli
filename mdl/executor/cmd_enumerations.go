@@ -54,19 +54,24 @@ func execCreateEnumeration(ctx *ExecContext, s *ast.CreateEnumerationStmt) error
 		})
 	}
 
-	// If enumeration exists and CREATE OR MODIFY, delete it first
-	if existingEnum != nil && s.CreateOrModify {
-		if err := ctx.Backend.DeleteEnumeration(existingEnum.ID); err != nil {
-			return mdlerrors.NewBackend("delete existing enumeration", err)
-		}
-	}
-
-	// Create enumeration
+	// Create or update enumeration
 	enum := &model.Enumeration{
 		ContainerID:   module.ID,
 		Name:          s.Name.Name,
 		Documentation: s.Documentation,
 		Values:        values,
+	}
+
+	if existingEnum != nil && s.CreateOrModify {
+		// In-place update: preserve the existing UUID so BSON git-diff sees a
+		// modification rather than a delete+insert pair.
+		enum.ID = existingEnum.ID
+		if err := ctx.Backend.UpdateEnumeration(enum); err != nil {
+			return mdlerrors.NewBackend("update enumeration", err)
+		}
+		invalidateHierarchy(ctx)
+		fmt.Fprintf(ctx.Output, "Modified enumeration: %s\n", s.Name)
+		return nil
 	}
 
 	if err := ctx.Backend.CreateEnumeration(enum); err != nil {

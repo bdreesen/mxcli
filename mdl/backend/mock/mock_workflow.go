@@ -33,6 +33,13 @@ func (m *MockBackend) CreateWorkflow(wf *workflows.Workflow) error {
 	return nil
 }
 
+func (m *MockBackend) UpdateWorkflow(wf *workflows.Workflow) error {
+	if m.UpdateWorkflowFunc != nil {
+		return m.UpdateWorkflowFunc(wf)
+	}
+	return nil
+}
+
 func (m *MockBackend) DeleteWorkflow(id model.ID) error {
 	if m.DeleteWorkflowFunc != nil {
 		return m.DeleteWorkflowFunc(id)

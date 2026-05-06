@@ -183,6 +183,7 @@ type MockBackend struct {
 	DeleteDatabaseConnectionFunc    func(id model.ID) error
 	ListDataTransformersFunc        func() ([]*model.DataTransformer, error)
 	CreateDataTransformerFunc       func(dt *model.DataTransformer) error
+	UpdateDataTransformerFunc       func(dt *model.DataTransformer) error
 	DeleteDataTransformerFunc       func(id model.ID) error
 
 	// MappingBackend
@@ -221,6 +222,7 @@ type MockBackend struct {
 	ListWorkflowsFunc  func() ([]*workflows.Workflow, error)
 	GetWorkflowFunc    func(id model.ID) (*workflows.Workflow, error)
 	CreateWorkflowFunc func(wf *workflows.Workflow) error
+	UpdateWorkflowFunc func(wf *workflows.Workflow) error
 	DeleteWorkflowFunc func(id model.ID) error
 
 	// SettingsBackend
@@ -289,11 +291,15 @@ type MockBackend struct {
 	ListAgentEditorConsumedMCPServicesFunc  func() ([]*agenteditor.ConsumedMCPService, error)
 	ListAgentEditorAgentsFunc               func() ([]*agenteditor.Agent, error)
 	CreateAgentEditorModelFunc              func(m *agenteditor.Model) error
+	UpdateAgentEditorModelFunc              func(m *agenteditor.Model) error
 	DeleteAgentEditorModelFunc              func(id string) error
 	CreateAgentEditorKnowledgeBaseFunc      func(kb *agenteditor.KnowledgeBase) error
+	UpdateAgentEditorKnowledgeBaseFunc      func(kb *agenteditor.KnowledgeBase) error
 	DeleteAgentEditorKnowledgeBaseFunc      func(id string) error
 	CreateAgentEditorConsumedMCPServiceFunc func(svc *agenteditor.ConsumedMCPService) error
+	UpdateAgentEditorConsumedMCPServiceFunc func(svc *agenteditor.ConsumedMCPService) error
 	DeleteAgentEditorConsumedMCPServiceFunc func(id string) error
 	CreateAgentEditorAgentFunc              func(a *agenteditor.Agent) error
+	UpdateAgentEditorAgentFunc              func(a *agenteditor.Agent) error
 	DeleteAgentEditorAgentFunc              func(id string) error
 }
