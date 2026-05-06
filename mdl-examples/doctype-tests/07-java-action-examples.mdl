@@ -1809,7 +1809,7 @@ drop java action JaTest.ComputeHash;
 -- team-shared setup scripts, migrations).
 
 -- 10.1: Create a Java action initially
-create java action JaTest.FormatDate(
+create java action JaTest.PadString(
   Input: string not null
 ) returns string
 as $$
@@ -1817,18 +1817,18 @@ return Input.trim();
 $$;
 
 -- 10.2: Re-run the same script with CREATE OR MODIFY to update the body
-create or modify java action JaTest.FormatDate(
+create or modify java action JaTest.PadString(
   Input: string not null,
-  Format: string not null
+  PadChar: string not null,
+  Width: integer not null
 ) returns string
 as $$
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-LocalDate date = LocalDate.parse(Input);
-return date.format(DateTimeFormatter.ofPattern(Format));
+String s = Input.trim();
+while (s.length() < Width) s = PadChar + s;
+return s;
 $$;
 
-drop java action JaTest.FormatDate;
+drop java action JaTest.PadString;
 
 -- ============================================================================
 -- Java Action Feature Summary
