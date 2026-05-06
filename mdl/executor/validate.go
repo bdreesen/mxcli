@@ -191,6 +191,14 @@ func (e *Executor) ValidateProgram(prog *ast.Program) []error {
 	return validateProgram(e.newExecContext(context.Background()), prog)
 }
 
+// CheckProjectConflicts walks prog in statement order and returns errors for
+// any plain CREATE (non-OR-MODIFY) that targets a document name that already
+// exists in the connected project. Names created earlier in the same script are
+// excluded — those will be caught by CheckScriptDuplicates.
+func (e *Executor) CheckProjectConflicts(prog *ast.Program) []error {
+	return CheckProjectConflicts(e.newExecContext(context.Background()), prog)
+}
+
 // validateWithContext validates a statement, considering objects defined in the script.
 func validateWithContext(ctx *ExecContext, stmt ast.Statement, sc *scriptContext) error {
 	switch s := stmt.(type) {
