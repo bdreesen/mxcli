@@ -34,6 +34,7 @@ proactively. Add a row after every review that surfaces something new.
 | 9 | Doc comment promises a fallback/feature that doesn't exist in the code (e.g., "raw-map fallback in the client" when no such fallback was implemented) | Docs quality | Grep for function/type names referenced in doc comments to confirm they exist before committing |
 | 10 | BSON array items decoded by mongo driver are `primitive.D`, not `map[string]any` — bare type assertion `item.(map[string]any)` always fails silently, causing silent data loss (e.g. Languages not parsed, issue #480) | BSON parsing | Always use `extractBsonMap(item)` instead of `item.(map[string]any)`; write a parser unit test with `primitive.D` items to catch this class of bug |
 | 11 | `execShow` switch missing a case for a new `ShowXxx` constant — executor handler is wired but never dispatched, command silently does nothing | Dispatch gap | After adding a new `Show*` constant and handler, grep `executor_query.go` to confirm the case is present; add a mock test that calls the handler directly |
+| 12 | Mock test constructs a `Kind` value (e.g. `"Array"`) that `parseImportMappingElement` can never produce — parser only sets `"Object"` or `"Value"` — giving false assurance for a code path that is dead against real MPR data | Test coverage | Before writing a mock test for a fallback path, verify the parser can actually produce the mocked value; if not, either extend the parser or remove the dead fallback |
 
 ---
 
