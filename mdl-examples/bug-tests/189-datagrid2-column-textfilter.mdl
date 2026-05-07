@@ -8,6 +8,8 @@
 -- and stored in DataGridColumnSpec.FilterWidget, which is then serialized
 -- into the column's "filter" property slot in both BSON construction paths.
 
+CREATE ENTITY MyModule.MyEntity ( Attribute: String, Attribute_2: String );
+
 CREATE OR REPLACE PAGE MyModule.MyEntity_Overview
 (
   Title: 'MyEntity Overview',
