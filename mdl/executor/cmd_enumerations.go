@@ -323,7 +323,7 @@ func ValidateEntity(stmt *ast.CreateEntityStmt) []linter.Violation {
 					DocumentType: "entity",
 					DocumentName: stmt.Name.String(),
 				},
-				Suggestion: fmt.Sprintf("Rename to avoid conflicts (e.g., 'Custom%s')", attr.Name),
+				Suggestion: fmt.Sprintf("To use the Mendix built-in audit field, declare it with the pseudo-type: '%s: Auto%s'. To store an unrelated date, choose a different name (e.g., 'EntryDate', 'RecordDate')", attr.Name, attr.Name),
 			})
 		}
 	}
