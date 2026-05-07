@@ -1,5 +1,15 @@
 # Proposal: `mxcli schema extract` — Empirical Metamodel Schema Extraction
 
+> **Status: Superseded by [UNIFIED_SCHEMA_REGISTRY.md](UNIFIED_SCHEMA_REGISTRY.md)**
+>
+> The unified proposal adopts the empirical extraction approach from this document
+> (`mx dump-mpr`, `.mpk` XML parsing, mxunit decoding for verification) as the
+> backbone. It extends with: a single in-memory registry consumed by all subsystems,
+> end-to-end workflow integration, inspection commands, native-vs-pluggable keyword
+> dispatch, object-list child block syntax, and tier-based widget upgrade tooling.
+>
+> Preserved for context.
+
 ## Problem
 
 The BSON Schema Registry proposal (see `BSON_SCHEMA_REGISTRY_PROPOSAL.md`) requires accurate
