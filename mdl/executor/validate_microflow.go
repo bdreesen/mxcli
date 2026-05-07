@@ -507,12 +507,13 @@ func referencedVars(stmt ast.MicroflowStatement) []string {
 }
 
 // extractVarName extracts the base variable name from a target that may include
-// an attribute path (e.g., "Var/Attr" → "Var").
+// a $ prefix or attribute path (e.g., "$Var/Attr" → "Var").
 func extractVarName(target string) string {
-	if before, _, ok := strings.Cut(target, "/"); ok {
+	name := strings.TrimPrefix(target, "$")
+	if before, _, ok := strings.Cut(name, "/"); ok {
 		return before
 	}
-	return target
+	return name
 }
 
 // exprVarRefs extracts variable names referenced in an expression.
