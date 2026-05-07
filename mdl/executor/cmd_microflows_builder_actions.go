@@ -320,7 +320,13 @@ func (fb *flowBuilder) addEnumSplit(s *ast.EnumSplitStmt) model.ID {
 		branches = append(branches, branch{body: s.ElseBody})
 	}
 
-	branchWidth := fb.measurer.measureStatements(appendEnumBodies(s)).Width
+	branchWidth := 0
+	for _, br := range branches {
+		w := fb.measurer.measureStatements(br.body).Width
+		if w > branchWidth {
+			branchWidth = w
+		}
+	}
 	if branchWidth == 0 {
 		branchWidth = HorizontalSpacing / 2
 	}
@@ -340,10 +346,35 @@ func (fb *flowBuilder) addEnumSplit(s *ast.EnumSplitStmt) model.ID {
 		return merge
 	}
 
+	// Precompute each branch's height for cumulative Y positioning.
+	branchHeights := make([]int, len(branches))
+	for i, br := range branches {
+		h := fb.measurer.measureStatements(br.body).Height
+		branchHeights[i] = max(h, ActivityHeight)
+	}
+	// First branch is centred on the happy-path line; subsequent branches
+	// are placed so there is exactly BranchGap of empty space between them.
+	branchYs := make([]int, len(branches))
+	if len(branches) > 0 {
+		// Centre the whole stack on centerY
+		totalH := 0
+		for _, h := range branchHeights {
+			totalH += h
+		}
+		totalH += (len(branches) - 1) * BranchGap
+		y := centerY - totalH/2 + branchHeights[0]/2
+		for i := range branches {
+			branchYs[i] = y
+			if i < len(branches)-1 {
+				y += branchHeights[i]/2 + BranchGap + branchHeights[i+1]/2
+			}
+		}
+	}
+
 	savedEndsWithReturn := fb.endsWithReturn
 	allBranchesReturn := len(branches) > 0
 	for i, br := range branches {
-		branchY := centerY + i*VerticalSpacing
+		branchY := branchYs[i]
 		fb.posX = splitX + SplitWidth + HorizontalSpacing/2
 		fb.posY = branchY
 		fb.endsWithReturn = false
@@ -507,15 +538,6 @@ func enumSplitBranchCount(s *ast.EnumSplitStmt) int {
 		count++
 	}
 	return count
-}
-
-func appendEnumBodies(s *ast.EnumSplitStmt) []ast.MicroflowStatement {
-	var stmts []ast.MicroflowStatement
-	for _, c := range s.Cases {
-		stmts = append(stmts, c.Body...)
-	}
-	stmts = append(stmts, s.ElseBody...)
-	return stmts
 }
 
 // addRetrieveAction creates a RETRIEVE statement.
