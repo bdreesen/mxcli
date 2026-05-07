@@ -8,9 +8,9 @@
 -- and stored in DataGridColumnSpec.FilterWidget, which is then serialized
 -- into the column's "filter" property slot in both BSON construction paths.
 
-CREATE ENTITY MyModule.MyEntity ( Attribute: String, Attribute_2: String );
+CREATE ENTITY Bug189.MyEntity ( Attribute: String, Attribute_2: String );
 
-CREATE OR REPLACE PAGE MyModule.MyEntity_Overview
+CREATE OR REPLACE PAGE Bug189.MyEntity_Overview
 (
   Title: 'MyEntity Overview',
   Layout: Atlas_Core.Atlas_Default,
@@ -22,7 +22,7 @@ CREATE OR REPLACE PAGE MyModule.MyEntity_Overview
       COLUMN colContent (DesktopWidth: 12) {
         DYNAMICTEXT heading (Content: 'MyEntity', RenderMode: H2)
         DATAGRID MyEntityGrid (
-          DataSource: DATABASE FROM MyModule.MyEntity,
+          DataSource: DATABASE FROM Bug189.MyEntity,
           Selection: Single,
           PageSize: 50,
           Pagination: virtualScrolling
