@@ -202,6 +202,7 @@ type MockBackend struct {
 	ListJsonStructuresFunc              func() ([]*types.JsonStructure, error)
 	GetJsonStructureByQualifiedNameFunc func(moduleName, name string) (*types.JsonStructure, error)
 	CreateJsonStructureFunc             func(js *types.JsonStructure) error
+	UpdateJsonStructureFunc             func(js *types.JsonStructure) error
 	DeleteJsonStructureFunc             func(id string) error
 
 	// JavaBackend
@@ -232,6 +233,7 @@ type MockBackend struct {
 	// ImageBackend
 	ListImageCollectionsFunc  func() ([]*types.ImageCollection, error)
 	CreateImageCollectionFunc func(ic *types.ImageCollection) error
+	UpdateImageCollectionFunc func(ic *types.ImageCollection) error
 	DeleteImageCollectionFunc func(id string) error
 
 	// ScheduledEventBackend

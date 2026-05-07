@@ -111,11 +111,11 @@ func stmtCreateInfo(stmt ast.Statement) (docType, name string, idempotent bool) 
 	case *ast.CreateWorkflowStmt:
 		return "workflow", s.Name.String(), s.CreateOrModify
 	case *ast.CreateBusinessEventServiceStmt:
-		return "business-event-service", s.Name.String(), s.CreateOrReplace
+		return "business-event-service", s.Name.String(), s.CreateOrModify
 	case *ast.CreatePublishedRestServiceStmt:
-		return "published-rest-service", s.Name.String(), s.CreateOrReplace
+		return "published-rest-service", s.Name.String(), s.CreateOrModify
 	case *ast.CreateJsonStructureStmt:
-		return "json-structure", s.Name.String(), s.CreateOrReplace
+		return "json-structure", s.Name.String(), s.CreateOrModify
 	case *ast.CreateImportMappingStmt:
 		return "import-mapping", s.Name.String(), s.CreateOrModify
 	case *ast.CreateExportMappingStmt:
@@ -131,7 +131,7 @@ func stmtCreateInfo(stmt ast.Statement) (docType, name string, idempotent bool) 
 	case *ast.CreateAgentStmt:
 		return "agent", s.Name.String(), s.CreateOrModify
 	case *ast.CreateImageCollectionStmt:
-		return "image-collection", s.Name.String(), s.CreateOrReplace
+		return "image-collection", s.Name.String(), s.CreateOrModify
 	}
 	return "", "", false
 }

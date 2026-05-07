@@ -555,6 +555,9 @@ func (b *MprBackend) GetJsonStructureByQualifiedName(moduleName, name string) (*
 func (b *MprBackend) CreateJsonStructure(js *types.JsonStructure) error {
 	return b.writer.CreateJsonStructure(unconvertJsonStructure(js))
 }
+func (b *MprBackend) UpdateJsonStructure(js *types.JsonStructure) error {
+	return b.writer.UpdateJsonStructure(unconvertJsonStructure(js))
+}
 func (b *MprBackend) DeleteJsonStructure(id string) error {
 	return b.writer.DeleteJsonStructure(id)
 }
@@ -642,6 +645,9 @@ func (b *MprBackend) ListImageCollections() ([]*types.ImageCollection, error) {
 }
 func (b *MprBackend) CreateImageCollection(ic *types.ImageCollection) error {
 	return b.writer.CreateImageCollection(unconvertImageCollection(ic))
+}
+func (b *MprBackend) UpdateImageCollection(ic *types.ImageCollection) error {
+	return b.writer.UpdateImageCollection(unconvertImageCollection(ic))
 }
 func (b *MprBackend) DeleteImageCollection(id string) error {
 	return b.writer.DeleteImageCollection(id)

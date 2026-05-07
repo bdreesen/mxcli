@@ -3,6 +3,8 @@
 package mock
 
 import (
+	"fmt"
+
 	"github.com/mendixlabs/mxcli/mdl/types"
 	"github.com/mendixlabs/mxcli/model"
 	"github.com/mendixlabs/mxcli/sdk/workflows"
@@ -81,6 +83,13 @@ func (m *MockBackend) CreateImageCollection(ic *types.ImageCollection) error {
 		return m.CreateImageCollectionFunc(ic)
 	}
 	return nil
+}
+
+func (m *MockBackend) UpdateImageCollection(ic *types.ImageCollection) error {
+	if m.UpdateImageCollectionFunc != nil {
+		return m.UpdateImageCollectionFunc(ic)
+	}
+	return fmt.Errorf("MockBackend.UpdateImageCollection not configured")
 }
 
 func (m *MockBackend) DeleteImageCollection(id string) error {

@@ -468,6 +468,7 @@ create or replace navigation Responsive
 | Show in module | `show business events in module;` | Filter by module |
 | Describe service | `describe business event service Module.Name;` | Full MDL output |
 | Create service | `create business event service Module.Name (...) { message ... };` | See help topic for full syntax |
+| Create or modify | `create or modify business event service Module.Name (...) { ... };` | Preserves UUID — preferred for AI agents |
 | Drop service | `drop business event service Module.Name;` | Delete a service |
 
 ## Agents
@@ -559,6 +560,7 @@ Respond in {{Language}}.$$,
 | Show collections | `show image collection [in module];` | List all or filter by module |
 | Describe collection | `describe image collection Module.Name;` | Full MDL output with embedded images |
 | Create collection | `create image collection Module.Name [export level 'Hidden'\|'Public'] [comment 'text'] [(image Name from file 'path', ...)];` | With or without images |
+| Create or modify | `create or modify image collection Module.Name [...];` | Preserves UUID — preferred for AI agents |
 | Drop collection | `drop image collection Module.Name;` | Removes collection and all embedded images |
 
 **Export levels:** `'Hidden'` (default, internal to module), `'Public'` (accessible from other modules).
@@ -647,7 +649,7 @@ Operations, path/query parameters, headers, request body, response type, resourc
 | Show services | `show published rest services [in module];` | List all or filter by module |
 | Describe service | `describe published rest service Module.Name;` | Re-executable CREATE statement |
 | Create service | See below | |
-| Create or replace | `create or replace published rest service ...` | Replaces existing service |
+| Create or modify | `create or modify published rest service Module.Name (...) { ... };` | Preserves UUID — preferred for AI agents |
 | Alter service | `alter published rest service Module.Name set path = '...', version = '...';` | SET supports Path, Version, ServiceName |
 | Add resource | `alter published rest service Module.Name add resource 'name' { ... };` | Operation block uses CREATE syntax |
 | Drop resource | `alter published rest service Module.Name drop resource 'name';` | |
@@ -712,10 +714,10 @@ source json '{"latitude": 51.9, "current": {"temp": 12.8}}'
 | Statement | Syntax | Notes |
 |-----------|--------|-------|
 | Show structures | `show json structures [in module];` | List all or filter by module |
-| Describe structure | `describe json structure Module.Name;` | Re-executable CREATE OR REPLACE + element tree |
+| Describe structure | `describe json structure Module.Name;` | Re-executable CREATE OR MODIFY + element tree |
 | Create structure | `create json structure Module.Name [comment 'text'] snippet '...json...';` | Element tree auto-built from snippet |
 | Create (multi-line) | `create json structure Module.Name snippet $${ "key": "value" }$$;` | Dollar-quoted snippet for readability |
-| Create or replace | `create or replace json structure Module.Name snippet '...';` | Idempotent — preferred for AI agents |
+| Create or modify | `create or modify json structure Module.Name snippet '...';` | Preserves UUID — preferred for AI agents |
 | Create with name map | `create json structure Module.Name snippet '...' CUSTOM NAME map ('jsonKey' as 'CustomName', ...);` | Override auto-generated ExposedNames |
 | Drop structure | `drop json structure Module.Name;` | |
 

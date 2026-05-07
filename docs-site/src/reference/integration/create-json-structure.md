@@ -3,7 +3,7 @@
 ## Synopsis
 
 ```sql
-CREATE [ OR REPLACE ] JSON STRUCTURE module.Name
+CREATE [ OR MODIFY ] JSON STRUCTURE module.Name
     [ FOLDER 'folder/path' ]
     [ COMMENT 'description' ]
     SNIPPET 'json_sample'
@@ -16,7 +16,7 @@ Creates a JSON structure document from a representative JSON sample. The sample 
 
 The structure represents one concrete JSON document shape. Arrays within the sample define the repeating item structure. Nested objects define sub-entity structures.
 
-If `OR REPLACE` is specified and the JSON structure already exists, it is replaced with the new snippet. The document UUID is preserved.
+If `OR MODIFY` is specified and the JSON structure already exists, it is updated in-place preserving its UUID so that import/export mappings that reference it remain valid. `OR REPLACE` is also accepted as a synonym.
 
 The optional `CUSTOM_NAME_MAP` clause overrides the attribute names generated from JSON keys. This is useful when JSON keys contain characters that are not valid Mendix attribute names, or when you want a more descriptive name.
 

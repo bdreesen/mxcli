@@ -77,6 +77,7 @@ type SettingsBackend interface {
 type ImageBackend interface {
 	ListImageCollections() ([]*types.ImageCollection, error)
 	CreateImageCollection(ic *types.ImageCollection) error
+	UpdateImageCollection(ic *types.ImageCollection) error
 	DeleteImageCollection(id string) error
 }
 
