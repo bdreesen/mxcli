@@ -241,15 +241,32 @@ func (fb *flowBuilder) addCallJavaActionAction(s *ast.CallJavaActionStmt) model.
 		}
 	}
 
-	// Build a map of parameter name -> param type for the Java action
+	// Build a map of parameter name -> param type for the Java action.
+	// resolvedBasicParams tracks parameters whose type was successfully
+	// resolved via the Java action definition AND is not an entity-type or
+	// microflow-type parameter (i.e. anything that lands in
+	// BasicCodeActionParameterValue: String, Integer, Boolean, ListType,
+	// ParameterizedEntityType, etc.). When the MDL author binds such a
+	// parameter to `empty`, Studio Pro authors `Argument: "empty"` (the MDL
+	// literal string) rather than `Argument: ""`, the unbound marker. The
+	// distinction matters: `mx check` reports CE0126 "Missing value for
+	// parameter X" when a typed parameter receives the unbound `""` shape.
+	//
+	// Without a backend lookup (jaDef == nil) we fall back to the prior
+	// `""` behaviour to preserve the documented "intentionally unbound"
+	// semantics of PROPOSAL_microflow_empty_java_action_argument.md.
 	entityTypeParams := make(map[string]bool)
 	microflowTypeParams := make(map[string]bool)
+	resolvedBasicParams := make(map[string]bool)
 	if jaDef != nil {
 		for _, p := range jaDef.Parameters {
-			if _, ok := p.ParameterType.(*javaactions.EntityTypeParameterType); ok {
+			switch p.ParameterType.(type) {
+			case *javaactions.EntityTypeParameterType:
 				entityTypeParams[p.Name] = true
-			} else if _, ok := p.ParameterType.(*javaactions.MicroflowType); ok {
+			case *javaactions.MicroflowType:
 				microflowTypeParams[p.Name] = true
+			default:
+				resolvedBasicParams[p.Name] = true
 			}
 		}
 	}
@@ -285,9 +302,23 @@ func (fb *flowBuilder) addCallJavaActionAction(s *ast.CallJavaActionStmt) model.
 					Microflow:   "",
 				}
 			} else {
+				// When the Java action definition is available and the
+				// parameter is a typed BasicParameterType (anything that
+				// isn't entity-type or microflow-type — String, Integer,
+				// Boolean, ListType, ParameterizedEntityType, etc.), Studio
+				// Pro authors `Argument: "empty"` for the MDL `empty`
+				// literal. Without that information (jaDef == nil) keep the
+				// blank-string "intentionally unbound" marker that
+				// PROPOSAL_microflow_empty_java_action_argument.md
+				// established for code-action callers without backend
+				// resolution.
+				argument := ""
+				if resolvedBasicParams[arg.Name] {
+					argument = "empty"
+				}
 				value = &microflows.BasicCodeActionParameterValue{
 					BaseElement: model.BaseElement{ID: model.ID(types.GenerateID())},
-					Argument:    "",
+					Argument:    argument,
 				}
 			}
 		} else {
