@@ -57,50 +57,74 @@ plus end-to-end workflow integration that neither addressed.
 
 ## Architecture
 
-### Single registry, three sources
+### Two halves with distinct lifecycles
+
+The registry shares a unified API for lookups but the two halves have different
+implementations: platform schemas are **build-time codegen** from `mx dump-mpr` output;
+widget schemas are **runtime extraction** from per-project `.mpk` files. The dispatch
+table is a small static policy file we own.
 
 ```
-                    ┌──────────────────────────────────┐
-                    │       Schema Registry            │
-                    │       (per project)              │
-                    └──────────────────────────────────┘
-                                  ▲  ▲  ▲
-              ┌───────────────────┘  │  └─────────────────────┐
-              │                      │                        │
-   ┌──────────────────┐    ┌────────────────────┐  ┌────────────────────┐
-   │ Platform schema  │    │ Widget schemas     │  │ Keyword dispatch   │
-   │ (per Mendix      │    │ (per .mpk in       │  │ (per Mendix        │
-   │  version)        │    │  project widgets/) │  │  version range)    │
-   ├──────────────────┤    ├────────────────────┤  ├────────────────────┤
-   │ mx dump-mpr      │    │ ZIP + XML parse    │  │ Static data file   │
-   │ against blank    │    │ from .mpk files    │  │ in registry pkg    │
-   │ .mpr             │    │                    │  │                    │
-   │                  │    │                    │  │                    │
-   │ Embedded for     │    │ Cached at:         │  │ Captures: keyword  │
-   │ ~15 LTS/MTS      │    │ ~/.mxcli/widget-   │  │ → version range →  │
-   │ versions         │    │   schemas/         │  │ native|pluggable   │
-   │                  │    │ {widgetId}@{ver}.  │  │ binding            │
-   │ Downloadable for │    │   json             │  │                    │
-   │ rest             │    │                    │  │                    │
-   └──────────────────┘    └────────────────────┘  └────────────────────┘
-              │                      │                        │
-              └──────────────────────┴────────────────────────┘
-                                  │
-              ┌───────────────────┼───────────────────────────┐
-              ▼                   ▼                           ▼
-       ┌──────────────┐    ┌──────────────┐         ┌──────────────────┐
-       │ Serializer   │    │ Inspector    │         │ Migration        │
-       │ Validator    │    │ (CLI / LSP / │         │ planner          │
-       │ Dispatcher   │    │  catalog SQL │         │                  │
-       │              │    │  / skills)   │         │                  │
-       └──────────────┘    └──────────────┘         └──────────────────┘
+   Compile-time                          Runtime (per project)
+   ─────────────                         ──────────────────────
+
+   ┌──────────────────┐                  ┌────────────────────┐
+   │ mx dump-mpr      │                  │ Widget schemas     │
+   │ (per Mendix      │                  │ (per .mpk in       │
+   │  version)        │                  │  project widgets/) │
+   │                  │                  │                    │
+   │ Run via          │                  │ ZIP + XML parse    │
+   │ mxcli schema     │                  │ via mxcli widget   │
+   │   extract        │                  │   init             │
+   │   platform       │                  │                    │
+   │                  │                  │ Cached at:         │
+   │ → JSON file      │                  │ .mxcli/widgets/    │
+   └────────┬─────────┘                  │   *.def.json       │
+            │                            └─────────┬──────────┘
+            ▼                                      │
+   ┌──────────────────┐                            │
+   │ cmd/codegen/     │                            │
+   │ Generates Go     │                            │
+   │ structs with     │                            │
+   │ BSON metadata    │                            │
+   └────────┬─────────┘                            │
+            │                                      │
+            ▼                                      │
+   ┌──────────────────┐    ┌────────────────────┐  │
+   │ Embedded Go      │    │ Keyword dispatch   │  │
+   │ types            │    │ (static policy     │  │
+   │ (generated/      │    │  data file)        │  │
+   │  metamodel/)     │    │                    │  │
+   └────────┬─────────┘    └─────────┬──────────┘  │
+            │                        │             │
+            └────────────┬───────────┴─────────────┘
+                         ▼
+              ┌──────────────────────┐
+              │ Schema Registry API  │
+              │ (Lookup, Describe,   │
+              │  Diff, Validate)     │
+              └──────────┬───────────┘
+                         │
+        ┌────────────────┼─────────────────────┐
+        ▼                ▼                     ▼
+  ┌────────────┐  ┌────────────┐    ┌──────────────────┐
+  │ Serializer │  │ Inspector  │    │ Migration        │
+  │ Validator  │  │ (CLI /     │    │ planner          │
+  │ Dispatcher │  │  LSP /     │    │ (check --post-   │
+  │            │  │  catalog / │    │  migration,      │
+  │            │  │  skills)   │    │  widget upgrade) │
+  └────────────┘  └────────────┘    └──────────────────┘
 ```
+
+The unified API hides the implementation split — callers don't need to know whether a
+type came from generated code or runtime JSON. But the implementations are independent
+enough to ship separately, which is what the phasing reflects.
 
 ### Why these sources
 
 | Source | Why authoritative |
 |---|---|
-| `mx dump-mpr` (platform schemas) | Output of the Mendix `mx` binary itself; the same data Studio Pro reads. Ships with every Mendix version via `mxcli setup mxbuild`. Works offline, no Studio Pro needed. |
+| `mx dump-mpr` (platform schemas) | Output of the Mendix `mx` binary itself; the same data Studio Pro reads. Ships with every Mendix version via `mxcli setup mxbuild`. Works offline, no Studio Pro needed. **Effectively a Mendix-blessed schema export delivered via CLI** — the only difference from a published schema package is the invocation step. |
 | `.mpk` XML (widget schemas) | The canonical source widget authors edit. Studio Pro itself reads this XML at install time. Richer than the BSON `CustomWidgetType` blob (preserves `<description>` text, category structure, conditional visibility rules). |
 | Studio Pro MCP / `.mxunit` decoding | Used for **verification during development** of the registry itself (confirm field encodings) — not at runtime. Captured in `PROPOSAL_schema_extract.md` Path 1–4. |
 
@@ -404,85 +428,101 @@ parallel data sources.
 
 ## Phased implementation
 
-### Phase 1 — `mxcli schema extract platform`
+The original phasing bundled platform schema work and widget work together. They share
+the *concept* of a registry but not the implementation: widget schemas are per-project
+runtime data extracted from `.mpk` files; platform schemas are per-Mendix-version data
+that can be code-generated at build time. Phasing reflects this — widget improvements
+ship first (building on the existing extraction system), platform schema work follows.
 
-**Goal**: Replace TS reflection + supplements with `mx dump-mpr` output.
+Each phase is designed to deliver visible value at its boundary, not at Phase 5.
 
-- Implement `mxcli schema extract platform [--version X.Y.Z]`
-- Wraps `mx dump-mpr` against a blank `.mpr` (created via `mxcli new` flow)
-- Parses output into `{version}-platform.json` with: type catalog, storage names, property
-  trees, list encodings, ref kinds, defaults, System module, document type families
-- Embed reduced LTS/MTS set (~15 versions); downloadable for the rest
-- Validate by structural diff against current `reference/mendixmodellib/reflection-data/`
-  on overlapping fields
+### Phase 1 — Object list support (extends existing widget format)
 
-**Deliverable**: `~/.mxcli/schemas/{version}-platform.json` exists for every embedded
-version; `mxcli schema show entity` produces output equivalent to current reflection-data
-lookups.
+**Goal**: Make Accordion `groups`, PopupMenu items, Maps `markers`, AreaChart `series`
+expressible in MDL.
 
-### Phase 2 — `mxcli schema extract widgets`
-
-**Goal**: Replace `widget init` and embedded widget templates with rich extraction.
-
-- Parse `.mpk` (ZIP) → `{WidgetName}.xml` → full property tree
-- Capture object-list properties (sub-property trees, keyword conventions)
-- Output: `~/.mxcli/widget-schemas/{widgetId}@{version}.json` per project
-- Drop `sdk/widgets/templates/mendix-11.6/`, drop `sdk/widgets/augment.go`,
-  drop existing `.mxcli/widgets/*.def.json` (or auto-migrate on first refresh)
-
-**Deliverable**: Every `.mpk` in the project's `widgets/` folder has a corresponding
-schema file with full property metadata including object lists.
-
-### Phase 3 — Registry runtime
-
-**Goal**: Single in-memory registry consumed by all subsystems.
-
-- `mdl/backend/schema/`: `Registry`, `TypeSchema`, `PropertySchema`, `WidgetSchema`,
-  `KeywordMapping`, `Describe()`, `Diff()`, `Lookup()`
-- Wire writer through registry for completeness check; reader for tolerant parse
-- Drop `supplements.json`; drop `reference/mendixmodellib/reflection-data/`;
-  drop `sdk/mpr/system_module.go`
-- Implement inspection commands: `mxcli schema list/show/diff`
-- Add catalog tables: `schema_types`, `schema_properties`, `schema_keywords`
-
-**Deliverable**: All BSON write paths and all metadata queries go through the registry.
-No subsystem reads reflection data, supplements, or embedded templates directly.
-
-### Phase 4 — Native/pluggable dispatch + object lists
-
-**Goal**: Data-driven keyword resolution and full object list support.
-
-- Replace hardcoded `case "datagrid"` etc. with `Registry.LookupKeyword(kw, version)`
-- Implement object-list child block syntax in grammar + visitor + executor
-- Migrate existing static keyword builders (DATAGRID/GALLERY/COMBOBOX/IMAGE) to thin
-  wrappers over registry-driven serialization
-- Verify: writing the same MDL on Mendix 10.24 and 11.9 produces native DATAGRID and
-  pluggable Datagrid respectively, both opening cleanly in Studio Pro
+- Extend `.mxcli/widgets/*.def.json` format with an additive `objectLists` field —
+  existing files stay valid (no field = behaves as today)
+- Extend `mxcli widget init` MPK parser to recognize `<property type="object" isList="true">`
+  and emit the new `objectLists` block, including sub-property trees
+- Extend grammar/visitor/executor for object-list child block syntax (`group panel1 (...) { ... }`)
+  via the existing `WidgetEngine`
+- Add doctype tests for object-list-bearing widgets
 
 **Deliverable**: Accordion `group`, PopupMenu `item`, Maps `marker`, AreaChart `series`
-all work via MDL. Native vs pluggable dispatch is a registry lookup, not a code branch.
+all work via MDL. Existing widget setups continue to work unchanged.
 
-### Phase 5 — Workflow integration
+### Phase 2 — Dual-stack dispatch table
 
-**Goal**: Inspection, validation, and migration tooling threaded through every surface.
+**Goal**: `DATAGRID` does the right thing per Mendix version, with explicit `LEGACYDATAGRID`
+keyword for migrated projects with mixed stacks.
 
-- `mxcli init` runs Phase 1 + 2 extraction
-- `refresh catalog` re-runs Phase 2 on `.mpk` changes
-- `mxcli check` adds widget property binding validation, version compatibility checks
-- `mxcli check --post-migration`, `mxcli upgrade pages`, `mxcli upgrade widgets`
-- LSP wires through registry for completion/hover/diagnostics
-- Skills regeneration from registry
-- `mxcli syntax` topics gain "see also: `schema show <type>`" links
+- Small policy data file (`mdl/backend/widget/dispatch.json` or similar) with the keyword →
+  version-range → binding mapping
+- Replace hardcoded `case "datagrid"` in `cmd_pages_builder_v3.go` with dispatch lookup
+- Add `LEGACYDATAGRID`, `LEGACYLISTVIEW`, `LEGACYDROPDOWN` keywords
+- DESCRIBE round-trips each widget to the keyword matching its actual BSON stack
+- This is editorial policy data we own; not blocked on platform schema work
 
-**Deliverable**: A user upgrading a project from 10.24 to 11.9 (or upgrading a widget
-from 2.22 to 2.30) sees clear diagnostics, gets actionable migration hints, and has
-auto-fix available for the safe-additive cases.
+**Deliverable**: Same MDL script produces native `Forms$DataGrid` on Mendix 10.24 and
+pluggable `Datagrid` on 11.9. Mixed projects round-trip cleanly through DESCRIBE.
+
+### Phase 3 — Workflow integration (widget side)
+
+**Goal**: Threaded init/refresh/check/lsp/skills around the existing widget engine.
+
+- `mxcli init` runs `mxcli widget init` automatically for the project's `widgets/` folder
+- `refresh catalog` detects `.mpk` mtime changes and re-runs widget extraction
+- `mxcli check` validates widget property bindings against extracted schemas; flags
+  legacy-stack widgets with `--post-migration`
+- LSP wires completion/hover through the widget engine (property suggestions, descriptions)
+- Skills regeneration reads from the same widget definitions
+- `mxcli syntax` topics gain "see also" links for per-widget property reference
+
+**Deliverable**: Adding a `.mpk` to a project automatically flows into completion, hover,
+validation, and skills. Migrated projects get a visible to-do list of legacy widgets.
+
+### Phase 4 — Platform schema codegen
+
+**Goal**: Replace TS reflection data with `mx dump-mpr` output, via build-time codegen.
+
+The existing `cmd/codegen/main.go` already generates Go types from a JSON-shaped reflection
+input. This phase swaps its data source from `reference/mendixmodellib/reflection-data/`
+to `mx dump-mpr` output, and extends the generator to emit storage names, list encodings,
+and ref kinds (the fields TS reflection drops).
+
+- Add `mxcli schema extract platform [--version X.Y.Z]` wrapping `mx dump-mpr`
+- Output `{version}-platform.json` per Mendix version (intermediate format)
+- Extend `cmd/codegen/main.go` to consume this format and emit Go structs with full BSON
+  metadata (storage names, list encodings, ref kinds, defaults)
+- Build pipeline regenerates Go code per embedded version (~15 LTS/MTS releases)
+- Generated code replaces hand-maintained `system_module.go`
+
+**Deliverable**: Compile-time-typed platform schema lookups. No runtime registry to load
+or invalidate. `mxcli schema show entity` reads from generated Go types.
+
+### Phase 5 — Drop `supplements.json` and finish migration tooling
+
+**Goal**: Retire legacy data sources; ship cross-version inspection and migration commands.
+
+- Validate Phase 4 codegen has full coverage of properties currently in `supplements.json`
+- Drop `supplements.json` and `reference/mendixmodellib/reflection-data/`
+- Implement `mxcli schema list/show/diff` reading from generated platform schemas + runtime
+  widget schemas
+- Implement `mxcli check --post-migration`, `mxcli widget upgrade` with tier-based drift
+  classification
+- Add catalog tables: `schema_types`, `schema_properties`, `schema_keywords`
+
+**Deliverable**: Zero hand-maintained schema data files in the codebase. Cross-version
+diff/migration commands work end-to-end. A user upgrading a project from 10.24 to 11.9
+or upgrading a widget gets clear diagnostics and actionable hints.
 
 ## Trade-offs and decisions
 
 | Question | Decision | Rationale |
 |---|---|---|
-| Source of platform schemas | `mx dump-mpr` against blank project | Authoritative; same data Studio Pro consumes; works offline; no TS dependency |
+| Source of platform schemas | `mx dump-mpr` against blank project | Mendix-blessed CLI export; same data Studio Pro consumes; works offline; no TS dependency. Equivalent in authority to a published schema package. |
+| Platform schema delivery | Build-time codegen via `cmd/codegen/main.go` | Reuses existing generator pipeline; compile-time-typed lookups; no runtime registry to load. Format changes become build failures, not runtime errors. |
 | Source of widget schemas | `.mpk` XML directly | Canonical source widget authors edit; richer than BSON `CustomWidgetType` |
 | Studio Pro MCP role | Dev-time verification only | Required for confirming field encodings during registry development; not a runtime dependency |
 | Embed vs download platform schemas | Embed ~15 LTS/MTS versions; download remainder | Diff/migration commands need local schemas; ~7-10 MB acceptable; downloadable for edge cases |
@@ -504,10 +544,12 @@ auto-fix available for the safe-additive cases.
    needs to handle older XML schemas gracefully. Mitigation: parse permissively, fall
    back to "raw passthrough" for unknown XML elements.
 
-3. **`mx dump-mpr` output format stability**: We depend on the JSON output structure of
-   `mx dump-mpr` being stable across versions. If Mendix changes the format, our
-   extractor breaks. Mitigation: validate output structure on each extraction, fall
-   back to embedded data if parsing fails.
+3. **`mx dump-mpr` output format stability**: The format is subject to the same
+   backward-compatibility considerations as any Mendix-released artifact — no different
+   from depending on a hypothetical Mendix-published schema package. Codegen runs at
+   build time, so format changes surface as build failures (loud, fixable) rather than
+   runtime errors. Mitigation: validate output structure during codegen; pin a
+   minimum-supported `mx` version per registry data file.
 
 4. **Cross-project widget schema cache**: `~/.mxcli/widget-schemas/` is shared across
    projects. If two projects use different versions of the same widget, both extractions
@@ -516,10 +558,10 @@ auto-fix available for the safe-additive cases.
    includes content hash for non-published widgets. Published widgets keyed by version
    alone.
 
-5. **Performance of registry construction**: Loading ~15 platform schemas + N widget
-   schemas at every `mxcli` invocation could be slow. Mitigation: lazy-load (only load
-   the version actually needed); pre-parse to gob/binary format on first load
-   (`~/.mxcli/schema-cache/`); profile and optimize once Phase 3 runs end-to-end.
+5. **Performance**: Platform schemas are codegen output, so lookup is struct field access
+   (free). Widget schemas are per-project on-disk JSON, loaded once at command start and
+   cached for the session. Mitigation: lazy-load widget schemas (only when first needed);
+   measure once Phase 3 runs end-to-end before optimizing further.
 
 ## Non-goals
 
