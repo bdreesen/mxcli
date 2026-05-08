@@ -155,5 +155,25 @@ func TestDropEnumeration_Qualified_Success(t *testing.T) {
 	}
 }
 
+// Issue #390 — CREATE ENUMERATION must reject duplicate value names.
+func TestCreateEnumeration_DuplicateValueName_Issue390(t *testing.T) {
+	mod := mkModule("M")
+	mb := &mock.MockBackend{
+		IsConnectedFunc:      func() bool { return true },
+		ListModulesFunc:      func() ([]*model.Module, error) { return []*model.Module{mod}, nil },
+		ListEnumerationsFunc: func() ([]*model.Enumeration, error) { return nil, nil },
+	}
+	ctx, _ := newMockCtx(t, withBackend(mb))
+	err := execCreateEnumeration(ctx, &ast.CreateEnumerationStmt{
+		Name: ast.QualifiedName{Module: "M", Name: "E"},
+		Values: []ast.EnumValue{
+			{Name: "A", Caption: "First"},
+			{Name: "A", Caption: "Second"},
+		},
+	})
+	assertError(t, err)
+	assertContainsStr(t, err.Error(), "duplicate")
+}
+
 // Backend error: cmd_error_mock_test.go (TestShowEnumerations_Mock_BackendError)
 // JSON: cmd_json_mock_test.go (TestShowEnumerations_Mock_JSON)

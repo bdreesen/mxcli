@@ -289,8 +289,24 @@ var mendixReservedWords = map[string]bool{
 // This function does not require a project connection.
 func ValidateEnumeration(stmt *ast.CreateEnumerationStmt) []linter.Violation {
 	var violations []linter.Violation
+	seen := make(map[string]bool)
 	for _, v := range stmt.Values {
-		if mendixReservedWords[strings.ToLower(v.Name)] {
+		lower := strings.ToLower(v.Name)
+		if seen[lower] {
+			violations = append(violations, linter.Violation{
+				RuleID:   "MDL011",
+				Severity: linter.SeverityError,
+				Message: fmt.Sprintf(
+					"duplicate enumeration value name '%s'", v.Name),
+				Location: linter.Location{
+					DocumentType: "enumeration",
+					DocumentName: stmt.Name.String(),
+				},
+				Suggestion: "Each enumeration value must have a unique name",
+			})
+		}
+		seen[lower] = true
+		if mendixReservedWords[lower] {
 			violations = append(violations, linter.Violation{
 				RuleID:   "MDL010",
 				Severity: linter.SeverityError,
