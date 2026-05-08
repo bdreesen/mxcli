@@ -98,5 +98,62 @@ func TestDescribeEnumeration_Mock_NotFound(t *testing.T) {
 	assertError(t, err)
 }
 
+// Issue #391 — DROP ENUMERATION with an unqualified name must error when
+// the name matches enumerations in multiple modules, not silently drop one.
+func TestDropEnumeration_AmbiguousUnqualified_Issue391(t *testing.T) {
+	mod1 := mkModule("Mod1")
+	mod2 := mkModule("Mod2")
+	e1 := mkEnumeration(mod1.ID, "Status", "Active", "Inactive")
+	e2 := mkEnumeration(mod2.ID, "Status", "Open", "Closed")
+
+	h := mkHierarchy(mod1, mod2)
+	withContainer(h, e1.ContainerID, mod1.ID)
+	withContainer(h, e2.ContainerID, mod2.ID)
+
+	mb := &mock.MockBackend{
+		IsConnectedFunc:      func() bool { return true },
+		ListModulesFunc:      func() ([]*model.Module, error) { return []*model.Module{mod1, mod2}, nil },
+		ListEnumerationsFunc: func() ([]*model.Enumeration, error) { return []*model.Enumeration{e1, e2}, nil },
+	}
+
+	ctx, _ := newMockCtx(t, withBackend(mb), withHierarchy(h))
+	err := execDropEnumeration(ctx, &ast.DropEnumerationStmt{
+		Name: ast.QualifiedName{Name: "Status"}, // unqualified
+	})
+	assertError(t, err)
+	assertContainsStr(t, err.Error(), "ambiguous")
+}
+
+func TestDropEnumeration_Qualified_Success(t *testing.T) {
+	mod1 := mkModule("Mod1")
+	mod2 := mkModule("Mod2")
+	e1 := mkEnumeration(mod1.ID, "Status", "Active")
+	e2 := mkEnumeration(mod2.ID, "Status", "Open")
+	deleted := ""
+
+	h := mkHierarchy(mod1, mod2)
+	withContainer(h, e1.ContainerID, mod1.ID)
+	withContainer(h, e2.ContainerID, mod2.ID)
+
+	mb := &mock.MockBackend{
+		IsConnectedFunc:      func() bool { return true },
+		ListModulesFunc:      func() ([]*model.Module, error) { return []*model.Module{mod1, mod2}, nil },
+		ListEnumerationsFunc: func() ([]*model.Enumeration, error) { return []*model.Enumeration{e1, e2}, nil },
+		DeleteEnumerationFunc: func(id model.ID) error {
+			deleted = string(id)
+			return nil
+		},
+	}
+
+	ctx, _ := newMockCtx(t, withBackend(mb), withHierarchy(h))
+	err := execDropEnumeration(ctx, &ast.DropEnumerationStmt{
+		Name: ast.QualifiedName{Module: "Mod1", Name: "Status"},
+	})
+	assertNoError(t, err)
+	if deleted != string(e1.ID) {
+		t.Errorf("expected Mod1.Status (id=%s) to be deleted, got %s", e1.ID, deleted)
+	}
+}
+
 // Backend error: cmd_error_mock_test.go (TestShowEnumerations_Mock_BackendError)
 // JSON: cmd_json_mock_test.go (TestShowEnumerations_Mock_JSON)

@@ -127,21 +127,42 @@ func execDropEnumeration(ctx *ExecContext, s *ast.DropEnumerationStmt) error {
 		return mdlerrors.NewBackend("list enumerations", err)
 	}
 
+	// Collect all enumerations matching the name (and optional module).
+	type match struct {
+		enum   *model.Enumeration
+		module *model.Module
+	}
+	var matches []match
 	for _, enum := range enums {
-		if enum.Name == s.Name.Name {
-			// Check module matches
-			module, err := findModuleByID(ctx, enum.ContainerID)
-			if err == nil && (s.Name.Module == "" || module.Name == s.Name.Module) {
-				if err := ctx.Backend.DeleteEnumeration(enum.ID); err != nil {
-					return mdlerrors.NewBackend("delete enumeration", err)
-				}
-				fmt.Fprintf(ctx.Output, "Dropped enumeration: %s\n", s.Name)
-				return nil
-			}
+		if enum.Name != s.Name.Name {
+			continue
+		}
+		module, err := findModuleByID(ctx, enum.ContainerID)
+		if err != nil {
+			continue
+		}
+		if s.Name.Module == "" || module.Name == s.Name.Module {
+			matches = append(matches, match{enum, module})
 		}
 	}
 
-	return mdlerrors.NewNotFound("enumeration", s.Name.String())
+	switch len(matches) {
+	case 0:
+		return mdlerrors.NewNotFound("enumeration", s.Name.String())
+	case 1:
+		if err := ctx.Backend.DeleteEnumeration(matches[0].enum.ID); err != nil {
+			return mdlerrors.NewBackend("delete enumeration", err)
+		}
+		fmt.Fprintf(ctx.Output, "Dropped enumeration: %s.%s\n", matches[0].module.Name, s.Name.Name)
+		return nil
+	default:
+		var names []string
+		for _, m := range matches {
+			names = append(names, m.module.Name+"."+s.Name.Name)
+		}
+		return mdlerrors.NewValidationf("ambiguous enumeration name %q — found in: %s; use a fully-qualified name",
+			s.Name.Name, strings.Join(names, ", "))
+	}
 }
 
 // listEnumerations handles SHOW ENUMERATIONS command.
