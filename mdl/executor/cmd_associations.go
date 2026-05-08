@@ -141,6 +141,18 @@ func execCreateAssociation(ctx *ExecContext, s *ast.CreateAssociationStmt) error
 	}
 
 	if isCrossModule {
+		if !s.CreateOrModify {
+			for _, ca := range dm.CrossAssociations {
+				if ca.Name == s.Name.Name {
+					return mdlerrors.NewAlreadyExists("association", s.Name.String())
+				}
+			}
+			for _, assoc := range dm.Associations {
+				if assoc.Name == s.Name.Name {
+					return mdlerrors.NewAlreadyExists("association", s.Name.String())
+				}
+			}
+		}
 		childRef := childModule + "." + s.Child.Name
 		ca := &domainmodel.CrossModuleAssociation{
 			Name:          s.Name.Name,
