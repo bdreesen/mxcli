@@ -1,0 +1,482 @@
+-- @version: 11.0+
+-- ============================================================================
+-- v0.10.0 MILESTONE: Pluggable DataGrid + Gallery for Mendix 11
+-- ============================================================================
+--
+-- This file scopes the v0.10.0 milestone (issue #529 phases 1-3): generating
+-- fully-working pluggable DataGrid and Gallery widgets on Mendix 11 projects,
+-- with filters, custom content, controlbars, and gallery filter bars.
+--
+-- Patterns sourced from real-world projects in mx-test-projects/:
+--   EnquiriesManagement (Mendix 11.6.3)
+--     - LatoIntegrations.Products_Overview      → PD01, PD03, PD04
+--     - WorkflowCommons.UserTask_Target          → PD02
+--     - ApplicationCore.EmailInbox               → PG02
+--   Evora-FactoryManagement (Mendix 11.6.3)
+--     - FactoryManagement.Scenario_Overview      → PD05
+--     - DigitalTwin.ProductionLine_Overview      → PG01, PG03
+--   LatoProductInventory (Mendix 11.9.0)
+--     - Main.Product_Select                      → PD06
+--     - Main.MasterData                          → MX01
+--
+-- Acceptance for v0.10.0:
+--   1. Each page below produces correct pluggable BSON for Mendix 11
+--      (com.mendix.widget.web.datagrid.Datagrid / .gallery.Gallery)
+--   2. Each page opens cleanly in Studio Pro 11.x (no CE0463/CE1613/etc.)
+--   3. DESCRIBE round-trips each page back to equivalent MDL
+--   4. Mendix 10.x projects continue producing native Forms$DataGrid (dispatch)
+--
+-- Test matrix:
+--   PD01. Basic DataGrid — attributes + per-column textfilter
+--   PD02. DataGrid with controlbar (actionbuttons above the grid)
+--   PD03. DataGrid with all four filter types (text/number/date/dropdown)
+--   PD04. DataGrid with custom-content column (action button trailing column)
+--   PD05. DataGrid with custom-content column (container + dynamictext)
+--   PD06. DataGrid with templated caption + ShowContentAs dynamicText
+--   PG01. Basic Gallery — datasource + template
+--   PG02. Gallery with filter bar (container-wrapped textfilter)
+--   PG03. Gallery with rich card template (layoutgrid + multiple texts)
+--   MX01. Page combining DataGrid + Gallery + tabcontainer
+--
+-- ============================================================================
+
+-- MARK: Setup
+
+create module PluggableV10;
+create module role PluggableV10.User;
+
+create enumeration PluggableV10.OrderStatus (
+  PENDING 'Pending',
+  PROCESSING 'Processing',
+  COMPLETED 'Completed',
+  CANCELLED 'Cancelled'
+);
+
+@position(100, 100)
+create persistent entity PluggableV10.Customer (
+  Name: string(200) not null,
+  Email: string(200),
+  Phone: string(50),
+  IsActive: boolean default true,
+  JoinedDate: datetime
+);
+
+@position(400, 100)
+create persistent entity PluggableV10.Order (
+  OrderNumber: string(50) not null,
+  OrderDate: datetime,
+  TotalAmount: decimal default 0,
+  OrderStatusValue: enumeration(PluggableV10.OrderStatus) default PluggableV10.OrderStatus.PENDING,
+  ShippingAddress: string(unlimited),
+  Notes: string(unlimited)
+);
+
+create association PluggableV10.Order_Customer
+  from PluggableV10.Order to PluggableV10.Customer
+  type reference;
+
+-- ============================================================================
+-- MARK: PD01 — Basic DataGrid with per-column textfilters
+-- ============================================================================
+
+create page PluggableV10.P_PD01_BasicGrid (
+  Title: 'Customers',
+  Layout: Atlas_Core.Atlas_Default,
+  Folder: 'PluggableDataGrid'
+) {
+  layoutgrid lg1 {
+    row row1 {
+      column col1 (DesktopWidth: 12) {
+        dynamictext heading (Content: 'Customers', RenderMode: H2)
+        datagrid dgCustomers (
+          DataSource: database from PluggableV10.Customer sort by Name asc,
+          Selection: Single
+        ) {
+          column Name (Attribute: Name, Caption: 'Name') {
+            textfilter tfName
+          }
+          column Email (Attribute: Email, Caption: 'Email') {
+            textfilter tfEmail
+          }
+          column Phone (Attribute: Phone, Caption: 'Phone') {
+            textfilter tfPhone
+          }
+        }
+      }
+    }
+  }
+}
+
+-- ============================================================================
+-- MARK: PD02 — DataGrid with controlbar (action buttons above grid)
+-- ============================================================================
+
+create page PluggableV10.P_PD02_ControlBar (
+  Title: 'Orders Management',
+  Layout: Atlas_Core.Atlas_Default,
+  Folder: 'PluggableDataGrid'
+) {
+  layoutgrid lg1 {
+    row row1 {
+      column col1 (DesktopWidth: 12) {
+        datagrid dgOrders (
+          DataSource: database from PluggableV10.Order sort by OrderDate desc,
+          Selection: Multi,
+          PageSize: 25
+        ) {
+          controlbar cb1 {
+            actionbutton btnNew (
+              Caption: 'New Order',
+              Action: create_object PluggableV10.Order then show_page PluggableV10.P_PD01_BasicGrid,
+              ButtonStyle: Primary
+            )
+            actionbutton btnExport (Caption: 'Export', Action: close_page)
+          }
+          column OrderNumber (Attribute: OrderNumber, Caption: 'Order #') {
+            textfilter tfOrderNum
+          }
+          column TotalAmount (Attribute: TotalAmount, Caption: 'Total', Alignment: right) {
+            numberfilter nfTotal (FilterType: equal)
+          }
+        }
+      }
+    }
+  }
+}
+
+-- ============================================================================
+-- MARK: PD03 — All four filter types in one grid
+-- ============================================================================
+
+create page PluggableV10.P_PD03_AllFilters (
+  Title: 'Orders — All Filters',
+  Layout: Atlas_Core.Atlas_Default,
+  Folder: 'PluggableDataGrid'
+) {
+  layoutgrid lg1 {
+    row row1 {
+      column col1 (DesktopWidth: 12) {
+        datagrid dgFilters (
+          DataSource: database from PluggableV10.Order sort by OrderDate desc,
+          Selection: Single
+        ) {
+          column OrderNumber (Attribute: OrderNumber, Caption: 'Order #') {
+            textfilter tfText
+          }
+          column OrderDate (Attribute: OrderDate, Caption: 'Date') {
+            datefilter dfDate (FilterType: equal)
+          }
+          column TotalAmount (Attribute: TotalAmount, Caption: 'Total', Alignment: right) {
+            numberfilter nfTotal (FilterType: equal)
+          }
+          column OrderStatusValue (Attribute: OrderStatusValue, Caption: 'Status') {
+            dropdownfilter ddfStatus
+          }
+        }
+      }
+    }
+  }
+}
+
+-- ============================================================================
+-- MARK: PD04 — Custom content column with action button (trailing actions)
+-- ============================================================================
+
+create page PluggableV10.P_PD04_CustomActionColumn (
+  Title: 'Customers with Actions',
+  Layout: Atlas_Core.Atlas_Default,
+  Folder: 'PluggableDataGrid'
+) {
+  layoutgrid lg1 {
+    row row1 {
+      column col1 (DesktopWidth: 12) {
+        datagrid dgActions (
+          DataSource: database from PluggableV10.Customer,
+          Selection: Single
+        ) {
+          column Name (Attribute: Name, Caption: 'Name') {
+            textfilter tfName
+          }
+          column Email (Attribute: Email, Caption: 'Email') {
+            textfilter tfEmail
+          }
+          column Name (
+            Attribute: Name,
+            ShowContentAs: customContent,
+            Sortable: false,
+            Hidable: no,
+            ColumnWidth: autoFit
+          ) {
+            actionbutton btnEdit (
+              Action: show_page PluggableV10.P_PD01_BasicGrid,
+              ButtonStyle: Primary
+            )
+            actionbutton btnDelete (Action: delete_object, ButtonStyle: Danger)
+          }
+        }
+      }
+    }
+  }
+}
+
+-- ============================================================================
+-- MARK: PD05 — Custom content column with container + dynamictext (rich cells)
+-- ============================================================================
+
+create page PluggableV10.P_PD05_CustomCellContent (
+  Title: 'Orders Dashboard',
+  Layout: Atlas_Core.Atlas_Default,
+  Folder: 'PluggableDataGrid'
+) {
+  layoutgrid lg1 {
+    row row1 {
+      column col1 (DesktopWidth: 12) {
+        datagrid dgDashboard (
+          DataSource: database from PluggableV10.Order sort by OrderDate desc,
+          Selection: Single
+        ) {
+          column OrderNumber (Attribute: OrderNumber, Caption: 'Order #')
+          column TotalAmount (
+            Attribute: TotalAmount,
+            Caption: 'Total',
+            ShowContentAs: customContent
+          ) {
+            container ctnTotal {
+              dynamictext txtTotal (
+                Content: '${1}',
+                ContentParams: [{1} = TotalAmount],
+                DesignProperties: ['Weight': 'Semibold', 'Size': 'Large']
+              )
+            }
+          }
+          column OrderStatusValue (
+            Attribute: OrderStatusValue,
+            Caption: 'Status',
+            ShowContentAs: customContent
+          ) {
+            container ctnStatus (Class: 'badge') {
+              dynamictext txtStatus (
+                Content: '{1}',
+                ContentParams: [{1} = OrderStatusValue]
+              )
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+-- ============================================================================
+-- MARK: PD06 — Templated caption + ShowContentAs: dynamicText
+-- ============================================================================
+
+create page PluggableV10.P_PD06_DynamicCaption (
+  Title: 'Customers — Dynamic',
+  Layout: Atlas_Core.Atlas_Default,
+  Folder: 'PluggableDataGrid'
+) {
+  layoutgrid lg1 {
+    row row1 {
+      column col1 (DesktopWidth: 12) {
+        datagrid dgDyn (
+          DataSource: database from PluggableV10.Customer,
+          Selection: Single
+        ) {
+          column Name (
+            Attribute: Name,
+            Caption: 'Customer: {1}',
+            CaptionParams: [{1} = Name],
+            ShowContentAs: dynamicText,
+            Content: 'Name',
+            ColumnWidth: manual,
+            Size: 8
+          ) {
+            textfilter tfName
+          }
+          column JoinedDate (
+            Attribute: JoinedDate,
+            Caption: 'Joined',
+            ColumnWidth: manual,
+            Size: 6
+          ) {
+            datefilter dfJoined (FilterType: equal)
+          }
+        }
+      }
+    }
+  }
+}
+
+-- ============================================================================
+-- MARK: PG01 — Basic Gallery with template
+-- ============================================================================
+
+create page PluggableV10.P_PG01_BasicGallery (
+  Title: 'Customers Gallery',
+  Layout: Atlas_Core.Atlas_Default,
+  Folder: 'PluggableGallery'
+) {
+  layoutgrid lg1 {
+    row row1 {
+      column col1 (DesktopWidth: 12) {
+        gallery galCustomers (
+          DataSource: database from PluggableV10.Customer sort by Name asc
+        ) {
+          template tpl1 {
+            container ctnCard (Class: 'card') {
+              dynamictext txtName (
+                Content: '{1}',
+                RenderMode: H4,
+                ContentParams: [{1} = Name]
+              )
+              dynamictext txtEmail (Content: '{1}', ContentParams: [{1} = Email])
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+-- ============================================================================
+-- MARK: PG02 — Gallery with filter bar (container-wrapped textfilter)
+-- ============================================================================
+
+create page PluggableV10.P_PG02_GalleryFilter (
+  Title: 'Customers — Searchable Gallery',
+  Layout: Atlas_Core.Atlas_Default,
+  Folder: 'PluggableGallery'
+) {
+  layoutgrid lg1 {
+    row row1 {
+      column col1 (DesktopWidth: 12) {
+        gallery galSearch (
+          DataSource: database from PluggableV10.Customer,
+          Selection: Single
+        ) {
+          filter flt1 {
+            container ctnFilter {
+              textfilter tfSearch
+            }
+          }
+          template tpl1 {
+            container ctnCard (Class: 'card') {
+              dynamictext txtName (
+                Content: '{1}',
+                RenderMode: H4,
+                ContentParams: [{1} = Name]
+              )
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+-- ============================================================================
+-- MARK: PG03 — Gallery with rich card layout (layoutgrid + multiple texts)
+-- ============================================================================
+
+create page PluggableV10.P_PG03_RichGallery (
+  Title: 'Production Lines',
+  Layout: Atlas_Core.Atlas_Default,
+  Folder: 'PluggableGallery'
+) {
+  layoutgrid lg1 {
+    row row1 {
+      column col1 (DesktopWidth: 12) {
+        gallery galRich (
+          DataSource: database from PluggableV10.Order sort by OrderDate desc
+        ) {
+          template tpl1 {
+            container ctnCard (Class: 'card card--action') {
+              layoutgrid lgInner {
+                row r1 {
+                  column c1 (DesktopWidth: 8) {
+                    dynamictext txtNum (
+                      Content: 'Order {1}',
+                      RenderMode: H4,
+                      ContentParams: [{1} = OrderNumber],
+                      DesignProperties: ['Weight': 'Semibold']
+                    )
+                    dynamictext txtDate (Content: '{1}', ContentParams: [{1} = OrderDate])
+                  }
+                  column c2 (DesktopWidth: 4) {
+                    dynamictext txtTotal (
+                      Content: '${1}',
+                      ContentParams: [{1} = TotalAmount],
+                      DesignProperties: ['Weight': 'Bold', 'Size': 'Large', 'Align self': 'Right']
+                    )
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+-- ============================================================================
+-- MARK: MX01 — Page combining DataGrid + Gallery in tabs (integration)
+-- ============================================================================
+
+create page PluggableV10.P_MX01_GridAndGallery (
+  Title: 'Master Data',
+  Layout: Atlas_Core.Atlas_Default,
+  Folder: 'PluggableMixed'
+) {
+  tabcontainer tabs1 {
+    tabpage tab1 (Caption: 'Customers (Grid)') {
+      datagrid dgTab (
+        DataSource: database from PluggableV10.Customer,
+        Selection: Single
+      ) {
+        controlbar cbTab {
+          actionbutton btnNewCust (Caption: 'New Customer', Action: close_page, ButtonStyle: Primary)
+        }
+        column Name (Attribute: Name, Caption: 'Name') {
+          textfilter tfTab1
+        }
+        column Email (Attribute: Email, Caption: 'Email') {
+          textfilter tfTab2
+        }
+        column IsActive (Attribute: IsActive, Caption: 'Active') {
+          dropdownfilter ddfActive
+        }
+      }
+    }
+    tabpage tab2 (Caption: 'Customers (Gallery)') {
+      gallery galTab (DataSource: database from PluggableV10.Customer) {
+        filter fltTab {
+          container ctnFlt {
+            textfilter tfGalSearch
+          }
+        }
+        template tplTab {
+          container ctnTabCard (Class: 'card') {
+            dynamictext gtxtName (
+              Content: '{1}',
+              RenderMode: H4,
+              ContentParams: [{1} = Name]
+            )
+          }
+        }
+      }
+    }
+  }
+}
+
+grant view on page PluggableV10.P_PD01_BasicGrid to PluggableV10.User;
+grant view on page PluggableV10.P_PD02_ControlBar to PluggableV10.User;
+grant view on page PluggableV10.P_PD03_AllFilters to PluggableV10.User;
+grant view on page PluggableV10.P_PD04_CustomActionColumn to PluggableV10.User;
+grant view on page PluggableV10.P_PD05_CustomCellContent to PluggableV10.User;
+grant view on page PluggableV10.P_PD06_DynamicCaption to PluggableV10.User;
+grant view on page PluggableV10.P_PG01_BasicGallery to PluggableV10.User;
+grant view on page PluggableV10.P_PG02_GalleryFilter to PluggableV10.User;
+grant view on page PluggableV10.P_PG03_RichGallery to PluggableV10.User;
+grant view on page PluggableV10.P_MX01_GridAndGallery to PluggableV10.User;

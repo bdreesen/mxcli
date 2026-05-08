@@ -1,0 +1,368 @@
+-- @version: 11.0+
+-- ============================================================================
+-- Pluggable Widget Examples — PLUGGABLEWIDGET syntax
+-- ============================================================================
+--
+-- Tests the PLUGGABLEWIDGET keyword that drives the def.json-based pluggable
+-- widget engine. These are distinct from the static DATAGRID/GALLERY/COMBOBOX/
+-- IMAGE keywords, which have their own dedicated builders.
+--
+-- See also: mdl-examples/widgetdemo/03-showcase-page.mdl — comprehensive
+-- full-project reference covering all widget types and property combinations.
+--
+-- Syntax patterns covered:
+--   PW01. Minimal — no properties, no child slots
+--   PW02. Primitive properties — string / enum / boolean values
+--   PW03. DataSource property
+--   PW04. Child content slot (curly-brace body)
+--   PW05. Attribute-bound inside DataView
+--   PW06. Widget inside Gallery FILTER block
+--   PW07. TextTemplate properties (curly-brace placeholder text)
+--   PW08. Multiple child slots
+--   PW09. Nested pluggable widgets
+--   PW10. Inline trigger pattern (widget + child trigger button)
+--
+-- ============================================================================
+
+-- MARK: Setup
+
+create module PW;
+
+create enumeration PW.Status (
+  DRAFT 'Draft',
+  ACTIVE 'Active',
+  DONE 'Done'
+);
+
+create enumeration PW.Priority (
+  LOW 'Low',
+  MEDIUM 'Medium',
+  HIGH 'High'
+);
+
+@position(100,100)
+create persistent entity PW.Item (
+  title: string(200) not null,
+  description: string(1000),
+  Status: enumeration(PW.Status) default PW.Status.DRAFT,
+  Priority: enumeration(PW.Priority),
+  IsActive: boolean default true,
+  Score: integer default 0,
+  Amount: decimal default 0,
+  DateCreated: datetime
+);
+
+-- MARK: PW01 — Minimal (no properties, no children)
+
+-- ============================================================================
+-- Test PW01: Minimal PLUGGABLEWIDGET — widget ID + name only
+-- ============================================================================
+
+create page PW.P_PW01_Minimal (
+  title: 'PW01 Minimal',
+  layout: Atlas_Core.Atlas_Default
+) {
+  layoutgrid lg1 {
+    row r1 {
+      column c1 (desktopwidth: 6) {
+        -- Badge: no required properties
+        pluggablewidget 'com.mendix.widget.custom.badge.Badge' badge1
+      }
+      column c2 (desktopwidth: 6) {
+        -- ProgressBar: renders with defaults
+        pluggablewidget 'com.mendix.widget.custom.progressbar.ProgressBar' prog1
+      }
+    }
+  }
+}
+
+-- MARK: PW02 — Primitive properties
+
+-- ============================================================================
+-- Test PW02: Primitive properties — string / enum / boolean
+-- ============================================================================
+
+create page PW.P_PW02_Properties (
+  title: 'PW02 Properties',
+  layout: Atlas_Core.Atlas_Default
+) {
+  layoutgrid lg1 {
+    row r1 {
+      column c1 (desktopwidth: 12) {
+        -- Tooltip with all-primitive properties
+        pluggablewidget 'com.mendix.widget.web.tooltip.Tooltip' tooltip1 (
+          renderMethod: 'text',
+          textMessage: 'This is a tooltip',
+          tooltipPosition: 'top',
+          arrowPosition: 'none',
+          openOn: 'hover'
+        )
+      }
+    }
+    row r2 {
+      column c2 (desktopwidth: 12) {
+        -- VideoPlayer with URL expression
+        pluggablewidget 'com.mendix.widget.web.videoplayer.VideoPlayer' video1 (
+          type: 'expression',
+          urlExpression: '''https://example.com/demo.mp4'''
+        )
+      }
+    }
+  }
+}
+
+-- MARK: PW03 — DataSource property
+
+-- ============================================================================
+-- Test PW03: DataSource property
+-- ============================================================================
+
+create page PW.P_PW03_DataSource (
+  title: 'PW03 DataSource',
+  layout: Atlas_Core.Atlas_Default
+) {
+  layoutgrid lg1 {
+    row r1 {
+      column c1 (desktopwidth: 6) {
+        -- TreeNode: datasource only, flat list
+        pluggablewidget 'com.mendix.widget.web.treenode.TreeNode' tree1 (
+          datasource: database from PW.Item sort by title asc,
+          headerType: 'text',
+          headerCaption: '{Title}',
+          hasChildren: false,
+          showIcon: 'no'
+        )
+      }
+      column c2 (desktopwidth: 6) {
+        -- Timeline with datasource
+        pluggablewidget 'com.mendix.widget.web.timeline.Timeline' timeline1 (
+          datasource: database from PW.Item sort by DateCreated desc,
+          title: '{title}',
+          description: '{description}',
+          groupEvents: false,
+          customVisualization: false
+        )
+      }
+    }
+  }
+}
+
+-- MARK: PW04 — Child content slot
+
+-- ============================================================================
+-- Test PW04: Widget with a child content slot (curly-brace body)
+-- ============================================================================
+
+create page PW.P_PW04_ChildSlot (
+  title: 'PW04 Child Slot',
+  layout: Atlas_Core.Atlas_Default
+) {
+  layoutgrid lg1 {
+    row r1 {
+      column c1 (desktopwidth: 6) {
+        -- Fieldset wraps a labeled group of widgets
+        pluggablewidget 'com.mendix.widget.web.fieldset.Fieldset' fieldset1 {
+          dynamictext fsHdr (content: 'Inside fieldset', rendermode: H4)
+          dynamictext fsBody (content: 'This content sits inside the fieldset slot', rendermode: paragraph)
+        }
+      }
+      column c2 (desktopwidth: 6) {
+        -- AccessibilityHelper with content
+        pluggablewidget 'com.mendix.widget.web.accessibilityhelper.AccessibilityHelper' acc1 (
+          targetSelector: '.mx-name-acc1'
+        ) {
+          dynamictext accContent (content: 'Accessible content area')
+        }
+      }
+    }
+  }
+}
+
+-- MARK: PW05 — Attribute-bound inside DataView
+
+-- ============================================================================
+-- Test PW05: Attribute-bound widgets inside DataView
+-- ============================================================================
+
+create page PW.P_PW05_Attribute (
+  params: { $Item: PW.Item },
+  title: 'PW05 Attribute',
+  layout: Atlas_Core.PopupLayout
+) {
+  dataview dv1 (datasource: $Item) {
+    layoutgrid lg1 {
+      row r1 {
+        column c1 (desktopwidth: 4) {
+          pluggablewidget 'com.mendix.widget.custom.switch.Switch' sw1 (
+            booleanAttribute: IsActive
+          )
+        }
+        column c2 (desktopwidth: 4) {
+          pluggablewidget 'com.mendix.widget.custom.starrating.StarRating' rating1 (
+            rateAttribute: Score
+          )
+        }
+        column c3 (desktopwidth: 4) {
+          pluggablewidget 'com.mendix.widget.custom.slider.Slider' slider1 (
+            valueAttribute: Score
+          )
+        }
+      }
+    }
+  }
+}
+
+-- MARK: PW06 — Inside Gallery FILTER block
+
+-- ============================================================================
+-- Test PW06: Pluggable widget inside a Gallery FILTER block
+-- ============================================================================
+
+create page PW.P_PW06_GalleryFilter (
+  title: 'PW06 Gallery Filter',
+  layout: Atlas_Core.Atlas_Default
+) {
+  layoutgrid lg1 {
+    row r1 {
+      column c1 (desktopwidth: 12) {
+        gallery gal1 (
+          datasource: database from PW.Item sort by title asc
+        ) {
+          filter flt1 {
+            textfilter tf1 (attributes: [title, description])
+            -- DropdownSort is a pluggable widget usable in filter bars
+            pluggablewidget 'com.mendix.widget.web.dropdownsort.DropdownSort' ddSort1
+          }
+          template tpl1 {
+            dynamictext tTitle (content: '{1}', contentparams: [{1} = title], rendermode: H4)
+          }
+        }
+      }
+    }
+  }
+}
+
+-- MARK: PW07 — TextTemplate properties
+
+-- ============================================================================
+-- Test PW07: TextTemplate properties (curly-brace placeholder text)
+-- ============================================================================
+
+create page PW.P_PW07_TextTemplate (
+  title: 'PW07 TextTemplate',
+  layout: Atlas_Core.Atlas_Default
+) {
+  layoutgrid lg1 {
+    row r1 {
+      column c1 (desktopwidth: 12) {
+        -- Timeline with TextTemplate title/description fields
+        pluggablewidget 'com.mendix.widget.web.timeline.Timeline' timelineText1 (
+          datasource: database from PW.Item sort by DateCreated desc,
+          title: '{title}',
+          description: '{description} — status: {Status}',
+          timeIndication: '{DateCreated}',
+          groupEvents: false,
+          customVisualization: false
+        )
+      }
+    }
+  }
+}
+
+-- MARK: PW08 — Multiple named child slots
+
+-- ============================================================================
+-- Test PW08: Widget with multiple named child slots
+-- ============================================================================
+
+create page PW.P_PW08_MultiSlot (
+  title: 'PW08 Multi Slot',
+  layout: Atlas_Core.Atlas_Default
+) {
+  layoutgrid lg1 {
+    row r1 {
+      column c1 (desktopwidth: 12) {
+        -- Timeline customVisualization: uses customTitle + customDescription slots
+        pluggablewidget 'com.mendix.widget.web.timeline.Timeline' timelineCustom1 (
+          datasource: database from PW.Item sort by DateCreated desc,
+          groupEvents: false,
+          customVisualization: true
+        ) {
+          container customTitle {
+            dynamictext tlTitle (content: '{1}', rendermode: H4, contentparams: [{1} = title])
+          }
+          container customDescription {
+            dynamictext tlDesc (content: '{1}', contentparams: [{1} = description])
+          }
+        }
+      }
+    }
+  }
+}
+
+-- MARK: PW09 — Nested pluggable widgets
+
+-- ============================================================================
+-- Test PW09: Nested pluggable widgets (widget inside widget child slot)
+-- ============================================================================
+
+create page PW.P_PW09_Nested (
+  params: { $Item: PW.Item },
+  title: 'PW09 Nested',
+  layout: Atlas_Core.Atlas_Default
+) {
+  layoutgrid lg1 {
+    row r1 {
+      column c1 (desktopwidth: 12) {
+        -- AccessibilityHelper wrapping a Switch
+        pluggablewidget 'com.mendix.widget.web.accessibilityhelper.AccessibilityHelper' accOuter (
+          targetSelector: '.mx-name-accOuter'
+        ) {
+          dataview dvInner (datasource: $Item) {
+            pluggablewidget 'com.mendix.widget.custom.switch.Switch' swNested (
+              booleanAttribute: IsActive
+            )
+          }
+        }
+      }
+    }
+  }
+}
+
+-- MARK: PW10 — Inline trigger pattern
+
+-- ============================================================================
+-- Test PW10: Inline trigger pattern — widget with child trigger content
+-- ============================================================================
+
+create page PW.P_PW10_Trigger (
+  title: 'PW10 Trigger',
+  layout: Atlas_Core.Atlas_Default
+) {
+  layoutgrid lg1 {
+    row r1 {
+      column c1 (desktopwidth: 6) {
+        -- Tooltip wrapping a trigger button
+        pluggablewidget 'com.mendix.widget.web.tooltip.Tooltip' tooltipTrigger (
+          renderMethod: 'text',
+          textMessage: 'Click for more info',
+          tooltipPosition: 'bottom',
+          arrowPosition: 'center',
+          openOn: 'click'
+        ) {
+          container triggerWrap {
+            actionbutton btnTrigger (caption: 'More Info', action: close_page, buttonstyle: info)
+          }
+        }
+      }
+      column c2 (desktopwidth: 6) {
+        -- PopupMenu wrapping a trigger button
+        pluggablewidget 'com.mendix.widget.web.popupmenu.PopupMenu' popupMenu1 {
+          container menuTrigger {
+            actionbutton btnMenu (caption: 'Open Menu', action: close_page, buttonstyle: default)
+          }
+        }
+      }
+    }
+  }
+}
