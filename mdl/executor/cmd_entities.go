@@ -98,6 +98,28 @@ func execCreateEntity(ctx *ExecContext, s *ast.CreateEntityStmt) error {
 		}
 	}
 
+	// Validate TypeEnumeration attribute refs before writing anything.
+	// The visitor uses TypeEnumeration for both enum and entity type references
+	// (TypeEnumeration vs TypeEntity ambiguity). Accept the ref when it resolves
+	// to either a known enumeration or a known entity; reject unknown names fast
+	// so typos don't silently produce corrupt models.
+	for _, a := range s.Attributes {
+		if a.Type.Kind != ast.TypeEnumeration || a.Type.EnumRef == nil {
+			continue
+		}
+		refModule := a.Type.EnumRef.Module
+		refName := a.Type.EnumRef.Name
+		if findEnumeration(ctx, refModule, refName) != nil {
+			continue
+		}
+		if _, err := findEntity(ctx, refModule, refName); err == nil {
+			continue
+		}
+		return mdlerrors.NewValidationf(
+			"attribute '%s': unknown type '%s' — not a primitive, enumeration, or entity",
+			a.Name, a.Type.EnumRef.String())
+	}
+
 	// Create attributes and build name-to-ID map for validation rules and indexes
 	// Also detect pseudo-types (AutoOwner, AutoChangedBy, etc.) and set entity flags
 	var storeOwner, storeChangedBy, storeCreatedDate, storeChangedDate bool

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/mendixlabs/mxcli/mdl/ast"
 	"github.com/mendixlabs/mxcli/mdl/backend/mock"
 	"github.com/mendixlabs/mxcli/model"
 	"github.com/mendixlabs/mxcli/sdk/domainmodel"
@@ -80,6 +81,40 @@ func TestShowEntities_BackendError(t *testing.T) {
 	}
 	ctx, _ := newMockCtx(t, withBackend(mb))
 	assertError(t, listEntities(ctx, ""))
+}
+
+// Issue #392 — CREATE ENTITY must reject attribute types that don't resolve
+// to a known primitive, enumeration, or entity.
+func TestCreateEntity_UnknownAttributeType_Issue392(t *testing.T) {
+	mod := mkModule("M")
+	dm := mkDomainModel(mod.ID)
+
+	mb := &mock.MockBackend{
+		IsConnectedFunc:      func() bool { return true },
+		ListModulesFunc:      func() ([]*model.Module, error) { return []*model.Module{mod}, nil },
+		ListDomainModelsFunc: func() ([]*domainmodel.DomainModel, error) { return []*domainmodel.DomainModel{dm}, nil },
+		GetDomainModelFunc:   func(id model.ID) (*domainmodel.DomainModel, error) { return dm, nil },
+		ListEnumerationsFunc: func() ([]*model.Enumeration, error) { return nil, nil },
+	}
+	h := mkHierarchy(mod)
+	withContainer(h, dm.ID, mod.ID)
+
+	ctx, _ := newMockCtx(t, withBackend(mb), withHierarchy(h))
+	err := execCreateEntity(ctx, &ast.CreateEntityStmt{
+		Name: ast.QualifiedName{Module: "M", Name: "E"},
+		Kind: ast.EntityPersistent,
+		Attributes: []ast.Attribute{
+			{
+				Name: "Field1",
+				Type: ast.DataType{
+					Kind:    ast.TypeEnumeration,
+					EnumRef: &ast.QualifiedName{Name: "invalidtype"},
+				},
+			},
+		},
+	})
+	assertError(t, err)
+	assertContainsStr(t, err.Error(), "invalidtype")
 }
 
 func TestShowEntities_JSON(t *testing.T) {
