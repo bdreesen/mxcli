@@ -1,0 +1,339 @@
+-- @version: 11.0+
+-- ============================================================================
+-- v0.10.0 MILESTONE: Object-list child blocks for pluggable widgets (Phase 1)
+-- ============================================================================
+--
+-- ASPIRATIONAL FIXTURE — fails `mxcli check` today.
+-- Filename uses `.test.mdl` suffix to skip the standard parse check until
+-- the new object-list keywords (group / item / customitem / series / marker /
+-- dynamicmarker) are wired into the grammar by issue #529 Phase 1.
+--
+-- This file scopes the Phase 1 deliverable from issue #529: support for
+-- `Type: "Object" + IsList: true` properties in pluggable widget templates,
+-- expressed in MDL as named child blocks.
+--
+-- Pluggable DataGrid `columns` is the headline use case (covered separately
+-- in 31-pluggable-datagrid-gallery-v010-examples.mdl). This file covers the
+-- *other* pluggable widgets that need the same engine work:
+--
+--   Accordion   .groups          → GROUP keyword
+--   PopupMenu   .basicItems      → ITEM keyword
+--   PopupMenu   .customItems     → CUSTOMITEM keyword (same widget, two lists)
+--   AreaChart   .series          → SERIES keyword
+--   Maps        .markers         → MARKER keyword (static markers)
+--   Maps        .dynamicMarkers  → DYNAMICMARKER keyword (data-driven)
+--
+-- Each list item has its own sub-property tree (header text, content widgets,
+-- attribute bindings, etc.) — these need to round-trip through DESCRIBE/CREATE.
+--
+-- Acceptance for Phase 1:
+--   1. Each page below produces correct pluggable BSON for Mendix 11
+--   2. Each page opens cleanly in Studio Pro 11.x
+--   3. DESCRIBE round-trips each page back to equivalent MDL
+--   4. Object-list keyword (group/item/series/marker) is derived mechanically
+--      from the singular form of the property name in the widget schema
+--
+-- Test matrix:
+--   OL01. Accordion with multiple groups (header text + content widgets)
+--   OL02. Accordion with custom header content (header is widgets, not text)
+--   OL03. PopupMenu with basic items (caption + action)
+--   OL04. PopupMenu with custom items (widget content)
+--   OL05. AreaChart with multiple series
+--   OL06. Maps with static markers
+--   OL07. Maps with dynamic markers (datasource-driven)
+--
+-- ============================================================================
+
+-- MARK: Setup
+
+create module ObjListV10;
+create module role ObjListV10.User;
+
+@position(100, 100)
+create persistent entity ObjListV10.Location (
+  Name: string(200) not null,
+  Latitude: decimal,
+  Longitude: decimal,
+  Address: string(unlimited)
+);
+
+@position(400, 100)
+create persistent entity ObjListV10.SalesData (
+  PeriodLabel: string(50) not null,
+  PeriodDate: datetime,
+  RevenueValue: decimal default 0,
+  Region: string(100)
+);
+
+-- ============================================================================
+-- MARK: OL01 — Accordion with simple text-header groups
+-- ============================================================================
+
+create page ObjListV10.P_OL01_AccordionGroups (
+  Title: 'FAQ Accordion',
+  Layout: Atlas_Core.Atlas_Default,
+  Folder: 'ObjectLists/Accordion'
+) {
+  layoutgrid lg1 {
+    row r1 {
+      column c1 (DesktopWidth: 12) {
+        pluggablewidget 'com.mendix.widget.web.accordion.Accordion' acc1 (
+          collapsible: true,
+          expandBehavior: 'singleExpanded',
+          showIcon: 'right',
+          animate: true
+        ) {
+          group panel1 (HeaderText: 'What is Mendix?') {
+            dynamictext content1 (
+              Content: 'Mendix is a low-code application development platform.',
+              RenderMode: paragraph
+            )
+          }
+          group panel2 (HeaderText: 'How does pricing work?') {
+            dynamictext content2 (
+              Content: 'Pricing is based on tier and number of apps.',
+              RenderMode: paragraph
+            )
+          }
+          group panel3 (HeaderText: 'Where can I learn more?') {
+            dynamictext content3 (
+              Content: 'See https://docs.mendix.com',
+              RenderMode: paragraph
+            )
+          }
+        }
+      }
+    }
+  }
+}
+
+-- ============================================================================
+-- MARK: OL02 — Accordion with custom-widget headers
+-- ============================================================================
+
+create page ObjListV10.P_OL02_AccordionCustomHeader (
+  Title: 'Custom Header Accordion',
+  Layout: Atlas_Core.Atlas_Default,
+  Folder: 'ObjectLists/Accordion'
+) {
+  layoutgrid lg1 {
+    row r1 {
+      column c1 (DesktopWidth: 12) {
+        pluggablewidget 'com.mendix.widget.web.accordion.Accordion' acc2 (
+          expandBehavior: 'multipleExpanded',
+          showIcon: 'left'
+        ) {
+          group panel1 (HeaderRenderMode: 'custom') {
+            -- HeaderContent slot: custom widgets in the header
+            container hdrSection1 {
+              dynamictext hdrText1 (Content: 'Section A', RenderMode: H4)
+              dynamictext hdrSubtext1 (Content: 'Subtitle here')
+            }
+            -- Content slot: body widgets
+            dynamictext bodyText1 (Content: 'Body of section A')
+          }
+          group panel2 (HeaderRenderMode: 'custom') {
+            container hdrSection2 {
+              dynamictext hdrText2 (Content: 'Section B', RenderMode: H4)
+            }
+            dynamictext bodyText2 (Content: 'Body of section B')
+          }
+        }
+      }
+    }
+  }
+}
+
+-- ============================================================================
+-- MARK: OL03 — PopupMenu with basicItems (simple caption + action)
+-- ============================================================================
+
+create page ObjListV10.P_OL03_PopupMenuBasic (
+  Title: 'Popup Menu — Basic',
+  Layout: Atlas_Core.Atlas_Default,
+  Folder: 'ObjectLists/PopupMenu'
+) {
+  layoutgrid lg1 {
+    row r1 {
+      column c1 (DesktopWidth: 6) {
+        pluggablewidget 'com.mendix.widget.web.popupmenu.PopupMenu' menu1 (
+          advancedMode: false,
+          trigger: 'onClick'
+        ) {
+          -- menuTrigger childSlot — what the user clicks on
+          container trigger1 {
+            actionbutton btnTrigger (
+              Caption: 'Actions',
+              Action: close_page,
+              ButtonStyle: Primary
+            )
+          }
+          -- basicItems object list
+          item itemNew (Caption: 'New', Action: close_page)
+          item itemEdit (Caption: 'Edit', Action: close_page)
+          item itemDelete (Caption: 'Delete', Action: close_page, StyleClass: 'danger')
+        }
+      }
+    }
+  }
+}
+
+-- ============================================================================
+-- MARK: OL04 — PopupMenu with customItems (widget content)
+-- ============================================================================
+
+create page ObjListV10.P_OL04_PopupMenuCustom (
+  Title: 'Popup Menu — Custom Items',
+  Layout: Atlas_Core.Atlas_Default,
+  Folder: 'ObjectLists/PopupMenu'
+) {
+  layoutgrid lg1 {
+    row r1 {
+      column c1 (DesktopWidth: 6) {
+        pluggablewidget 'com.mendix.widget.web.popupmenu.PopupMenu' menu2 (
+          advancedMode: true,
+          trigger: 'onHover'
+        ) {
+          container trigger2 {
+            actionbutton btnHover (Caption: 'Hover me', Action: close_page)
+          }
+          -- customItems object list — each item is widgets
+          customitem custItem1 {
+            container ctnCust1 {
+              dynamictext ctxt1 (Content: 'Custom item 1', RenderMode: H5)
+              dynamictext ctxt1d (Content: 'With description')
+            }
+          }
+          customitem custItem2 {
+            container ctnCust2 {
+              dynamictext ctxt2 (Content: 'Custom item 2', RenderMode: H5)
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+-- ============================================================================
+-- MARK: OL05 — AreaChart with multiple series
+-- ============================================================================
+
+create page ObjListV10.P_OL05_AreaChartSeries (
+  Title: 'Sales Trends',
+  Layout: Atlas_Core.Atlas_Default,
+  Folder: 'ObjectLists/Chart'
+) {
+  layoutgrid lg1 {
+    row r1 {
+      column c1 (DesktopWidth: 12) {
+        pluggablewidget 'com.mendix.widget.web.areachart.AreaChart' chart1 {
+          series seriesNorth (
+            DataSet: 'static',
+            StaticDataSource: database from ObjListV10.SalesData where Region = 'North',
+            StaticName: 'North Region',
+            StaticXAttribute: PeriodLabel,
+            StaticYAttribute: RevenueValue,
+            Interpolation: 'linear'
+          )
+          series seriesSouth (
+            DataSet: 'static',
+            StaticDataSource: database from ObjListV10.SalesData where Region = 'South',
+            StaticName: 'South Region',
+            StaticXAttribute: PeriodLabel,
+            StaticYAttribute: RevenueValue,
+            Interpolation: 'linear'
+          )
+          series seriesEast (
+            DataSet: 'static',
+            StaticDataSource: database from ObjListV10.SalesData where Region = 'East',
+            StaticName: 'East Region',
+            StaticXAttribute: PeriodLabel,
+            StaticYAttribute: RevenueValue,
+            Interpolation: 'smooth'
+          )
+        }
+      }
+    }
+  }
+}
+
+-- ============================================================================
+-- MARK: OL06 — Maps with static markers
+-- ============================================================================
+
+create page ObjListV10.P_OL06_MapsStatic (
+  Title: 'Office Locations',
+  Layout: Atlas_Core.Atlas_Default,
+  Folder: 'ObjectLists/Maps'
+) {
+  layoutgrid lg1 {
+    row r1 {
+      column c1 (DesktopWidth: 12) {
+        pluggablewidget 'com.mendix.widget.custom.Maps.Maps' map1 (
+          apiKey: 'demo-key',
+          googleMapId: 'default'
+        ) {
+          marker hqMarker (
+            LocationType: 'coordinates',
+            Latitude: '52.3676',
+            Longitude: '4.9041',
+            Title: 'Amsterdam HQ',
+            MarkerStyle: 'default'
+          )
+          marker bostonMarker (
+            LocationType: 'coordinates',
+            Latitude: '42.3601',
+            Longitude: '-71.0589',
+            Title: 'Boston Office',
+            MarkerStyle: 'default'
+          )
+          marker rotterdamMarker (
+            LocationType: 'address',
+            Address: 'Rotterdam, Netherlands',
+            Title: 'Rotterdam Office',
+            MarkerStyle: 'default'
+          )
+        }
+      }
+    }
+  }
+}
+
+-- ============================================================================
+-- MARK: OL07 — Maps with dynamicMarkers (datasource-driven)
+-- ============================================================================
+
+create page ObjListV10.P_OL07_MapsDynamic (
+  Title: 'Customer Locations',
+  Layout: Atlas_Core.Atlas_Default,
+  Folder: 'ObjectLists/Maps'
+) {
+  layoutgrid lg1 {
+    row r1 {
+      column c1 (DesktopWidth: 12) {
+        pluggablewidget 'com.mendix.widget.custom.Maps.Maps' map2 (
+          apiKey: 'demo-key',
+          googleMapId: 'default'
+        ) {
+          dynamicmarker locMarkers (
+            MarkersDS: database from ObjListV10.Location,
+            LocationType: 'coordinates',
+            Latitude: Latitude,
+            Longitude: Longitude,
+            Title: Name,
+            MarkerStyleDynamic: 'default'
+          )
+        }
+      }
+    }
+  }
+}
+
+grant view on page ObjListV10.P_OL01_AccordionGroups to ObjListV10.User;
+grant view on page ObjListV10.P_OL02_AccordionCustomHeader to ObjListV10.User;
+grant view on page ObjListV10.P_OL03_PopupMenuBasic to ObjListV10.User;
+grant view on page ObjListV10.P_OL04_PopupMenuCustom to ObjListV10.User;
+grant view on page ObjListV10.P_OL05_AreaChartSeries to ObjListV10.User;
+grant view on page ObjListV10.P_OL06_MapsStatic to ObjListV10.User;
+grant view on page ObjListV10.P_OL07_MapsDynamic to ObjListV10.User;
