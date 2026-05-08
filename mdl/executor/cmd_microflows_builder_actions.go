@@ -594,9 +594,6 @@ func (fb *flowBuilder) addStructuredInheritanceSplit(s *ast.InheritanceSplitStmt
 	fb.endsWithReturn = savedEndsWithReturn
 	if allBranchesReturn {
 		fb.endsWithReturn = true
-	} else if len(branchTails) == 1 && !branchTails[0].fromSplit {
-		fb.nextConnectionPoint = branchTails[0].id
-		fb.nextFlowCase = branchTails[0].caseValue
 	} else if len(branchTails) > 0 {
 		merge := &microflows.ExclusiveMerge{
 			BaseMicroflowObject: microflows.BaseMicroflowObject{
