@@ -25,14 +25,15 @@ const defaultSlotContainer = "template"
 // WidgetDefinition describes how to construct a pluggable widget from MDL syntax.
 // Loaded from embedded JSON definition files (*.def.json).
 type WidgetDefinition struct {
-	WidgetID         string             `json:"widgetId"`
-	MDLName          string             `json:"mdlName"`
-	WidgetKind       string             `json:"widgetKind,omitempty"` // "pluggable" (React) or "custom" (legacy Dojo)
-	TemplateFile     string             `json:"templateFile"`
-	DefaultEditable  string             `json:"defaultEditable"`
-	PropertyMappings []PropertyMapping  `json:"propertyMappings,omitempty"`
-	ChildSlots       []ChildSlotMapping `json:"childSlots,omitempty"`
-	Modes            []WidgetMode       `json:"modes,omitempty"`
+	WidgetID         string              `json:"widgetId"`
+	MDLName          string              `json:"mdlName"`
+	WidgetKind       string              `json:"widgetKind,omitempty"` // "pluggable" (React) or "custom" (legacy Dojo)
+	TemplateFile     string              `json:"templateFile"`
+	DefaultEditable  string              `json:"defaultEditable"`
+	PropertyMappings []PropertyMapping   `json:"propertyMappings,omitempty"`
+	ChildSlots       []ChildSlotMapping  `json:"childSlots,omitempty"`
+	ObjectLists      []ObjectListMapping `json:"objectLists,omitempty"`
+	Modes            []WidgetMode        `json:"modes,omitempty"`
 }
 
 // PropertyMapping maps an MDL source (attribute, association, literal, etc.)
@@ -60,6 +61,41 @@ type WidgetMode struct {
 // ChildSlotMapping maps an MDL child container (e.g., TEMPLATE, FILTER) to a
 // widget property that holds child widgets.
 type ChildSlotMapping struct {
+	PropertyKey  string `json:"propertyKey"`
+	MDLContainer string `json:"mdlContainer"`
+	Operation    string `json:"operation"`
+}
+
+// ObjectListMapping maps an MDL child block keyword (e.g., GROUP, ITEM, SERIES)
+// to a pluggable widget property whose value is a list of structured objects
+// (Type: "Object" + IsList: true in the widget XML).
+//
+// Each list item has its own sub-property tree, expressed via ItemProperties.
+// ItemProperties supports the same operation kinds as top-level PropertyMapping
+// and ChildSlotMapping (primitive, attribute, datasource, widgets, texttemplate,
+// expression, action), as well as nested object lists.
+type ObjectListMapping struct {
+	PropertyKey    string                 `json:"propertyKey"`
+	MDLContainer   string                 `json:"mdlContainer"`
+	ItemProperties []ItemPropertyMapping  `json:"itemProperties,omitempty"`
+	ItemSlots      []ItemSlotMapping      `json:"itemSlots,omitempty"`
+}
+
+// ItemPropertyMapping maps a property of one object-list item (e.g. headerText
+// of an Accordion group) to its operation kind. Mirrors PropertyMapping but
+// scoped to the list item rather than the top-level widget.
+type ItemPropertyMapping struct {
+	PropertyKey string `json:"propertyKey"`
+	Source      string `json:"source,omitempty"`
+	Value       string `json:"value,omitempty"`
+	Operation   string `json:"operation"`
+	Default     string `json:"default,omitempty"`
+}
+
+// ItemSlotMapping maps a widget child slot inside one object-list item
+// (e.g. headerContent of an Accordion group, content of a DataGrid column).
+// Mirrors ChildSlotMapping but scoped to the list item.
+type ItemSlotMapping struct {
 	PropertyKey  string `json:"propertyKey"`
 	MDLContainer string `json:"mdlContainer"`
 	Operation    string `json:"operation"`

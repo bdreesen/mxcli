@@ -164,6 +164,13 @@ func generateDefJSON(mpkDef *mpk.WidgetDefinition, mdlName string) *executor.Wid
 	// Two passes: datasource first (association depends on entityContext set by datasource).
 	var assocMappings []executor.PropertyMapping
 	for _, p := range mpkDef.Properties {
+		// Object-list properties (e.g. Accordion `groups`, DataGrid `columns`)
+		// are emitted as ObjectListMapping entries. Each list item exposes its
+		// own sub-property tree.
+		if p.Type == "object" && p.IsList {
+			def.ObjectLists = append(def.ObjectLists, makeObjectListMapping(p))
+			continue
+		}
 		switch p.Type {
 		case "widgets":
 			container := strings.ToUpper(p.Key)
@@ -215,6 +222,93 @@ func generateDefJSON(mpkDef *mpk.WidgetDefinition, mdlName string) *executor.Wid
 	def.PropertyMappings = append(def.PropertyMappings, assocMappings...)
 
 	return def
+}
+
+// makeObjectListMapping converts an MPK object-list PropertyDef (e.g. Accordion
+// `groups`) into an ObjectListMapping. The MDL keyword is the singular form of
+// the property key (groups → GROUP, basicItems → ITEM, series → SERIES,
+// markers → MARKER). Sub-properties are walked into ItemProperties (scalar /
+// datasource / attribute / etc.) and ItemSlots (widgets-typed children).
+func makeObjectListMapping(p mpk.PropertyDef) executor.ObjectListMapping {
+	mapping := executor.ObjectListMapping{
+		PropertyKey:  p.Key,
+		MDLContainer: deriveObjectListKeyword(p.Key),
+	}
+	for _, child := range p.Children {
+		if child.Type == "widgets" {
+			mapping.ItemSlots = append(mapping.ItemSlots, executor.ItemSlotMapping{
+				PropertyKey:  child.Key,
+				MDLContainer: strings.ToUpper(child.Key),
+				Operation:    "widgets",
+			})
+			continue
+		}
+		op := operationForType(child.Type)
+		if op == "" {
+			continue
+		}
+		item := executor.ItemPropertyMapping{
+			PropertyKey: child.Key,
+			Operation:   op,
+		}
+		switch op {
+		case "attribute":
+			item.Source = "Attribute"
+		case "datasource":
+			item.Source = "DataSource"
+		case "association":
+			item.Source = "Association"
+		case "primitive":
+			if child.DefaultValue != "" {
+				item.Value = child.DefaultValue
+			}
+		}
+		mapping.ItemProperties = append(mapping.ItemProperties, item)
+	}
+	return mapping
+}
+
+// deriveObjectListKeyword turns a property key like "groups" / "basicItems" /
+// "series" / "markers" into an uppercase MDL keyword in the singular form.
+// The singular is computed by stripping a trailing "s" from the lowercased key,
+// with overrides for English-irregular cases (series, items with prefixes, etc.).
+func deriveObjectListKeyword(propertyKey string) string {
+	overrides := map[string]string{
+		"basicItems":     "ITEM",
+		"customItems":    "CUSTOMITEM",
+		"dynamicMarkers": "DYNAMICMARKER",
+		"attributesList": "ATTR",
+		"filterOptions":  "OPTION",
+		"series":         "SERIES", // Latin singular == plural
+	}
+	if k, ok := overrides[propertyKey]; ok {
+		return k
+	}
+	lower := strings.ToLower(propertyKey)
+	singular := strings.TrimSuffix(lower, "s")
+	return strings.ToUpper(singular)
+}
+
+// operationForType maps an MPK property type to the engine's operation name.
+// Returns "" for unsupported types (which are skipped in object-list extraction).
+func operationForType(t string) string {
+	switch t {
+	case "attribute":
+		return "attribute"
+	case "association":
+		return "association"
+	case "datasource":
+		return "datasource"
+	case "textTemplate":
+		return "texttemplate"
+	case "expression":
+		return "expression"
+	case "action":
+		return "action"
+	case "boolean", "integer", "decimal", "string", "enumeration":
+		return "primitive"
+	}
+	return ""
 }
 
 func runWidgetInit(cmd *cobra.Command, args []string) error {

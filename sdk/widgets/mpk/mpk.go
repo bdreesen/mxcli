@@ -85,8 +85,11 @@ type xmlProperty struct {
 	DataSource   string `xml:"dataSource,attr"`
 	Caption      string `xml:"caption"`
 	Description  string `xml:"description"`
-	// Nested properties for object type
-	NestedProps []xmlPropGroup `xml:"properties>propertyGroup"`
+	// Nested properties for object type — two XML shapes:
+	// (a) <properties><propertyGroup><property>...</property></propertyGroup></properties>
+	// (b) <properties><property>...</property></properties>  (no group wrapper)
+	NestedProps       []xmlPropGroup `xml:"properties>propertyGroup"`
+	NestedDirectProps []xmlProperty  `xml:"properties>property"`
 }
 
 // xmlSystemProp represents <systemProperty key="..."/> element.
@@ -237,10 +240,27 @@ func walkPropertyGroup(pg xmlPropGroup, parentCategory string, def *WidgetDefini
 			DataSource:   p.DataSource,
 		}
 
-		// Parse nested properties for object-type properties
-		if p.Type == "object" && len(p.NestedProps) > 0 {
+		// Parse nested properties for object-type properties.
+		// Two XML shapes coexist across Mendix widgets:
+		//   (a) <properties><propertyGroup><property>...</property></propertyGroup></properties>
+		//       (e.g. Accordion groups, DataGrid columns)
+		//   (b) <properties><property>...</property></properties>
+		//       (e.g. PopupMenu basicItems, Maps markers)
+		if p.Type == "object" {
 			for _, npg := range p.NestedProps {
 				collectNestedProperties(npg, &prop)
+			}
+			for _, np := range p.NestedDirectProps {
+				prop.Children = append(prop.Children, PropertyDef{
+					Key:          np.Key,
+					Type:         np.Type,
+					Caption:      np.Caption,
+					Description:  np.Description,
+					Required:     np.Required == "true",
+					DefaultValue: np.DefaultValue,
+					IsList:       np.IsList == "true",
+					DataSource:   np.DataSource,
+				})
 			}
 		}
 
