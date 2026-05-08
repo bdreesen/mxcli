@@ -138,7 +138,7 @@ func (b *Builder) buildContractMessages() error {
 	}
 
 	stmt, err := b.tx.Prepare(`
-		INSERT INTO contract_messages (Id, ServiceId, ServiceQualifiedName,
+		INSERT OR IGNORE INTO contract_messages (Id, ServiceId, ServiceQualifiedName,
 			ChannelName, OperationType, MessageName, Title, ContentType, PropertyCount,
 			ModuleName, ProjectId, SnapshotId, SnapshotDate, SnapshotSource)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
