@@ -231,6 +231,11 @@ authentication basic, session
 | Call Java action | `$Result = call java action Module.Name (Param = $value);` | Java action (microflow only) |
 | Call web service | `$Result = call web service Module.Service operation OperationName;` | Legacy SOAP; quoted refs are fallback for dangling raw IDs |
 | Call web service raw | `$Result = call web service raw 'base64-bson';` | Escape hatch for byte-for-byte legacy SOAP round-trip |
+| REST call (string) | `$Var = rest call get '<url>' returns string;` | Body as string |
+| REST call (response) | `$Var = rest call get '<url>' returns response;` | `System.HttpResponse` object |
+| REST call (mapping single) | `$Var = rest call get '<url>' returns mapping Module.IMM as Module.Entity;` | Single object — Studio Pro emits `ForceSingleOccurrence=true` |
+| REST call (mapping list) | `$Var = rest call get '<url>' returns mapping Module.IMM as list of Module.Entity;` | List result |
+| REST call (none) | `rest call get '<url>' returns nothing;` | Discard response |
 | Show page | `show page Module.PageName ($Param = $value);` | Also accepts `(Param: $value)` |
 | Close page | `close page;` | |
 | Download file | `download file $FileDocument [show in browser];` | Streams a `System.FileDocument` |

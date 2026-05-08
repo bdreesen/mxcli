@@ -1025,26 +1025,24 @@ func (fb *flowBuilder) addRestCallAction(s *ast.RestCallStmt) model.ID {
 			// MDL did not explicitly assign one.
 			s.OutputVariable = s.Result.ResultEntity.Name
 		}
-		// Determine whether the import mapping returns a single object or a list by
-		// looking at the JSON structure it references. If the root JSON element is
-		// an Object, the mapping produces one object; if it is an Array, a list.
-		singleObject := false
-		if fb.backend != nil {
-			if im, err := fb.backend.GetImportMappingByQualifiedName(s.Result.MappingName.Module, s.Result.MappingName.Name); err == nil && im.JsonStructure != "" {
-				// im.JsonStructure is "Module.Name" — split and look up the JSON structure.
-				if parts := strings.SplitN(im.JsonStructure, ".", 2); len(parts) == 2 {
-					if js, err := fb.backend.GetJsonStructureByQualifiedName(parts[0], parts[1]); err == nil && len(js.Elements) > 0 {
-						singleObject = js.Elements[0].ElementType == "Object"
-					}
-				}
-			}
-		}
+		// Cardinality is authored on the microflow's ImportMappingCall in
+		// BSON (Range.SingleObject + ForceSingleOccurrence) — the same
+		// import mapping can yield either single or list depending on the
+		// call site. The describer emits `as list of Module.Entity` for a
+		// list and `as Module.Entity` for a single object; the builder
+		// trusts that explicit choice. ForceSingleOccurrence mirrors
+		// SingleObject so the writer reproduces the BSON shape Studio Pro
+		// emits (Range and ForceSingleOccurrence agree on whether one
+		// value is bound).
+		singleObject := !s.Result.IsList
+		fso := singleObject
 		resultHandling = &microflows.ResultHandlingMapping{
-			BaseElement:    model.BaseElement{ID: model.ID(types.GenerateID())},
-			MappingID:      model.ID(mappingQN),
-			ResultEntityID: model.ID(entityQN),
-			ResultVariable: s.OutputVariable,
-			SingleObject:   singleObject,
+			BaseElement:           model.BaseElement{ID: model.ID(types.GenerateID())},
+			MappingID:             model.ID(mappingQN),
+			ResultEntityID:        model.ID(entityQN),
+			ResultVariable:        s.OutputVariable,
+			SingleObject:          singleObject,
+			ForceSingleOccurrence: &fso,
 		}
 	case ast.RestResultNone:
 		resultHandling = &microflows.ResultHandlingNone{
@@ -1318,9 +1316,13 @@ func (fb *flowBuilder) addImportFromMappingAction(s *ast.ImportFromMappingStmt) 
 	}
 
 	// Determine single vs list and result entity from the import mapping.
+	// JSON structure check covers JSON-backed mappings; for XML schema or
+	// message-definition mappings JsonStructure is empty and the root
+	// element kind on the mapping itself indicates Array vs Object.
 	resultEntityQN := ""
 	if fb.backend != nil {
 		if im, err := fb.backend.GetImportMappingByQualifiedName(s.Mapping.Module, s.Mapping.Name); err == nil {
+			resolved := false
 			if im.JsonStructure != "" {
 				parts := strings.SplitN(im.JsonStructure, ".", 2)
 				if len(parts) == 2 {
@@ -1328,10 +1330,19 @@ func (fb *flowBuilder) addImportFromMappingAction(s *ast.ImportFromMappingStmt) 
 						if js.Elements[0].ElementType == "Array" {
 							resultHandling.SingleObject = false
 						}
+						resolved = true
 					}
 				}
 			}
-			if len(im.Elements) > 0 && im.Elements[0].Entity != "" {
+			if !resolved && len(im.Elements) > 0 && im.Elements[0] != nil {
+				// MaxOccurs > 1 or unbounded (-1) signals a list even when
+				// the kind is Object.
+				root := im.Elements[0]
+				if root.MaxOccurs == -1 || root.MaxOccurs > 1 {
+					resultHandling.SingleObject = false
+				}
+			}
+			if len(im.Elements) > 0 && im.Elements[0] != nil && im.Elements[0].Entity != "" {
 				resultEntityQN = im.Elements[0].Entity
 				resultHandling.ResultEntityID = model.ID(resultEntityQN)
 			}
