@@ -5,8 +5,10 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/mendixlabs/mxcli/mdl/formatter"
+	"github.com/mendixlabs/mxcli/mdl/visitor"
 	"github.com/spf13/cobra"
 )
 
@@ -36,6 +38,23 @@ Examples:
 			return fmt.Errorf("failed to read file: %w", err)
 		}
 
+		// Reject unparseable input so automation scripts can detect failures.
+		// Two failure modes:
+		//   1. ANTLR reports explicit parse errors (structural violations).
+		//   2. ANTLR silently skips unrecognised tokens — detected when no
+		//      statements were produced from non-blank, non-comment content.
+		prog, errs := visitor.Build(string(data))
+		if len(errs) > 0 {
+			var msgs []string
+			for _, e := range errs {
+				msgs = append(msgs, e.Error())
+			}
+			return fmt.Errorf("syntax errors in %s:\n%s", filePath, strings.Join(msgs, "\n"))
+		}
+		if prog != nil && len(prog.Statements) == 0 && hasSubstantiveContent(string(data)) {
+			return fmt.Errorf("no valid MDL statements found in %s", filePath)
+		}
+
 		formatted := formatter.Format(string(data))
 
 		if writeInPlace {
@@ -53,4 +72,17 @@ Examples:
 
 func init() {
 	fmtCmd.Flags().BoolP("write", "w", false, "Write result to source file instead of stdout")
+}
+
+// hasSubstantiveContent reports whether s contains at least one non-blank,
+// non-comment line — used to distinguish empty/comment-only files (which
+// produce zero statements legitimately) from garbage input.
+func hasSubstantiveContent(s string) bool {
+	for _, line := range strings.Split(s, "\n") {
+		t := strings.TrimSpace(line)
+		if t != "" && !strings.HasPrefix(t, "--") {
+			return true
+		}
+	}
+	return false
 }
