@@ -120,7 +120,27 @@ What we drop:
 
 Today, `cmd_pages_builder_v3.go` has hardcoded `case "datagrid"` that always invokes the
 native builder, regardless of project version. The registry replaces this with data-driven
-dispatch:
+dispatch.
+
+### Dual-stack widgets
+
+Several Mendix widgets have both a legacy native (dojo-based) implementation *and* a newer
+pluggable (React-based) replacement. Studio Pro's project upgrade does **not** auto-convert
+native widgets to their pluggable replacements — the underlying technology is different
+(dojo runtime vs React runtime, distinct BSON storage types, distinct property schemas).
+Users converting a project from Mendix 10 to 11 routinely end up with both stacks
+coexisting on the same project, sometimes on the same page.
+
+Affected widgets include:
+
+| Legacy native (dojo) | Modern pluggable (React) |
+|---|---|
+| `Forms$DataGrid` | `com.mendix.widget.web.datagrid.Datagrid` |
+| `Forms$ListView` | `com.mendix.widget.custom.gallery.Gallery` |
+| `Forms$DropDown`, `Forms$ReferenceSelector` | `com.mendix.widget.web.combobox.Combobox` |
+
+The MDL surface needs to express *both* unambiguously, with a sensible default per Mendix
+version:
 
 ```json
 {
@@ -128,35 +148,67 @@ dispatch:
     {
       "keyword": "DATAGRID",
       "versions": [
-        {
-          "min": "9.0.0", "max": "10.99.99",
-          "kind": "native",
-          "type": "Forms$DataGrid"
-        },
-        {
-          "min": "11.0.0",
-          "kind": "pluggable",
-          "widgetId": "com.mendix.widget.web.datagrid.Datagrid"
-        }
+        { "min": "9.0.0", "max": "10.99.99",
+          "kind": "native",   "type": "Forms$DataGrid" },
+        { "min": "11.0.0",
+          "kind": "pluggable", "widgetId": "com.mendix.widget.web.datagrid.Datagrid" }
+      ]
+    },
+    {
+      "keyword": "LEGACYDATAGRID",
+      "versions": [
+        { "min": "9.0.0",
+          "kind": "native",   "type": "Forms$DataGrid",
+          "deprecatedFrom": "11.0.0" }
       ]
     },
     {
       "keyword": "GALLERY",
       "versions": [
-        {
-          "min": "9.18.0",
-          "kind": "pluggable",
-          "widgetId": "com.mendix.widget.custom.gallery.Gallery"
-        }
+        { "min": "9.18.0",
+          "kind": "pluggable", "widgetId": "com.mendix.widget.custom.gallery.Gallery" }
+      ]
+    },
+    {
+      "keyword": "LEGACYLISTVIEW",
+      "versions": [
+        { "min": "9.0.0",
+          "kind": "native",   "type": "Forms$ListView",
+          "deprecatedFrom": "9.18.0" }
       ]
     }
   ]
 }
 ```
 
-The executor looks up the binding at write time using the project's Mendix version. Adding
-a new pluggable replacement is a schema-data change, not an executor code change. Users
-write `DATAGRID` once — the right thing happens for their version.
+How this resolves the practical cases:
+
+| Scenario | MDL | Result |
+|---|---|---|
+| Fresh project on 10.24, `create page` | `DATAGRID` | native (only option on 10.x) |
+| Fresh project on 11.9, `create page` | `DATAGRID` | pluggable (recommended) |
+| Migrated 11.9, creating a new grid | `DATAGRID` | pluggable |
+| Migrated 11.9, `ALTER PAGE` editing existing legacy grid | `LEGACYDATAGRID` (DESCRIBE round-trips it) | native, preserved as-is |
+| Migrated 11.9, intentionally creating a native grid | `LEGACYDATAGRID` | native, with deprecation warning |
+
+**Round-trip rule for the parser**: a `Forms$DataGrid` in BSON always emits as
+`LEGACYDATAGRID` from `DESCRIBE PAGE` on Mendix 11+, and as `DATAGRID` on Mendix ≤ 10.x
+(where it's the only option). A pluggable `com.mendix.widget.web.datagrid.Datagrid`
+always emits as `DATAGRID`. This means editing a mixed project via MDL is unambiguous:
+the keyword tells you which stack each widget is on.
+
+The executor looks up the binding at write time using the project's Mendix version
+plus the explicit keyword. Adding a new pluggable replacement is a schema-data change,
+not an executor code change.
+
+### Auto-conversion is out of scope
+
+Converting a native widget instance to its pluggable replacement (e.g. `Forms$DataGrid` →
+`com.mendix.widget.web.datagrid.Datagrid`) requires widget-author-specific knowledge
+of how to map properties between the two stacks. mxcli does not attempt this. Users
+convert one widget at a time in Studio Pro by replacing the widget. mxcli's role is
+to help them *find* the legacy widgets via `mxcli check --post-migration` (see Migration
+model) and to keep the rest of the page editable while they migrate piecemeal.
 
 ## Object lists — first-class child blocks
 
@@ -265,14 +317,21 @@ Properties added (47): Microflows$Microflow.AllowedAsAction, ...
 Defaults changed (12): Pages$DataView.RefreshTime 0 → -1, ...
 KeywordMappings changed (2): DATAGRID native → pluggable, ...
 
-# Validate post-migration — after Studio Pro upgraded the project
+# Validate post-migration — list every widget still on a legacy stack
 $ mxcli check --post-migration -p app.mpr
-WARN MyApp/Customers: native DATAGRID present, project on 11.9 — pluggable
-     equivalent recommended. Auto-rewrite via `mxcli upgrade pages`.
+Project on Mendix 11.9 — 14 widgets still on legacy (dojo) stack:
+  Pages/Customers     LEGACYDATAGRID dgCustomers   (consider DATAGRID)
+  Pages/Orders        LEGACYDROPDOWN ddStatus      (consider COMBOBOX)
+  Pages/OrderDetail   LEGACYLISTVIEW lvLines       (consider GALLERY)
+  ...
+Auto-rewrite is out of scope — convert each widget in Studio Pro by replacing it.
 ```
 
 Per-property `introducedIn`/`removedIn` and per-keyword version ranges already encode the
-data needed; these commands are thin wrappers over `Registry.Diff()`.
+data needed; these commands are thin wrappers over `Registry.Diff()`. The post-migration
+check uses the keyword dispatch table's `deprecatedFrom` field to identify legacy-stack
+widgets remaining in the project — it gives users a visible to-do list rather than
+discovering legacy grids page by page.
 
 ### Widget version upgrade (DataGrid 2.22 → 2.30)
 
@@ -316,6 +375,10 @@ previously-cached extraction with no re-extraction needed.
 
 - Execute Studio Pro's project upgrade transformations. BSON shifts between versions are
   too version-specific to replicate safely.
+- Convert legacy native (dojo) widgets to their pluggable (React) replacements. The two
+  stacks have different runtime, BSON storage types, and property schemas; mapping
+  properties between them is widget-author-specific and outside our scope. Users
+  convert one widget at a time in Studio Pro.
 - Pin a project to multiple Mendix versions simultaneously (one project = one version at
   a time).
 - Predict changes for Mendix versions newer than the latest schema we've extracted.
@@ -462,6 +525,10 @@ auto-fix available for the safe-additive cases.
 
 - **Replacing Studio Pro's UI for any operation**. The registry powers programmatic
   workflows; visual modeling stays in Studio Pro.
+- **Auto-converting legacy native widgets to their pluggable replacements**. Different
+  runtime stacks (dojo vs React), different BSON storage, widget-author-specific
+  property mappings. We surface legacy widgets via `check --post-migration`; conversion
+  is a manual Studio Pro operation.
 - **Inferring widget behavior at runtime**. We capture *structural* schema (properties,
   types, defaults). Widget rendering logic, validation rules beyond schema, and runtime
   behavior remain widget-author concerns.
