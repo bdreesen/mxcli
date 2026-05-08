@@ -93,6 +93,13 @@ func formatActivity(
 		condition := formatSplitCondition(activity.SplitCondition)
 		return fmt.Sprintf("if %s then", condition)
 
+	case *microflows.InheritanceSplit:
+		varName := activity.VariableName
+		if !strings.HasPrefix(varName, "$") {
+			varName = "$" + varName
+		}
+		return fmt.Sprintf("split type %s;", varName)
+
 	case *microflows.ExclusiveMerge:
 		return "end if;"
 
@@ -143,6 +150,23 @@ func formatAction(
 	}
 
 	switch a := action.(type) {
+	case *microflows.CastAction:
+		outputVar := a.OutputVariable
+		if outputVar != "" && !strings.HasPrefix(outputVar, "$") {
+			outputVar = "$" + outputVar
+		}
+		objectVar := a.ObjectVariable
+		if objectVar != "" && !strings.HasPrefix(objectVar, "$") {
+			objectVar = "$" + objectVar
+		}
+		if objectVar == "" {
+			return fmt.Sprintf("cast %s;", outputVar)
+		}
+		if outputVar == "" {
+			return fmt.Sprintf("cast %s;", objectVar)
+		}
+		return fmt.Sprintf("%s = cast %s;", outputVar, objectVar)
+
 	case *microflows.CreateVariableAction:
 		varType := "Object"
 		if a.DataType != nil {
@@ -1296,7 +1320,16 @@ func formatRestCallAction(ctx *ExecContext, a *microflows.RestCallAction) string
 			sb.WriteString("mapping ")
 			sb.WriteString(string(rh.MappingID))
 			if rh.ResultEntityID != "" {
-				sb.WriteString(" as ")
+				// `as list of Entity` when the mapping yields a list,
+				// otherwise `as Entity` for a single object. Studio Pro
+				// keeps this on the ImportMappingCall (Range.SingleObject
+				// + ForceSingleOccurrence); the parser collapses both into
+				// SingleObject, so a list is `!SingleObject`.
+				if rh.SingleObject {
+					sb.WriteString(" as ")
+				} else {
+					sb.WriteString(" as list of ")
+				}
 				sb.WriteString(string(rh.ResultEntityID))
 			}
 		case *microflows.ResultHandlingNone:

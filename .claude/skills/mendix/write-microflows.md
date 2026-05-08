@@ -340,6 +340,25 @@ end case;
 
 `(empty)` represents an unset enumeration value. Multiple values can share one `when` branch by separating them with commas. Case values are bare identifiers — do **not** quote them.
 
+### Type Split And Cast Statements
+
+Use `split type` when a microflow branches on an object's runtime specialization.
+Use `cast` inside a type branch to create the specialized variable used by the branch body.
+
+```mdl
+split type $Input
+case Sample.SpecializedInput
+  cast $SpecificInput;
+  return true;
+else
+  return false;
+end split;
+```
+
+`case` values are qualified entity names. The optional `else` branch handles objects that do not match any listed specialization.
+
+**`cast` only stores the output variable.** Studio Pro persists Microflows$CastAction with a single `VariableName` field — the source variable is implicit (the type-split's input). Use `cast $SpecificName;` to give the specialized variable its name. The two-variable form `$Output = cast $Source;` parses but `$Source` is dropped on roundtrip; prefer the single-variable form.
+
 ### LOOP Statements
 
 ```mdl
@@ -882,7 +901,10 @@ rest call delete 'https://api.example.com/items/{1}' with (
 - `returns string` — response body as string variable
 - `returns nothing` / `returns none` — ignore response
 - `returns response` — returns `System.HttpResponse` object
-- `returns mapping Module.ImportMapping as Module.Entity` — import mapping
+- `returns mapping Module.ImportMapping as Module.Entity` — single object result
+- `returns mapping Module.ImportMapping as list of Module.Entity` — list result
+
+**Pick `as` vs `as list of` based on the call site, not the mapping shape.** The same import mapping can yield either a single object or a list — Studio Pro stores the cardinality on the microflow's `ImportMappingCall` (`Range.SingleObject` + `ForceSingleOccurrence`). Use `as Module.Entity` when the response is a single object (the mapping may still be list-typed; Studio Pro binds the first item). Use `as list of Module.Entity` when the response should bind a list. Mismatching the cardinality with the surrounding code produces `mx check` `CE0117` at the End event or `CE0013` / `CE0100` on downstream loop / aggregate / list-operation activities.
 
 **REST CALL supports full error handling** (`on error continue`, `on error rollback`, custom error handlers).
 
