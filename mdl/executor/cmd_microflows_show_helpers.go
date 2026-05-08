@@ -881,17 +881,22 @@ func traverseFlowUntilMerge(
 			*lines = append(*lines, indentStr+"end if;")
 			recordSourceMap(sourceMap, currentID, startLine, len(*lines)+headerLineCount-1)
 
-			// Continue from the false branch (skip through merge if present)
+			// Continue from the false branch (skip through merge if present).
+			// Guard: do not cross the outer merge boundary — if the false path
+			// leads directly to mergeID, stop here so the activities after the
+			// merge are emitted by continueAfterSplitJoin, not inside this branch.
 			if falseFlow != nil {
 				contID := falseFlow.DestinationID
-				if _, isMerge := activityMap[contID].(*microflows.ExclusiveMerge); isMerge {
-					visited[contID] = true
-					for _, flow := range flowsByOrigin[contID] {
-						contID = flow.DestinationID
-						break
+				if contID != mergeID {
+					if _, isMerge := activityMap[contID].(*microflows.ExclusiveMerge); isMerge {
+						visited[contID] = true
+						for _, flow := range flowsByOrigin[contID] {
+							contID = flow.DestinationID
+							break
+						}
 					}
+					traverseFlowUntilMerge(ctx, contID, mergeID, activityMap, flowsByOrigin, flowsByDest, splitMergeMap, visited, entityNames, microflowNames, lines, indent, sourceMap, headerLineCount, annotationsByTarget)
 				}
-				traverseFlowUntilMerge(ctx, contID, mergeID, activityMap, flowsByOrigin, flowsByDest, splitMergeMap, visited, entityNames, microflowNames, lines, indent, sourceMap, headerLineCount, annotationsByTarget)
 			}
 		} else {
 			if trueFlow != nil {
