@@ -244,6 +244,16 @@ widgetTypeV3
     | TABCONTAINER
     | TABPAGE
     | GROUPBOX
+    // Object-list container keywords for pluggable widgets (Phase 1 — #538).
+    // Each is the singular form of a Type:"object"+IsList:true widget property
+    // (e.g. Accordion groups → GROUP). Routed at executor time via the parent
+    // widget's def.json `objectLists` mapping; unrecognized parents fall back
+    // to generic widget handling.
+    | GROUP
+    | CUSTOMITEM
+    | MARKER
+    | DYNAMICMARKER
+    | SERIES
     ;
 
 // V3 Widget properties: (Prop: Value, Prop: Value)

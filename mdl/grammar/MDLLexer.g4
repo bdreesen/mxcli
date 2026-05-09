@@ -253,6 +253,15 @@ SEARCH: S E A R C H;
 SEARCHBAR: S E A R C H B A R;
 NAVIGATIONLIST: N A V I G A T I O N L I S T;
 
+// Object-list container keywords for pluggable widgets (Phase 1 — issue #538).
+// Each keyword corresponds to a singular form of a Type:"object"+IsList:true
+// property in a widget's MPK XML (e.g. Accordion `groups` → GROUP).
+GROUP: G R O U P;                       // Accordion groups
+CUSTOMITEM: C U S T O M I T E M;        // PopupMenu customItems
+MARKER: M A R K E R;                    // Maps markers
+DYNAMICMARKER: D Y N A M I C M A R K E R; // Maps dynamicMarkers
+SERIES: S E R I E S;                    // AreaChart / chart series
+
 // Button widgets
 ACTIONBUTTON: A C T I O N B U T T O N;
 LINKBUTTON: L I N K B U T T O N;
