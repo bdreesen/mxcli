@@ -3,6 +3,7 @@
 package mpk
 
 import (
+	"encoding/xml"
 	"os"
 	"path/filepath"
 	"testing"
@@ -180,6 +181,102 @@ func TestNormalizeType(t *testing.T) {
 		result := NormalizeType(tt.input)
 		if result != tt.expected {
 			t.Errorf("NormalizeType(%q) = %q, want %q", tt.input, result, tt.expected)
+		}
+	}
+}
+
+// TestObjectListExtraction_GroupedShape covers the
+// <properties><propertyGroup><property>...</property></propertyGroup></properties>
+// nesting (Accordion, DataGrid).
+func TestObjectListExtraction_GroupedShape(t *testing.T) {
+	xmlSrc := `<widget id="com.example.Acc" pluginWidget="true">
+		<properties>
+			<propertyGroup caption="Top">
+				<property key="groups" type="object" isList="true">
+					<caption>Groups</caption>
+					<properties>
+						<propertyGroup caption="Inner">
+							<property key="headerText" type="textTemplate"><caption>Header</caption></property>
+							<property key="content" type="widgets"><caption>Content</caption></property>
+						</propertyGroup>
+					</properties>
+				</property>
+			</propertyGroup>
+		</properties>
+	</widget>`
+
+	var w xmlWidget
+	if err := xml.Unmarshal([]byte(xmlSrc), &w); err != nil {
+		t.Fatalf("xml.Unmarshal: %v", err)
+	}
+	def := &WidgetDefinition{ID: "com.example.Acc"}
+	for _, pg := range w.PropertyGroups {
+		walkPropertyGroup(pg, "", def)
+	}
+
+	if len(def.Properties) != 1 {
+		t.Fatalf("Properties count = %d, want 1", len(def.Properties))
+	}
+	groups := def.Properties[0]
+	if groups.Key != "groups" || groups.Type != "object" || !groups.IsList {
+		t.Errorf("groups property has unexpected fields: %+v", groups)
+	}
+	if len(groups.Children) != 2 {
+		t.Fatalf("groups.Children count = %d, want 2", len(groups.Children))
+	}
+	wantChildren := map[string]string{"headerText": "textTemplate", "content": "widgets"}
+	for _, c := range groups.Children {
+		if want, ok := wantChildren[c.Key]; !ok {
+			t.Errorf("unexpected child key %q", c.Key)
+		} else if c.Type != want {
+			t.Errorf("child %q Type = %q, want %q", c.Key, c.Type, want)
+		}
+	}
+}
+
+// TestObjectListExtraction_FlatShape covers the
+// <properties><property>...</property></properties> nesting (PopupMenu, Maps).
+// Without the NestedDirectProps field, the children would be silently dropped.
+func TestObjectListExtraction_FlatShape(t *testing.T) {
+	xmlSrc := `<widget id="com.example.Menu" pluginWidget="true">
+		<properties>
+			<propertyGroup caption="Top">
+				<property key="basicItems" type="object" isList="true">
+					<caption>Items</caption>
+					<properties>
+						<property key="caption" type="textTemplate"><caption>Caption</caption></property>
+						<property key="action" type="action"><caption>Action</caption></property>
+					</properties>
+				</property>
+			</propertyGroup>
+		</properties>
+	</widget>`
+
+	var w xmlWidget
+	if err := xml.Unmarshal([]byte(xmlSrc), &w); err != nil {
+		t.Fatalf("xml.Unmarshal: %v", err)
+	}
+	def := &WidgetDefinition{ID: "com.example.Menu"}
+	for _, pg := range w.PropertyGroups {
+		walkPropertyGroup(pg, "", def)
+	}
+
+	if len(def.Properties) != 1 {
+		t.Fatalf("Properties count = %d, want 1", len(def.Properties))
+	}
+	items := def.Properties[0]
+	if items.Key != "basicItems" || !items.IsList {
+		t.Errorf("basicItems property has unexpected fields: %+v", items)
+	}
+	if len(items.Children) != 2 {
+		t.Fatalf("basicItems.Children count = %d, want 2 (children dropped — flat XML shape unsupported?)", len(items.Children))
+	}
+	wantChildren := map[string]string{"caption": "textTemplate", "action": "action"}
+	for _, c := range items.Children {
+		if want, ok := wantChildren[c.Key]; !ok {
+			t.Errorf("unexpected child key %q", c.Key)
+		} else if c.Type != want {
+			t.Errorf("child %q Type = %q, want %q", c.Key, c.Type, want)
 		}
 	}
 }

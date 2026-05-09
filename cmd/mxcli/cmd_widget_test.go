@@ -196,3 +196,192 @@ func findMapping(mappings []executor.PropertyMapping, key string) *executor.Prop
 	}
 	return nil
 }
+
+// TestDeriveObjectListKeyword verifies plural→singular keyword derivation
+// for object-list properties, including the override map for irregular cases.
+func TestDeriveObjectListKeyword(t *testing.T) {
+	tests := []struct {
+		propertyKey string
+		expected    string
+	}{
+		// Regular plurals (strip trailing 's', uppercase)
+		{"groups", "GROUP"},
+		{"columns", "COLUMN"},
+		{"markers", "MARKER"},
+		// Override map (irregular cases)
+		{"basicItems", "ITEM"},
+		{"customItems", "CUSTOMITEM"},
+		{"dynamicMarkers", "DYNAMICMARKER"},
+		{"attributesList", "ATTR"},
+		{"filterOptions", "OPTION"},
+		{"series", "SERIES"}, // Latin singular == plural
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.propertyKey, func(t *testing.T) {
+			got := deriveObjectListKeyword(tc.propertyKey)
+			if got != tc.expected {
+				t.Errorf("deriveObjectListKeyword(%q) = %q, want %q",
+					tc.propertyKey, got, tc.expected)
+			}
+		})
+	}
+}
+
+// TestGenerateDefJSON_ObjectList covers extraction of Type:"object"+IsList:true
+// properties (e.g. Accordion groups, DataGrid columns, PopupMenu basicItems).
+// Each list item's sub-property tree should be split between ItemProperties
+// (scalar/datasource/attribute/etc.) and ItemSlots (widgets-typed).
+func TestGenerateDefJSON_ObjectList(t *testing.T) {
+	// Synthesize an Accordion-style "groups" property with mixed sub-property kinds.
+	mpkDef := &mpk.WidgetDefinition{
+		ID:   "com.example.widget.Accordion",
+		Name: "Accordion",
+		Properties: []mpk.PropertyDef{
+			{Key: "advancedMode", Type: "boolean", DefaultValue: "false"},
+			{
+				Key:    "groups",
+				Type:   "object",
+				IsList: true,
+				Children: []mpk.PropertyDef{
+					{Key: "headerRenderMode", Type: "enumeration", DefaultValue: "text"},
+					{Key: "headerText", Type: "textTemplate"},
+					{Key: "visible", Type: "expression"},
+					{Key: "collapsed", Type: "attribute"},
+					{Key: "onToggleCollapsed", Type: "action"},
+					{Key: "headerContent", Type: "widgets"},
+					{Key: "content", Type: "widgets"},
+				},
+			},
+		},
+	}
+
+	def := generateDefJSON(mpkDef, "ACCORDION")
+
+	// Top-level primitive should still land in PropertyMappings.
+	if len(def.PropertyMappings) != 1 {
+		t.Fatalf("PropertyMappings count = %d, want 1", len(def.PropertyMappings))
+	}
+
+	// Object-list goes to ObjectLists, not to ChildSlots or PropertyMappings.
+	if len(def.ObjectLists) != 1 {
+		t.Fatalf("ObjectLists count = %d, want 1", len(def.ObjectLists))
+	}
+	ol := def.ObjectLists[0]
+	if ol.PropertyKey != "groups" {
+		t.Errorf("ObjectLists[0].PropertyKey = %q, want %q", ol.PropertyKey, "groups")
+	}
+	if ol.MDLContainer != "GROUP" {
+		t.Errorf("ObjectLists[0].MDLContainer = %q, want %q", ol.MDLContainer, "GROUP")
+	}
+
+	// 5 non-widgets items should be ItemProperties; 2 widgets items should be ItemSlots.
+	if len(ol.ItemProperties) != 5 {
+		t.Errorf("ItemProperties count = %d, want 5", len(ol.ItemProperties))
+	}
+	if len(ol.ItemSlots) != 2 {
+		t.Errorf("ItemSlots count = %d, want 2", len(ol.ItemSlots))
+	}
+
+	// Spot-check operation kinds for sub-properties.
+	wantOps := map[string]string{
+		"headerRenderMode":  "primitive",
+		"headerText":        "texttemplate",
+		"visible":           "expression",
+		"collapsed":         "attribute",
+		"onToggleCollapsed": "action",
+	}
+	for _, ip := range ol.ItemProperties {
+		want, ok := wantOps[ip.PropertyKey]
+		if !ok {
+			t.Errorf("unexpected ItemProperty key %q", ip.PropertyKey)
+			continue
+		}
+		if ip.Operation != want {
+			t.Errorf("ItemProperty %q: Operation = %q, want %q",
+				ip.PropertyKey, ip.Operation, want)
+		}
+	}
+
+	// ItemSlots should map widgets-typed sub-properties to their MDLContainer.
+	wantSlots := map[string]string{
+		"headerContent": "HEADERCONTENT",
+		"content":       "CONTENT",
+	}
+	for _, slot := range ol.ItemSlots {
+		want, ok := wantSlots[slot.PropertyKey]
+		if !ok {
+			t.Errorf("unexpected ItemSlot key %q", slot.PropertyKey)
+			continue
+		}
+		if slot.MDLContainer != want {
+			t.Errorf("ItemSlot %q: MDLContainer = %q, want %q",
+				slot.PropertyKey, slot.MDLContainer, want)
+		}
+		if slot.Operation != "widgets" {
+			t.Errorf("ItemSlot %q: Operation = %q, want %q",
+				slot.PropertyKey, slot.Operation, "widgets")
+		}
+	}
+
+	// IsList=false on an object property should still skip (not extracted).
+	mpkDef2 := &mpk.WidgetDefinition{
+		ID:   "com.example.widget.NotAList",
+		Name: "NotAList",
+		Properties: []mpk.PropertyDef{
+			{Key: "myObj", Type: "object", IsList: false},
+		},
+	}
+	def2 := generateDefJSON(mpkDef2, "NOTALIST")
+	if len(def2.ObjectLists) != 0 {
+		t.Errorf("ObjectLists for non-list object property = %d, want 0",
+			len(def2.ObjectLists))
+	}
+}
+
+// TestGenerateDefJSON_ObjectListPrimitiveDefaults verifies that primitive
+// item properties carry their MPK default values into the ItemPropertyMapping.
+func TestGenerateDefJSON_ObjectListPrimitiveDefaults(t *testing.T) {
+	mpkDef := &mpk.WidgetDefinition{
+		ID:   "com.example.widget.Sized",
+		Name: "Sized",
+		Properties: []mpk.PropertyDef{
+			{
+				Key:    "items",
+				Type:   "object",
+				IsList: true,
+				Children: []mpk.PropertyDef{
+					{Key: "size", Type: "integer", DefaultValue: "10"},
+					{Key: "label", Type: "string", DefaultValue: ""},
+					{Key: "kind", Type: "enumeration", DefaultValue: "default"},
+				},
+			},
+		},
+	}
+
+	def := generateDefJSON(mpkDef, "SIZED")
+	if len(def.ObjectLists) != 1 {
+		t.Fatalf("ObjectLists count = %d, want 1", len(def.ObjectLists))
+	}
+	props := def.ObjectLists[0].ItemProperties
+	if len(props) != 3 {
+		t.Fatalf("ItemProperties count = %d, want 3", len(props))
+	}
+
+	wantValues := map[string]string{
+		"size":  "10",
+		"label": "", // empty default → no Value set
+		"kind":  "default",
+	}
+	for _, ip := range props {
+		want := wantValues[ip.PropertyKey]
+		if ip.Value != want {
+			t.Errorf("ItemProperty %q Value = %q, want %q",
+				ip.PropertyKey, ip.Value, want)
+		}
+		if ip.Operation != "primitive" {
+			t.Errorf("ItemProperty %q Operation = %q, want primitive",
+				ip.PropertyKey, ip.Operation)
+		}
+	}
+}
