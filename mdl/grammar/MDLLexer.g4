@@ -262,6 +262,11 @@ MARKER: M A R K E R;                    // Maps markers
 DYNAMICMARKER: D Y N A M I C M A R K E R; // Maps dynamicMarkers
 SERIES: S E R I E S;                    // AreaChart / chart series
 
+// Dual-stack keywords (Phase 2 — issue #539). LEGACY* keywords route to the
+// dojo-based native widgets even on Mendix 11+ where the pluggable React
+// equivalent has become the default for the generic keyword.
+LEGACYDATAGRID: L E G A C Y D A T A G R I D;
+
 // Button widgets
 ACTIONBUTTON: A C T I O N B U T T O N;
 LINKBUTTON: L I N K B U T T O N;

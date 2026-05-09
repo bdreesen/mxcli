@@ -253,6 +253,13 @@ func (pb *pageBuilder) buildSnippetV3(s *ast.CreateSnippetStmtV3) (*pages.Snippe
 }
 
 // buildWidgetV3 converts a V3 AST widget to a pages.Widget.
+//
+// Keyword dispatch (Phase 2 — issue #539): the keywordDispatchTable encodes
+// our editorial policy for dual-stack keywords (e.g. DATAGRID → pluggable
+// Datagrid 2.x). Today the existing switch cases handle this correctly via
+// the hand-coded builders (buildDataGridV3 already produces pluggable BSON).
+// The dispatch table is consumed by inspection commands and DESCRIBE-side
+// keyword resolution rather than overriding write-side routing here.
 func (pb *pageBuilder) buildWidgetV3(w *ast.WidgetV3) (pages.Widget, error) {
 	var widget pages.Widget
 	var err error
@@ -262,6 +269,17 @@ func (pb *pageBuilder) buildWidgetV3(w *ast.WidgetV3) (pages.Widget, error) {
 		widget, err = pb.buildDataViewV3(w)
 	case "datagrid":
 		widget, err = pb.buildDataGridV3(w)
+	case "legacydatagrid":
+		// LEGACYDATAGRID requests the dojo-based native Forms$DataGrid (the
+		// pre-pluggable widget). The codebase doesn't yet have a builder for
+		// it — pluggable Datagrid (the DATAGRID keyword default) covers the
+		// modern path. Native implementation is tracked under Phase 2.1; for
+		// now, return an actionable error so the silent-wrong-output path is
+		// closed.
+		return nil, mdlerrors.NewUnsupported(
+			"LEGACYDATAGRID (native Forms$DataGrid) is not yet implemented. " +
+				"Use DATAGRID for the pluggable equivalent on Mendix 11+, " +
+				"or open the project in Studio Pro to add native datagrids manually.")
 	case "listview":
 		widget, err = pb.buildListViewV3(w)
 	case "layoutgrid":
