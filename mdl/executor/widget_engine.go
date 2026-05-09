@@ -194,8 +194,20 @@ func (e *PluggableWidgetEngine) Build(def *WidgetDefinition, w *ast.WidgetV3) (*
 		}
 	}
 
-	// 4.1 Apply child slots (.def.json)
-	if err := e.applyChildSlots(builder, slots, w, propertyTypeIDs); err != nil {
+	// 4.1 Apply child slots (.def.json) — skip children whose keyword belongs
+	// to an objectLists mapping (handled by applyObjectLists below).
+	objectListContainers := make(map[string]bool, len(def.ObjectLists))
+	for _, ol := range def.ObjectLists {
+		objectListContainers[strings.ToUpper(ol.MDLContainer)] = true
+	}
+	if err := e.applyChildSlots(builder, slots, w, propertyTypeIDs, objectListContainers); err != nil {
+		return nil, err
+	}
+
+	// 4.1b Apply object-list child blocks (.def.json `objectLists`).
+	// Children whose Type matches an objectLists[].MDLContainer are routed
+	// through the object-list builder rather than treated as nested widgets.
+	if err := e.applyObjectLists(builder, def.ObjectLists, w); err != nil {
 		return nil, err
 	}
 
@@ -204,6 +216,8 @@ func (e *PluggableWidgetEngine) Build(def *WidgetDefinition, w *ast.WidgetV3) (*
 	for _, s := range slots {
 		handledSlotKeys[s.PropertyKey] = true
 	}
+	// objectListContainers (computed above before applyChildSlots) is reused
+	// here so the auto-widgets-discovery passes below skip object-list children.
 	var widgetsPropKeys []string
 	for propKey, entry := range propertyTypeIDs {
 		if entry.ValueType == "Widgets" && !handledSlotKeys[propKey] {
@@ -213,6 +227,12 @@ func (e *PluggableWidgetEngine) Build(def *WidgetDefinition, w *ast.WidgetV3) (*
 	sort.Strings(widgetsPropKeys)
 	// Phase 1: Named matching — match children by name against property keys
 	matchedChildren := make(map[int]bool)
+	// Mark object-list children as already handled — applyObjectLists owns them.
+	for i, child := range w.Children {
+		if objectListContainers[strings.ToUpper(child.Type)] {
+			matchedChildren[i] = true
+		}
+	}
 	for _, propKey := range widgetsPropKeys {
 		upperKey := strings.ToUpper(propKey)
 		for i, child := range w.Children {
@@ -517,8 +537,193 @@ func (e *PluggableWidgetEngine) resolveMapping(mapping PropertyMapping, w *ast.W
 	return ctx, nil
 }
 
+// applyObjectLists handles the def.json `objectLists` mappings. For each
+// child of the AST widget whose Type matches an objectLists[].MDLContainer,
+// it builds an ObjectListItemSpec by walking the child's properties and
+// nested children, then hands the collected specs to the backend's
+// SetObjectList for serialization.
+func (e *PluggableWidgetEngine) applyObjectLists(builder backend.WidgetObjectBuilder, lists []ObjectListMapping, w *ast.WidgetV3) error {
+	if len(lists) == 0 {
+		return nil
+	}
+	// Index containers by uppercase keyword for matching against AST child Type.
+	byContainer := make(map[string]*ObjectListMapping, len(lists))
+	for i := range lists {
+		byContainer[strings.ToUpper(lists[i].MDLContainer)] = &lists[i]
+	}
+
+	itemsByPropKey := make(map[string][]backend.ObjectListItemSpec)
+	for _, child := range w.Children {
+		mapping, ok := byContainer[strings.ToUpper(child.Type)]
+		if !ok {
+			continue
+		}
+		spec, err := e.buildObjectListItem(mapping, child)
+		if err != nil {
+			return err
+		}
+		itemsByPropKey[mapping.PropertyKey] = append(itemsByPropKey[mapping.PropertyKey], spec)
+	}
+
+	// Drive Set in def.json order so output is deterministic.
+	for _, list := range lists {
+		items := itemsByPropKey[list.PropertyKey]
+		if len(items) == 0 {
+			continue
+		}
+		builder.SetObjectList(list.PropertyKey, items)
+	}
+	return nil
+}
+
+// buildObjectListItem converts one AST child node (e.g. a `group panel1 (...)
+// { ... }`) into an ObjectListItemSpec by:
+//   - matching widget properties against ItemProperties (scalar dispatch)
+//   - matching nested AST children against ItemSlots (widgets-typed slots)
+func (e *PluggableWidgetEngine) buildObjectListItem(mapping *ObjectListMapping, child *ast.WidgetV3) (backend.ObjectListItemSpec, error) {
+	spec := backend.ObjectListItemSpec{}
+
+	// Scalar item properties: ItemProperties carries the operation kind per
+	// sub-property key. Look up the value in the AST child's properties bag.
+	for _, ip := range mapping.ItemProperties {
+		// Property names in MDL are case-insensitive — find a match by lower-cased key.
+		raw, ok := lookupProperty(child.Properties, ip.PropertyKey)
+		if !ok {
+			continue
+		}
+		strVal := stringifyAny(raw)
+		prop := backend.ObjectListItemProperty{
+			PropertyKey: ip.PropertyKey,
+			Operation:   ip.Operation,
+		}
+		switch ip.Operation {
+		case "primitive":
+			prop.PrimitiveVal = strVal
+		case "expression":
+			prop.Expression = strVal
+		case "texttemplate":
+			prop.TextTemplate = strVal
+			prop.EntityContext = e.pageBuilder.entityContext
+		case "attribute":
+			if e.pageBuilder.entityContext != "" {
+				prop.AttributePath = e.pageBuilder.resolveAttributePath(strVal)
+			} else {
+				prop.AttributePath = strVal
+			}
+		default:
+			// Unsupported sub-property kinds (datasource, action) — skipped here
+			// because they need richer AST context than the child's property bag.
+			// TODO(#538 follow-up): grammar + visitor support for datasource and
+			// action expressions inside object-list item property positions.
+			continue
+		}
+		spec.Properties = append(spec.Properties, prop)
+	}
+
+	// Widgets-typed slots: ItemSlots gives us per-slot keyword conventions,
+	// but for object-list items the most common shape today is direct child
+	// widgets (no inner container). Match nested AST children either by:
+	//   (a) MDLContainer name match (e.g. HEADERCONTENT block inside group)
+	//   (b) absence of a match → treat as default content slot if exactly one
+	//       Widgets-typed sub-property has no explicit container in the AST
+	if len(child.Children) > 0 {
+		spec.ChildWidgets = make(map[string][]pages.Widget)
+		// Index slot containers by uppercase keyword.
+		slotByContainer := make(map[string]string)
+		for _, slot := range mapping.ItemSlots {
+			slotByContainer[strings.ToUpper(slot.MDLContainer)] = slot.PropertyKey
+		}
+
+		// First pass: explicit container blocks → matched slot.
+		var unmatched []*ast.WidgetV3
+		for _, gc := range child.Children {
+			if propKey, ok := slotByContainer[strings.ToUpper(gc.Type)]; ok {
+				for _, slotChild := range gc.Children {
+					widget, err := e.pageBuilder.buildWidgetV3(slotChild)
+					if err != nil {
+						return spec, err
+					}
+					if widget != nil {
+						spec.ChildWidgets[propKey] = append(spec.ChildWidgets[propKey], widget)
+					}
+				}
+				continue
+			}
+			unmatched = append(unmatched, gc)
+		}
+
+		// Second pass: unmatched widgets → default Widgets-typed slot if there's
+		// exactly one; otherwise route to a "content" slot if present.
+		if len(unmatched) > 0 {
+			defaultKey := defaultItemSlotKey(mapping)
+			if defaultKey != "" {
+				for _, gc := range unmatched {
+					widget, err := e.pageBuilder.buildWidgetV3(gc)
+					if err != nil {
+						return spec, err
+					}
+					if widget != nil {
+						spec.ChildWidgets[defaultKey] = append(spec.ChildWidgets[defaultKey], widget)
+					}
+				}
+			}
+		}
+	}
+
+	return spec, nil
+}
+
+// defaultItemSlotKey picks a "default" widgets-typed slot for an object-list
+// item: the slot keyed "content" if present, otherwise the first slot.
+// Returns "" if there are no widgets-typed slots.
+func defaultItemSlotKey(mapping *ObjectListMapping) string {
+	if len(mapping.ItemSlots) == 0 {
+		return ""
+	}
+	for _, s := range mapping.ItemSlots {
+		if s.PropertyKey == "content" {
+			return s.PropertyKey
+		}
+	}
+	return mapping.ItemSlots[0].PropertyKey
+}
+
+// lookupProperty does a case-insensitive lookup against an AST property map.
+// MDL property names ignore case (e.g. `HeaderText` and `headerText` both match).
+func lookupProperty(props map[string]any, key string) (any, bool) {
+	if v, ok := props[key]; ok {
+		return v, true
+	}
+	lower := strings.ToLower(key)
+	for k, v := range props {
+		if strings.ToLower(k) == lower {
+			return v, true
+		}
+	}
+	return nil, false
+}
+
+// stringifyAny converts a property value of arbitrary type to its string form
+// for use in Set* methods. Returns "" for unknown types.
+func stringifyAny(v any) string {
+	switch x := v.(type) {
+	case string:
+		return x
+	case bool:
+		return fmt.Sprintf("%t", x)
+	case int:
+		return fmt.Sprintf("%d", x)
+	case float64:
+		return fmt.Sprintf("%g", x)
+	}
+	return ""
+}
+
 // applyChildSlots processes child slot mappings, building child widgets and embedding them.
-func (e *PluggableWidgetEngine) applyChildSlots(builder backend.WidgetObjectBuilder, slots []ChildSlotMapping, w *ast.WidgetV3, propertyTypeIDs map[string]pages.PropertyTypeIDEntry) error {
+// objectListContainers is the set of MDLContainer keywords (uppercase) that
+// belong to objectLists mappings — those children are skipped here because
+// applyObjectLists handles them.
+func (e *PluggableWidgetEngine) applyChildSlots(builder backend.WidgetObjectBuilder, slots []ChildSlotMapping, w *ast.WidgetV3, propertyTypeIDs map[string]pages.PropertyTypeIDEntry, objectListContainers map[string]bool) error {
 	if len(slots) == 0 {
 		return nil
 	}
@@ -532,6 +737,10 @@ func (e *PluggableWidgetEngine) applyChildSlots(builder backend.WidgetObjectBuil
 	var defaultWidgets []pages.Widget
 
 	for _, child := range w.Children {
+		// Skip children whose keyword belongs to an object-list mapping.
+		if objectListContainers[strings.ToUpper(child.Type)] {
+			continue
+		}
 		lowerType := strings.ToLower(child.Type)
 		if slot, ok := slotContainers[lowerType]; ok {
 			for _, slotChild := range child.Children {

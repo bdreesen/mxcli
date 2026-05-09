@@ -203,6 +203,179 @@ func (ob *mprWidgetObjectBuilder) SetAction(propertyKey string, action pages.Cli
 	})
 }
 
+// SetObjectList sets a list of structured items on an object-list property
+// (e.g. Accordion `groups`, PopupMenu `basicItems`). Each item is built from
+// the template's nested PropertyTypeIDs, with spec values overlaid onto the
+// matching sub-properties. Sub-properties not mentioned in the spec keep the
+// template's default values (via createDefaultWidgetProperty).
+//
+// This is the generic implementation used by the pluggable widget engine for
+// .def.json `objectLists` mappings. The DataGrid columns path keeps its own
+// hand-coded builder (datagrid_builder.go) for backward compatibility.
+func (ob *mprWidgetObjectBuilder) SetObjectList(propertyKey string, items []backend.ObjectListItemSpec) {
+	if len(items) == 0 {
+		return
+	}
+	entry, ok := ob.propertyTypeIDs[propertyKey]
+	if !ok || entry.ObjectTypeID == "" || len(entry.NestedPropertyIDs) == 0 {
+		return
+	}
+
+	objects := bson.A{int32(2)}
+	for _, item := range items {
+		objects = append(objects, buildObjectListItemBSON(entry, item))
+	}
+
+	ob.object = updateWidgetPropertyValue(ob.object, ob.propertyTypeIDs, propertyKey, func(val bson.D) bson.D {
+		result := make(bson.D, 0, len(val))
+		for _, elem := range val {
+			if elem.Key == "Objects" {
+				result = append(result, bson.E{Key: "Objects", Value: objects})
+			} else {
+				result = append(result, elem)
+			}
+		}
+		return result
+	})
+}
+
+// buildObjectListItemBSON constructs the BSON for one item of an object-list
+// property. Walks the nested PropertyTypeIDs, applies spec overrides where
+// the spec mentions a sub-property, and falls back to template defaults
+// otherwise.
+func buildObjectListItemBSON(parentEntry pages.PropertyTypeIDEntry, item backend.ObjectListItemSpec) bson.D {
+	// Index spec scalar properties by key for fast lookup.
+	specByKey := make(map[string]backend.ObjectListItemProperty, len(item.Properties))
+	for _, p := range item.Properties {
+		specByKey[p.PropertyKey] = p
+	}
+
+	propsArr := bson.A{int32(2)}
+	// Sort keys for deterministic output.
+	nestedKeys := make([]string, 0, len(parentEntry.NestedPropertyIDs))
+	for k := range parentEntry.NestedPropertyIDs {
+		nestedKeys = append(nestedKeys, k)
+	}
+	sort.Strings(nestedKeys)
+
+	for _, k := range nestedKeys {
+		nestedEntry := parentEntry.NestedPropertyIDs[k]
+		spec, hasSpec := specByKey[k]
+		childWidgets := item.ChildWidgets[k]
+
+		var prop bson.D
+		switch {
+		case hasSpec:
+			prop = buildItemSubProperty(nestedEntry, spec)
+		case len(childWidgets) > 0:
+			prop = buildItemChildWidgetsProperty(nestedEntry, childWidgets)
+		default:
+			prop = createDefaultWidgetProperty(nestedEntry)
+		}
+		propsArr = append(propsArr, prop)
+	}
+
+	return bson.D{
+		{Key: "$ID", Value: types.UUIDToBlob(types.GenerateID())},
+		{Key: "$Type", Value: "CustomWidgets$WidgetObject"},
+		{Key: "TypePointer", Value: types.UUIDToBlob(parentEntry.ObjectTypeID)},
+		{Key: "Properties", Value: propsArr},
+	}
+}
+
+// buildItemSubProperty builds one sub-property (a scalar value: primitive,
+// attribute, expression, etc.) of an object-list item, starting from the
+// template default value and overlaying the spec.
+func buildItemSubProperty(entry pages.PropertyTypeIDEntry, spec backend.ObjectListItemProperty) bson.D {
+	value := createDefaultWidgetValue(entry)
+	value = overlayItemValue(value, entry, spec)
+	return bson.D{
+		{Key: "$ID", Value: types.UUIDToBlob(types.GenerateID())},
+		{Key: "$Type", Value: "CustomWidgets$WidgetProperty"},
+		{Key: "TypePointer", Value: types.UUIDToBlob(entry.PropertyTypeID)},
+		{Key: "Value", Value: value},
+	}
+}
+
+// overlayItemValue mutates the template-default WidgetValue BSON to apply the
+// spec's value, dispatched by Operation. Returns the updated value.
+func overlayItemValue(value bson.D, entry pages.PropertyTypeIDEntry, spec backend.ObjectListItemProperty) bson.D {
+	switch spec.Operation {
+	case "primitive":
+		value = setBSONField(value, "PrimitiveValue", spec.PrimitiveVal)
+	case "attribute":
+		if spec.AttributePath != "" {
+			value = setAttributeRefField(value, spec.AttributePath)
+		}
+	case "expression":
+		value = setBSONField(value, "Expression", spec.Expression)
+		value = setBSONField(value, "PrimitiveValue", "")
+	case "texttemplate":
+		text := spec.TextTemplate
+		if text == "" {
+			text = " "
+		}
+		tmpl := createClientTemplateBSONWithParams(text, spec.EntityContext)
+		value = setBSONField(value, "TextTemplate", tmpl)
+	case "datasource":
+		if spec.DataSource != nil {
+			value = setDataSource(value, spec.DataSource)
+		}
+	case "action":
+		if spec.Action != nil {
+			actionBSON := mpr.SerializeClientAction(spec.Action)
+			value = setBSONField(value, "Action", actionBSON)
+		}
+	}
+	return value
+}
+
+// buildItemChildWidgetsProperty builds an item sub-property whose value type is
+// Widgets — populates the Widgets array with serialized child widgets.
+func buildItemChildWidgetsProperty(entry pages.PropertyTypeIDEntry, children []pages.Widget) bson.D {
+	value := createDefaultWidgetValue(entry)
+	widgetsArr := bson.A{int32(2)}
+	for _, w := range children {
+		widgetsArr = append(widgetsArr, mpr.SerializeWidget(w))
+	}
+	value = setBSONField(value, "Widgets", widgetsArr)
+	return bson.D{
+		{Key: "$ID", Value: types.UUIDToBlob(types.GenerateID())},
+		{Key: "$Type", Value: "CustomWidgets$WidgetProperty"},
+		{Key: "TypePointer", Value: types.UUIDToBlob(entry.PropertyTypeID)},
+		{Key: "Value", Value: value},
+	}
+}
+
+// setBSONField returns a copy of the bson.D with the named key's value
+// replaced. If the key is absent, the original is returned unchanged.
+func setBSONField(doc bson.D, key string, val any) bson.D {
+	result := make(bson.D, len(doc))
+	for i, elem := range doc {
+		if elem.Key == key {
+			result[i] = bson.E{Key: key, Value: val}
+		} else {
+			result[i] = elem
+		}
+	}
+	return result
+}
+
+// setAttributeRefField sets the AttributeRef field on a WidgetValue BSON to
+// reference the given fully-qualified attribute path (Module.Entity.Attr).
+func setAttributeRefField(value bson.D, attributePath string) bson.D {
+	parts := strings.Split(attributePath, ".")
+	if len(parts) < 2 {
+		return value
+	}
+	attrRef := bson.D{
+		{Key: "$ID", Value: types.UUIDToBlob(types.GenerateID())},
+		{Key: "$Type", Value: "CustomWidgets$AttributeRef"},
+		{Key: "Attribute", Value: parts[len(parts)-1]},
+	}
+	return setBSONField(value, "AttributeRef", attrRef)
+}
+
 func (ob *mprWidgetObjectBuilder) SetAttributeObjects(propertyKey string, attributePaths []string) {
 	if len(attributePaths) == 0 {
 		return

@@ -273,6 +273,13 @@ type WidgetObjectBuilder interface {
 	SetAction(propertyKey string, action pages.ClientAction)
 	SetAttributeObjects(propertyKey string, attributePaths []string)
 
+	// SetObjectList sets a list of structured items on an object-list property
+	// (e.g. Accordion `groups`, PopupMenu `basicItems`, DataGrid `columns` —
+	// for widgets routed through the generic pluggable engine, not the dedicated
+	// DataGrid builder). The backend uses the template's nested PropertyTypeIDs
+	// to convert each spec entry into the correct BSON shape.
+	SetObjectList(propertyKey string, items []ObjectListItemSpec)
+
 	// --- Template metadata ---
 
 	// PropertyTypeIDs returns the property type metadata for the loaded template.
@@ -293,6 +300,38 @@ type WidgetObjectBuilder interface {
 	// Finalize builds the CustomWidget from the mutated template.
 	// Returns the widget with RawType/RawObject populated from internal state.
 	Finalize(id model.ID, name string, label string, editable string) *pages.CustomWidget
+}
+
+// ObjectListItemSpec describes one item of an object-list property (e.g. one
+// Accordion group, one PopupMenu basicItem, one Maps marker). The backend
+// applies these specs to the template's nested PropertyTypeIDs to produce
+// item BSON.
+//
+// Each property in the item is dispatched by Operation. Only the field
+// matching Operation is used; others are ignored. Operations correspond to
+// the same names as the engine's top-level operations (primitive, attribute,
+// datasource, texttemplate, expression, action) — see PluggablePropertyOp.
+type ObjectListItemSpec struct {
+	Properties []ObjectListItemProperty
+	// ChildWidgets carries pre-built widgets for Widgets-typed sub-properties
+	// of the item (e.g. Accordion group's headerContent / content). Keyed by
+	// the sub-property's key (matching the def.json itemSlots[].propertyKey).
+	ChildWidgets map[string][]pages.Widget
+}
+
+// ObjectListItemProperty describes one scalar property within an
+// ObjectListItemSpec. Mirrors the engine's PluggablePropertyContext but
+// scoped to a list item's sub-properties.
+type ObjectListItemProperty struct {
+	PropertyKey   string
+	Operation     string // primitive | attribute | datasource | texttemplate | expression | action
+	PrimitiveVal  string
+	AttributePath string
+	DataSource    pages.DataSource
+	TextTemplate  string
+	Expression    string
+	Action        pages.ClientAction
+	EntityContext string // for texttemplate operations needing param resolution
 }
 
 // DataGridColumnSpec carries pre-resolved column data for DataGrid2 construction.
