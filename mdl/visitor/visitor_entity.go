@@ -689,6 +689,20 @@ func (b *Builder) ExitAlterEntityAction(ctx *parser.AlterEntityActionContext) {
 				return
 			}
 
+			// SET ALLOW_CREATE_CHANGE_LOCALLY = true/false
+			if ctx.SET() != nil && ctx.ALLOW_CREATE_CHANGE_LOCALLY() != nil {
+				boolVal := false
+				if ctx.TRUE() != nil {
+					boolVal = true
+				}
+				b.statements = append(b.statements, &ast.AlterEntityStmt{
+					Name:      name,
+					Operation: ast.AlterEntitySetAllowCreateChangeLocally,
+					BoolValue: boolVal,
+				})
+				return
+			}
+
 			break
 		}
 		parent = parent.GetParent()

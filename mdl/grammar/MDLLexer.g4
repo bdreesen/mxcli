@@ -93,6 +93,9 @@ DELETE_BEHAVIOR: D E L E T E '_'? B E H A V I O R;
 CASCADE: C A S C A D E;
 PREVENT: P R E V E N T;
 
+// External entity capability flags
+ALLOW_CREATE_CHANGE_LOCALLY: A L L O W '_'? C R E A T E '_'? C H A N G E '_'? L O C A L L Y;
+
 // =============================================================================
 // CONNECTION KEYWORDS
 // =============================================================================

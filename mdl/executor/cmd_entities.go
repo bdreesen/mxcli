@@ -927,6 +927,14 @@ func execAlterEntity(ctx *ExecContext, s *ast.AlterEntityStmt) error {
 		fmt.Fprintf(ctx.Output, "Dropped event handler %s %s from %s\n",
 			s.EventHandler.Moment, s.EventHandler.Event, s.Name)
 
+	case ast.AlterEntitySetAllowCreateChangeLocally:
+		entity.CreateChangeLocally = s.BoolValue
+		if err := ctx.Backend.UpdateEntity(dm.ID, entity); err != nil {
+			return mdlerrors.NewBackend("set allow create change locally", err)
+		}
+		invalidateDomainModelsCache(ctx)
+		fmt.Fprintf(ctx.Output, "Set AllowCreateChangeLocally = %v on entity %s\n", s.BoolValue, s.Name)
+
 	default:
 		return mdlerrors.NewUnsupported("unsupported alter entity operation")
 	}

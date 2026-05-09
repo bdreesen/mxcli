@@ -60,6 +60,7 @@ var mdlGeneratedKeywords = []protocol.CompletionItem{
 	{Label: "DELETE_BEHAVIOR", Kind: protocol.CompletionItemKindKeyword, Detail: "DDL keyword"},
 	{Label: "CASCADE", Kind: protocol.CompletionItemKindKeyword, Detail: "DDL keyword"},
 	{Label: "PREVENT", Kind: protocol.CompletionItemKindKeyword, Detail: "DDL keyword"},
+	{Label: "ALLOW_CREATE_CHANGE_LOCALLY", Kind: protocol.CompletionItemKindKeyword, Detail: "DDL keyword"},
 
 	// Connection keyword
 	{Label: "CONNECT", Kind: protocol.CompletionItemKindKeyword, Detail: "Connection keyword"},

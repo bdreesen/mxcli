@@ -117,6 +117,39 @@ func TestCreateEntity_UnknownAttributeType_Issue392(t *testing.T) {
 	assertContainsStr(t, err.Error(), "invalidtype")
 }
 
+// TestAlterEntity_AllowCreateChangeLocally_Issue534 verifies that
+// ALTER ENTITY SET ALLOW_CREATE_CHANGE_LOCALLY = true sets CreateChangeLocally on the entity.
+func TestAlterEntity_AllowCreateChangeLocally_Issue534(t *testing.T) {
+	mod := mkModule("TripPin")
+	entity := &domainmodel.Entity{
+		BaseElement: model.BaseElement{ID: nextID("ent")},
+		Name:        "People",
+	}
+	dm := mkDomainModel(mod.ID, entity)
+
+	var updated *domainmodel.Entity
+	mb := &mock.MockBackend{
+		IsConnectedFunc:    func() bool { return true },
+		ListModulesFunc:    func() ([]*model.Module, error) { return []*model.Module{mod}, nil },
+		GetDomainModelFunc: func(id model.ID) (*domainmodel.DomainModel, error) { return dm, nil },
+		UpdateEntityFunc:   func(dmID model.ID, e *domainmodel.Entity) error { updated = e; return nil },
+	}
+
+	ctx, _ := newMockCtx(t, withBackend(mb))
+	err := execAlterEntity(ctx, &ast.AlterEntityStmt{
+		Name:      ast.QualifiedName{Module: "TripPin", Name: "People"},
+		Operation: ast.AlterEntitySetAllowCreateChangeLocally,
+		BoolValue: true,
+	})
+	assertNoError(t, err)
+	if updated == nil {
+		t.Fatal("expected UpdateEntity to be called")
+	}
+	if !updated.CreateChangeLocally {
+		t.Errorf("expected CreateChangeLocally = true, got false")
+	}
+}
+
 func TestShowEntities_JSON(t *testing.T) {
 	mod := mkModule("App")
 	ent := mkEntity(mod.ID, "Item")
