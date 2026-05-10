@@ -531,114 +531,6 @@
         }
       },
       {
-        "$ID": "0b9b9a79f3a69845964196afb2edddbd",
-        "$Type": "CustomWidgets$WidgetProperty",
-        "TypePointer": "835eb7e24ad07540aacac90fff04b16a",
-        "Value": {
-          "$ID": "9836c2ce60555044b78b05e4c037cdb3",
-          "$Type": "CustomWidgets$WidgetValue",
-          "Action": {
-            "$ID": "dd10acd27f25044390ddc413be69cf3c",
-            "$Type": "Forms$NoAction",
-            "DisabledDuringExecution": true
-          },
-          "AttributeRef": null,
-          "DataSource": null,
-          "EntityRef": null,
-          "Expression": "",
-          "Form": "",
-          "Icon": null,
-          "Image": "",
-          "Microflow": "",
-          "Nanoflow": "",
-          "Objects": [
-            2
-          ],
-          "PrimitiveValue": "14",
-          "Selection": "None",
-          "SourceVariable": null,
-          "TextTemplate": null,
-          "TranslatableValue": null,
-          "TypePointer": "a24643418b05924d83ff52ef2b94b51a",
-          "Widgets": [
-            2
-          ],
-          "XPathConstraint": ""
-        }
-      },
-      {
-        "$ID": "e46415534a5d124c99462ea3bf29f166",
-        "$Type": "CustomWidgets$WidgetProperty",
-        "TypePointer": "b1d78e6f38172246b34bf18b32aac5ff",
-        "Value": {
-          "$ID": "f362a799b23a4147b7c24f819076fd26",
-          "$Type": "CustomWidgets$WidgetValue",
-          "Action": {
-            "$ID": "96a35a312a789f4f9b866ccc611783ad",
-            "$Type": "Forms$NoAction",
-            "DisabledDuringExecution": true
-          },
-          "AttributeRef": null,
-          "DataSource": null,
-          "EntityRef": null,
-          "Expression": "",
-          "Form": "",
-          "Icon": null,
-          "Image": "",
-          "Microflow": "",
-          "Nanoflow": "",
-          "Objects": [
-            2
-          ],
-          "PrimitiveValue": "fullImage",
-          "Selection": "None",
-          "SourceVariable": null,
-          "TextTemplate": null,
-          "TranslatableValue": null,
-          "TypePointer": "7f455951988bb2499abe6f15db58198e",
-          "Widgets": [
-            2
-          ],
-          "XPathConstraint": ""
-        }
-      },
-      {
-        "$ID": "b4c021259b532544ae7aa1ea17af1f72",
-        "$Type": "CustomWidgets$WidgetProperty",
-        "TypePointer": "9f4a640cf127854bb1955402f58f6f26",
-        "Value": {
-          "$ID": "494d1f234610c447aef1eeb4104bd512",
-          "$Type": "CustomWidgets$WidgetValue",
-          "Action": {
-            "$ID": "3efb83944a7a154f8fcc008e5d7be59e",
-            "$Type": "Forms$NoAction",
-            "DisabledDuringExecution": true
-          },
-          "AttributeRef": null,
-          "DataSource": null,
-          "EntityRef": null,
-          "Expression": "",
-          "Form": "",
-          "Icon": null,
-          "Image": "",
-          "Microflow": "",
-          "Nanoflow": "",
-          "Objects": [
-            2
-          ],
-          "PrimitiveValue": "true",
-          "Selection": "None",
-          "SourceVariable": null,
-          "TextTemplate": null,
-          "TranslatableValue": null,
-          "TypePointer": "9f9a68ac89a29d49be711ff0121babcf",
-          "Widgets": [
-            2
-          ],
-          "XPathConstraint": ""
-        }
-      },
-      {
         "$ID": "b88a748649cd8741afb583a50d8dc9d2",
         "$Type": "CustomWidgets$WidgetProperty",
         "TypePointer": "64c294227bd8fa44a24a13f3139f2b60",
@@ -776,6 +668,114 @@
           "TextTemplate": null,
           "TranslatableValue": null,
           "TypePointer": "d1c636c524a8bb4f920665d82f274744",
+          "Widgets": [
+            2
+          ],
+          "XPathConstraint": ""
+        }
+      },
+      {
+        "$ID": "0b9b9a79f3a69845964196afb2edddbd",
+        "$Type": "CustomWidgets$WidgetProperty",
+        "TypePointer": "835eb7e24ad07540aacac90fff04b16a",
+        "Value": {
+          "$ID": "9836c2ce60555044b78b05e4c037cdb3",
+          "$Type": "CustomWidgets$WidgetValue",
+          "Action": {
+            "$ID": "dd10acd27f25044390ddc413be69cf3c",
+            "$Type": "Forms$NoAction",
+            "DisabledDuringExecution": true
+          },
+          "AttributeRef": null,
+          "DataSource": null,
+          "EntityRef": null,
+          "Expression": "",
+          "Form": "",
+          "Icon": null,
+          "Image": "",
+          "Microflow": "",
+          "Nanoflow": "",
+          "Objects": [
+            2
+          ],
+          "PrimitiveValue": "14",
+          "Selection": "None",
+          "SourceVariable": null,
+          "TextTemplate": null,
+          "TranslatableValue": null,
+          "TypePointer": "a24643418b05924d83ff52ef2b94b51a",
+          "Widgets": [
+            2
+          ],
+          "XPathConstraint": ""
+        }
+      },
+      {
+        "$ID": "e46415534a5d124c99462ea3bf29f166",
+        "$Type": "CustomWidgets$WidgetProperty",
+        "TypePointer": "b1d78e6f38172246b34bf18b32aac5ff",
+        "Value": {
+          "$ID": "f362a799b23a4147b7c24f819076fd26",
+          "$Type": "CustomWidgets$WidgetValue",
+          "Action": {
+            "$ID": "96a35a312a789f4f9b866ccc611783ad",
+            "$Type": "Forms$NoAction",
+            "DisabledDuringExecution": true
+          },
+          "AttributeRef": null,
+          "DataSource": null,
+          "EntityRef": null,
+          "Expression": "",
+          "Form": "",
+          "Icon": null,
+          "Image": "",
+          "Microflow": "",
+          "Nanoflow": "",
+          "Objects": [
+            2
+          ],
+          "PrimitiveValue": "fullImage",
+          "Selection": "None",
+          "SourceVariable": null,
+          "TextTemplate": null,
+          "TranslatableValue": null,
+          "TypePointer": "7f455951988bb2499abe6f15db58198e",
+          "Widgets": [
+            2
+          ],
+          "XPathConstraint": ""
+        }
+      },
+      {
+        "$ID": "b4c021259b532544ae7aa1ea17af1f72",
+        "$Type": "CustomWidgets$WidgetProperty",
+        "TypePointer": "9f4a640cf127854bb1955402f58f6f26",
+        "Value": {
+          "$ID": "494d1f234610c447aef1eeb4104bd512",
+          "$Type": "CustomWidgets$WidgetValue",
+          "Action": {
+            "$ID": "3efb83944a7a154f8fcc008e5d7be59e",
+            "$Type": "Forms$NoAction",
+            "DisabledDuringExecution": true
+          },
+          "AttributeRef": null,
+          "DataSource": null,
+          "EntityRef": null,
+          "Expression": "",
+          "Form": "",
+          "Icon": null,
+          "Image": "",
+          "Microflow": "",
+          "Nanoflow": "",
+          "Objects": [
+            2
+          ],
+          "PrimitiveValue": "true",
+          "Selection": "None",
+          "SourceVariable": null,
+          "TextTemplate": null,
+          "TranslatableValue": null,
+          "TypePointer": "9f9a68ac89a29d49be711ff0121babcf",
           "Widgets": [
             2
           ],
