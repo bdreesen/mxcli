@@ -66,6 +66,13 @@ func (m *MockBackend) DeleteModuleWithCleanup(id model.ID, moduleName string) er
 // ModuleSettingsBackend
 // ---------------------------------------------------------------------------
 
+func (m *MockBackend) ListModuleSettings() ([]*types.ModuleSettings, error) {
+	if m.ListModuleSettingsFunc != nil {
+		return m.ListModuleSettingsFunc()
+	}
+	return nil, fmt.Errorf("MockBackend.ListModuleSettings not configured")
+}
+
 func (m *MockBackend) GetModuleSettings(moduleID model.ID) (*types.ModuleSettings, error) {
 	if m.GetModuleSettingsFunc != nil {
 		return m.GetModuleSettingsFunc(moduleID)

@@ -49,6 +49,8 @@ type ModuleBackend interface {
 
 // ModuleSettingsBackend provides access to Projects$ModuleSettings (Maven/JAR dependencies).
 type ModuleSettingsBackend interface {
+	// ListModuleSettings returns all module settings documents in the project.
+	ListModuleSettings() ([]*types.ModuleSettings, error)
 	// GetModuleSettings returns the settings for the given module.
 	GetModuleSettings(moduleID model.ID) (*types.ModuleSettings, error)
 	// UpdateModuleSettings persists changes to the module settings (incl. JarDependencies).

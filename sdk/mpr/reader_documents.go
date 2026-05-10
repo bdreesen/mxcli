@@ -904,6 +904,23 @@ func (r *Reader) buildContainerModuleNameMap() (map[model.ID]string, error) {
 	return result, nil
 }
 
+// ListModuleSettings returns all Projects$ModuleSettings documents in the project.
+func (r *Reader) ListModuleSettings() ([]*types.ModuleSettings, error) {
+	units, err := r.listUnitsByType("Projects$ModuleSettings")
+	if err != nil {
+		return nil, err
+	}
+	var result []*types.ModuleSettings
+	for _, u := range units {
+		ms, err := r.parseModuleSettings(u.ID, u.ContainerID, u.Contents)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, ms)
+	}
+	return result, nil
+}
+
 // GetModuleSettings returns the Projects$ModuleSettings for the given module ID.
 func (r *Reader) GetModuleSettings(moduleID model.ID) (*types.ModuleSettings, error) {
 	units, err := r.listUnitsByType("Projects$ModuleSettings")

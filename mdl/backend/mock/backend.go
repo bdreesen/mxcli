@@ -44,6 +44,7 @@ type MockBackend struct {
 	DeleteModuleWithCleanupFunc func(id model.ID, moduleName string) error
 
 	// ModuleSettingsBackend
+	ListModuleSettingsFunc   func() ([]*types.ModuleSettings, error)
 	GetModuleSettingsFunc    func(moduleID model.ID) (*types.ModuleSettings, error)
 	UpdateModuleSettingsFunc func(ms *types.ModuleSettings) error
 
