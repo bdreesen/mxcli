@@ -479,6 +479,24 @@ retrieve $Product from Test.Product
 - RETRIEVE without `limit 1` returns a **list** (`list of Module.Entity`)
 - Use `limit 1` when you expect exactly one result (e.g., lookup by unique key)
 
+**Enumeration attributes in WHERE**: XPath is a database query, so enum values are stored as plain strings. Both forms are valid — mxcli converts the qualified name to a string literal in BSON:
+
+```mdl
+-- Preferred: qualified name (mxcli converts to 'Open' in BSON)
+retrieve $Open from Module.Order
+  where [Status = Module.OrderStatus.Open];
+
+-- Also accepted: string literal (the value key, case-sensitive)
+retrieve $Open from Module.Order
+  where [Status = 'Open'];
+
+-- Multiple enum values with OR
+retrieve $InProgress from Module.Order
+  where [Status = Module.OrderStatus.Open or Status = Module.OrderStatus.Processing];
+```
+
+This is different from IF/SET expressions — see "Enumeration Comparisons" section above.
+
 ## XPath Navigation
 
 ### Attribute Access
