@@ -19,7 +19,7 @@ func (b *Builder) buildContractEntities() error {
 	}
 
 	entityStmt, err := b.tx.Prepare(`
-		INSERT INTO contract_entities (Id, ServiceId, ServiceQualifiedName,
+		INSERT OR IGNORE INTO contract_entities (Id, ServiceId, ServiceQualifiedName,
 			EntityName, EntitySetName, KeyProperties, PropertyCount, NavigationCount,
 			Summary, Description, ModuleName,
 			ProjectId, SnapshotId, SnapshotDate, SnapshotSource)
@@ -31,7 +31,7 @@ func (b *Builder) buildContractEntities() error {
 	defer entityStmt.Close()
 
 	actionStmt, err := b.tx.Prepare(`
-		INSERT INTO contract_actions (Id, ServiceId, ServiceQualifiedName,
+		INSERT OR IGNORE INTO contract_actions (Id, ServiceId, ServiceQualifiedName,
 			ActionName, IsBound, ParameterCount, ReturnType, ModuleName,
 			ProjectId, SnapshotId, SnapshotDate, SnapshotSource)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
