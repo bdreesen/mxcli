@@ -1207,14 +1207,37 @@ func (b *MprBackend) buildFilterWidgetBSON(widgetID, filterName string, projectP
 		return b.buildMinimalFilterWidgetBSON(widgetID, filterName)
 	}
 
+	// A complete CustomWidget BSON requires Appearance, ConditionalEditability/
+	// VisibilitySettings, LabelTemplate, and TabIndex alongside Type/Object.
+	// Omitting Appearance triggers CE0463 ("definition of this widget has
+	// changed") because Studio Pro requires every CustomWidget to carry the
+	// full Forms$Page widget envelope, not just the inner widget-specific
+	// payload. See docs/mpr-bson-shapes.md for reference.
 	return bson.D{
 		{Key: "$ID", Value: bsonutil.NewIDBsonBinary()},
 		{Key: "$Type", Value: "CustomWidgets$CustomWidget"},
-		{Key: "Editable", Value: "Inherited"},
+		{Key: "Appearance", Value: defaultEmptyAppearance()},
+		{Key: "ConditionalEditabilitySettings", Value: nil},
+		{Key: "ConditionalVisibilitySettings", Value: nil},
+		{Key: "Editable", Value: "Always"},
+		{Key: "LabelTemplate", Value: nil},
 		{Key: "Name", Value: filterName},
 		{Key: "Object", Value: rawObject},
 		{Key: "TabIndex", Value: int32(0)},
 		{Key: "Type", Value: rawType},
+	}
+}
+
+// defaultEmptyAppearance returns the Forms$Appearance BSON for a widget that
+// has no class, style, or design properties — matches what Studio Pro emits.
+func defaultEmptyAppearance() bson.D {
+	return bson.D{
+		{Key: "$ID", Value: bsonutil.NewIDBsonBinary()},
+		{Key: "$Type", Value: "Forms$Appearance"},
+		{Key: "Class", Value: ""},
+		{Key: "DesignProperties", Value: bson.A{int32(3)}},
+		{Key: "DynamicClasses", Value: ""},
+		{Key: "Style", Value: ""},
 	}
 }
 
@@ -1240,7 +1263,11 @@ func (b *MprBackend) buildMinimalFilterWidgetBSON(widgetID, filterName string) b
 	return bson.D{
 		{Key: "$ID", Value: bsonutil.NewIDBsonBinary()},
 		{Key: "$Type", Value: "CustomWidgets$CustomWidget"},
-		{Key: "Editable", Value: "Inherited"},
+		{Key: "Appearance", Value: defaultEmptyAppearance()},
+		{Key: "ConditionalEditabilitySettings", Value: nil},
+		{Key: "ConditionalVisibilitySettings", Value: nil},
+		{Key: "Editable", Value: "Always"},
+		{Key: "LabelTemplate", Value: nil},
 		{Key: "Name", Value: filterName},
 		{Key: "Object", Value: bson.D{
 			{Key: "$ID", Value: bsonutil.IDToBsonBinary(objectID)},
