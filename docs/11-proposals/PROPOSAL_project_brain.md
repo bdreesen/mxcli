@@ -25,21 +25,30 @@ The project already has several knowledge layers that are good individually but 
 | Proposals | `docs/11-proposals/` | Contributors | Forward-looking, no lifecycle |
 | Architecture docs | `docs/01-project/`, `docs/03-development/` | Contributors | Structural, sparse |
 
-The gaps are: links between topics (graph), decision lifecycle (why things are the way they are), extension guides (how to add new things end-to-end), and a live "what's next" layer connected to GitHub data.
+The gaps are: links between topics (graph), decision lifecycle (why things are the way they are), extension guides (how to add new things end-to-end), a raw material inbox, and a live "what's next" layer connected to GitHub data.
 
-## Proposed System: Three Connected Layers
+## Proposed System: Four Connected Layers
 
-### Layer 1: The Wiki (Explanatory Knowledge)
+### Layer 1: Raw Inbox (`docs/raw/`)
 
-A contributor-facing wiki in `wiki/` at the repo root. The character is **explanatory** — how things work and why — distinct from skills (which are procedural) and proposals (which are decisions). One concept per file, explicit links between topics, with a Mermaid index in `README.md` that renders as a graph and makes the clusters navigable.
+An immutable drop zone for unprocessed source material: GitHub issue exports, research notes, discussion transcripts, external references. Files land here and are never edited after landing. The `/brain-ingest` command processes them into the wiki and marks each file as processed via frontmatter. The raw material remains as provenance.
 
-The `docs-site/src/internals/` pages are good raw material and would be linked from the wiki or migrated into it; the distinction is audience and framing: docs-site explains internals to curious users, the wiki explains them to contributors who need to change things.
+This separates input from synthesised knowledge cleanly. An agent or contributor drops a file here; the brain processes it on the next ingest run.
 
-**Proposed structure:**
+### Layer 2: The Wiki (`wiki/`)
+
+A contributor-facing wiki at the repo root. The character is **explanatory** — how things work and why — distinct from skills (procedural) and proposals (decisions in flight). One concept per file, explicit links between topics, with a Mermaid index in `README.md` that renders as a graph.
+
+Both humans and agents write to the wiki. The agent drafts and updates via commands; humans edit directly. The wiki is not agent-owned — it is collaboratively maintained, with the agent doing the bulk of routine updates.
+
+The `docs-site/src/internals/` pages are good raw material; overlapping topics link to the wiki or migrate into it. The distinction is audience: docs-site explains internals to curious users, the wiki explains them to contributors who need to change things.
+
+**Structure:**
 
 ```
 wiki/
   README.md               # visual index: Mermaid graph of clusters + entry points
+  log.md                  # chronological record of all wiki operations
   MAP.md                  # source path → wiki topic manifest (drives freshness hooks)
 
   pipeline/               # the journey from MDL text to MPR write
@@ -72,81 +81,147 @@ wiki/
     new-widget.md         # .def.json, widget registry, template extraction
 ```
 
-**Links to skills:** Each `extending/` guide links to the relevant maintainer skill for the step-by-step checklist. The wiki provides narrative and rationale; the skill provides the checklist and gotchas.
-
-**ADR format for `design/`:** Each decision file follows a lightweight structure:
+**ADR format for `design/`:** Each decision file uses:
 - **Context** — what problem prompted this decision
 - **Decision** — what was chosen and what was explicitly rejected
 - **Status** — `accepted` | `superseded` | `under review`
 - **Consequences** — what the decision implies for contributors and agents
 
-### Layer 2: Live Project State (Connected to GitHub)
-
-The wiki provides static knowledge. The current state of the project — what is in progress, what is ready to pick up, what is blocked — lives in GitHub (issues, milestones, project board) and should not be duplicated in the wiki. It would go stale immediately.
-
-Instead, the connection is a **synthesized briefing** generated on demand from GitHub data and interpreted against the wiki's context layer. This is the piece that feeds contributor session planning and personal second-brain systems (e.g., meowary, which already has GitHub CLI integration).
-
-A scheduled Claude Code agent (using the `/schedule` skill) could generate a `wiki/CURRENT.md` file periodically — not raw GitHub data, but a synthesized "given open issues, active PRs, and recent decisions, here is what the project needs next and why." This gives Meowary and other contributor systems a pull-able feed, and gives AI agents dropping into a fresh session a starting point without querying the GitHub API themselves.
-
-GitHub Discussions with a "Decisions" category provides a free Atom/RSS feed for significant architectural decisions — subscribable by contributor second-brain systems without any additional tooling.
-
-### Layer 3: Freshness Enforcement (Hooks and Commands)
-
-Documentation that is not enforced degrades. Three mechanisms keep the wiki current:
+**Links to skills:** Each `extending/` guide links to the relevant maintainer skill for the step-by-step checklist. The wiki provides narrative and rationale; the skill provides the checklist and gotchas.
 
 **`MAP.md` — the source-to-topic manifest:**
-A file that maps source paths to wiki topics:
+Maps source paths to wiki topics, enabling automated freshness checking:
 ```
 mdl/executor/registry.go        → wiki/pipeline/executor.md
 mdl/grammar/domains/            → wiki/pipeline/grammar.md
 mdl/backend/                    → wiki/pipeline/backend.md
 sdk/mpr/                        → wiki/pipeline/mpr.md
 ```
-This manifest is what makes automated freshness checking possible.
+
+### Layer 3: Live Project State (Connected to GitHub)
+
+The wiki provides static knowledge. Current project state — what is in progress, ready to pick up, blocked — lives in GitHub (issues, milestones, project board) and must not be duplicated in the wiki, where it would go stale immediately.
+
+A scheduled Claude Code agent generates `wiki/CURRENT.md` periodically — not raw GitHub data, but a synthesised briefing: given open issues, active PRs, and recent decisions, what does the project need next and why. This gives contributor personal second-brain systems a pull-able summary, and gives AI agents dropping into a fresh session an orientation point without querying the GitHub API themselves.
+
+### Layer 4: CDC Feed (`feed/brain.xml`)
+
+An Atom feed that publishes insight events whenever the wiki gains new or significantly revised knowledge. This is the machine-readable layer that other brains — personal (meowary) or project — subscribe to and integrate.
+
+**Feed schema** uses a `brain:` namespace for knowledge-specific metadata:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"
+      xmlns:brain="https://projectbrain.dev/ns/1.0">
+  <title>mxcli Project Brain</title>
+  <subtitle>CDC feed — insight events from the mxcli knowledge base</subtitle>
+  <link href="[PAGES_URL]/feed/brain.xml" rel="self"/>
+  <id>[PAGES_URL]/feed/brain.xml</id>
+  <updated>[ISO8601]</updated>
+  <author><name>mxcli Brain Agent</name></author>
+  <!-- entries appended by /brain-ingest and wiki operations -->
+</feed>
+```
+
+Each entry includes:
+- `brain:event_type` — `concept-created` | `concept-revised` | `adr-added` | `adr-superseded` | `divergence-detected` | `synthesis-updated`
+- `brain:confidence` — 0.0–1.0 (agent confidence in the insight)
+- `brain:trigger` — `empirical` | `discussion` | `research` | `contradiction` | `synthesis`
+- `brain:supersedes` — URI of the previous entry if this revises an earlier one
+
+**Feed entries are append-only.** Never delete or modify existing entries. The feed is the immutable audit log of the project brain's evolution.
+
+A `feed/.feedmeta` file holds feed configuration and the list of external brain feed URLs to sync from (e.g., meowary feeds from contributors).
+
+**Emission rules** — a feed entry must be emitted when:
+- A new page is created in `wiki/design/` (ADR) or `wiki/pipeline/`
+- An existing ADR is superseded or deprecated
+- A `wiki/extending/` guide is substantially revised
+- A DIVERGENCE is detected during `/brain-sync`
+- `wiki/CURRENT.md` is regenerated with a materially different project state
+
+## Agent Commands
+
+### `/brain-ingest`
+Processes new files in `docs/raw/`:
+1. Read each unprocessed file
+2. Extract key concepts, decisions, insights
+3. Create or update relevant wiki pages with cross-links to existing pages
+4. Mark source file as processed (add `processed: true` to frontmatter)
+5. Update `wiki/log.md`
+6. Evaluate each changed wiki page against feed emission rules; append entries to `feed/brain.xml`
+
+### `/brain-sync`
+Consumes external brain feeds listed in `feed/.feedmeta`:
+1. For each new feed item since last sync, determine if it extends, confirms, or contradicts current wiki knowledge
+2. If extends: draft wiki update (propose, do not auto-commit)
+3. If contradicts: create a DIVERGENCE entry in `wiki/synthesis/open-questions.md`
+4. If confirms: note corroboration on the relevant wiki page
+5. Emit a feed event summarising what was integrated
+
+This is the primary mechanism for meowary (retran's personal second brain) to contribute knowledge back to the project brain, and for the project brain to receive updates from contributor systems.
+
+### `/mxcli-dev:update-wiki`
+End-of-feature wiki update command. Reads the current diff, identifies affected topics via `MAP.md`, and drafts updates to relevant wiki pages. Invoked intentionally at the end of a feature as part of the definition of done.
+
+### `/brain-lint`
+Health-checks the wiki:
+- Verify all `[[wikilinks]]` resolve
+- Check `wiki/README.md` lists all pages
+- Flag concepts mentioned across multiple pages but without their own topic page
+- Flag ADRs that may be invalidated by recent wiki changes
+- Flag MAP.md entries whose source path no longer exists
+- Report `wiki/design/` entries whose status has not been reviewed in 90 days
+
+## Freshness Enforcement
 
 **Hook — flag on edit:**
-A `PostToolUse` hook on writes to mapped source paths looks up `MAP.md` and surfaces which wiki topics may be affected. It does not generate updates — it makes the connection visible so it is not forgotten during the session.
-
-**Command — draft the update:**
-`/mxcli-dev:update-wiki` reads the current diff, identifies affected topics via `MAP.md`, and drafts updates to the relevant pages. Invoked intentionally at the end of a feature, as part of the definition of done.
+A `PostToolUse` hook on writes to mapped source paths looks up `MAP.md` and surfaces which wiki topics may be affected. It flags the connection; it does not generate content.
 
 **Review integration:**
-The existing `/mxcli-dev:review` command gains a wiki freshness check: for each source file changed in the PR, verify that the corresponding wiki topic has been touched or explicitly noted as unaffected. This is a review prompt, not a hard block.
+The existing `/mxcli-dev:review` command checks wiki freshness: for each source file changed in the PR, verify the corresponding wiki topic has been touched or explicitly noted as unaffected.
 
-A CI check (`TestWikiFreshness` or a Makefile target) could compare the modification dates of source files against their mapped wiki topics and warn when a source file is newer than its documentation by more than a threshold. This makes staleness visible at PR time rather than months later.
+**CI check:**
+A Makefile target compares modification dates of source files against their mapped wiki topics and warns when source is newer than documentation by more than a threshold. Staleness becomes visible at PR time.
 
 ## Skill Level Mapping
-
-The two-level skill structure maps cleanly to the wiki:
 
 | | Maintainer (mxcli-dev) | User (mendix/) |
 |---|---|---|
 | **Procedural skills** | `.claude/skills/*.md` | `.claude/skills/mendix/*.md` |
-| **Explanatory wiki** | `wiki/` (this proposal) | `docs-site/src/` (already exists) |
-| **Live state** | `wiki/CURRENT.md` (generated) | GitHub Discussions feed |
+| **Explanatory wiki** | `wiki/` (this proposal) | `docs-site/src/` (exists) |
+| **Live state** | `wiki/CURRENT.md` (generated) | — |
+| **CDC feed** | `feed/brain.xml` | — |
 
-User-level explanatory docs (`docs-site/`) already exist and are published. The maintainer wiki is the missing half.
+## Relationship to Meowary and Federated Brains
 
-## Relationship to Meowary
+Retran's meowary system (https://github.com/retran/meowary) is a personal second brain with GitHub CLI integration, PARA structure, and session-planning scaffolding. The project brain is the *supply side* that feeds meowary and equivalent systems:
 
-Retran's meowary system (https://github.com/retran/meowary) is a contributor personal second-brain with GitHub CLI integration and session-planning scaffolding. The project brain is the *supply side* that feeds meowary and equivalent systems:
+- **Project brain publishes:** `feed/brain.xml` (knowledge events), `wiki/CURRENT.md` (project state)
+- **Meowary subscribes:** adds `feed/brain.xml` to `feed/.feedmeta` subscribed_feeds; `/brain-sync` pulls new entries and integrates them into meowary's knowledge base
+- **Meowary contributes back:** decisions and insights from retran's sessions can be published to meowary's own feed, which the project brain pulls via `/brain-sync` and proposes as wiki updates
 
-- **Project brain publishes:** current state (`wiki/CURRENT.md`), decisions (GitHub Discussions Atom feed), architecture context (`wiki/`)
-- **Meowary pulls:** GitHub data + project brain content → session briefing for that contributor
-- **AI agents read:** wiki + CURRENT.md at session start → oriented without querying GitHub
+This is the federated model: each brain (project or personal) publishes a CDC feed; `/brain-sync` connects them bidirectionally. The `brain:` namespace makes feeds from different systems structurally compatible.
 
-The project brain does not replace meowary or personal second-brain systems. It provides the project-level context that personal systems lack.
+## What Is Not Changing
+
+- **`CLAUDE.md`** — remains the primary AI context file as-is. This proposal does not replace or restructure it. The wiki complements CLAUDE.md; it does not supersede it.
+- **`.claude/skills/`** — remain the procedural task references. The wiki's `extending/` guides are the narrative counterpart, not a replacement.
+- **`docs-site/src/`** — remains the user-facing published documentation. Overlapping internals topics link between the two rather than merging.
+- **`docs/11-proposals/`** — remains for in-flight feature proposals. Accepted proposals that establish lasting architectural decisions migrate to `wiki/design/` as ADRs.
 
 ## Summary and Priority
 
-| Component | Problem solved | Dependencies | Effort |
-|---|---|---|---|
-| `wiki/pipeline/` | Orients contributors to how the system works | Migrate/link docs-site internals | Low |
-| `wiki/extending/` | End-to-end contributor guides | Pipeline wiki | Medium |
-| `wiki/design/` (ADRs) | Captures why, prevents decision re-litigation | None | Low per decision |
-| `MAP.md` manifest | Enables freshness hooks and CI checks | Pipeline wiki | Low |
-| Hook + `/mxcli-dev:update-wiki` | Makes wiki updates part of workflow | MAP.md | Low |
-| `wiki/CURRENT.md` (scheduled agent) | Live session briefing, feeds personal second brains | GitHub API access | Medium |
-| GitHub Discussions feed | RSS/Atom for decisions, subscribable by meowary | None | Low |
+| Component | Problem solved | Effort |
+|---|---|---|
+| `wiki/pipeline/` + `wiki/extending/` | Orients contributors; raw material exists in docs-site | Low |
+| `wiki/design/` (ADRs) | Captures why; prevents decision re-litigation | Low per decision |
+| `MAP.md` + hook | Freshness enforcement without manual discipline | Low |
+| `docs/raw/` + `/brain-ingest` | Structured intake of source material | Low |
+| `feed/brain.xml` + emission rules | CDC feed for federated brain subscriptions | Low |
+| `/brain-sync` | Bidirectional meowary ↔ project brain connection | Medium |
+| `wiki/CURRENT.md` (scheduled agent) | Live session briefing from GitHub data | Medium |
+| `/brain-lint` | Automated health checks | Medium |
 
-**Recommended order:** Start with `wiki/pipeline/` and `wiki/extending/` — these have the highest immediate value for contributor onboarding and AI sessions, and the raw material already exists in `docs-site/src/internals/`. Add `MAP.md` and the hook immediately after, since they are low effort and establish the freshness mechanism before content accumulates. ADRs can be added incrementally as decisions are made or revisited. The scheduled briefing agent and Discussions feed are independent and can be done in any order.
+**Recommended order:** `wiki/pipeline/` and `wiki/extending/` first — highest immediate value, raw material already exists. Add `MAP.md` and the hook immediately after. Then `docs/raw/`, `feed/brain.xml`, and `/brain-ingest` together as a batch — they form one coherent intake workflow. `/brain-sync`, CURRENT.md, and `/brain-lint` are independent and can follow in any order.
