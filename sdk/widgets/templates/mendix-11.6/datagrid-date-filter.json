@@ -27,6 +27,7 @@
               2
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AllowedTypes": [
               1
             ],
@@ -89,6 +90,7 @@
               2
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AllowedTypes": [
               1
             ],
@@ -139,6 +141,7 @@
               2
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AllowedTypes": [
               1
             ],
@@ -177,6 +180,7 @@
                       2
                     ],
                     "AllowNonPersistableEntities": false,
+                    "AllowUpload": false,
                     "AllowedTypes": [
                       1,
                       "DateTime"
@@ -246,6 +250,7 @@
               2
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AllowedTypes": [
               1
             ],
@@ -303,6 +308,7 @@
               2
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AllowedTypes": [
               1
             ],
@@ -360,6 +366,7 @@
               2
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AllowedTypes": [
               1
             ],
@@ -417,6 +424,7 @@
               2
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AllowedTypes": [
               1
             ],
@@ -521,6 +529,7 @@
               2
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AllowedTypes": [
               1
             ],
@@ -571,6 +580,7 @@
               2
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AllowedTypes": [
               1
             ],
@@ -621,6 +631,7 @@
               2
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AllowedTypes": [
               1,
               "DateTime"
@@ -672,6 +683,7 @@
               2
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AllowedTypes": [
               1,
               "DateTime"
@@ -723,6 +735,7 @@
               2
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AllowedTypes": [
               1,
               "DateTime"
@@ -774,6 +787,7 @@
               2
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AllowedTypes": [
               1
             ],
@@ -824,6 +838,7 @@
               2
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AllowedTypes": [
               1
             ],
@@ -874,6 +889,7 @@
               2
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AllowedTypes": [
               1
             ],
@@ -924,6 +940,7 @@
               2
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AllowedTypes": [
               1
             ],

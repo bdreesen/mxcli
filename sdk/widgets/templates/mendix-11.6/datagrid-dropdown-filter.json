@@ -27,6 +27,7 @@
               2
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AllowedTypes": [
               1
             ],
@@ -89,6 +90,7 @@
               2
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AllowedTypes": [
               1
             ],
@@ -139,6 +141,7 @@
               2
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AllowedTypes": [
               1
             ],
@@ -201,6 +204,7 @@
               2
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AllowedTypes": [
               1,
               "Enum",
@@ -253,6 +257,7 @@
               2
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AllowedTypes": [
               1
             ],
@@ -303,6 +308,7 @@
               2
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AllowedTypes": [
               1
             ],
@@ -341,6 +347,7 @@
                       2
                     ],
                     "AllowNonPersistableEntities": false,
+                    "AllowUpload": false,
                     "AllowedTypes": [
                       1
                     ],
@@ -391,6 +398,7 @@
                       2
                     ],
                     "AllowNonPersistableEntities": false,
+                    "AllowUpload": false,
                     "AllowedTypes": [
                       1
                     ],
@@ -466,6 +474,7 @@
               2
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AllowedTypes": [
               1
             ],
@@ -518,6 +527,7 @@
               2
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AllowedTypes": [
               1
             ],
@@ -568,6 +578,7 @@
               2
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AllowedTypes": [
               1
             ],
@@ -630,6 +641,7 @@
               2
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AllowedTypes": [
               1,
               "String"
@@ -681,6 +693,7 @@
               2
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AllowedTypes": [
               1
             ],
@@ -738,6 +751,7 @@
               2
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AllowedTypes": [
               1,
               "String"
@@ -789,6 +803,7 @@
               2
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AllowedTypes": [
               1
             ],
@@ -839,6 +854,7 @@
               2
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AllowedTypes": [
               1
             ],
@@ -896,6 +912,7 @@
               2
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AllowedTypes": [
               1
             ],
@@ -946,6 +963,7 @@
               2
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AllowedTypes": [
               1
             ],
@@ -996,6 +1014,7 @@
               2
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AllowedTypes": [
               1
             ],
@@ -1058,6 +1077,7 @@
               2
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AllowedTypes": [
               1
             ],
@@ -1108,6 +1128,7 @@
               2
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AllowedTypes": [
               1
             ],
@@ -1170,6 +1191,7 @@
               2
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AllowedTypes": [
               1
             ],
@@ -1232,6 +1254,7 @@
               2
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AllowedTypes": [
               1,
               "String"
@@ -1283,6 +1306,7 @@
               2
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AllowedTypes": [
               1
             ],
@@ -1333,6 +1357,7 @@
               2
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AllowedTypes": [
               1
             ],
@@ -1383,6 +1408,7 @@
               2
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AllowedTypes": [
               1
             ],
@@ -1445,6 +1471,7 @@
               2
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AllowedTypes": [
               1
             ],

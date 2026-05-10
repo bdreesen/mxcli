@@ -569,6 +569,7 @@ func createDefaultValueType(vtID string, bsonType string, p mpk.PropertyDef) map
 		"$Type":                       "CustomWidgets$WidgetValueType",
 		"ActionVariables":             []any{float64(2)},
 		"AllowNonPersistableEntities": false,
+		"AllowUpload":                 false,
 		"AllowedTypes":                []any{float64(1)},
 		"AssociationTypes":            []any{float64(1)},
 		"DataSourceProperty":          "",

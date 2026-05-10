@@ -323,6 +323,7 @@ func serializeWidgetValueType(id string, valueType string) bson.D {
 		{Key: "ActionVariables", Value: bson.A{int32(2)}},
 		{Key: "AllowedTypes", Value: bson.A{int32(1)}},
 		{Key: "AllowNonPersistableEntities", Value: false},
+		{Key: "AllowUpload", Value: false},
 		{Key: "AssociationTypes", Value: bson.A{int32(1)}},
 		{Key: "DataSourceProperty", Value: ""},
 		{Key: "DefaultType", Value: "None"},

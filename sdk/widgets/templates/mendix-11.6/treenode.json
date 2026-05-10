@@ -30,6 +30,7 @@
               1
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AssociationTypes": [
               1
             ],
@@ -80,6 +81,7 @@
               1
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AssociationTypes": [
               1
             ],
@@ -130,6 +132,7 @@
               1
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AssociationTypes": [
               1
             ],
@@ -192,6 +195,7 @@
               1
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AssociationTypes": [
               1
             ],
@@ -254,6 +258,7 @@
               1
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AssociationTypes": [
               1
             ],
@@ -304,6 +309,7 @@
               1
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AssociationTypes": [
               1
             ],
@@ -354,6 +360,7 @@
               1
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AssociationTypes": [
               1
             ],
@@ -404,6 +411,7 @@
               1
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AssociationTypes": [
               1
             ],
@@ -454,6 +462,7 @@
               1
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AssociationTypes": [
               1
             ],
@@ -504,6 +513,7 @@
               1
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AssociationTypes": [
               1
             ],
@@ -554,6 +564,7 @@
               1
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AssociationTypes": [
               1
             ],
@@ -622,6 +633,7 @@
               1
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AssociationTypes": [
               1
             ],
@@ -672,6 +684,7 @@
               1
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AssociationTypes": [
               1
             ],
@@ -722,6 +735,7 @@
               1
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AssociationTypes": [
               1
             ],

@@ -30,6 +30,7 @@
               1
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AssociationTypes": [
               1
             ],
@@ -80,6 +81,7 @@
               1
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AssociationTypes": [
               1
             ],
@@ -142,6 +144,7 @@
               1
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AssociationTypes": [
               1
             ],
@@ -192,6 +195,7 @@
               1
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AssociationTypes": [
               1
             ],
@@ -242,6 +246,7 @@
               1
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AssociationTypes": [
               1
             ],
@@ -316,6 +321,7 @@
               1
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AssociationTypes": [
               1
             ],
@@ -371,7 +377,7 @@
           "$Type": "CustomWidgets$WidgetPropertyType",
           "Caption": "Open on",
           "Category": "General::General",
-          "Description": "How the tooltip is triggered - click, hover, hover and focus. On mobile device “hover” will be triggered on touch.",
+          "Description": "How the tooltip is triggered - click, hover, hover and focus. On mobile device \u201chover\u201d will be triggered on touch.",
           "IsDefault": false,
           "PropertyKey": "openOn",
           "ValueType": {
@@ -384,6 +390,7 @@
               1
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AssociationTypes": [
               1
             ],

@@ -30,6 +30,7 @@
               1
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AssociationTypes": [
               1
             ],
@@ -80,6 +81,7 @@
               1
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AssociationTypes": [
               1
             ],
@@ -118,6 +120,7 @@
                       1
                     ],
                     "AllowNonPersistableEntities": false,
+                    "AllowUpload": false,
                     "AssociationTypes": [
                       1
                     ],
@@ -180,6 +183,7 @@
                       1
                     ],
                     "AllowNonPersistableEntities": false,
+                    "AllowUpload": false,
                     "AssociationTypes": [
                       1
                     ],
@@ -242,6 +246,7 @@
                       1
                     ],
                     "AllowNonPersistableEntities": false,
+                    "AllowUpload": false,
                     "AssociationTypes": [
                       1
                     ],
@@ -328,6 +333,7 @@
                       1
                     ],
                     "AllowNonPersistableEntities": false,
+                    "AllowUpload": false,
                     "AssociationTypes": [
                       1
                     ],
@@ -378,6 +384,7 @@
                       1
                     ],
                     "AllowNonPersistableEntities": false,
+                    "AllowUpload": false,
                     "AssociationTypes": [
                       1
                     ],
@@ -428,6 +435,7 @@
                       1
                     ],
                     "AllowNonPersistableEntities": false,
+                    "AllowUpload": false,
                     "AssociationTypes": [
                       1
                     ],
@@ -485,6 +493,7 @@
                       1
                     ],
                     "AllowNonPersistableEntities": false,
+                    "AllowUpload": false,
                     "AssociationTypes": [
                       1
                     ],
@@ -529,7 +538,7 @@
                   "$Type": "CustomWidgets$WidgetPropertyType",
                   "Caption": "Load content",
                   "Category": "General",
-                  "Description": "This property determines when the widgets should be rendered and data is fetched. The “Always” option will always load the widgets regardless whether the group is expanded. The “When expanded” option can reduce the initial (page) load time, but will increase the load time when expanding the group.",
+                  "Description": "This property determines when the widgets should be rendered and data is fetched. The \u201cAlways\u201d option will always load the widgets regardless whether the group is expanded. The \u201cWhen expanded\u201d option can reduce the initial (page) load time, but will increase the load time when expanding the group.",
                   "IsDefault": false,
                   "PropertyKey": "loadContent",
                   "ValueType": {
@@ -542,6 +551,7 @@
                       1
                     ],
                     "AllowNonPersistableEntities": false,
+                    "AllowUpload": false,
                     "AssociationTypes": [
                       1
                     ],
@@ -604,6 +614,7 @@
                       1
                     ],
                     "AllowNonPersistableEntities": false,
+                    "AllowUpload": false,
                     "AssociationTypes": [
                       1
                     ],
@@ -672,6 +683,7 @@
                       1
                     ],
                     "AllowNonPersistableEntities": false,
+                    "AllowUpload": false,
                     "AssociationTypes": [
                       1
                     ],
@@ -730,6 +742,7 @@
                       "Boolean"
                     ],
                     "AllowNonPersistableEntities": false,
+                    "AllowUpload": false,
                     "AssociationTypes": [
                       1
                     ],
@@ -780,6 +793,7 @@
                       1
                     ],
                     "AllowNonPersistableEntities": false,
+                    "AllowUpload": false,
                     "AssociationTypes": [
                       1
                     ],
@@ -848,6 +862,7 @@
               1
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AssociationTypes": [
               1
             ],
@@ -898,6 +913,7 @@
               1
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AssociationTypes": [
               1
             ],
@@ -960,6 +976,7 @@
               1
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AssociationTypes": [
               1
             ],
@@ -1010,6 +1027,7 @@
               1
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AssociationTypes": [
               1
             ],
@@ -1078,6 +1096,7 @@
               1
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AssociationTypes": [
               1
             ],
@@ -1128,6 +1147,7 @@
               1
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AssociationTypes": [
               1
             ],
@@ -1178,6 +1198,7 @@
               1
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AssociationTypes": [
               1
             ],
@@ -1228,6 +1249,7 @@
               1
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AssociationTypes": [
               1
             ],

@@ -30,6 +30,7 @@
               1
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AssociationTypes": [
               1
             ],
@@ -170,6 +171,7 @@
               1
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AssociationTypes": [
               1
             ],
@@ -220,6 +222,7 @@
               1
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AssociationTypes": [
               1
             ],
@@ -270,6 +273,7 @@
               1
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AssociationTypes": [
               1
             ],
@@ -320,6 +324,7 @@
               1
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AssociationTypes": [
               1
             ],
@@ -382,6 +387,7 @@
               1
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AssociationTypes": [
               1
             ],
@@ -432,6 +438,7 @@
               1
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AssociationTypes": [
               1
             ],
@@ -482,6 +489,7 @@
               1
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AssociationTypes": [
               1
             ],
@@ -532,6 +540,7 @@
               1
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AssociationTypes": [
               1
             ],
@@ -569,7 +578,7 @@
           "$Type": "CustomWidgets$WidgetPropertyType",
           "Caption": "Attributes",
           "Category": "General::HTML attributes",
-          "Description": "The HTML attributes that are added to the HTML element. For example: ‘title‘, ‘href‘. If ‘class’ or ‘style’ is added as attribute this is merged with the widget class/style property. For events (e.g. onClick) use the Events section.",
+          "Description": "The HTML attributes that are added to the HTML element. For example: \u2018title\u2018, \u2018href\u2018. If \u2018class\u2019 or \u2018style\u2019 is added as attribute this is merged with the widget class/style property. For events (e.g. onClick) use the Events section.",
           "IsDefault": false,
           "PropertyKey": "attributes",
           "ValueType": {
@@ -582,6 +591,7 @@
               1
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AssociationTypes": [
               1
             ],
@@ -620,6 +630,7 @@
                       1
                     ],
                     "AllowNonPersistableEntities": false,
+                    "AllowUpload": false,
                     "AssociationTypes": [
                       1
                     ],
@@ -670,6 +681,7 @@
                       1
                     ],
                     "AllowNonPersistableEntities": false,
+                    "AllowUpload": false,
                     "AssociationTypes": [
                       1
                     ],
@@ -732,6 +744,7 @@
                       1
                     ],
                     "AllowNonPersistableEntities": false,
+                    "AllowUpload": false,
                     "AssociationTypes": [
                       1
                     ],
@@ -782,6 +795,7 @@
                       1
                     ],
                     "AllowNonPersistableEntities": false,
+                    "AllowUpload": false,
                     "AssociationTypes": [
                       1
                     ],
@@ -839,6 +853,7 @@
                       1
                     ],
                     "AllowNonPersistableEntities": false,
+                    "AllowUpload": false,
                     "AssociationTypes": [
                       1
                     ],
@@ -889,6 +904,7 @@
                       1
                     ],
                     "AllowNonPersistableEntities": false,
+                    "AllowUpload": false,
                     "AssociationTypes": [
                       1
                     ],
@@ -964,6 +980,7 @@
               1
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AssociationTypes": [
               1
             ],
@@ -1002,6 +1019,7 @@
                       1
                     ],
                     "AllowNonPersistableEntities": false,
+                    "AllowUpload": false,
                     "AssociationTypes": [
                       1
                     ],
@@ -2018,6 +2036,7 @@
                       1
                     ],
                     "AllowNonPersistableEntities": false,
+                    "AllowUpload": false,
                     "AssociationTypes": [
                       1
                     ],
@@ -2068,6 +2087,7 @@
                       1
                     ],
                     "AllowNonPersistableEntities": false,
+                    "AllowUpload": false,
                     "AssociationTypes": [
                       1
                     ],
@@ -2118,6 +2138,7 @@
                       1
                     ],
                     "AllowNonPersistableEntities": false,
+                    "AllowUpload": false,
                     "AssociationTypes": [
                       1
                     ],
@@ -2168,6 +2189,7 @@
                       1
                     ],
                     "AllowNonPersistableEntities": false,
+                    "AllowUpload": false,
                     "AssociationTypes": [
                       1
                     ],
@@ -2236,6 +2258,7 @@
               1
             ],
             "AllowNonPersistableEntities": false,
+            "AllowUpload": false,
             "AssociationTypes": [
               1
             ],
