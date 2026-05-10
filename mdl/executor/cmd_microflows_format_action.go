@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	mdltypes "github.com/mendixlabs/mxcli/mdl/types"
+	"github.com/mendixlabs/mxcli/mdl/visitor"
 	"github.com/mendixlabs/mxcli/model"
 	"github.com/mendixlabs/mxcli/sdk/microflows"
 	"go.mongodb.org/mongo-driver/bson"
@@ -403,6 +404,10 @@ func formatAction(
 
 			if dbSource.XPathConstraint != "" {
 				constraint := strings.TrimSpace(dbSource.XPathConstraint)
+				// Enrich string literals for enum attributes to qualified names
+				// (e.g. Status = 'Open' → Status = Module.OrderStatus.Open) when
+				// the entity is known and we are connected to a project.
+				constraint = enrichXPathConstraintForDescribe(ctx, entityName, constraint)
 				// XPath may contain multiple predicates like [a][b] or [a]\n[b].
 				// Split them and join with MDL 'and' so the parser sees
 				// separate xpathConstraint nodes.
@@ -1839,4 +1844,24 @@ func canonicalBSONMap(m map[string]any) bson.D {
 		doc = append(doc, bson.E{Key: k, Value: canonicalBSONValue(v)})
 	}
 	return canonicalBSONDocument(doc)
+}
+
+// enrichXPathConstraintForDescribe enriches the raw BSON XPathConstraint string for
+// DESCRIBE output. String-literal comparisons against enum attributes are replaced with
+// qualified enum value references (e.g. Status = 'Open' → Status = Module.OrderStatus.Open).
+// Falls back to the original string on any parse failure.
+func enrichXPathConstraintForDescribe(ctx *ExecContext, entityQN, constraint string) string {
+	if entityQN == "" || constraint == "" {
+		return constraint
+	}
+	enumAttrs := buildEntityEnumAttrMap(ctx, entityQN)
+	if len(enumAttrs) == 0 {
+		return constraint
+	}
+	expr, ok := visitor.ParseXPathConstraint(constraint)
+	if !ok || expr == nil {
+		return constraint
+	}
+	enriched := enrichXPathExprWithEnums(expr, enumAttrs)
+	return "[" + xpathExprToMDLString(enriched) + "]"
 }

@@ -1004,7 +1004,7 @@ func (fb *flowBuilder) addRetrieveAction(s *ast.RetrieveStmt) model.ID {
 }
 
 func retrieveXPathConstraint(expr ast.Expression) string {
-	xpath := expressionToXPath(expr)
+	xpath := normalizeXPathEnumRefs(expressionToXPath(expr))
 	if strings.HasPrefix(strings.TrimSpace(xpath), "[") && strings.HasSuffix(strings.TrimSpace(xpath), "]") {
 		return strings.TrimSpace(xpath)
 	}
