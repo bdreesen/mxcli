@@ -104,4 +104,4 @@ alter module JarTest
 -- Cleanup
 -- ============================================================================
 
-drop module JarTest;
+-- drop module JarTest;
