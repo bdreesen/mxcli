@@ -69,7 +69,7 @@ The `+` operator is overloaded in Mendix:
 | `Decimal` | `Decimal` | `Decimal` | Addition |
 | `Integer` | `String` | **Error** | Must use `toString($n)` first |
 | `String` | `Integer` | **Error** | Must use `toString($n)` first |
-| `Decimal` | `Integer` | **Coercion** | Mendix promotes Integer → Decimal |
+| `Decimal` | `Integer` | **Error** | Must use `toDecimal($n)` first |
 
 All other arithmetic operators (`-`, `*`, `/`) require numeric operands.
 Comparison operators (`=`, `!=`, `<`, `>`, `<=`, `>=`) require compatible
@@ -292,9 +292,10 @@ version dependency. No version-gating required.
 
 ## Open Questions
 
-1. **Mendix coercion rules**: Does the Mendix runtime silently promote
-   `Integer` → `String` in some contexts? If so, the checker should warn
-   rather than error. Need to verify against Studio Pro's actual CE list.
+1. **Mendix coercion rules**: Confirmed — the runtime does **not** promote
+   numeric types to `String` in any context, including `+` concatenation.
+   Mixed-type `+` (e.g. `String + Integer`) is a hard error; the checker
+   should flag it as `Error` severity with a `toString()` hint.
 
 2. **`empty` compatibility**: `empty` is assignable to any nullable type in
    Mendix. The type checker should treat `empty` as compatible with everything
@@ -312,9 +313,9 @@ version dependency. No version-gating required.
    linter output? Starting as `Warning` avoids blocking CI pipelines while the
    rules are being validated against real projects.
 
-6. **Decimal/Integer coercion in arithmetic**: Mendix promotes `Integer` to
-   `Decimal` in mixed arithmetic. The checker should infer the result type as
-   `Decimal` rather than flagging an error.
+6. **Decimal/Integer coercion in arithmetic**: Confirmed no implicit promotion.
+   Mixed `Decimal + Integer` is a type error; the user must call `toDecimal()`
+   explicitly. The checker should flag this as `Error` severity.
 
 7. **Built-in function table completeness**: The initial implementation will
    cover the ~40 documented built-in functions. User-defined Java actions and
