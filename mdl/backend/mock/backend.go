@@ -43,6 +43,10 @@ type MockBackend struct {
 	DeleteModuleFunc            func(id model.ID) error
 	DeleteModuleWithCleanupFunc func(id model.ID, moduleName string) error
 
+	// ModuleSettingsBackend
+	GetModuleSettingsFunc    func(moduleID model.ID) (*types.ModuleSettings, error)
+	UpdateModuleSettingsFunc func(ms *types.ModuleSettings) error
+
 	// FolderBackend
 	ListFoldersFunc  func() ([]*types.FolderInfo, error)
 	CreateFolderFunc func(folder *model.Folder) error

@@ -240,6 +240,27 @@ createModuleStatement
     : MODULE identifierOrKeyword moduleOptions?
     ;
 
+// =============================================================================
+// ALTER MODULE — JAR DEPENDENCY MANAGEMENT
+// =============================================================================
+
+alterModuleJarDepStatement
+    : ALTER MODULE (qualifiedName | IDENTIFIER) alterModuleJarDepAction+
+    ;
+
+alterModuleJarDepAction
+    : ADD JAR DEPENDENCY LPAREN jarDepProperty (COMMA jarDepProperty)* COMMA? RPAREN
+    | SET JAR DEPENDENCY STRING_LITERAL VERSION STRING_LITERAL
+    | SET JAR DEPENDENCY STRING_LITERAL INCLUDED booleanLiteral
+    | SET JAR DEPENDENCY STRING_LITERAL ADD EXCLUSION STRING_LITERAL
+    | SET JAR DEPENDENCY STRING_LITERAL DROP EXCLUSION STRING_LITERAL
+    | DROP JAR DEPENDENCY STRING_LITERAL
+    ;
+
+jarDepProperty
+    : identifierOrKeyword EQUALS (STRING_LITERAL | booleanLiteral)
+    ;
+
 moduleOptions
     : moduleOption+
     ;

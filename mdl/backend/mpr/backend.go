@@ -113,6 +113,17 @@ func (b *MprBackend) DeleteModuleWithCleanup(id model.ID, moduleName string) err
 }
 
 // ---------------------------------------------------------------------------
+// ModuleSettingsBackend
+// ---------------------------------------------------------------------------
+
+func (b *MprBackend) GetModuleSettings(moduleID model.ID) (*types.ModuleSettings, error) {
+	return b.reader.GetModuleSettings(moduleID)
+}
+func (b *MprBackend) UpdateModuleSettings(ms *types.ModuleSettings) error {
+	return b.writer.UpdateModuleSettings(ms)
+}
+
+// ---------------------------------------------------------------------------
 // FolderBackend
 // ---------------------------------------------------------------------------
 

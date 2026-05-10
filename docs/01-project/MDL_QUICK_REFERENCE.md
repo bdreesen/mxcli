@@ -30,6 +30,19 @@ create persistent entity Module.Photo (
 | Drop module | `drop module ModuleName;` | |
 | Rename module | `rename module OldName to NewName;` | Updates all qualified name references |
 
+## Module JAR Dependencies
+
+| Statement | Syntax | Notes |
+|-----------|--------|-------|
+| List dependencies | `list jar dependencies [in ModuleName];` | All modules or filtered by module |
+| Describe dependency | `describe jar dependency ModuleName 'group:artifact';` | Full MDL output (roundtrippable) |
+| Add dependency | `alter module Name add jar dependency (group = '...', artifact = '...', version = '...', included = true);` | `included` defaults to `true` |
+| Update version | `alter module Name set jar dependency 'group:artifact' version '...';` | Change version string |
+| Toggle inclusion | `alter module Name set jar dependency 'group:artifact' included true\|false;` | Enable/disable in classpath |
+| Add exclusion | `alter module Name set jar dependency 'group:artifact' add exclusion 'group:artifact';` | Transitive exclusion |
+| Drop exclusion | `alter module Name set jar dependency 'group:artifact' drop exclusion 'group:artifact';` | Remove transitive exclusion |
+| Drop dependency | `alter module Name drop jar dependency 'group:artifact';` | Remove dependency entirely |
+
 ## Domain Model
 
 | Statement | Syntax | Notes |
