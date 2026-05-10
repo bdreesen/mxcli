@@ -625,6 +625,7 @@ func (c *Catalog) createTables() error {
 			Summary TEXT,
 			Description TEXT,
 			ModuleName TEXT,
+			UsedByExternalEntity TEXT,
 			ProjectId TEXT,
 			SnapshotId TEXT,
 			SnapshotDate TEXT,
