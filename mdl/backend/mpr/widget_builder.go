@@ -883,14 +883,23 @@ func ensureRequiredObjectLists(obj bson.D, propertyTypeIDs map[string]pages.Prop
 				continue
 			}
 		}
-		hasRequiredAttr := false
+		// Skip auto-populate when any nested property has a complex ValueType
+		// (Attribute / Expression / TextTemplate / Widgets / DataSource).
+		// Complex types have no sensible empty default — Studio Pro flags an
+		// auto-generated entry with empty Expression/Attribute as CE0463/CE0566.
+		// This also avoids over-populating mode-dependent required lists such as
+		// Combobox optionsSourceStaticDataSource (only used when source=static).
+		hasComplexNested := false
 		for _, nested := range entry.NestedPropertyIDs {
-			if nested.Required && nested.ValueType == "Attribute" {
-				hasRequiredAttr = true
+			switch nested.ValueType {
+			case "Attribute", "Expression", "TextTemplate", "Widgets", "DataSource":
+				hasComplexNested = true
+			}
+			if hasComplexNested {
 				break
 			}
 		}
-		if hasRequiredAttr {
+		if hasComplexNested {
 			continue
 		}
 		obj = updateWidgetPropertyValue(obj, propertyTypeIDs, propKey, func(val bson.D) bson.D {
