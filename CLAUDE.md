@@ -521,7 +521,8 @@ Full syntax tables for all MDL statements (microflows, pages, security, navigati
 - `reference/mendixmodellib/reflection-data/` - Type definitions with storage names and default values
 - `docs/03-development/MDL_PARSER_ARCHITECTURE.md` - ANTLR4 parser design documentation
 - `docs/03-development/PAGE_BSON_SERIALIZATION.md` - Page/widget BSON format, type mappings, required defaults
-- `.claude/skills/debug-bson.md` - Workflow for debugging BSON serialization issues with `mx` tool
+- `docs/03-development/WIDGET_BSON_VERSION_COMPATIBILITY.md` - What's version-resilient vs version-fragile in widget BSON output, and how to onboard a new Mendix minor (e.g. 11.10)
+- `.claude/skills/debug-bson.md` - Workflow for debugging BSON serialization issues with `mx` tool (includes the "Studio Pro Update Widget" diff methodology that closed CE0463)
 - `cmd/mxcli/lsp.go` - LSP server implementation (hover, definition, diagnostics, completion, symbols)
 - `cmd/mxcli/init.go` - `mxcli init` command (project initialization + VS Code extension install)
 - `cmd/mxcli/docker/oql.go` - OQL query execution against running Mendix runtime via M2EE admin API

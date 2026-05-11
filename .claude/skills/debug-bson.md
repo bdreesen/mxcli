@@ -289,11 +289,41 @@ for t, props in crash_props.items():
 
 ### CE0463: Widget Definition Changed
 
-**Root cause**: Object property values inconsistent with mode-dependent visibility rules.
+**Root cause spectrum**: Studio Pro detects the stored widget definition (Type/Object) doesn't match what the runtime expects. Specific triggers seen:
 
-**Fix**: Adjust properties based on the widget's current mode. See [PAGE_BSON_SERIALIZATION.md](../../docs/03-development/PAGE_BSON_SERIALIZATION.md#ce0463-widget-definition-changed--root-cause-analysis) for the full analysis.
+1. **Missing fields on `WidgetValueType`** — e.g. `AllowUpload` added in some 11.x version (commit `ec99cdff`)
+2. **WidgetObject.Properties order ≠ WidgetType.PropertyTypes order** — Studio Pro requires identical ordering (commit `b1f4de3a`)
+3. **CustomWidget envelope incomplete** — filter widgets missing Appearance/ConditionalEditability/ConditionalVisibility/LabelTemplate (commit `7e6fee84`)
+4. **TextTemplate Translation defaults not copied** from PropertyType.ValueType.Translations into WidgetObject's `Template.Items` (commit `f9818394`)
+5. **WidgetObject Boolean values diverging from schema default** — `columnsFilterable: 'false'` while schema default is `'true'` (commit `aea000b7`)
+6. **Mode-dependent visibility violations** — object property values inconsistent with editor mode rules ([PAGE_BSON_SERIALIZATION.md](../../docs/03-development/PAGE_BSON_SERIALIZATION.md#ce0463-widget-definition-changed--root-cause-analysis))
 
-**Quick workaround**: Run `mx update-widgets` after creating pages.
+**Fix methodology (the "Studio Pro Update Widget" diff)** — *the* technique that closed CE0463 on the v0.10 fixture:
+
+1. **Snapshot mxcli output** (the failing state):
+   ```bash
+   mxcli bson dump page -p test.mpr --object MyMod.MyPage > /tmp/before.json
+   mxcli bson dump page -p test.mpr --object MyMod.MyPage --format bson > /tmp/before.bson
+   ```
+2. **Copy the project** to a path with no `.mpr.lock`, then open in Studio Pro
+3. **Right-click the failing widget → "Update widget"** (NOT "Update all widgets" — narrow scope means narrow diff). Save.
+4. **Snapshot again**:
+   ```bash
+   mxcli bson dump page -p studio-pro-copy.mpr --object MyMod.MyPage > /tmp/after.json
+   ```
+5. **Diff with UUID normalization** (UUIDs are always different — they'd dominate the diff otherwise):
+   ```python
+   # normalize: replace {"Subtype": 0, "Data": "..."} with {"Subtype": 0, "Data": "<UUID>"}
+   # strip $ID fields
+   # then diff
+   ```
+6. **What Studio Pro added/changed/removed = exact fix** mxcli needs
+
+**Pair with `mx dump-mpr` for semantic-level analysis**: `mx dump-mpr --module-names='X' --output-file=dump.json /path/to/project.mpr` gives semantic JSON (typePointer → widget property key resolves automatically). Strip UUIDs and diff to find structural drift the BSON diff would hide behind binary content.
+
+**Investigation methodology used for v0.10 CE0463 fixes** — see [WIDGET_BSON_VERSION_COMPATIBILITY.md](../../docs/03-development/WIDGET_BSON_VERSION_COMPATIBILITY.md) for the full case study and version-resilience model.
+
+**Quick workaround** (if you can't fix the root cause): Run `mx update-widgets` after creating pages.
 
 ### CE0642: Property X Is Required
 

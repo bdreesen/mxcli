@@ -26,7 +26,7 @@ Three separate systems, none self-updating, overlapping responsibilities, diverg
 |---|---|---|---|
 | `reference/mendixmodellib/reflection-data/` | TS SDK extraction | Manual per release | Stale at 11.6, missing storage names / list encodings / ref kinds |
 | `supplements.json` | Hand-curated overrides | Per-release human review | Gaps discovered at runtime when Studio Pro rejects output |
-| `sdk/widgets/templates/mendix-11.6/` + augmentation | Manual extraction | One-off per Mendix version | Frozen at 11.6; structural BSON shifts not handled |
+| `sdk/widgets/templates/mendix-11.6/` + augmentation | Manual extraction | One-off per Mendix version | Frozen at 11.6; structural BSON shifts not handled — see [WIDGET_BSON_VERSION_COMPATIBILITY.md](../03-development/WIDGET_BSON_VERSION_COMPATIBILITY.md) for the five-fix patch sequence that was needed to support 11.9 |
 | `.mxcli/widgets/*.def.json` (per-project) | `mxcli widget init` parses MPK XML | User-triggered | Lossy: ignores object-list properties (Accordion `groups`, etc.); no integration with init/refresh |
 | `sdk/mpr/system_module.go` | Hand-maintained from 11.6.4 | Manual | Only one version; drifts as System module evolves |
 
