@@ -1208,13 +1208,13 @@
               "Items": [
                 3.0,
                 {
-                  "$ID": "00000000000000000000000000000000",
+                  "$ID": "aa000000000000000000000000000001",
                   "$Type": "Texts$Translation",
                   "LanguageCode": "en_US",
                   "Text": "Select all"
                 },
                 {
-                  "$ID": "00000000000000000000000000000000",
+                  "$ID": "aa000000000000000000000000000002",
                   "$Type": "Texts$Translation",
                   "LanguageCode": "nl_NL",
                   "Text": "Selecteer alles"

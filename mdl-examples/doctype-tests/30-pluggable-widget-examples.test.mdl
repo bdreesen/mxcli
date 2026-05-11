@@ -3,6 +3,13 @@
 -- Pluggable Widget Examples — PLUGGABLEWIDGET syntax
 -- ============================================================================
 --
+-- Filename uses `.test.mdl` suffix so `make test-integration` skips it.
+-- This file is a syntax reference, not a working executable script:
+-- the pluggable widgets it uses (Badge, ProgressBar, Tooltip, Accordion,
+-- Timeline, Maps, etc.) require their `.mpk` files in the project's
+-- `widgets/` folder + `mxcli widget init` to be runnable. The integration
+-- test creates a blank project that doesn't have those.
+--
 -- Tests the PLUGGABLEWIDGET keyword that drives the def.json-based pluggable
 -- widget engine. These are distinct from the static DATAGRID/GALLERY/COMBOBOX/
 -- IMAGE keywords, which have their own dedicated builders.
