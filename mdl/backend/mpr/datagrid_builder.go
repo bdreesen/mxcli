@@ -84,7 +84,7 @@ func (b *MprBackend) BuildFilterWidget(spec backend.FilterWidgetSpec, projectPat
 			},
 			Name: spec.FilterName,
 		},
-		Editable:  "Inherited",
+		Editable:  "Always",
 		RawObject: getBsonField(bsonD, "Object"),
 		RawType:   getBsonField(bsonD, "Type"),
 	}

@@ -469,7 +469,27 @@
             "Template": {
               "$ID": "dd2b3c4d5e6f700300000000000003a2",
               "$Type": "Texts$Text",
-              "Items": []
+              "Items": [
+                3.0,
+                {
+                  "$ID": "00000000000000000000000000000000",
+                  "$Type": "Texts$Translation",
+                  "LanguageCode": "en_US",
+                  "Text": "Search"
+                },
+                {
+                  "$ID": "00000000000000000000000000000000",
+                  "$Type": "Texts$Translation",
+                  "LanguageCode": "de_DE",
+                  "Text": "Suche"
+                },
+                {
+                  "$ID": "00000000000000000000000000000000",
+                  "$Type": "Texts$Translation",
+                  "LanguageCode": "nl_NL",
+                  "Text": "Zoeken"
+                }
+              ]
             }
           },
           "TranslatableValue": null,

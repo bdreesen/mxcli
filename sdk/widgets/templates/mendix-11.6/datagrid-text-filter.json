@@ -1284,7 +1284,25 @@
               "$ID": "25e5dd1c08c8cd40b843741894ad3950",
               "$Type": "Texts$Text",
               "Items": [
-                3
+                3.0,
+                {
+                  "$ID": "00000000000000000000000000000000",
+                  "$Type": "Texts$Translation",
+                  "LanguageCode": "en_US",
+                  "Text": "Search"
+                },
+                {
+                  "$ID": "00000000000000000000000000000000",
+                  "$Type": "Texts$Translation",
+                  "LanguageCode": "de_DE",
+                  "Text": "Suche"
+                },
+                {
+                  "$ID": "00000000000000000000000000000000",
+                  "$Type": "Texts$Translation",
+                  "LanguageCode": "nl_NL",
+                  "Text": "Zoeken"
+                }
               ]
             }
           },

@@ -2156,7 +2156,19 @@
               "$ID": "5839c2234c144b4995fcd9df68928e35",
               "$Type": "Texts$Text",
               "Items": [
-                3
+                3.0,
+                {
+                  "$ID": "00000000000000000000000000000000",
+                  "$Type": "Texts$Translation",
+                  "LanguageCode": "en_US",
+                  "Text": "None"
+                },
+                {
+                  "$ID": "00000000000000000000000000000000",
+                  "$Type": "Texts$Translation",
+                  "LanguageCode": "nl_NL",
+                  "Text": "Niets"
+                }
               ]
             }
           },
