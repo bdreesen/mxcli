@@ -182,6 +182,37 @@ func TestValidateEntityNormalAttributesPass(t *testing.T) {
 	}
 }
 
+// TestValidateEntityReservedJavaKeyword verifies that Java reserved words
+// used as attribute names (e.g. "type") are caught with MDL021 (CE7247).
+func TestValidateEntityReservedJavaKeyword(t *testing.T) {
+	input := `create persistent entity Test.MyEntity (
+  Name : String(200),
+  Type : String(50)
+);`
+
+	prog, errs := visitor.Build(input)
+	if len(errs) > 0 {
+		t.Fatalf("Parse error: %v", errs[0])
+	}
+
+	stmt, ok := prog.Statements[0].(*ast.CreateEntityStmt)
+	if !ok {
+		t.Fatalf("Expected CreateEntityStmt, got %T", prog.Statements[0])
+	}
+
+	violations := ValidateEntity(stmt)
+	found := false
+	for _, v := range violations {
+		if v.RuleID == "MDL021" && strings.Contains(v.Message, "Type") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("Expected MDL021 violation for Java-reserved attribute 'Type', got: %v", violations)
+	}
+}
+
 // TestReturnsNothingAcceptsBarReturn verifies that RETURNS Nothing treats
 // RETURN; (no value) as valid — "Nothing" means void.
 func TestReturnsNothingAcceptsBarReturn(t *testing.T) {

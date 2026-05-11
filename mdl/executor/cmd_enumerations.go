@@ -276,7 +276,7 @@ var mendixReservedWords = map[string]bool{
 	"public": true, "return": true, "short": true, "static": true,
 	"strictfp": true, "super": true, "switch": true, "synchronized": true,
 	"this": true, "throw": true, "throws": true, "transient": true,
-	"true": true, "try": true, "void": true, "volatile": true,
+	"true": true, "try": true, "type": true, "void": true, "volatile": true,
 	"while": true,
 	// Mendix-specific reserved identifiers
 	"changedby": true, "changeddate": true, "con": true, "context": true,
@@ -348,7 +348,8 @@ func ValidateEntity(stmt *ast.CreateEntityStmt) []linter.Violation {
 			attr.Type.Kind == ast.TypeAutoCreatedDate || attr.Type.Kind == ast.TypeAutoChangedDate {
 			continue
 		}
-		if mendixSystemAttributeNames[strings.ToLower(attr.Name)] {
+		lower := strings.ToLower(attr.Name)
+		if mendixSystemAttributeNames[lower] {
 			violations = append(violations, linter.Violation{
 				RuleID:   "MDL020",
 				Severity: linter.SeverityError,
@@ -361,6 +362,20 @@ func ValidateEntity(stmt *ast.CreateEntityStmt) []linter.Violation {
 					DocumentName: stmt.Name.String(),
 				},
 				Suggestion: fmt.Sprintf("To use the Mendix built-in audit field, declare it with the pseudo-type: '%s: Auto%s'. To store an unrelated date, choose a different name (e.g., 'EntryDate', 'RecordDate')", attr.Name, attr.Name),
+			})
+		}
+		if mendixReservedWords[lower] {
+			violations = append(violations, linter.Violation{
+				RuleID:   "MDL021",
+				Severity: linter.SeverityError,
+				Message: fmt.Sprintf(
+					"attribute '%s' is a reserved word (CE7247)",
+					attr.Name),
+				Location: linter.Location{
+					DocumentType: "entity",
+					DocumentName: stmt.Name.String(),
+				},
+				Suggestion: fmt.Sprintf("Rename to a non-reserved name (e.g., '%sValue' or '%sField')", attr.Name, attr.Name),
 			})
 		}
 	}

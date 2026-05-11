@@ -297,10 +297,13 @@ func expressionToString(expr ast.Expression) string {
 	case *ast.UnaryExpr:
 		// Mendix expressions use lowercase operators (not)
 		op := strings.ToLower(e.Operator)
-		// Special case: not(...) should not have space before parenthesized operand
+		// not(expr) — no space before paren-like operands (CE0117 rejects "not contains(...)")
 		if op == "not" {
-			if paren, ok := e.Operand.(*ast.ParenExpr); ok {
-				return "not(" + expressionToString(paren.Inner) + ")"
+			switch inner := e.Operand.(type) {
+			case *ast.ParenExpr:
+				return "not(" + expressionToString(inner.Inner) + ")"
+			case *ast.FunctionCallExpr:
+				return "not(" + expressionToString(inner) + ")"
 			}
 		}
 		operand := expressionToString(e.Operand)

@@ -224,6 +224,26 @@ func TestExpressionToString_NotWithoutParens(t *testing.T) {
 	}
 }
 
+// TestExpressionToString_NotWithFunctionCall ensures that "not contains(...)"
+// is emitted as "not(contains(...))" — CE0117 rejects the form with a space.
+func TestExpressionToString_NotWithFunctionCall(t *testing.T) {
+	expr := &ast.UnaryExpr{
+		Operator: "not",
+		Operand: &ast.FunctionCallExpr{
+			Name: "contains",
+			Arguments: []ast.Expression{
+				&ast.VariableExpr{Name: "Name"},
+				&ast.LiteralExpr{Value: "demo", Kind: ast.LiteralString},
+			},
+		},
+	}
+	got := expressionToString(expr)
+	want := "not(contains($Name, 'demo'))"
+	if got != want {
+		t.Errorf("expressionToString = %q, want %q", got, want)
+	}
+}
+
 // TestNormalizeXPathEnumRefs ensures that 3-part qualified enum value references in a raw
 // XPath string (from the bracketed SourceExpr path) are converted to string literals.
 // This is needed because XPath constraints are database-level SQL WHERE clauses; the DB

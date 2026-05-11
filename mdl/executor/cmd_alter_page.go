@@ -208,7 +208,7 @@ func applyDropWidgetMutator(mutator backend.PageMutator, op *ast.DropWidgetOp) e
 func applyReplaceWidgetMutator(ctx *ExecContext, mutator backend.PageMutator, op *ast.ReplaceWidgetOp, moduleName string, moduleID model.ID) error {
 	// Check for duplicate widget names (skip the widget being replaced)
 	for _, w := range op.NewWidgets {
-		if w.Name != "" && w.Name != op.Target.Widget && mutator.FindWidget(w.Name) {
+		if w.Name != "" && w.Name != op.Target.Widget && w.Name != op.Target.Column && mutator.FindWidget(w.Name) {
 			return mdlerrors.NewAlreadyExistsMsg("widget", w.Name, fmt.Sprintf("duplicate widget name '%s': a widget with this name already exists on the page", w.Name))
 		}
 	}

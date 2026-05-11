@@ -737,6 +737,41 @@ func findInWidgetChildren(wDoc bson.D, widgetName string) *bsonWidgetResult {
 					}
 				}
 			}
+			// DataGrid2: search columns by derived name (stored in Objects, not Widgets)
+			propKeyMap := buildPropKeyMap(wDoc)
+			for _, prop := range props {
+				propDoc, ok := prop.(bson.D)
+				if !ok {
+					continue
+				}
+				typePointerID := extractBinaryIDFromDoc(dGet(propDoc, "TypePointer"))
+				if propKeyMap[typePointerID] != "columns" {
+					continue
+				}
+				valDoc := dGetDoc(propDoc, "Value")
+				if valDoc == nil {
+					break
+				}
+				colPropKeyMap := buildColumnPropKeyMap(wDoc, typePointerID)
+				columns := dGetArrayElements(dGet(valDoc, "Objects"))
+				for i, colItem := range columns {
+					colDoc, ok := colItem.(bson.D)
+					if !ok {
+						continue
+					}
+					if deriveColumnNameBson(colDoc, colPropKeyMap, i) == widgetName {
+						return &bsonWidgetResult{
+							widget:      colDoc,
+							parentArr:   columns,
+							parentKey:   "Objects",
+							parentDoc:   valDoc,
+							index:       i,
+							colPropKeys: colPropKeyMap,
+						}
+					}
+				}
+				break // only one "columns" property per widget
+			}
 		}
 	}
 
@@ -1195,6 +1230,38 @@ func collectWidgetScopeInChildren(wDoc bson.D, scope map[string]model.ID) {
 				if valDoc := dGetDoc(propDoc, "Value"); valDoc != nil {
 					collectWidgetScope(valDoc, "Widgets", scope)
 				}
+			}
+			// DataGrid2: add column derived names to scope for duplicate-name detection
+			propKeyMap := buildPropKeyMap(wDoc)
+			for _, prop := range props {
+				propDoc, ok := prop.(bson.D)
+				if !ok {
+					continue
+				}
+				typePointerID := extractBinaryIDFromDoc(dGet(propDoc, "TypePointer"))
+				if propKeyMap[typePointerID] != "columns" {
+					continue
+				}
+				valDoc := dGetDoc(propDoc, "Value")
+				if valDoc == nil {
+					break
+				}
+				colPropKeyMap := buildColumnPropKeyMap(wDoc, typePointerID)
+				columns := dGetArrayElements(dGet(valDoc, "Objects"))
+				for i, colItem := range columns {
+					colDoc, ok := colItem.(bson.D)
+					if !ok {
+						continue
+					}
+					derived := deriveColumnNameBson(colDoc, colPropKeyMap, i)
+					if derived != "" {
+						idVal := dGet(colDoc, "$ID")
+						if wID := extractBinaryIDFromDoc(idVal); wID != "" {
+							scope[derived] = model.ID(wID)
+						}
+					}
+				}
+				break
 			}
 		}
 	}
