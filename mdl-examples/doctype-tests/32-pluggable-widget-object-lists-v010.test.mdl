@@ -3,10 +3,16 @@
 -- v0.10.0 MILESTONE: Object-list child blocks for pluggable widgets (Phase 1)
 -- ============================================================================
 --
--- Status: PARSES (Layer 3 grammar work landed) but does NOT yet produce
--- correct BSON — the executor wiring for object-list items is still missing.
--- Filename keeps `.test.mdl` suffix so `mxcli exec` against this file isn't
--- promoted as "working" until the executor catches up.
+-- Status: PARSES + EXECUTES — Phase 1 Layer 3 grammar and executor wiring
+-- landed. `mxcli exec` against this fixture produces BSON that loads in
+-- Studio Pro. However, the resulting Maps / Accordion / PopupMenu /
+-- AreaChart widgets currently trigger CE0463 on `mx check`. The DataGrid
+-- CE0463 fix sequence (commits ec99cdff, b1f4de3a, 7e6fee84, f9818394,
+-- aea000b7) closed the issue for DataGrid + Gallery + filter widgets; the
+-- engine-routed widget types in this fixture need the same investigation
+-- methodology (Studio-Pro-update-widget diff per family) applied. Tracked
+-- as v0.11+ follow-up. Filename keeps `.test.mdl` until then so the
+-- standard Makefile parse check skips it.
 --
 -- Some sub-properties needing datasource expressions (AreaChart series with
 -- StaticDataSource, Maps dynamicMarkers with MarkersDS) are out of scope for

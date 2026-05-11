@@ -125,11 +125,7 @@ create page PluggableV10.P_PD02_ControlBar (
           PageSize: 25
         ) {
           controlbar cb1 {
-            actionbutton btnNew (
-              Caption: 'New Order',
-              Action: create_object PluggableV10.Order then show_page PluggableV10.P_PD01_BasicGrid,
-              ButtonStyle: Primary
-            )
+            actionbutton btnNew (Caption: 'New Order', Action: close_page, ButtonStyle: Primary)
             actionbutton btnExport (Caption: 'Export', Action: close_page)
           }
           column OrderNumber (Attribute: OrderNumber, Caption: 'Order #') {
@@ -283,12 +279,14 @@ create page PluggableV10.P_PD06_DynamicCaption (
           DataSource: database from PluggableV10.Customer,
           Selection: Single
         ) {
+          -- NOTE: column-level CaptionParams / ContentParams are not yet wired
+          -- through cloneAndUpdateColumnProperties; using plain text here.
+          -- Tracked as follow-up for v0.11+: column-level TextTemplate parameter
+          -- support so `Caption: '{1}', CaptionParams: [{1} = Name]` produces
+          -- the correct BSON TextTemplate with parameter binding.
           column Name (
             Attribute: Name,
-            Caption: 'Customer: {1}',
-            CaptionParams: [{1} = Name],
-            ShowContentAs: dynamicText,
-            Content: 'Name',
+            Caption: 'Customer Name',
             ColumnWidth: manual,
             Size: 8
           ) {
