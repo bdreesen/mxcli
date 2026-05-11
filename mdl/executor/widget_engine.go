@@ -75,10 +75,10 @@ type ChildSlotMapping struct {
 // and ChildSlotMapping (primitive, attribute, datasource, widgets, texttemplate,
 // expression, action), as well as nested object lists.
 type ObjectListMapping struct {
-	PropertyKey    string                 `json:"propertyKey"`
-	MDLContainer   string                 `json:"mdlContainer"`
-	ItemProperties []ItemPropertyMapping  `json:"itemProperties,omitempty"`
-	ItemSlots      []ItemSlotMapping      `json:"itemSlots,omitempty"`
+	PropertyKey    string                `json:"propertyKey"`
+	MDLContainer   string                `json:"mdlContainer"`
+	ItemProperties []ItemPropertyMapping `json:"itemProperties,omitempty"`
+	ItemSlots      []ItemSlotMapping     `json:"itemSlots,omitempty"`
 }
 
 // ItemPropertyMapping maps a property of one object-list item (e.g. headerText

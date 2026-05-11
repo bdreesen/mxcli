@@ -6,13 +6,13 @@ import "testing"
 
 func TestResolveKeyword(t *testing.T) {
 	tests := []struct {
-		name        string
-		keyword     string
-		version     string
-		wantOK      bool
-		wantKind    string
-		wantWidget  string
-		wantDeprec  string
+		name       string
+		keyword    string
+		version    string
+		wantOK     bool
+		wantKind   string
+		wantWidget string
+		wantDeprec string
 	}{
 		{
 			name:       "DATAGRID on 11.9 → pluggable",
@@ -103,7 +103,7 @@ func TestVersionInRange(t *testing.T) {
 		{"11.9.0", "11.0.0", "", true},
 		{"11.9.0", "9.0.0", "10.99.99", false},
 		{"10.24.0", "9.0.0", "10.99.99", true},
-		{"10.99.99", "9.0.0", "10.99.99", true}, // exact upper bound is inclusive
+		{"10.99.99", "9.0.0", "10.99.99", true},   // exact upper bound is inclusive
 		{"10.99.100", "9.0.0", "10.99.99", false}, // patch beyond bound excluded
 		{"11.0.0", "11.0.0", "", true},
 		{"11.0.0", "11.0.1", "", false},
