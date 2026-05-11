@@ -85,6 +85,10 @@ func (m *mprPageMutator) SetWidgetProperty(widgetRef string, prop string, value 
 	if result == nil {
 		return fmt.Errorf("widget %q not found", widgetRef)
 	}
+	// DataGrid2 columns are WidgetObjects, not form widgets — use the column setter.
+	if len(result.colPropKeys) > 0 {
+		return setColumnPropertyMut(result.widget, result.colPropKeys, prop, value)
+	}
 	return setRawWidgetPropertyMut(result.widget, prop, value)
 }
 

@@ -216,8 +216,9 @@ func applyReplaceWidgetMutator(ctx *ExecContext, mutator backend.PageMutator, op
 	// Find entity context from enclosing DataView/DataGrid/ListView
 	entityCtx := mutator.EnclosingEntity(op.Target.Widget)
 
-	// Build new widgets from AST
-	widgets, err := buildWidgetsFromAST(ctx, op.NewWidgets, moduleName, moduleID, entityCtx, mutator)
+	// Build new widgets from AST, excluding the target widget/column from the
+	// duplicate-name scope so a same-name replacement is allowed.
+	widgets, err := buildWidgetsFromAST(ctx, op.NewWidgets, moduleName, moduleID, entityCtx, mutator, op.Target.Widget, op.Target.Column)
 	if err != nil {
 		return mdlerrors.NewBackend("build replacement widgets", err)
 	}
@@ -231,9 +232,14 @@ func applyReplaceWidgetMutator(ctx *ExecContext, mutator backend.PageMutator, op
 
 // buildWidgetsFromAST converts AST widgets to pages.Widget domain objects.
 // It uses the mutator for scope resolution (WidgetScope, ParamScope).
-func buildWidgetsFromAST(ctx *ExecContext, widgets []*ast.WidgetV3, moduleName string, moduleID model.ID, entityContext string, mutator backend.PageMutator) ([]pages.Widget, error) {
+// excludeFromScope removes named widgets from the duplicate-detection scope,
+// used when replacing a widget so the new one may reuse the target's name.
+func buildWidgetsFromAST(ctx *ExecContext, widgets []*ast.WidgetV3, moduleName string, moduleID model.ID, entityContext string, mutator backend.PageMutator, excludeFromScope ...string) ([]pages.Widget, error) {
 	paramScope, paramEntityNames := mutator.ParamScope()
 	widgetScope := mutator.WidgetScope()
+	for _, name := range excludeFromScope {
+		delete(widgetScope, name)
+	}
 
 	pb := &pageBuilder{
 		backend:          ctx.Backend,

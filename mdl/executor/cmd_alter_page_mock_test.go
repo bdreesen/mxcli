@@ -340,3 +340,56 @@ func TestAlterPage_SetLayout_Snippet_Unsupported(t *testing.T) {
 	assertError(t, err)
 	assertContainsStr(t, err.Error(), "not supported")
 }
+
+// ---------------------------------------------------------------------------
+// REPLACE widget — same-name replacement must not false-positive on "duplicate"
+// ---------------------------------------------------------------------------
+
+// TestApplyReplaceWidgetMutator_SameNameAllowed verifies that replacing a widget
+// with a new widget of the same name does not fail with "duplicate widget name".
+// Before the fix, buildWidgetsFromAST received the full page WidgetScope (including
+// the target widget), so registerWidgetName rejected the same-name replacement.
+func TestApplyReplaceWidgetMutator_SameNameAllowed(t *testing.T) {
+	existingID := model.ID("existing-id-123")
+	replaceCalled := false
+
+	mutator := &mock.MockPageMutator{
+		FindWidgetFunc: func(name string) bool { return name == "myTitle" },
+		WidgetScopeFunc: func() map[string]model.ID {
+			return map[string]model.ID{"myTitle": existingID}
+		},
+		ParamScopeFunc: func() (map[string]model.ID, map[string]string) {
+			return nil, nil
+		},
+		EnclosingEntityFunc: func(widgetRef string) string { return "" },
+		ReplaceWidgetFunc: func(widgetRef, columnRef string, ws []pages.Widget) error {
+			replaceCalled = true
+			if widgetRef != "myTitle" || columnRef != "" {
+				t.Errorf("unexpected refs: widgetRef=%q columnRef=%q", widgetRef, columnRef)
+			}
+			return nil
+		},
+		SaveFunc: func() error { return nil },
+	}
+
+	op := &ast.ReplaceWidgetOp{
+		Target: ast.WidgetRef{Widget: "myTitle"},
+		NewWidgets: []*ast.WidgetV3{
+			{Name: "myTitle", Type: "title", Properties: map[string]any{"content": "New Title"}},
+		},
+	}
+
+	mb := &mock.MockBackend{
+		IsConnectedFunc: func() bool { return true },
+		ListModulesFunc: func() ([]*model.Module, error) { return nil, nil },
+	}
+	ctx, _ := newMockCtx(t, withBackend(mb))
+
+	err := applyReplaceWidgetMutator(ctx, mutator, op, "MyModule", model.ID("mod-id"))
+	if err != nil {
+		t.Errorf("same-name replacement should be allowed, got: %v", err)
+	}
+	if !replaceCalled {
+		t.Error("expected ReplaceWidget to be called")
+	}
+}
