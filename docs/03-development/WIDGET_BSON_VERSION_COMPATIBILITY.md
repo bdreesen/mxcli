@@ -142,6 +142,23 @@ When patching a field, **update all four paths** if the field is supposed to
 be ubiquitous. The CE0463 fixes for `AllowUpload` touched the embedded JSON,
 both serializers, and the augment helper.
 
+### Gotcha: `$ID` placeholders must be unique
+
+When bulk-adding entries with a `$ID` field to embedded templates (e.g.
+`Texts$Translation` entries inside `TextTemplate.Template.Items`), each
+entry **must** have a unique placeholder `$ID` value. The loader's
+`collectIDs` remapping (in `sdk/widgets/loader.go`) treats identical `$ID`
+strings as the same logical entity and remaps them to a single new UUID at
+load time. Multiple widget instances on a page then end up referencing the
+same UUID, triggering `Duplicate Guid in unit page ...` from `mx
+update-widgets` and a subsequent `Root unit not found` corruption.
+
+**Convention**: follow the `placeholderID()` function in
+`sdk/widgets/augment.go` — `aa000000000000000000000000XXXXXX` with a unique
+counter per entry. Caught by the integration test
+`TestMxCheck_DoctypeScripts`, fixed in commit
+[`8ead1cff`](https://github.com/mendixlabs/mxcli/commit/8ead1cff).
+
 ## Cross-version validation (proposed, not yet implemented)
 
 A `make test-mx-versions` target should:
