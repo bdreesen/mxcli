@@ -1176,7 +1176,7 @@ Before executing a microflow script, verify:
 | Error Code | Message | Fix |
 |------------|---------|-----|
 | CE0053 | Selected type is not allowed | Use `declare $var EntityType;` (no AS, no = empty) |
-| CE0117 | Error in expression | Use qualified association names |
+| CE0117 | Error in expression | Use qualified association names; use `not(expr)` not bare `not expr` |
 | CE0104 | Action activity is unreachable | Remove code after RETURN |
 | CE0105 | Must end with end event | Add RETURN statement |
 | CE0008 | No action defined | Define action for activity |

@@ -45,7 +45,7 @@ declare $Product as Module.Product;
 
 ### "Error in expression" (CE0117)
 
-**Problem**: Using unqualified association name in XPath.
+**Problem 1**: Using unqualified association name in XPath.
 
 ```mdl
 -- WRONG: Missing module qualification
@@ -58,6 +58,24 @@ set $Name = $Order/Customer/Name;
 -- CORRECT: Module.AssociationName
 set $Name = $Order/Shop.Order_Customer/Name;
 ```
+
+**Problem 2**: Using `not` without parentheses — Mendix requires `not(expr)` form.
+
+```mdl
+-- WRONG: bare not rejected by Studio Pro
+if not $IsActive then ...
+if not contains($Name, 'demo') then ...
+```
+
+**Fix**: Always wrap the negated expression in parentheses.
+
+```mdl
+-- CORRECT: not(expr)
+if not($IsActive) then ...
+if not(contains($Name, 'demo')) then ...
+```
+
+> mxcli enforces this at parse time — `not expr` without parens is a syntax error.
 
 ### "Type mismatch" in enum comparison
 
