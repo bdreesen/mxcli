@@ -101,7 +101,7 @@ completions:
 	fi
 
 # Build for current platform (auto-syncs skills and commands)
-build: sync-all completions
+build: grammar sync-all completions
 	@mkdir -p $(BUILD_DIR)
 	CGO_ENABLED=0 go build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) $(CMD_PATH)
 	CGO_ENABLED=0 go build -o $(BUILD_DIR)/source_tree ./cmd/source_tree
@@ -114,7 +114,7 @@ build-debug: sync-all completions
 	@echo "Built $(BUILD_DIR)/$(BINARY_NAME)-debug (debug build with bson tools)"
 
 # Build for all platforms (CGO_ENABLED=0 for cross-compilation)
-release: clean vscode-ext sync-all
+release: clean grammar vscode-ext sync-all
 	@mkdir -p $(BUILD_DIR)
 	@echo "Building release binaries..."
 
@@ -141,7 +141,7 @@ release: clean vscode-ext sync-all
 	@ls -lh $(BUILD_DIR)/
 
 # Run tests
-test:
+test: grammar
 	CGO_ENABLED=0 go test ./...
 
 # Check MDL syntax for all doctype example scripts
