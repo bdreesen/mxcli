@@ -212,13 +212,14 @@ func TestExpressionToString_NotWithParens(t *testing.T) {
 }
 
 func TestExpressionToString_NotWithoutParens(t *testing.T) {
-	// not $x should remain "not $x" (with space)
+	// AST-level: not(IdentifierExpr) must emit not($IsActive) — parens always added
+	// (Mendix CE0117 rejects bare "not expr"; grammar now enforces parens at parse time)
 	expr := &ast.UnaryExpr{
 		Operator: "not",
 		Operand:  &ast.IdentifierExpr{Name: "$IsActive"},
 	}
 	got := expressionToString(expr)
-	want := "not $IsActive"
+	want := "not($IsActive)"
 	if got != want {
 		t.Errorf("expressionToString = %q, want %q", got, want)
 	}

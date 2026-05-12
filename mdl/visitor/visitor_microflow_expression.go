@@ -91,18 +91,15 @@ func buildNotExpression(ctx parser.INotExpressionContext) ast.Expression {
 	}
 	notCtx := ctx.(*parser.NotExpressionContext)
 
-	// Build comparison expression
-	comp := buildComparisonExpression(notCtx.ComparisonExpression())
-
-	// Check for NOT prefix
+	// not(expr) — parens are mandatory (Mendix CE0117 rejects bare "not expr")
 	if notCtx.NOT() != nil {
 		return &ast.UnaryExpr{
 			Operator: "NOT",
-			Operand:  comp,
+			Operand:  buildExpression(notCtx.Expression()),
 		}
 	}
 
-	return comp
+	return buildComparisonExpression(notCtx.ComparisonExpression())
 }
 
 // buildComparisonExpression handles comparison expressions.

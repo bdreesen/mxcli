@@ -232,7 +232,8 @@ andExpression
     ;
 
 notExpression
-    : NOT? comparisonExpression
+    : NOT LPAREN expression RPAREN   // not(expr) — Mendix requires parens (CE0117)
+    | comparisonExpression
     ;
 
 comparisonExpression
